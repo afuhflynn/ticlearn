@@ -3,5 +3,7 @@ ignoredBuiltDependencies:
   - unrs-resolver
 
 onlyBuiltDependencies:
+  - '@prisma/engines'
   - msgpackr-extract
+  - prisma
   - protobufjs
