@@ -1,7 +1,5 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Get a free hosted Postgres database in seconds: `npx create-db`
+// TiCLearn Prisma Schema
+// AI-powered study platform for Cameroonian students
 
 generator client {
   provider = "prisma-client"
@@ -22,58 +20,39 @@ model User {
   email         String   @unique
   emailVerified Boolean  @default(false)
   image         String?
-  username      String?  @unique
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  // Email Verification
-  verificationCode   String?
-  verificationExpiry DateTime?
-  accountStatus      AccountStatus @default(ACTIVE)
-
-  // Password Reset
-  resetToken       String?
-  resetTokenExpiry DateTime?
-
-  // Preferences
-  emailNotifications Boolean @default(true)
-
-  role UserRole @default(USER)
+  // Extended fields for TiCLearn
+  role          UserRole @default(USER)
+  referredBy    String?  @map("referred_by")
+  refApplied    Boolean  @default(false) @map("ref_applied")
 
   // Relations
-  sessions Session[]
-  accounts Account[]
+  sessions      Session[]
+  accounts      Account[]
+  notes         Note[]
+  quizzes       Quiz[]
+  quizAttempts  QuizAttempt[]
+  examSessions  ExamSession[]
+  userStats     UserStats?
+  subscriptions Subscription[]
+  ratings       Rating[]
+  feedbacks     Feedback[]
+  affiliate     Affiliate?
 
   @@map("users")
 }
 
-enum UserRole {
-  USER
-  ADMIN
-}
-
-enum AccountStatus {
-  ACTIVE
-  FROZEN
-  DELETED
-}
-
-enum StartupMemberRole {
-  OWNER
-  ADMIN
-  MEMBER
-  VIEWER
-}
-
 model Session {
-  id        String   @id
-  expiresAt DateTime
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
   token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address")
+  userAgent String?  @map("user_agent")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -81,33 +60,367 @@ model Session {
 }
 
 model Account {
-  id                    String    @id
-  accountId             String
-  providerId            String
-  userId                String
-  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  accountId             String    @map("account_id")
+  providerId            String    @map("provider_id")
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
   scope                 String?
+  idToken               String?   @map("id_token")
   password              String?
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("account")
 }
 
 model Verification {
-  id         String   @id
+  id         String   @id @default(cuid())
   identifier String
   value      String
-  expiresAt  DateTime
+  expiresAt  DateTime @map("expires_at")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([identifier])
   @@map("verification")
+}
+
+// ===========================================
+// App Models
+// ===========================================
+
+model Note {
+  id            String     @id @default(cuid())
+  userId        String     @map("user_id")
+  title         String
+  subject       String
+  fileUrl       String     @map("file_url")
+  fileName      String     @map("file_name")
+  fileType      FileType   @map("file_type")
+  extractedText String?    @map("extracted_text") @db.Text
+  topics        String[]
+  summary       String?    @db.Text
+  status        NoteStatus @default(UPLOADING)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizzes       Quiz[]
+
+  @@index([userId])
+  @@index([status])
+  @@map("notes")
+}
+
+model Quiz {
+  id            String     @id @default(cuid())
+  userId        String     @map("user_id")
+  noteId        String     @map("note_id")
+  noteTitle     String     @map("note_title")
+  title         String
+  questionCount Int        @map("question_count")
+  status        QuizStatus @default(GENERATING)
+  isPublic      Boolean    @default(false) @map("is_public")
+  timed         Boolean    @default(false)
+  timeLimit     Int?       @map("time_limit")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note          Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  questions     QuizQuestion[]
+  attempts      QuizAttempt[]
+
+  @@index([userId])
+  @@index([isPublic])
+  @@index([status])
+  @@map("quizzes")
+}
+
+model QuizQuestion {
+  id             String       @id @default(cuid())
+  quizId         String       @map("quiz_id")
+  type           QuestionType
+  question       String       @db.Text
+  options        String[]
+  correctAnswer  String       @map("correct_answer") @db.Text
+  explanation    String?      @db.Text
+  order          Int
+  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  attemptAnswers QuizAttemptAnswer[]
+
+  @@index([quizId])
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  quizId         String   @map("quiz_id")
+  quizTitle      String   @map("quiz_title")
+  noteTitle      String   @map("note_title")
+  score          Float
+  totalQuestions Int      @map("total_questions")
+  correctAnswers Int      @map("correct_answers")
+  completedAt    DateTime @default(now()) @map("completed_at")
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  answers        QuizAttemptAnswer[]
+
+  @@index([userId])
+  @@index([quizId])
+  @@index([completedAt])
+  @@map("quiz_attempts")
+}
+
+model QuizAttemptAnswer {
+  id            String       @id @default(cuid())
+  attemptId     String       @map("attempt_id")
+  questionId    String       @map("question_id")
+  question      String       @db.Text
+  userAnswer    String       @map("user_answer") @db.Text
+  correctAnswer String       @map("correct_answer") @db.Text
+  isCorrect     Boolean      @map("is_correct")
+  explanation   String?      @db.Text
+  attempt       QuizAttempt  @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  quizQuestion  QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("quiz_attempt_answers")
+}
+
+model ExamSession {
+  id           String       @id @default(cuid())
+  userId       String       @map("user_id")
+  subject      ExamSubject
+  subjectLabel String       @map("subject_label")
+  mode         ExamMode
+  topic        String
+  status       ExamStatus   @default(GENERATING)
+  score        Float?
+  timeLimit    Int          @map("time_limit")
+  timeTaken    Int?         @map("time_taken")
+  questions    Json
+  answers      Json?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("exam_sessions")
+}
+
+model UserStats {
+  id               String    @id @default(cuid())
+  userId           String    @unique @map("user_id")
+  totalPoints      Int       @default(0) @map("total_points")
+  currentStreak    Int       @default(0) @map("current_streak")
+  longestStreak    Int       @default(0) @map("longest_streak")
+  lastActivityDate DateTime? @map("last_activity_date")
+  quizzesTaken     Int       @default(0) @map("quizzes_taken")
+  avgScore         Float     @default(0) @map("avg_score")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([totalPoints])
+  @@map("user_stats")
+}
+
+model Subscription {
+  id            String             @id @default(cuid())
+  userId        String             @map("user_id")
+  userEmail     String             @map("user_email")
+  userName      String             @map("user_name")
+  plan          Plan
+  status        SubscriptionStatus @default(PENDING)
+  fapshiTransId String?            @unique @map("fapshi_trans_id")
+  amount        Int
+  activatedAt   DateTime?          @map("activated_at")
+  createdAt     DateTime           @default(now())
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([fapshiTransId])
+  @@map("subscriptions")
+}
+
+model Rating {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  userEmail String   @map("user_email")
+  userName  String   @map("user_name")
+  score     Int
+  comment   String?  @db.Text
+  version   String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("ratings")
+}
+
+model Feedback {
+  id        String         @id @default(cuid())
+  userId    String         @map("user_id")
+  userEmail String         @map("user_email")
+  userName  String         @map("user_name")
+  type      FeedbackType
+  subject   String
+  message   String         @db.Text
+  status    FeedbackStatus @default(OPEN)
+  isFlagged Boolean        @default(false) @map("is_flagged")
+  isUrgent  Boolean        @default(false) @map("is_urgent")
+  adminNote String?        @map("admin_note") @db.Text
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("feedbacks")
+}
+
+model Affiliate {
+  id               String          @id @default(cuid())
+  userId           String          @unique @map("user_id")
+  userEmail        String          @map("user_email")
+  userName         String          @map("user_name")
+  code             String          @unique
+  status           AffiliateStatus @default(PENDING)
+  momoNumber       String          @map("momo_number")
+  momoName         String          @map("momo_name")
+  totalClicks      Int             @default(0) @map("total_clicks")
+  totalConversions Int             @default(0) @map("total_conversions")
+  totalEarnings    Float           @default(0) @map("total_earnings")
+  pendingEarnings  Float           @default(0) @map("pending_earnings")
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clicks           AffiliateClick[]
+  earnings         AffiliateEarning[]
+
+  @@index([code])
+  @@index([status])
+  @@map("affiliates")
+}
+
+model AffiliateClick {
+  id                String    @id @default(cuid())
+  affiliateCode     String    @map("affiliate_code")
+  affiliateEmail    String    @map("affiliate_email")
+  converted         Boolean   @default(false)
+  referredUserEmail String?   @map("referred_user_email")
+  createdAt         DateTime  @default(now())
+  affiliate         Affiliate @relation(fields: [affiliateCode], references: [code])
+
+  @@index([affiliateCode])
+  @@map("affiliate_clicks")
+}
+
+model AffiliateEarning {
+  id                String        @id @default(cuid())
+  affiliateCode     String        @map("affiliate_code")
+  affiliateEmail    String        @map("affiliate_email")
+  referredUserEmail String        @map("referred_user_email")
+  plan              Plan
+  amount            Int
+  commission        Float
+  status            EarningStatus @default(PENDING)
+  paidAt            DateTime?     @map("paid_at")
+  createdAt         DateTime      @default(now())
+  affiliate         Affiliate     @relation(fields: [affiliateCode], references: [code])
+
+  @@index([affiliateCode])
+  @@index([status])
+  @@map("affiliate_earnings")
+}
+
+// ===========================================
+// Enums
+// ===========================================
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum FileType {
+  PDF
+  IMAGE
+}
+
+enum NoteStatus {
+  UPLOADING
+  PROCESSING
+  READY
+  ERROR
+}
+
+enum QuizStatus {
+  GENERATING
+  READY
+  ERROR
+}
+
+enum QuestionType {
+  MCQ
+  OPEN
+}
+
+enum ExamSubject {
+  CS
+  ICT
+}
+
+enum ExamMode {
+  MOCK
+  SIMULATION
+}
+
+enum ExamStatus {
+  GENERATING
+  READY
+  COMPLETED
+}
+
+enum Plan {
+  STARTER
+  STANDARD
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  PENDING
+  ACTIVE
+  FAILED
+}
+
+enum FeedbackType {
+  BUG
+  FEATURE
+  GENERAL
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+}
+
+enum AffiliateStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum EarningStatus {
+  PENDING
+  PAID
 }

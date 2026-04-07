@@ -1,0 +1,75 @@
+"use client";
+
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
+import {
+  Shield,
+  Users,
+  MessageCircle,
+  CreditCard,
+  Link2,
+  GraduationCap,
+  BarChart3,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@/components/ui/sidebar";
+
+const adminNavItems = [
+  { href: "/admin", icon: BarChart3, label: "Analytics" },
+  { href: "/admin/users", icon: Users, label: "Users" },
+  { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
+  { href: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
+  { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
+];
+
+export function AdminSidebar() {
+  const pathname = usePathname();
+
+  return (
+    <Sidebar className="hidden md:flex" collapsible="icon">
+      <SidebarHeader className="border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <Shield className="h-6 w-6 text-destructive" />
+          <span className="font-bold">Admin</span>
+        </div>
+      </SidebarHeader>
+
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3">Admin Panel</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminNavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={pathname === item.href}>
+                    <a href={item.href} className="flex items-center gap-3">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+
+      <SidebarFooter className="border-t p-4">
+        <Button variant="outline" className="w-full" asChild>
+          <a href="/dashboard">Back to Dashboard</a>
+        </Button>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}

@@ -8,7 +8,6 @@ export const auth = betterAuth({
   database: prismaAdapter(prisma, {
     provider: "postgresql",
   }),
-
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
@@ -33,11 +32,27 @@ export const auth = betterAuth({
     },
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 7, // 7 days
+    expiresIn: 60 * 60 * 24 * 30, // 30 days
     updateAge: 60 * 60 * 24, // Update session every 24 hours
     cookieCache: {
       enabled: true,
       maxAge: 5 * 60, // Cache session for 5 minutes
+    },
+  },
+  user: {
+    additionalFields: {
+      role: {
+        type: "string",
+        defaultValue: "USER",
+      },
+      referredBy: {
+        type: "string",
+        required: false,
+      },
+      refApplied: {
+        type: "boolean",
+        defaultValue: false,
+      },
     },
   },
   trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL! || "http://localhost:3000"],
@@ -55,3 +70,5 @@ export const auth = betterAuth({
     }),
   ],
 });
+
+export type Session = typeof auth.$Infer.Session;

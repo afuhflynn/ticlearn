@@ -1,22 +1,9 @@
-import ip from "@arcjet/ip";
-import arcjet, {
-  type ArcjetDecision,
-  type BotOptions,
-  detectBot,
-  type EmailOptions,
-  type ProtectSignupOptions,
-  protectSignup,
-  type SlidingWindowRateLimitOptions,
-  shield,
-  slidingWindow,
-  tokenBucket,
-} from "@arcjet/next";
-import type { NextRequest } from "next/server";
-import { auth } from "./auth";
+import arcjet, { createMiddleware, detectBot, shield } from "@arcjet/next";
+import { getSessionCookie } from "better-auth/cookies";
+import { type NextRequest, NextResponse } from "next/server";
 
-export const aj = arcjet({
-  key: process.env.ARCJET_KEY!,
-  characteristics: ["userId", "ip.src"],
+const aj = arcjet({
+  key: process.env.ARCJET_KEY as string,
   rules: [
     shield({ mode: "LIVE" }),
     detectBot({
@@ -26,112 +13,65 @@ export const aj = arcjet({
   ],
 });
 
-export const ajRateLimit = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    tokenBucket({
-      mode: "LIVE",
-      characteristics: ["userId"],
-      refillRate: 10,
-      interval: 60,
-      capacity: 100,
-    }),
-  ],
-});
+const protectedRoutes = [
+  "/dashboard",
+  "/upload",
+  "/quizzes",
+  "/progress",
+  "/chat",
+  "/community",
+  "/leaderboard",
+  "/gce-exams",
+  "/feedback",
+  "/affiliate",
+  "/pricing",
+  "/admin",
+];
 
-export const ajAuth = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    tokenBucket({
-      mode: "LIVE",
-      characteristics: ["userId"],
-      refillRate: 5,
-      interval: 60,
-      capacity: 20,
-    }),
-  ],
-});
+const unprotectedAuthRoutes = [
+  "/sign-in",
+  "/sign-up",
+  "/forgot-password",
+  "/reset-password",
+];
 
-export const ajAI = arcjet({
-  key: process.env.ARCJET_KEY!,
-  rules: [
-    tokenBucket({
-      mode: "LIVE",
-      characteristics: ["userId"],
-      refillRate: 2,
-      interval: 60,
-      capacity: 10,
-    }),
-  ],
-});
+export async function proxy(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  const sessionCookie = getSessionCookie(request);
 
-// auth handlers
-const emailOptions = {
-  mode: "LIVE", // will block requests. Use "DRY_RUN" to log only
-  // Block emails that are disposable, invalid, or have no MX records
-  block: ["DISPOSABLE", "INVALID", "NO_MX_RECORDS"],
-} satisfies EmailOptions;
+  const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
+  const isUnprotectedAuthRoute = unprotectedAuthRoutes.some((r) =>
+    pathname.startsWith(r),
+  );
 
-const botOptions = {
-  mode: "LIVE",
-  // configured with a list of bots to allow from
-  // https://arcjet.com/bot-list
-  allow: [], // prevents bots from submitting the form
-} satisfies BotOptions;
+  if (!sessionCookie && isProtected) {
+    const { searchParams } = new URL(request.url);
+    const loginUrl = new URL("/sign-in", request.url);
 
-const rateLimitOptions = {
-  mode: "LIVE",
-  interval: "2m", // counts requests over a 2 minute sliding window
-  max: 5, // allows 5 submissions within the window
-} satisfies SlidingWindowRateLimitOptions<[]>;
-
-const signupOptions = {
-  email: emailOptions,
-  // uses a sliding window rate limit
-  bots: botOptions,
-  // It would be unusual for a form to be submitted more than 5 times in 10
-  // minutes from the same IP address
-  rateLimit: rateLimitOptions,
-} satisfies ProtectSignupOptions<[]>;
-
-// protect nextjs requests
-export async function protect(req: NextRequest): Promise<ArcjetDecision> {
-  const session = await auth.api.getSession({
-    headers: req.headers,
-  });
-
-  // If the user is logged in we'll use their ID as the identifier. This
-  // allows limits to be applied across all devices and sessions (you could
-  // also use the session ID). Otherwise, fall back to the IP address.
-  let userId: string;
-  if (session?.user.id) {
-    userId = session.user.id;
-  } else {
-    userId = ip(req) || "127.0.0.1"; // Fall back to local IP if none
+    loginUrl.searchParams.set(
+      "redirect",
+      encodeURIComponent(
+        `${pathname}${searchParams.toString() ? `?${searchParams}` : ""}`,
+      ),
+    );
+    return NextResponse.redirect(loginUrl);
   }
 
-  // If this is a signup then use the special protectSignup rule
-  // See https://docs.arcjet.com/signup-protection/quick-start
-  if (req.nextUrl.pathname.startsWith("/api/auth/custom/sign-up")) {
-    // Better-Auth reads the body, so we need to clone the request preemptively
-    const body = await req.clone().json();
-
-    // If the email is in the body of the request then we can run
-    // the email validation checks as well. See
-    // https://www.better-auth.com/docs/concepts/hooks#example-enforce-email-domain-restriction
-    if (typeof body.email === "string") {
-      return aj
-        .withRule(protectSignup(signupOptions))
-        .protect(req, { email: body.email, userId });
-    } else {
-      // Otherwise use rate limit and detect bot
-      return aj
-        .withRule(detectBot(botOptions))
-        .withRule(slidingWindow(rateLimitOptions))
-        .protect(req, { userId });
-    }
-  } else {
-    // For all other auth requests
-    return aj.withRule(detectBot(botOptions)).protect(req, { userId });
+  if (sessionCookie && isUnprotectedAuthRoute) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
+
+  if (sessionCookie && pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  return NextResponse.next();
 }
+
+export const config = {
+  matcher: [
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
+};
+
+export default createMiddleware(aj, proxy);
