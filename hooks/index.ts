@@ -29,4 +29,21 @@ export {
   useAffiliate,
   useApplyReferralCode,
 } from "./useAffiliate";
+export {
+  useCommunityPosts,
+  useCreatePost,
+  useLikePost,
+  useDeletePost,
+} from "./useCommunity";
+export {
+  useNotifications,
+  useMarkNotificationRead,
+} from "./useNotifications";
+export {
+  useProfile,
+  useUpdateProfile,
+  useSettings,
+  useUpdateSettings,
+  useSearch,
+} from "./useProfile";
 export { useIsMobile as useMobile } from "./use-mobile";

@@ -48,6 +48,22 @@ export const queryKeys = {
   // AI Chat
   chatConversations: ["chat", "conversations"] as const,
   chatMessages: (conversationId: string) => ["chat", conversationId] as const,
+
+  // Community
+  communityPosts: ["community", "posts"] as const,
+  communityPost: (id: string) => ["community", "posts", id] as const,
+  communityComments: (postId: string) =>
+    ["community", "posts", postId, "comments"] as const,
+
+  // Notifications
+  notifications: ["notifications"] as const,
+
+  // Profile & Settings
+  profile: ["profile"] as const,
+  settings: ["settings"] as const,
+
+  // Search
+  search: (query: string) => ["search", query] as const,
 } as const;
 
 export type QueryKey = typeof queryKeys;

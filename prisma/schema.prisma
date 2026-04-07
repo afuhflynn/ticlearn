@@ -40,6 +40,11 @@ model User {
   ratings       Rating[]
   feedbacks     Feedback[]
   affiliate     Affiliate?
+  posts         Post[]
+  comments      Comment[]
+  postLikes     PostLike[]
+  notifications Notification[]
+  userSettings  UserSettings?
 
   @@map("users")
 }
@@ -343,6 +348,97 @@ model AffiliateEarning {
 }
 
 // ===========================================
+// Community / Social
+// ===========================================
+
+model Post {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  content     String   @db.Text
+  subject     String?
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  isAnnouncement Boolean @default(false) @map("is_announcement")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  likes       PostLike[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  content   String   @db.Text
+  parentId  String?  @map("parent_id")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([userId])
+  @@map("comments")
+}
+
+model PostLike {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  userId    String   @map("user_id")
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId])
+  @@map("post_likes")
+}
+
+// ===========================================
+// Notifications
+// ===========================================
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  message   String           @db.Text
+  link      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  createdAt DateTime         @default(now())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
+
+// ===========================================
+// User Settings
+// ===========================================
+
+model UserSettings {
+  id              String   @id @default(cuid())
+  userId          String   @unique @map("user_id")
+  emailNotifications Boolean @default(true) @map("email_notifications")
+  pushNotifications Boolean @default(true) @map("push_notifications")
+  darkMode        Boolean  @default(false) @map("dark_mode")
+  language        String   @default("en")
+  timezone        String   @default("Africa/Douala")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_settings")
+}
+
+// ===========================================
 // Enums
 // ===========================================
 
@@ -423,4 +519,15 @@ enum AffiliateStatus {
 enum EarningStatus {
   PENDING
   PAID
+}
+
+enum NotificationType {
+  SYSTEM
+  QUIZ_COMPLETED
+  ACHIEVEMENT
+  STREAK
+  REFERRAL
+  PAYMENT
+  COMMENT
+  LIKE
 }
