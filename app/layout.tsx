@@ -1,22 +1,22 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, Lora, IBM_Plex_Mono } from "next/font/google";
+import { Inter, Merriweather, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
 
-const plusJakarta = Plus_Jakarta_Sans({
+const inter = Inter({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const lora = Lora({
+const merriweather = Merriweather({
   variable: "--font-serif",
   subsets: ["latin"],
+  weight: ["400", "700"],
 });
 
-const ibmMono = IBM_Plex_Mono({
+const jetbrainsMono = JetBrains_Mono({
   variable: "--font-mono",
-  weight: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
@@ -63,7 +63,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${plusJakarta.variable} ${lora.variable} ${ibmMono.variable} h-full antialiased`}
+      className={`${inter.variable} ${merriweather.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <QueryProvider>

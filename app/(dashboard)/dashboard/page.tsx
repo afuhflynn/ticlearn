@@ -6,11 +6,10 @@ import Link from "next/link";
 import {
   FileText,
   ListTodo,
-  BarChart3,
   TrendingUp,
+  Zap,
   ArrowRight,
   Plus,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,11 +21,15 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUserStats, useNotes, useQuizzes } from "@/hooks";
 
 export default function DashboardPage() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
+  const { stats, isLoading: statsLoading } = useUserStats();
+  const { notes, isLoading: notesLoading } = useNotes();
+  const { quizzes, isLoading: quizzesLoading } = useQuizzes();
 
-  if (isPending) {
+  if (sessionPending || statsLoading) {
     return (
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -42,47 +45,58 @@ export default function DashboardPage() {
     redirect("/sign-in");
   }
 
-  const stats = [
+  const statsData = [
     {
       title: "Total Notes",
-      value: "0",
+      value: stats?.totalNotes || 0,
       icon: FileText,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },
     {
       title: "Quizzes Taken",
-      value: "0",
+      value: stats?.quizzesTaken || 0,
       icon: ListTodo,
       color: "text-purple-500",
       bg: "bg-purple-500/10",
     },
     {
       title: "Avg Score",
-      value: "0%",
+      value: `${Math.round(stats?.avgScore || 0)}%`,
       icon: TrendingUp,
       color: "text-green-500",
       bg: "bg-green-500/10",
     },
     {
       title: "Current Streak",
-      value: "0 days",
+      value: `${stats?.currentStreak || 0} days`,
       icon: Zap,
       color: "text-orange-500",
       bg: "bg-orange-500/10",
     },
   ];
 
-  const recentNotes: { id: string; title: string; subject: string }[] = [];
-  const recentQuizzes: { id: string; title: string; questionCount: number }[] =
-    [];
+  const recentNotes = notes
+    .slice(0, 4)
+    .map((note: { id: string; title: string; subject: string }) => ({
+      id: note.id,
+      title: note.title,
+      subject: note.subject,
+    }));
+
+  const recentQuizzes = quizzes
+    .slice(0, 4)
+    .map((quiz: { id: string; title: string; questionCount: number }) => ({
+      id: quiz.id,
+      title: quiz.title,
+      questionCount: quiz.questionCount,
+    }));
 
   const hasNotes = recentNotes.length > 0;
   const hasQuizzes = recentQuizzes.length > 0;
 
   return (
     <div className="space-y-8">
-      {/* Welcome Section */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -102,7 +116,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Free Plan Banner */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-6">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -122,9 +135,8 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statsData.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -141,9 +153,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      {/* Content Grid */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Notes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -155,22 +165,30 @@ export default function DashboardPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {hasNotes ? (
-              <div className="space-y-4">
-                {recentNotes.slice(0, 4).map((note) => (
-                  <div
-                    key={note.id}
-                    className="flex items-center gap-4 rounded-lg border p-3"
-                  >
-                    <FileText className="h-8 w-8 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium">{note.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {note.subject}
-                      </p>
-                    </div>
-                  </div>
+            {notesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16" />
                 ))}
+              </div>
+            ) : hasNotes ? (
+              <div className="space-y-4">
+                {recentNotes.map(
+                  (note: { id: string; title: string; subject: string }) => (
+                    <div
+                      key={note.id}
+                      className="flex items-center gap-4 rounded-lg border p-3"
+                    >
+                      <FileText className="h-8 w-8 text-muted-foreground" />
+                      <div className="flex-1">
+                        <p className="font-medium">{note.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {note.subject}
+                        </p>
+                      </div>
+                    </div>
+                  ),
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-4 py-8 text-center">
@@ -194,7 +212,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Recent Quizzes */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between">
             <div>
@@ -206,23 +223,37 @@ export default function DashboardPage() {
             </Button>
           </CardHeader>
           <CardContent>
-            {hasQuizzes ? (
-              <div className="space-y-4">
-                {recentQuizzes.slice(0, 4).map((quiz) => (
-                  <div
-                    key={quiz.id}
-                    className="flex items-center gap-4 rounded-lg border p-3"
-                  >
-                    <ListTodo className="h-8 w-8 text-muted-foreground" />
-                    <div className="flex-1">
-                      <p className="font-medium">{quiz.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {quiz.questionCount} questions
-                      </p>
-                    </div>
-                    <Button size="sm">Start</Button>
-                  </div>
+            {quizzesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <Skeleton key={i} className="h-16" />
                 ))}
+              </div>
+            ) : hasQuizzes ? (
+              <div className="space-y-4">
+                {recentQuizzes.map(
+                  (quiz: {
+                    id: string;
+                    title: string;
+                    questionCount: number;
+                  }) => (
+                    <div
+                      key={quiz.id}
+                      className="flex items-center gap-4 rounded-lg border p-3"
+                    >
+                      <ListTodo className="h-8 w-8 text-muted-foreground" />
+                      <div className="flex-1">
+                        <p className="font-medium">{quiz.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {quiz.questionCount} questions
+                        </p>
+                      </div>
+                      <Button size="sm" asChild>
+                        <Link href={`/quizzes?id=${quiz.id}`}>Start</Link>
+                      </Button>
+                    </div>
+                  ),
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center gap-4 py-8 text-center">
@@ -247,7 +278,6 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      {/* Progress Section */}
       <Card>
         <CardHeader>
           <CardTitle>Weekly Progress</CardTitle>
@@ -257,14 +287,24 @@ export default function DashboardPage() {
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <span className="text-sm">Study Time</span>
-              <span className="text-sm font-medium">0 min / 60 min</span>
+              <span className="text-sm font-medium">
+                {stats?.totalNotes || 0} notes / 10 goal
+              </span>
             </div>
-            <Progress value={0} className="h-2" />
+            <Progress
+              value={((stats?.totalNotes || 0) / 10) * 100}
+              className="h-2"
+            />
             <div className="flex items-center justify-between">
               <span className="text-sm">Quizzes Completed</span>
-              <span className="text-sm font-medium">0 / 5</span>
+              <span className="text-sm font-medium">
+                {stats?.quizzesTaken || 0} / 5
+              </span>
             </div>
-            <Progress value={0} className="h-2" />
+            <Progress
+              value={((stats?.quizzesTaken || 0) / 5) * 100}
+              className="h-2"
+            />
           </div>
         </CardContent>
       </Card>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -14,24 +15,18 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-
-const mockQuizzes = [
-  {
-    id: "1",
-    title: "Biology Cell Structure Quiz",
-    noteTitle: "Chapter 1: Cell Structure",
-    questionCount: 10,
-    status: "READY" as const,
-    isPublic: false,
-    createdAt: new Date().toISOString(),
-  },
-];
+import { Skeleton } from "@/components/ui/skeleton";
+import { useQuizzes, useDeleteQuiz } from "@/hooks";
 
 export default function QuizzesPage() {
-  const { data: session, isPending } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
+  const [searchQuery, setSearchQuery] = useState("");
 
-  if (isPending) {
+  const { quizzes, isLoading } = useQuizzes();
+  const deleteQuiz = useDeleteQuiz();
+
+  if (sessionPending) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -44,7 +39,17 @@ export default function QuizzesPage() {
     return null;
   }
 
-  const quizzes = mockQuizzes;
+  const filteredQuizzes = quizzes.filter(
+    (q: any) =>
+      q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      q.noteTitle?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
+
+  const handleDelete = async (id: string) => {
+    if (confirm("Are you sure you want to delete this quiz?")) {
+      await deleteQuiz.mutateAsync(id);
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -63,16 +68,25 @@ export default function QuizzesPage() {
         </Button>
       </div>
 
-      {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input placeholder="Search quizzes..." className="pl-9" />
+        <Input
+          placeholder="Search quizzes..."
+          className="pl-9"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
-      {/* Quiz Grid */}
-      {quizzes.length > 0 ? (
+      {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {quizzes.map((quiz) => (
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-48" />
+          ))}
+        </div>
+      ) : filteredQuizzes.length > 0 ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {filteredQuizzes.map((quiz: any) => (
             <Card key={quiz.id} className="transition-all hover:shadow-lg">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -96,12 +110,16 @@ export default function QuizzesPage() {
                   </span>
                   <div className="flex gap-2">
                     <Button size="sm" asChild>
-                      <Link href={`/quiz/${quiz.id}`}>
+                      <Link href={`/quizzes?id=${quiz.id}`}>
                         <Play className="mr-1 h-4 w-4" />
                         Start
                       </Link>
                     </Button>
-                    <Button variant="ghost" size="icon">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleDelete(quiz.id)}
+                    >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>
                   </div>
