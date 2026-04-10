@@ -14,7 +14,6 @@ const aj = arcjet({
 });
 
 const publicPaths = [
-  "/",
   "/about",
   "/contact",
   "/cookies",
@@ -50,7 +49,15 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = getSessionCookie(request);
 
-  // Allow public paths
+  // Handle root separately with exact match
+  if (pathname === "/") {
+    if (sessionCookie) {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
+    return NextResponse.next();
+  }
+
+  // Allow public paths (safe to use startsWith now that "/" is removed)
   if (publicPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
@@ -58,11 +65,9 @@ export async function proxy(request: NextRequest) {
   const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
   const isAuthRoute = authPaths.some((r) => pathname.startsWith(r));
 
-  // Redirect unauthenTiCted users accessing protected routes to sign-in
   if (!sessionCookie && isProtected) {
     const { searchParams } = new URL(request.url);
     const loginUrl = new URL("/sign-in", request.url);
-
     loginUrl.searchParams.set(
       "callbackUrl",
       encodeURIComponent(
@@ -72,13 +77,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect authenTiCted users from auth pages to dashboard
   if (sessionCookie && isAuthRoute) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  // Redirect authenTiCted users on root to dashboard
-  if (sessionCookie && pathname === "/") {
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
