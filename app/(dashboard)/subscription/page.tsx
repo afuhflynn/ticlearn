@@ -77,7 +77,13 @@ const PLAN_PRICES = {
 };
 
 export default function SubscriptionPage() {
-  const { usage, limits, plan, chatDailyUsage, isLoading: usageLoading } = useUsage();
+  const {
+    usage,
+    limits,
+    plan,
+    chatDailyUsage,
+    isLoading: usageLoading,
+  } = useUsage();
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
@@ -104,7 +110,9 @@ export default function SubscriptionPage() {
         toast.error("Payment link not generated");
       }
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to initiate payment");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to initiate payment",
+      );
     } finally {
       setIsProcessing(false);
     }
@@ -137,49 +145,69 @@ export default function SubscriptionPage() {
         </div>
         <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
           <DialogTrigger asChild>
-            <Button size="lg" className="gap-2 shadow-lg hover:shadow-xl transition-all">
+            <Button
+              size="lg"
+              className="gap-2 shadow-lg hover:shadow-xl transition-all"
+            >
               <Zap className="h-4 w-4 fill-primary-foreground" />
               Upgrade Plan
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogContent className="max-w-4xl lg:min-w-5xl md:min-w-3xl max-h-[90vh] overflow-y-auto flex-1">
             <DialogHeader>
-              <DialogTitle className="text-2xl text-center">Select a Plan</DialogTitle>
+              <DialogTitle className="text-2xl text-center">
+                Select a Plan
+              </DialogTitle>
               <DialogDescription className="text-center">
                 Choose the perfect plan to accelerate your learning journey
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-6 md:grid-cols-3 py-6">
               {Object.entries(PLAN_PRICES).map(([p, price]) => (
-                <Card key={p} className={plan === p ? "border-primary ring-1 ring-primary" : ""}>
+                <Card
+                  key={p}
+                  className={
+                    plan === p ? "border-primary ring-1 ring-primary" : ""
+                  }
+                >
                   <CardHeader>
                     <CardTitle className="flex items-center justify-between">
                       {p}
                       {plan === p && <Badge>Current</Badge>}
                     </CardTitle>
                     <div className="mt-2">
-                      <span className="text-3xl font-bold">{price.toLocaleString()} XAF</span>
+                      <span className="text-3xl font-bold">
+                        {price.toLocaleString()} XAF
+                      </span>
                       <span className="text-muted-foreground">/month</span>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <ul className="space-y-2 text-sm">
-                      {PLAN_FEATURES[p as keyof typeof PLAN_FEATURES].map((feature) => (
-                        <li key={feature} className="flex items-start gap-2">
-                          <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                          <span>{feature}</span>
-                        </li>
-                      ))}
+                      {PLAN_FEATURES[p as keyof typeof PLAN_FEATURES].map(
+                        (feature) => (
+                          <li key={feature} className="flex items-start gap-2">
+                            <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                            <span>{feature}</span>
+                          </li>
+                        ),
+                      )}
                     </ul>
                   </CardContent>
                   <CardFooter>
-                    <Button 
-                      className="w-full" 
+                    <Button
+                      className="w-full"
                       variant={plan === p ? "outline" : "default"}
                       disabled={plan === p || isProcessing}
                       onClick={() => handleUpgrade(p)}
                     >
-                      {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : (plan === p ? "Current Plan" : "Upgrade Now")}
+                      {isProcessing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : plan === p ? (
+                        "Current Plan"
+                      ) : (
+                        "Upgrade Now"
+                      )}
                     </Button>
                   </CardFooter>
                 </Card>
@@ -194,28 +222,38 @@ export default function SubscriptionPage() {
         <Card className="md:col-span-1 border-primary/20 bg-primary/5">
           <CardHeader>
             <CardTitle className="text-xl">Your Current Plan</CardTitle>
-            <CardDescription>You are currently on the {plan} plan</CardDescription>
+            <CardDescription>
+              You are currently on the {plan} plan
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-center p-6 rounded-2xl bg-background/50 border-2 border-dashed border-primary/30">
               <div className="text-center">
-                <Badge variant="outline" className="mb-2 uppercase tracking-widest text-primary border-primary">
+                <Badge
+                  variant="outline"
+                  className="mb-2 uppercase tracking-widest text-primary border-primary"
+                >
                   {plan}
                 </Badge>
                 <div className="text-sm text-muted-foreground">
-                  Status: <span className="text-green-600 font-semibold uppercase">Active</span>
+                  Status:{" "}
+                  <span className="text-green-600 font-semibold uppercase">
+                    Active
+                  </span>
                 </div>
               </div>
             </div>
             <ul className="space-y-3">
-              {PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES]?.map((feature) => (
-                <li key={feature} className="flex items-center gap-3 text-sm">
-                  <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Check className="h-3 w-3 text-primary" />
-                  </div>
-                  {feature}
-                </li>
-              ))}
+              {PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES]?.map(
+                (feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-sm">
+                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Check className="h-3 w-3 text-primary" />
+                    </div>
+                    {feature}
+                  </li>
+                ),
+              )}
             </ul>
           </CardContent>
         </Card>
@@ -229,7 +267,9 @@ export default function SubscriptionPage() {
                   <BarChart3 className="h-5 w-5 text-primary" />
                   Usage Analytics
                 </CardTitle>
-                <CardDescription>Track your monthly usage limits</CardDescription>
+                <CardDescription>
+                  Track your monthly usage limits
+                </CardDescription>
               </div>
               <Badge variant="secondary" className="gap-1">
                 <Clock className="h-3 w-3" />
@@ -246,16 +286,21 @@ export default function SubscriptionPage() {
                   PDF Uploads
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {usage.pdfUploads} / {limits.pdfUploads === -1 ? "∞" : limits.pdfUploads}
+                  {usage.pdfUploads} /{" "}
+                  {limits.pdfUploads === -1 ? "∞" : limits.pdfUploads}
                 </div>
               </div>
-              <Progress value={getUsagePercentage(usage.pdfUploads, limits.pdfUploads)} className="h-2" />
-              {limits.pdfUploads !== -1 && usage.pdfUploads >= limits.pdfUploads && (
-                <p className="text-xs text-destructive flex items-center gap-1">
-                  <AlertCircle className="h-3 w-3" />
-                  You have reached your limit. Upgrade for more uploads.
-                </p>
-              )}
+              <Progress
+                value={getUsagePercentage(usage.pdfUploads, limits.pdfUploads)}
+                className="h-2"
+              />
+              {limits.pdfUploads !== -1 &&
+                usage.pdfUploads >= limits.pdfUploads && (
+                  <p className="text-xs text-destructive flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    You have reached your limit. Upgrade for more uploads.
+                  </p>
+                )}
             </div>
 
             {/* Quiz Generations */}
@@ -266,10 +311,17 @@ export default function SubscriptionPage() {
                   Quiz Generations
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {usage.quizGenerations} / {limits.quizGenerations === -1 ? "∞" : limits.quizGenerations}
+                  {usage.quizGenerations} /{" "}
+                  {limits.quizGenerations === -1 ? "∞" : limits.quizGenerations}
                 </div>
               </div>
-              <Progress value={getUsagePercentage(usage.quizGenerations, limits.quizGenerations)} className="h-2" />
+              <Progress
+                value={getUsagePercentage(
+                  usage.quizGenerations,
+                  limits.quizGenerations,
+                )}
+                className="h-2"
+              />
             </div>
 
             {/* AI Tutor Messages */}
@@ -280,15 +332,23 @@ export default function SubscriptionPage() {
                   AI Tutor (Daily)
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {usage.aiTutorMessages} / {limits.aiTutorMessages === -1 ? "∞" : limits.aiTutorMessages}
+                  {usage.aiTutorMessages} /{" "}
+                  {limits.aiTutorMessages === -1 ? "∞" : limits.aiTutorMessages}
                 </div>
               </div>
-              <Progress value={getUsagePercentage(usage.aiTutorMessages, limits.aiTutorMessages)} className="h-2" />
+              <Progress
+                value={getUsagePercentage(
+                  usage.aiTutorMessages,
+                  limits.aiTutorMessages,
+                )}
+                className="h-2"
+              />
               {chatDailyUsage && (
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
                   <span className="flex items-center gap-1">
                     <History className="h-3 w-3" />
-                    Resets at {new Date(chatDailyUsage.resetsAt).toLocaleTimeString()}
+                    Resets at{" "}
+                    {new Date(chatDailyUsage.resetsAt).toLocaleTimeString()}
                   </span>
                   <span>{chatDailyUsage.remaining} messages left</span>
                 </div>
@@ -308,10 +368,16 @@ export default function SubscriptionPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Need Help?</CardTitle>
-            <CardDescription>Contact our support team for any billing questions</CardDescription>
+            <CardDescription>
+              Contact our support team for any billing questions
+            </CardDescription>
           </CardHeader>
           <CardFooter>
-            <Button variant="outline" className="w-full" onClick={() => router.push("/contact")}>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => router.push("/contact")}
+            >
               Contact Support
             </Button>
           </CardFooter>
@@ -319,7 +385,9 @@ export default function SubscriptionPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Billing History</CardTitle>
-            <CardDescription>View your past payments and receipts</CardDescription>
+            <CardDescription>
+              View your past payments and receipts
+            </CardDescription>
           </CardHeader>
           <CardFooter>
             <Button variant="outline" className="w-full">
