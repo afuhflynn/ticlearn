@@ -2,7 +2,7 @@
 
 import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/auth-client";
 import { motion } from "framer-motion";
 import {
@@ -24,6 +24,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useQueryStates } from "nuqs";
+import { searchParamsSchema } from "@/nuqs";
 
 async function sendVerificationOtp(email: string) {
   const response = await fetch("/api/auth/email-otp/send-verification-otp", {
@@ -58,11 +60,11 @@ async function triggerWelcomeEmailServer(email: string, name: string) {
 
 function VerifyEmailForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const emailParam = searchParams.get("email") || "";
+  const [params] = useQueryStates(searchParamsSchema);
+  const { email: emailParam } = params;
   const { data: session } = useSession();
 
-  const [email, setEmail] = useState(emailParam);
+  const [email, setEmail] = useState(emailParam ?? "");
   const [otp, setOtp] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);

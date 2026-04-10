@@ -9,6 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
 import { ThemeProvider } from "@/components/theme-provider";
+import { Suspense } from "react";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -81,11 +82,13 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <QueryProvider>
-              {children}
-              <Toaster position="top-right" richColors />
-              <Analytics />
-            </QueryProvider>
+            <Suspense>
+              <QueryProvider>
+                {children}
+                <Toaster position="top-right" richColors />
+                <Analytics />
+              </QueryProvider>
+            </Suspense>
           </ThemeProvider>
         </NuqsAdapter>
       </body>

@@ -2,7 +2,7 @@
 
 import { useState, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { signIn, signUp } from "@/lib/auth-client";
 import { motion } from "framer-motion";
 import {
@@ -27,11 +27,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { useQueryStates } from "nuqs";
+import { searchParamsSchema } from "@/nuqs";
 
 function SignUpForm() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+  const [params] = useQueryStates(searchParamsSchema);
+  const { callbackUrl } = params;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -83,7 +85,7 @@ function SignUpForm() {
     try {
       await signIn.social({
         provider: "google",
-        callbackURL: callbackUrl,
+        callbackURL: callbackUrl ?? "/dashboard",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign in failed");
