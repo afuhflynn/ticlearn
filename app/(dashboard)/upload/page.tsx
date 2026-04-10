@@ -225,6 +225,18 @@ function UploadContent() {
     setQuizDialogOpen(true);
   };
 
+  // Auto-calculate time limit based on question count (1.5 mins per question)
+  useMemo(() => {
+    if (quizConfig.timed) {
+      const count = Number(quizConfig.questionCount);
+      const calculatedTime = Math.ceil(count * 1.5);
+      setQuizConfig((prev) => ({
+        ...prev,
+        timeLimit: String(calculatedTime),
+      }));
+    }
+  }, [quizConfig.questionCount, quizConfig.timed]);
+
   const submitQuizGeneration = async () => {
     await generateQuizMutation.mutateAsync({
       noteId: quizConfig.noteId,

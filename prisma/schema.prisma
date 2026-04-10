@@ -48,6 +48,7 @@ model User {
   userSettings      UserSettings?
   chatConversations ChatConversation[]
   chatMessages      ChatMessage[]
+  adminInvites      AdminInvite[]      @relation("InvitedBy")
 
   @@map("users")
 }
@@ -442,6 +443,30 @@ model UserSettings {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
+}
+
+model AdminInvite {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  invitedBy String   @map("invited_by")
+  token     String   @unique
+  status    InviteStatus @default(PENDING)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  inviter   User     @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([token])
+  @@map("admin_invites")
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
 }
 
 // ===========================================

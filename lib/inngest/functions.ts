@@ -307,6 +307,54 @@ export const sendMagicLinkEmail = inngest.createFunction(
   },
 );
 
+export const sendAdminInviteEmail = inngest.createFunction(
+  {
+    name: "Send Admin Invite Email",
+    id: "send-admin-invite-email",
+    triggers: {
+      event: "email.send.admin-invite",
+    },
+  },
+  async ({ event }) => {
+    const { email, inviterName, inviteLink } = event.data;
+    console.log(`Sending admin invite email to: ${email}`);
+
+    try {
+      const { sendAdminInvitationEmail } = await import("@/lib/email/send");
+      await sendAdminInvitationEmail({ email, inviterName, inviteLink });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Admin invite email send error:", error);
+      return { success: false, error: "Failed to send admin invite email" };
+    }
+  },
+);
+
+export const sendRoleUpdateEmail = inngest.createFunction(
+  {
+    name: "Send Role Update Email",
+    id: "send-role-update-email",
+    triggers: {
+      event: "email.send.role-update",
+    },
+  },
+  async ({ event }) => {
+    const { email, name, newRole } = event.data;
+    console.log(`Sending role update email to: ${email}`);
+
+    try {
+      const { sendRoleUpdateEmail } = await import("@/lib/email/send");
+      await sendRoleUpdateEmail({ email, name, newRole });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Role update email send error:", error);
+      return { success: false, error: "Failed to send role update email" };
+    }
+  },
+);
+
 export const sendUnverifiedWarning = inngest.createFunction(
   {
     name: "Send Unverified Account Warnings",

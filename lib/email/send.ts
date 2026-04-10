@@ -262,8 +262,122 @@ export async function sendWelcomeEmail({
 `;
   return sendEmail({ to: email, subject, html });
 }
+export async function sendAdminInvitationEmail({
+  email,
+  inviterName,
+  inviteLink,
+}: {
+  email: string;
+  inviterName: string;
+  inviteLink: string;
+}) {
+  const subject = "Invitation to become an Admin on TiCLearn 🛡️";
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Invitation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">🛡️</div>
+        <h1>TiCLearn Admin</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">You've been invited!</h2>
+        <p>Hi there,</p>
+        <p><span class="highlight">${inviterName}</span> has invited you to become an <span class="highlight">Administrator</span> on TiCLearn.</p>
+
+        <p>As an admin, you'll have the power to manage users, content, and platform settings to ensure our students get the best learning experience.</p>
+
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <p style="margin: 0; color: #4b5563; font-size: 14px;">This invitation is for <strong style="color: ${BRAND_COLORS.primary};">${email}</strong>.</p>
+        </div>
+
+        <a href="${inviteLink}" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+          Accept Invitation →
+        </a>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">If you don't have an account yet, you'll be asked to create one first. This invitation will expire in 7 days.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p>Made with ❤️ for Cameroonian students</p>
+        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}
+
+export async function sendRoleUpdateEmail({
+  email,
+  name,
+  newRole,
+}: {
+  email: string;
+  name: string;
+  newRole: string;
+}) {
+  const subject = `Your TiCLearn account role has been updated to ${newRole} 🛡️`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Role Updated</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">🛡️</div>
+        <h1>TiCLearn Security</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Role Updated</h2>
+        <p>Hi <span class="highlight">${name || "Student"}</span>,</p>
+        <p>Your account role on TiCLearn has been updated to <span class="highlight">${newRole}</span> by an administrator.</p>
+        
+        ${newRole === "ADMIN" 
+          ? `<p>You now have access to the administrative dashboard and can manage platform content and users.</p>
+             <a href="https://ticlearn.com/admin" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+               Go to Admin Dashboard →
+             </a>`
+          : `<p>Your administrative privileges have been revoked. You still have full access to all student features on TiCLearn.</p>
+             <a href="https://ticlearn.com/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+               Go to Dashboard →
+             </a>`
+        }
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 32px;">If you believe this change was made in error, please contact our support team.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}
 
 export async function sendUnverifiedWarningEmail({
+...
   email,
   name,
   daysLeft,

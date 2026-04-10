@@ -58,7 +58,7 @@ const accountNavItems = [
   { href: "/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/settings", icon: Settings, label: "Settings" },
   { href: "/affiliate", icon: Link2, label: "Affiliate" },
-  { href: "/pricing", icon: CreditCard, label: "Pricing" },
+  { href: "/subscription", icon: CreditCard, label: "Subscription" },
 ];
 
 const adminNavItems = [
@@ -114,7 +114,7 @@ export function AppSidebar() {
                     <Link
                       href={
                         item.paid && (session?.user as any)?.role !== "ADMIN"
-                          ? "/pricing"
+                          ? "/subscription"
                           : item.href
                       }
                       className={cn(
@@ -199,7 +199,7 @@ export function AppSidebar() {
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
-                  <Link href="/pricing">
+                  <Link href="/subscription">
                     View Plans
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Link>
