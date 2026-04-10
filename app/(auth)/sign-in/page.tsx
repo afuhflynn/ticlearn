@@ -33,7 +33,7 @@ import { searchParamsSchema } from "@/nuqs";
 export default function SignInPage() {
   const router = useRouter();
   const [params] = useQueryStates(searchParamsSchema);
-  const { callbackUrl } = params;
+  const { callbackUrl, error: searchError } = params;
   const { data: session, isPending: sessionLoading } = useSession();
 
   const [email, setEmail] = useState("");
@@ -42,6 +42,13 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+
+  useEffect(() => {
+    if (searchError === "google_sign_in_failed") {
+      setError("Google sign in failed. Please try again.");
+      toast.error("Google sign in failed");
+    }
+  }, [searchError]);
 
   useEffect(() => {
     if (!sessionLoading && session?.user) {
@@ -82,6 +89,7 @@ export default function SignInPage() {
       await signIn.social({
         provider: "google",
         callbackURL: callbackUrl ?? "/dashboard",
+        errorCallbackURL: "/sign-in?error=google_sign_in_failed",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign in failed");

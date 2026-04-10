@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signIn, signUp } from "@/lib/auth-client";
@@ -33,7 +33,7 @@ import { searchParamsSchema } from "@/nuqs";
 function SignUpForm() {
   const router = useRouter();
   const [params] = useQueryStates(searchParamsSchema);
-  const { callbackUrl } = params;
+  const { callbackUrl, error: searchError } = params;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -41,6 +41,13 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (searchError === "google_sign_in_failed") {
+      setError("Google sign in failed. Please try again.");
+      toast.error("Google sign in failed");
+    }
+  }, [searchError]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,6 +93,7 @@ function SignUpForm() {
       await signIn.social({
         provider: "google",
         callbackURL: callbackUrl ?? "/dashboard",
+        errorCallbackURL: "/sign-up?error=google_sign_in_failed",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign in failed");
