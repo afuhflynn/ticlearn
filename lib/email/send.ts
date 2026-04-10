@@ -350,13 +350,14 @@ export async function sendRoleUpdateEmail({
         <h2 style="color: #1f2937; margin-bottom: 16px;">Role Updated</h2>
         <p>Hi <span class="highlight">${name || "Student"}</span>,</p>
         <p>Your account role on TiCLearn has been updated to <span class="highlight">${newRole}</span> by an administrator.</p>
-        
-        ${newRole === "ADMIN" 
-          ? `<p>You now have access to the administrative dashboard and can manage platform content and users.</p>
+
+        ${
+          newRole === "ADMIN"
+            ? `<p>You now have access to the administrative dashboard and can manage platform content and users.</p>
              <a href="https://ticlearn.com/admin" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
                Go to Admin Dashboard →
              </a>`
-          : `<p>Your administrative privileges have been revoked. You still have full access to all student features on TiCLearn.</p>
+            : `<p>Your administrative privileges have been revoked. You still have full access to all student features on TiCLearn.</p>
              <a href="https://ticlearn.com/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
                Go to Dashboard →
              </a>`
@@ -377,10 +378,9 @@ export async function sendRoleUpdateEmail({
 }
 
 export async function sendUnverifiedWarningEmail({
-...
-  email,
   name,
   daysLeft,
+  email,
 }: {
   email: string;
   name: string;
@@ -408,14 +408,14 @@ export async function sendUnverifiedWarningEmail({
         <h2 style="color: #1f2937; margin-bottom: 16px;">Verify Your Email</h2>
         <p>Hi <span class="highlight">${name || "Student"}</span>,</p>
         <p>We noticed you haven't verified your TiCLearn account email yet. Your account is scheduled for deletion in <strong style="color: ${BRAND_COLORS.primary};">${daysLeft} days</strong> if you don't verify it.</p>
-        
+
         <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
           <p style="margin: 0; color: #92400e; font-weight: 600;">⚠️ Your account will be deleted in ${daysLeft} days</p>
           <p style="margin: 8px 0 0 0; color: #b45309; font-size: 14px;">Verify now to keep your account and continue using TiCLearn for free!</p>
         </div>
 
         <p style="color: #6b7280; font-size: 14px;">To verify your account, use the verification code from your original signup email or request a new one.</p>
-        
+
         <a href="https://ticlearn.com/sign-in" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
           Sign In to Verify →
         </a>
