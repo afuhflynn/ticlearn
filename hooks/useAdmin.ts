@@ -199,7 +199,12 @@ export function useCreateAdminSubscription() {
 }
 
 export function useAdminAffiliates(
-  params: { page?: number; limit?: number; status?: string } = {},
+  params: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+  } = {},
 ) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "affiliates", params],

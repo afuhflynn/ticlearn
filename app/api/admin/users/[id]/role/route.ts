@@ -6,7 +6,7 @@ import { inngest } from "@/lib/inngest/client";
 
 export async function PATCH(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -23,8 +23,9 @@ export async function PATCH(
       return NextResponse.json({ error: "Invalid role" }, { status: 400 });
     }
 
+    const { id } = await params;
     const user = await prisma.user.update({
-      where: { id: params.id },
+      where: { id },
       data: { role },
     });
 
