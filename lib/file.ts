@@ -2,6 +2,22 @@ import { UTApi } from "uploadthing/server";
 
 export const utapi = new UTApi();
 
+export function getUploadThingFileKey(fileUrl: string) {
+  try {
+    const url = new URL(fileUrl);
+    const pathParts = url.pathname.split("/").filter(Boolean);
+    const fileIndex = pathParts.indexOf("f");
+
+    if (fileIndex === -1) {
+      return null;
+    }
+
+    return pathParts[fileIndex + 1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function getSignedDownloadUrl(fileKey: string) {
   // UploadThing's signed URL is for private files.
   // Assuming we use ACL: "private" or similar in UploadThing if supported,

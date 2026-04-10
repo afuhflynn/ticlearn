@@ -1,17 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
+import { api } from "@/lib/api-client";
 
 export function useAffiliate() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.affiliate,
     queryFn: async () => {
-      const res = await fetch("/api/affiliate");
-      if (!res.ok) {
-        if (res.status === 404) return null;
-        throw new Error("Failed to fetch affiliate");
-      }
-      return res.json();
+      const result = await api.queries.affiliate();
+      return result;
     },
   });
 
@@ -19,7 +16,6 @@ export function useAffiliate() {
     affiliate: data?.affiliate,
     isLoading,
     error,
-    isPending: !data && !error,
   };
 }
 
@@ -27,14 +23,12 @@ export function useUpdateAffiliate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { momoNumber: string; momoName: string }) => {
-      const res = await fetch("/api/affiliate", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update affiliate");
-      return res.json();
+    mutationFn: async (data: {
+      payoutMethod?: string;
+      payoutAddress?: string;
+    }) => {
+      const result = await api.mutations.affiliate.update(data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.affiliate });
@@ -51,11 +45,8 @@ export function useApplyReferralCode() {
 
   return useMutation({
     mutationFn: async (code: string) => {
-      const res = await fetch("/api/referral?code=" + code, {
-        method: "GET",
-      });
-      if (!res.ok) throw new Error("Invalid or expired referral code");
-      return res.json();
+      const result = await api.mutations.affiliate.applyReferral(code);
+      return result;
     },
     onSuccess: () => {
       toast.success("Referral code applied!");

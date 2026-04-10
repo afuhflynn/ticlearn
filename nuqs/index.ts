@@ -6,7 +6,7 @@ import {
 } from "nuqs";
 
 export const searchParamsSchema = {
-  redirect: parseAsString,
+  callbackUrl: parseAsString,
   page: parseAsString.withDefault("1"),
   limit: parseAsString.withDefault("10"),
   archived: parseAsBoolean.withDefault(false),
@@ -19,7 +19,7 @@ export const searchParamsSchema = {
 };
 
 type ParamsTypes = Values<{
-  redirect: SingleParserBuilder<string>;
+  callbackUrl: SingleParserBuilder<string>;
   page: SingleParserBuilder<number>;
   limit: SingleParserBuilder<number>;
   archived: SingleParserBuilder<boolean>;

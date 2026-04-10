@@ -1,8 +1,14 @@
+import { Plan } from "./../components/ai-elements/plan";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
-import { magicLink } from "better-auth/plugins";
+import { emailOTP } from "better-auth/plugins";
 import { prisma } from "./prisma";
-import { inngest } from "./inngest/client";
+import { triggerWelcomeEmail } from "./inngest/trigger";
+import {
+  sendVerificationEmail,
+  sendSignInEmail,
+  sendPasswordResetEmail,
+} from "./email/send";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -11,19 +17,9 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     autoSignIn: false,
-    requireEmailVerification: false,
+    requireEmailVerification: true,
     minPasswordLength: 8,
     maxPasswordLength: 30,
-    async sendResetPassword({ user, url }, request) {
-      await inngest.send({
-        name: "email.send.passwordReset",
-        data: {
-          email: user.email,
-          name: user.name,
-          url,
-        },
-      });
-    },
   },
   socialProviders: {
     google: {
@@ -32,11 +28,11 @@ export const auth = betterAuth({
     },
   },
   session: {
-    expiresIn: 60 * 60 * 24 * 30, // 30 days
-    updateAge: 60 * 60 * 24, // Update session every 24 hours
+    expiresIn: 60 * 60 * 24 * 30,
+    updateAge: 60 * 60 * 24,
     cookieCache: {
       enabled: true,
-      maxAge: 5 * 60, // Cache session for 5 minutes
+      maxAge: 5 * 60,
     },
   },
   user: {
@@ -56,17 +52,40 @@ export const auth = betterAuth({
     },
   },
   trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL! || "http://localhost:3000"],
-  plugins: [
-    magicLink({
-      async sendMagicLink({ email, url }, request) {
-        await inngest.send({
-          name: "email.send.magicLink",
-          data: {
-            email,
-            url,
-          },
-        });
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Check if user signed up via Google (has Account record)
+          const account = await prisma.account.findFirst({
+            where: { userId: user.id },
+          });
+
+          // If Google sign-up, send welcome email (providerId will be "google")
+          if (account?.providerId === "google") {
+            await triggerWelcomeEmail(user.email, user.name || "Student").catch(
+              console.error,
+            );
+          }
+        },
       },
+    },
+  },
+  plugins: [
+    emailOTP({
+      async sendVerificationOTP({ email, otp, type }) {
+        const user = await prisma.user.findFirst({ where: { email } });
+        const name = user?.name || "Student";
+
+        if (type === "sign-in") {
+          await sendSignInEmail({ email, name, otp });
+        } else if (type === "email-verification") {
+          await sendVerificationEmail({ email, name, otp });
+        } else if (type === "forget-password") {
+          await sendPasswordResetEmail({ email, name, otp });
+        }
+      },
+      sendVerificationOnSignUp: true,
     }),
   ],
 });

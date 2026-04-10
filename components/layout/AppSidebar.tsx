@@ -1,30 +1,27 @@
 "use client";
 
-import { useSession, signOut } from "@/lib/auth-client";
-import { usePathname, useRouter } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
+  ArrowRight,
+  BarChart3,
+  BookOpen,
+  ChevronLeft,
+  CreditCard,
   GraduationCap,
   Home,
-  Upload,
-  ListTodo,
-  BarChart3,
-  MessageSquare,
-  Users,
-  Trophy,
-  BookOpen,
-  MessageCircle,
-  CreditCard,
   Link2,
+  ListTodo,
+  MessageCircle,
+  MessageSquare,
   Settings,
   Shield,
-  ChevronLeft,
-  LogOut,
-  Loader2,
+  Trophy,
+  Upload,
+  Users,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { useState } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -37,8 +34,11 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { PlanBadge } from "@/components/app/PlanBadge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import Link from "next/link";
+import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
+import { usePlan } from "@/hooks";
 
 const mainNavItems = [
   { href: "/dashboard", icon: Home, label: "Dashboard" },
@@ -51,11 +51,12 @@ const studyNavItems = [
   { href: "/gce-exams", icon: BookOpen, label: "GCE Exams", paid: true },
   { href: "/community", icon: Users, label: "Community", paid: true },
   { href: "/leaderboard", icon: Trophy, label: "Leaderboard", paid: true },
-  { href: "/chat", icon: MessageSquare, label: "AI Tutor" },
+  { href: "/chat", icon: MessageSquare, label: "TiC" },
 ];
 
 const accountNavItems = [
   { href: "/feedback", icon: MessageCircle, label: "Feedback" },
+  { href: "/settings", icon: Settings, label: "Settings" },
   { href: "/affiliate", icon: Link2, label: "Affiliate" },
   { href: "/pricing", icon: CreditCard, label: "Pricing" },
 ];
@@ -68,15 +69,16 @@ const adminNavItems = [
 export function AppSidebar() {
   const { data: session, isPending } = useSession();
   const pathname = usePathname();
-  const router = useRouter();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const userRole = (session?.user as { role?: string })?.role;
   const isAdmin = userRole === "ADMIN";
 
+  const { isLoading, plan } = usePlan();
+
   const NavContent = () => (
     <>
-      <SidebarHeader className="border-b px-4 py-3">
+      <SidebarHeader className="border-b px-4 py-5">
         <div className="flex items-center gap-2">
           <GraduationCap className="h-6 w-6 text-primary" />
           <span className="font-bold">TiCLearn</span>
@@ -91,10 +93,10 @@ export function AppSidebar() {
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <a href={item.href} className="flex items-center gap-3">
+                    <Link href={item.href} className="flex items-center gap-3">
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -109,21 +111,28 @@ export function AppSidebar() {
               {studyNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <a
-                      href={item.paid ? "/pricing" : item.href}
+                    <Link
+                      href={
+                        item.paid && (session?.user as any)?.role !== "ADMIN"
+                          ? "/pricing"
+                          : item.href
+                      }
                       className={cn(
                         "flex items-center gap-3",
-                        item.paid && "opacity-70",
+                        item.paid &&
+                          (session?.user as any)?.role !== "ADMIN" &&
+                          "opacity-70",
                       )}
                     >
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
-                      {item.paid && (
-                        <span className="ml-auto text-xs text-muted-foreground">
-                          PRO
-                        </span>
-                      )}
-                    </a>
+                      {(session?.user as any)?.role !== "ADMIN" &&
+                        item.paid && (
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            PRO
+                          </span>
+                        )}
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -138,10 +147,10 @@ export function AppSidebar() {
               {accountNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <a href={item.href} className="flex items-center gap-3">
+                    <Link href={item.href} className="flex items-center gap-3">
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
-                    </a>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -160,10 +169,13 @@ export function AppSidebar() {
                       asChild
                       isActive={pathname.startsWith(item.href)}
                     >
-                      <a href={item.href} className="flex items-center gap-3">
+                      <Link
+                        href={item.href}
+                        className="flex items-center gap-3"
+                      >
                         <item.icon className="h-4 w-4" />
                         <span>{item.label}</span>
-                      </a>
+                      </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 ))}
@@ -173,42 +185,30 @@ export function AppSidebar() {
         )}
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
-        {isPending ? (
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">Loading...</span>
-          </div>
-        ) : session ? (
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarImage src={session.user?.image ?? ""} />
-              <AvatarFallback>
-                {session.user?.name?.charAt(0).toUpperCase() ?? "U"}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 overflow-hidden">
-              <p className="truncate text-sm font-medium">
-                {session.user?.name}
-              </p>
-              <PlanBadge plan="FREE" />
-            </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => {
-                signOut().then(() => router.push("/sign-in"));
-              }}
-            >
-              <LogOut className="h-4 w-4" />
-            </Button>
-          </div>
-        ) : (
-          <Button className="w-full" asChild>
-            <a href="/sign-in">Sign In</a>
-          </Button>
-        )}
-      </SidebarFooter>
+      {!isPending && !isLoading && (session?.user as any)?.role !== "ADMIN" && (
+        <SidebarFooter className="border-t p-4">
+          {plan && plan !== "STANDARD" && plan !== "PREMIUM" && (
+            <Card className="border-primary/20 bg-primary/5 max-w-full!">
+              <CardContent className="space-y-3">
+                <CardTitle className="font-bold text-left">
+                  Upgrade to Premium
+                </CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Unlock unlimited notes, quizzes, and access to GCE exams
+                </p>
+              </CardContent>
+              <CardFooter>
+                <Button asChild className="w-full">
+                  <Link href="/pricing">
+                    View Plans
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Link>
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
+        </SidebarFooter>
+      )}
     </>
   );
 

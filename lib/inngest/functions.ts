@@ -1,0 +1,426 @@
+import { extractTextFromPDF, summarizeText } from "@/lib/ai";
+import { inngest } from "@/lib/inngest/client";
+import { prisma } from "@/lib/prisma";
+
+export const processNote = inngest.createFunction(
+  {
+    name: "Process Note",
+    id: "process-note",
+    triggers: {
+      event: "note/process",
+    },
+  },
+
+  async ({ event }) => {
+    const { noteId } = event.data;
+    console.log(`Processing note: ${noteId}`);
+
+    try {
+      const note = await prisma.note.findUnique({
+        where: { id: noteId },
+      });
+
+      if (!note) {
+        console.error(`Note not found: ${noteId}`);
+        return { success: false, error: "Note not found" };
+      }
+
+      await prisma.note.update({
+        where: { id: noteId },
+        data: { status: "PROCESSING" },
+      });
+
+      if (note.fileType !== "PDF") {
+        throw new Error("Only PDF note processing is supported right now");
+      }
+
+      const extractedText = await extractTextFromPDF(note.fileUrl);
+      if (!extractedText || extractedText.length < 100) {
+        throw new Error("PDF text extraction returned too little content");
+      }
+
+      const summaryResult = await summarizeText(extractedText);
+
+      await prisma.note.update({
+        where: { id: noteId },
+        data: {
+          extractedText,
+          summary: summaryResult.summary,
+          topics:
+            summaryResult.topics.length > 0
+              ? summaryResult.topics
+              : [note.subject],
+          keyPoints: summaryResult.keyPoints,
+          status: "READY",
+        },
+      });
+
+      console.log(`Note processed successfully: ${noteId}`);
+      return { success: true, noteId };
+    } catch (error) {
+      console.error("Note processing error:", error);
+
+      await prisma.note.update({
+        where: { id: noteId },
+        data: { status: "ERROR" },
+      });
+
+      return { success: false, error: "Processing failed" };
+    }
+  },
+);
+
+export const generateQuiz = inngest.createFunction(
+  {
+    name: "Generate Quiz",
+    id: "generate-quiz",
+    triggers: {
+      event: "quiz/generate",
+    },
+  },
+  async ({ event }) => {
+    const { noteId, quizId, questionCount, questionTypes } = event.data;
+    console.log(
+      `[Inngest] Generating quiz for note: ${noteId}, quiz: ${quizId}`,
+    );
+    console.log(
+      `[Inngest] Options: ${questionCount} questions, type: ${questionTypes}`,
+    );
+
+    try {
+      const note = await prisma.note.findUnique({
+        where: { id: noteId },
+      });
+
+      if (!note || !note.extractedText) {
+        console.error(
+          `[Inngest] Note not found or no extracted text for noteId: ${noteId}`,
+        );
+        throw new Error("Note or extracted text not found");
+      }
+
+      console.log(
+        `[Inngest] Note extracted text length: ${note.extractedText.length} chars`,
+      );
+
+      const { generateQuizFromNote } = await import("@/lib/ai");
+      console.log(`[Inngest] Calling AI to generate quiz...`);
+
+      const generatedQuestions = await generateQuizFromNote(
+        note.extractedText,
+        {
+          questionCount: questionCount || 10,
+          questionTypes: questionTypes || "MIXED",
+        },
+      );
+
+      console.log(
+        `[Inngest] AI returned ${generatedQuestions.length} questions`,
+      );
+
+      if (generatedQuestions.length === 0) {
+        console.error(
+          `[Inngest] AI returned 0 questions - marking quiz as ERROR`,
+        );
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: { status: "ERROR" },
+        });
+        return { success: false, error: "AI returned no questions" };
+      }
+
+      console.log(
+        `[Inngest] Sample question:`,
+        JSON.stringify(generatedQuestions[0], null, 2),
+      );
+
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          questionCount: generatedQuestions.length,
+          status: "READY",
+          questions: {
+            create: generatedQuestions.map((q, index) => ({
+              type: q.type,
+              question: q.question,
+              options: q.type === "MCQ" ? q.options : [],
+              correctAnswer: q.correctAnswer,
+              explanation: q.explanation,
+              order: index,
+            })),
+          },
+        },
+      });
+
+      console.log(`[Inngest] Quiz generated and saved successfully: ${quizId}`);
+      return { success: true, quizId };
+    } catch (error) {
+      console.error(`[Inngest] Quiz generation failed:`, error);
+
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: { status: "ERROR" },
+      });
+
+      return { success: false, error: "Quiz generation failed" };
+    }
+  },
+);
+
+export const sendVerificationEmail = inngest.createFunction(
+  {
+    name: "Send Verification Email",
+    id: "send-verification-email",
+    triggers: {
+      event: "email.send.verification",
+    },
+  },
+  async ({ event }) => {
+    const { email, name, otp } = event.data;
+    console.log(`Sending verification email to: ${email}`);
+
+    try {
+      const { sendVerificationEmail } = await import("@/lib/email/send");
+      await sendVerificationEmail({ email, name, otp });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Email send error:", error);
+      return { success: false, error: "Failed to send email" };
+    }
+  },
+);
+
+export const sendWelcomeEmail = inngest.createFunction(
+  {
+    name: "Send Welcome Email",
+    id: "send-welcome-email",
+    triggers: {
+      event: "email.send.welcome",
+    },
+  },
+  async ({ event }) => {
+    const { email, name } = event.data;
+    console.log(`Sending welcome email to: ${email}`);
+
+    try {
+      const { sendWelcomeEmail } = await import("@/lib/email/send");
+      await sendWelcomeEmail({ email, name });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Welcome email send error:", error);
+      return { success: false, error: "Failed to send welcome email" };
+    }
+  },
+);
+
+export const sendPasswordResetEmail = inngest.createFunction(
+  {
+    name: "Send Password Reset Email",
+    id: "send-password-reset-email",
+    triggers: {
+      event: "email.send.password-reset",
+    },
+  },
+  async ({ event }) => {
+    const { email, name, otp } = event.data;
+    console.log(`Sending password reset email to: ${email}`);
+
+    try {
+      const { sendPasswordResetEmail } = await import("@/lib/email/send");
+      await sendPasswordResetEmail({ email, name, otp });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Password reset email send error:", error);
+      return { success: false, error: "Failed to send password reset email" };
+    }
+  },
+);
+
+export const sendMagicLinkEmail = inngest.createFunction(
+  {
+    name: "Send Magic Link Email",
+    id: "send-magic-link-email",
+    triggers: {
+      event: "email.send.magic-link",
+    },
+  },
+  async ({ event }) => {
+    const { email, name, magicLink } = event.data;
+    console.log(`Sending magic link email to: ${email}`);
+
+    try {
+      const { sendEmail } = await import("@/lib/email/send");
+      const subject = "Your TiCLearn magic link";
+      const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Magic Link</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f9fafb; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); padding: 40px 30px; text-align: center; }
+    .header h1 { color: white; margin: 0; font-size: 28px; font-weight: 700; }
+    .content { padding: 32px; text-align: center; }
+    .button { display: inline-block; background: #7c3aed; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px; }
+    .button:hover { background: #6d28d9; }
+    .footer { padding: 24px 32px; text-align: center; color: #6b7280; font-size: 14px; background: #f9fafb; }
+    .footer a { color: #7c3aed; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Sign In to TiCLearn</h2>
+        <p>Hi ${name || "Student"},</p>
+        <p>Click the button below to sign in to your TiCLearn account:</p>
+        <a href="${magicLink}" class="button">Sign In →</a>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">This link expires in 1 hour. If you didn't request this, please ignore this email.</p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+      await sendEmail({ to: email, subject, html });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Magic link email send error:", error);
+      return { success: false, error: "Failed to send magic link email" };
+    }
+  },
+);
+
+export const sendUnverifiedWarning = inngest.createFunction(
+  {
+    name: "Send Unverified Account Warnings",
+    id: "send-unverified-warnings",
+    triggers: {
+      cron: "0 8 * * 0",
+    },
+  },
+  async () => {
+    console.log("[Inngest] Running weekly unverified account warning job...");
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const usersToWarn = await prisma.user.findMany({
+      where: {
+        emailVerified: false,
+        createdAt: { lt: sevenDaysAgo },
+        warningSentAt: null,
+        accounts: {
+          none: {},
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+    });
+
+    console.log(`[Inngest] Found ${usersToWarn.length} users to warn`);
+
+    const { sendUnverifiedWarningEmail } = await import("@/lib/email/send");
+    let sentCount = 0;
+
+    for (const user of usersToWarn) {
+      try {
+        await sendUnverifiedWarningEmail({
+          email: user.email,
+          name: user.name || "Student",
+          daysLeft: 7,
+        });
+
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { warningSentAt: new Date() },
+        });
+
+        sentCount++;
+        console.log(`[Inngest] Sent warning to: ${user.email}`);
+      } catch (error) {
+        console.error(
+          `[Inngest] Failed to send warning to ${user.email}:`,
+          error,
+        );
+      }
+    }
+
+    return { success: true, warned: sentCount, total: usersToWarn.length };
+  },
+);
+
+export const deleteUnverifiedAccounts = inngest.createFunction(
+  {
+    name: "Delete Unverified Accounts",
+    id: "delete-unverified-accounts",
+    triggers: {
+      cron: "0 9 * * 0",
+    },
+  },
+  async () => {
+    console.log("[Inngest] Running weekly unverified account deletion job...");
+
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const usersToDelete = await prisma.user.findMany({
+      where: {
+        emailVerified: false,
+        createdAt: { lt: fourteenDaysAgo },
+        warningSentAt: { not: null },
+        accounts: {
+          none: {},
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    console.log(`[Inngest] Found ${usersToDelete.length} users to delete`);
+
+    let deletedCount = 0;
+
+    for (const user of usersToDelete) {
+      try {
+        await prisma.user.delete({
+          where: { id: user.id },
+        });
+
+        deletedCount++;
+        console.log(`[Inngest] Deleted unverified user: ${user.email}`);
+      } catch (error) {
+        console.error(`[Inngest] Failed to delete user ${user.email}:`, error);
+      }
+    }
+
+    return {
+      success: true,
+      deleted: deletedCount,
+      total: usersToDelete.length,
+    };
+  },
+);
+
+export { inngest };

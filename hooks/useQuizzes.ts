@@ -1,15 +1,27 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { queryKeys } from "@/lib/query-keys";
+import { api } from "@/lib/api-client";
 
-export function useQuizzes() {
+type QuizScope = "all" | "my" | "public";
+
+export function useQuizzes(scope: QuizScope = "all", noteId?: string) {
   const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.quizzes,
+    queryKey: [...queryKeys.quizzes, scope, noteId ?? null],
     queryFn: async () => {
-      const res = await fetch("/api/quizzes");
-      if (!res.ok) throw new Error("Failed to fetch quizzes");
-      return res.json();
+      const result = await api.queries.quizzes.getAll({ scope, noteId });
+      return result;
     },
+    refetchInterval: (query) => {
+      const quizzes = query.state.data?.quizzes ?? [];
+      return quizzes.some(
+        (quiz: { status: string }) => quiz.status === "GENERATING",
+      )
+        ? 3000
+        : false;
+    },
+    gcTime: 0,
+    staleTime: 30 * 60 * 1000, // 30 minutes
   });
 
   return {
@@ -23,11 +35,14 @@ export function useQuiz(id: string) {
   return useQuery({
     queryKey: queryKeys.quiz(id),
     queryFn: async () => {
-      const res = await fetch(`/api/quizzes/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch quiz");
-      return res.json();
+      const result = await api.queries.quizzes.getById(id);
+      return result;
     },
     enabled: !!id,
+    refetchInterval: (query) =>
+      query.state.data?.quiz?.status === "GENERATING" ? 3000 : false,
+    gcTime: 0,
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 }
 
@@ -43,17 +58,13 @@ export function useGenerateQuiz() {
       timeLimit?: number;
       isPublic: boolean;
     }) => {
-      const res = await fetch("/api/quizzes/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to generate quiz");
-      return res.json();
+      const result = await api.mutations.quizzes.generate(data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
-      toast.success("Quiz generated successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      toast.success("Quiz generation started");
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -66,12 +77,12 @@ export function useDeleteQuiz() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/quizzes/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete quiz");
-      return res.json();
+      const result = await api.mutations.quizzes.delete(id);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
       toast.success("Quiz deleted");
     },
     onError: (error: Error) => {
@@ -84,9 +95,8 @@ export function useQuizAttempts(quizId: string) {
   return useQuery({
     queryKey: queryKeys.quizAttempts(quizId),
     queryFn: async () => {
-      const res = await fetch(`/api/quizzes/${quizId}/attempts`);
-      if (!res.ok) throw new Error("Failed to fetch attempts");
-      return res.json();
+      const result = await api.mutations.quizzes.getAttempts(quizId);
+      return result;
     },
     enabled: !!quizId,
   });
@@ -96,18 +106,41 @@ export function useSubmitQuizAttempt() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { quizId: string; answers: unknown[] }) => {
-      const res = await fetch("/api/quizzes/attempts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to submit attempt");
-      return res.json();
+    mutationFn: async (data: {
+      quizId: string;
+      answers: { questionId: string; answer: string }[];
+    }) => {
+      const result = await api.mutations.quizzes.submitAttempt(data);
+      return result;
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.userStats });
       queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard });
+      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.quiz(variables.quizId),
+      });
+    },
+  });
+}
+
+export function useQuizAttempt(attemptId: string) {
+  return useQuery({
+    queryKey: ["quizzes", "attempts", attemptId],
+    queryFn: async () => {
+      const result = await api.mutations.quizzes.getAttemptById(attemptId);
+      return result;
+    },
+    enabled: !!attemptId,
+  });
+}
+
+export function useRecentAttempts(limit: number = 5) {
+  return useQuery({
+    queryKey: ["quizzes", "attempts", "recent", limit],
+    queryFn: async () => {
+      const result = await api.mutations.quizzes.getRecentAttempts(limit);
+      return result;
     },
   });
 }

@@ -2,13 +2,13 @@
 
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { useAdminStats } from "@/hooks/useAdmin";
 import {
   Shield,
   Users,
   MessageCircle,
   CreditCard,
   Link2,
-  BarChart3,
   Loader2,
 } from "lucide-react";
 import {
@@ -19,28 +19,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import Link from "next/link";
-
-const stats = [
-  { title: "Total Users", value: "0", icon: Users, href: "/admin/users" },
-  {
-    title: "Active Subscriptions",
-    value: "0",
-    icon: CreditCard,
-    href: "/admin/subscriptions",
-  },
-  {
-    title: "Pending Feedback",
-    value: "0",
-    icon: MessageCircle,
-    href: "/admin/feedback",
-  },
-  {
-    title: "Active Affiliates",
-    value: "0",
-    icon: Link2,
-    href: "/admin/affiliates",
-  },
-];
 
 const navItems = [
   {
@@ -72,8 +50,36 @@ const navItems = [
 export default function AdminPage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const { stats, isLoading: statsLoading } = useAdminStats();
 
-  if (isPending) {
+  const statsItems = [
+    {
+      title: "Total Users",
+      value: stats?.totalUsers ?? "0",
+      icon: Users,
+      href: "/admin/users",
+    },
+    {
+      title: "Active Subscriptions",
+      value: stats?.activeSubscriptions?.toString() ?? "0",
+      icon: CreditCard,
+      href: "/admin/subscriptions",
+    },
+    {
+      title: "Pending Feedback",
+      value: stats?.recentFeedback?.toString() ?? "0",
+      icon: MessageCircle,
+      href: "/admin/feedback",
+    },
+    {
+      title: "Pending Affiliates",
+      value: stats?.pendingAffiliates?.toString() ?? "0",
+      icon: Link2,
+      href: "/admin/affiliates",
+    },
+  ];
+
+  if (isPending || statsLoading) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -100,7 +106,7 @@ export default function AdminPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statsItems.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">

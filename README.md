@@ -14,10 +14,10 @@
 ## Features
 
 - 📚 **Note Upload** - Upload PDF or image notes, transform them into quizzes
-- 🎯 **AI Quiz Generation** - Automatically generate quizzes from your notes
+- 🎯 **AI Quiz Generation** - AutomaTiClly generate quizzes from your notes
 - 📊 **Progress Tracking** - Track your learning progress with detailed analytics
 - 🏆 **Leaderboards** - Compete with other students
-- 💬 **AI Tutor** - 24/7 AI-powered study assistant
+- 💬 **TiC** - 24/7 AI-powered study assistant
 - 📝 **GCE Exam Prep** - Generate mock exams for A-Level subjects
 - 💳 **Fapshi Payments** - MTN MoMo / Orange Money integration
 - 👥 **Affiliate Program** - Earn commissions by referring students

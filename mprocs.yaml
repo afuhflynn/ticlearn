@@ -1,0 +1,7 @@
+procs:
+  next-dev:
+    cmd: ["pnpm", "dev"]
+  inngest-dev:
+    cmd: ["pnpm", "inngest:start"]
+  ngrok-dev:
+    cmd: ["pnpm", "ngrok:dev"]

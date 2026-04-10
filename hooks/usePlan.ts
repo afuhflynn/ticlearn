@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
+import { api } from "@/lib/api-client";
 
 interface UsePlanResult {
   plan: string;
@@ -61,9 +62,8 @@ export function usePlan(): UsePlanResult {
     queryKey: queryKeys.subscription,
     queryFn: async () => {
       try {
-        const res = await fetch("/api/subscription/me");
-        if (!res.ok) return null;
-        return res.json();
+        const result = await api.queries.subscription();
+        return result;
       } catch {
         return null;
       }
@@ -71,7 +71,7 @@ export function usePlan(): UsePlanResult {
     staleTime: 1000 * 60 * 5,
   });
 
-  const planName = subscription?.plan || "FREE";
+  const planName = subscription?.subscription?.plan || "FREE";
   const isPaid = planName !== "FREE";
 
   const limits = PLAN_MAP[planName] || FREE_LIMITS;

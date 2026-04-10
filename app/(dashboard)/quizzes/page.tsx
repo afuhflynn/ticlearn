@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { ListTodo, Loader2, Play, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { ListTodo, Plus, Search, Play, Trash2, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,16 +14,24 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuizzes, useDeleteQuiz } from "@/hooks";
+import { useDeleteQuiz, useQuizzes } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
+
+type QuizListItem = {
+  id: string;
+  title: string;
+  noteTitle?: string;
+  questionCount: number;
+  status: "GENERATING" | "READY" | "ERROR";
+};
 
 export default function QuizzesPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { quizzes, isLoading } = useQuizzes();
+  const { quizzes, isLoading } = useQuizzes("my");
   const deleteQuiz = useDeleteQuiz();
 
   if (sessionPending) {
@@ -39,8 +47,8 @@ export default function QuizzesPage() {
     return null;
   }
 
-  const filteredQuizzes = quizzes.filter(
-    (q: any) =>
+  const filteredQuizzes = (quizzes as QuizListItem[]).filter(
+    (q) =>
       q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.noteTitle?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
@@ -86,7 +94,7 @@ export default function QuizzesPage() {
         </div>
       ) : filteredQuizzes.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredQuizzes.map((quiz: any) => (
+          {filteredQuizzes.map((quiz) => (
             <Card key={quiz.id} className="transition-all hover:shadow-lg">
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -109,12 +117,19 @@ export default function QuizzesPage() {
                     {quiz.questionCount} questions
                   </span>
                   <div className="flex gap-2">
-                    <Button size="sm" asChild>
-                      <Link href={`/quizzes?id=${quiz.id}`}>
-                        <Play className="mr-1 h-4 w-4" />
-                        Start
-                      </Link>
-                    </Button>
+                    {quiz.status === "READY" ? (
+                      <Button size="sm" asChild>
+                        <Link href={`/quiz/${quiz.id}`}>
+                          <Play className="mr-1 h-4 w-4" />
+                          Start
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button size="sm" disabled>
+                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                        Generating
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"

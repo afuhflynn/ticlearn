@@ -18,14 +18,21 @@ export async function GET() {
       take: 50,
       include: {
         user: {
-          select: { id: true, name: true, image: true },
+          select: { id: true, name: true, image: true, role: true },
+        },
+      },
+      where: {
+        user: {
+          role: {
+            not: "ADMIN",
+          },
         },
       },
     });
 
-    const currentUserRank = leaderboard.findIndex(
-      (entry) => entry.userId === session.user.id,
-    );
+    const currentUserRank = leaderboard
+      .filter((u) => u.user.role !== "ADMIN")
+      .findIndex((entry) => entry.userId === session.user.id);
 
     return NextResponse.json({
       leaderboard: leaderboard.map((entry, index) => ({

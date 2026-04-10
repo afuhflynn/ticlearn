@@ -1,14 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { toast } from "sonner";
+import { api } from "@/lib/api-client";
 
 export function useUserStats() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.userStats,
     queryFn: async () => {
-      const res = await fetch("/api/stats");
-      if (!res.ok) throw new Error("Failed to fetch stats");
-      return res.json();
+      const result = await api.queries.stats.userStats();
+      return result;
     },
   });
 
@@ -23,16 +22,16 @@ export function useLeaderboard() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.leaderboard,
     queryFn: async () => {
-      const res = await fetch("/api/leaderboard");
-      if (!res.ok) throw new Error("Failed to fetch leaderboard");
-      return res.json();
+      const result = await api.queries.stats.leaderboard();
+      return result;
     },
-    staleTime: 1000 * 60 * 5,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 0,
   });
 
   return {
     leaderboard: data?.leaderboard || [],
-    currentUserRank: data?.currentUserRank,
+    currentUserRank: data?.currentUserRank || null,
     isLoading,
     error,
     refetch,

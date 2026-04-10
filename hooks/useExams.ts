@@ -1,14 +1,14 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
+import { api } from "@/lib/api-client";
 
 export function useExams() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.exams,
     queryFn: async () => {
-      const res = await fetch("/api/exams");
-      if (!res.ok) throw new Error("Failed to fetch exams");
-      return res.json();
+      const result = await api.queries.exams.getAll();
+      return result;
     },
   });
 
@@ -23,9 +23,8 @@ export function useExam(id: string) {
   return useQuery({
     queryKey: queryKeys.exam(id),
     queryFn: async () => {
-      const res = await fetch(`/api/exams/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch exam");
-      return res.json();
+      const result = await api.queries.exams.getById(id);
+      return result;
     },
     enabled: !!id,
   });
@@ -36,18 +35,12 @@ export function useGenerateExam() {
 
   return useMutation({
     mutationFn: async (data: {
-      subject: "CS" | "ICT";
+      subject: string;
       topic: string;
-      mode?: "MOCK" | "SIMULATION";
-      questionCount?: number;
+      questionCount: number;
     }) => {
-      const res = await fetch("/api/exams", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to generate exam");
-      return res.json();
+      const result = await api.mutations.exams.create(data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.exams });
@@ -65,19 +58,10 @@ export function useSubmitExam() {
   return useMutation({
     mutationFn: async (data: {
       examId: string;
-      answers: unknown[];
-      timeTaken: number;
+      answers: Record<string, string>;
     }) => {
-      const res = await fetch(`/api/exams/${data.examId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          answers: data.answers,
-          timeTaken: data.timeTaken,
-        }),
-      });
-      if (!res.ok) throw new Error("Failed to submit exam");
-      return res.json();
+      const result = await api.mutations.exams.submit(data.examId, data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.exams });

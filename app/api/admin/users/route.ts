@@ -21,13 +21,27 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
-    const skip = (page - 1) * limit;
+    const search = searchParams.get("search") || "";
+    const role = searchParams.get("role") || "";
+    const sortBy = searchParams.get("sortBy") || "createdAt";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
+
+    const where = {
+      ...(search && {
+        OR: [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { email: { contains: search, mode: "insensitive" as const } },
+        ],
+      }),
+      ...(role && { role: role as any }),
+    };
 
     const [users, total] = await Promise.all([
       prisma.user.findMany({
-        skip,
+        where,
+        skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: "desc" },
+        orderBy: { [sortBy]: sortOrder },
         select: {
           id: true,
           name: true,
@@ -44,7 +58,7 @@ export async function GET(req: Request) {
           },
         },
       }),
-      prisma.user.count(),
+      prisma.user.count({ where }),
     ]);
 
     return NextResponse.json({

@@ -25,6 +25,7 @@ export const queryKeys = {
   // Subscriptions & Plans
   subscription: ["subscription"] as const,
   plan: ["plan"] as const,
+  usage: ["usage"] as const,
 
   // Feedback
   feedbacks: ["feedbacks"] as const,
@@ -47,6 +48,7 @@ export const queryKeys = {
 
   // AI Chat
   chatConversations: ["chat", "conversations"] as const,
+  chatConversation: (id: string) => ["chat", "conversations", id] as const,
   chatMessages: (conversationId: string) => ["chat", conversationId] as const,
 
   // Community

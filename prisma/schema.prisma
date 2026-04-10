@@ -11,7 +11,7 @@ datasource db {
 }
 
 // ===========================================
-// Authentication (Better Auth)
+// AuthenTiCtion (Better Auth)
 // ===========================================
 
 model User {
@@ -24,27 +24,30 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // Extended fields for TiCLearn
-  role          UserRole @default(USER)
-  referredBy    String?  @map("referred_by")
-  refApplied    Boolean  @default(false) @map("ref_applied")
+  role          UserRole   @default(USER)
+  referredBy    String?    @map("referred_by")
+  refApplied    Boolean    @default(false) @map("ref_applied")
+  warningSentAt DateTime?  @map("warning_sent_at")
 
   // Relations
-  sessions      Session[]
-  accounts      Account[]
-  notes         Note[]
-  quizzes       Quiz[]
-  quizAttempts  QuizAttempt[]
-  examSessions  ExamSession[]
-  userStats     UserStats?
-  subscriptions Subscription[]
-  ratings       Rating[]
-  feedbacks     Feedback[]
-  affiliate     Affiliate?
-  posts         Post[]
-  comments      Comment[]
-  postLikes     PostLike[]
-  notifications Notification[]
-  userSettings  UserSettings?
+  sessions          Session[]
+  accounts          Account[]
+  notes             Note[]
+  quizzes           Quiz[]
+  quizAttempts      QuizAttempt[]
+  examSessions      ExamSession[]
+  userStats         UserStats?
+  subscriptions     Subscription[]
+  ratings           Rating[]
+  feedbacks         Feedback[]
+  affiliate         Affiliate?
+  posts             Post[]
+  comments          Comment[]
+  postLikes         PostLike[]
+  notifications     Notification[]
+  userSettings      UserSettings?
+  chatConversations ChatConversation[]
+  chatMessages      ChatMessage[]
 
   @@map("users")
 }
@@ -101,21 +104,23 @@ model Verification {
 // ===========================================
 
 model Note {
-  id            String     @id @default(cuid())
-  userId        String     @map("user_id")
-  title         String
-  subject       String
-  fileUrl       String     @map("file_url")
-  fileName      String     @map("file_name")
-  fileType      FileType   @map("file_type")
-  extractedText String?    @map("extracted_text") @db.Text
-  topics        String[]
-  summary       String?    @db.Text
-  status        NoteStatus @default(UPLOADING)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quizzes       Quiz[]
+  id             String     @id @default(cuid())
+  userId         String     @map("user_id")
+  title          String
+  subject        String
+  fileUrl        String     @map("file_url")
+  uploadthingKey String?    @map("uploadthing_key")
+  fileName       String     @map("file_name")
+  fileType       FileType   @map("file_type")
+  extractedText  String?    @map("extracted_text") @db.Text
+  topics         String[]
+  keyPoints      String[]   @map("key_points")
+  summary        String?    @db.Text
+  status         NoteStatus @default(UPLOADING)
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizzes        Quiz[]
 
   @@index([userId])
   @@index([status])
@@ -123,20 +128,20 @@ model Note {
 }
 
 model Quiz {
-  id            String     @id @default(cuid())
-  userId        String     @map("user_id")
-  noteId        String     @map("note_id")
-  noteTitle     String     @map("note_title")
+  id            String         @id @default(cuid())
+  userId        String         @map("user_id")
+  noteId        String         @map("note_id")
+  noteTitle     String         @map("note_title")
   title         String
-  questionCount Int        @map("question_count")
-  status        QuizStatus @default(GENERATING)
-  isPublic      Boolean    @default(false) @map("is_public")
-  timed         Boolean    @default(false)
-  timeLimit     Int?       @map("time_limit")
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-  user          User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  note          Note       @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  questionCount Int            @map("question_count")
+  status        QuizStatus     @default(GENERATING)
+  isPublic      Boolean        @default(false) @map("is_public")
+  timed         Boolean        @default(false)
+  timeLimit     Int?           @map("time_limit")
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note          Note           @relation(fields: [noteId], references: [id], onDelete: Cascade)
   questions     QuizQuestion[]
   attempts      QuizAttempt[]
 
@@ -147,15 +152,15 @@ model Quiz {
 }
 
 model QuizQuestion {
-  id             String       @id @default(cuid())
-  quizId         String       @map("quiz_id")
+  id             String              @id @default(cuid())
+  quizId         String              @map("quiz_id")
   type           QuestionType
-  question       String       @db.Text
+  question       String              @db.Text
   options        String[]
-  correctAnswer  String       @map("correct_answer") @db.Text
-  explanation    String?      @db.Text
+  correctAnswer  String              @map("correct_answer") @db.Text
+  explanation    String?             @db.Text
   order          Int
-  quiz           Quiz         @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   attemptAnswers QuizAttemptAnswer[]
 
   @@index([quizId])
@@ -163,17 +168,17 @@ model QuizQuestion {
 }
 
 model QuizAttempt {
-  id             String   @id @default(cuid())
-  userId         String   @map("user_id")
-  quizId         String   @map("quiz_id")
-  quizTitle      String   @map("quiz_title")
-  noteTitle      String   @map("note_title")
+  id             String              @id @default(cuid())
+  userId         String              @map("user_id")
+  quizId         String              @map("quiz_id")
+  quizTitle      String              @map("quiz_title")
+  noteTitle      String              @map("note_title")
   score          Float
-  totalQuestions Int      @map("total_questions")
-  correctAnswers Int      @map("correct_answers")
-  completedAt    DateTime @default(now()) @map("completed_at")
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  quiz           Quiz     @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  totalQuestions Int                 @map("total_questions")
+  correctAnswers Int                 @map("correct_answers")
+  completedAt    DateTime            @default(now()) @map("completed_at")
+  user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   answers        QuizAttemptAnswer[]
 
   @@index([userId])
@@ -200,21 +205,21 @@ model QuizAttemptAnswer {
 }
 
 model ExamSession {
-  id           String       @id @default(cuid())
-  userId       String       @map("user_id")
+  id           String      @id @default(cuid())
+  userId       String      @map("user_id")
   subject      ExamSubject
-  subjectLabel String       @map("subject_label")
+  subjectLabel String      @map("subject_label")
   mode         ExamMode
   topic        String
-  status       ExamStatus   @default(GENERATING)
+  status       ExamStatus  @default(GENERATING)
   score        Float?
-  timeLimit    Int          @map("time_limit")
-  timeTaken    Int?         @map("time_taken")
+  timeLimit    Int         @map("time_limit")
+  timeTaken    Int?        @map("time_taken")
   questions    Json
   answers      Json?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -229,6 +234,7 @@ model UserStats {
   longestStreak    Int       @default(0) @map("longest_streak")
   lastActivityDate DateTime? @map("last_activity_date")
   quizzesTaken     Int       @default(0) @map("quizzes_taken")
+  totalChats       Int       @default(0) @map("total_chats")
   avgScore         Float     @default(0) @map("avg_score")
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -293,21 +299,21 @@ model Feedback {
 }
 
 model Affiliate {
-  id               String          @id @default(cuid())
-  userId           String          @unique @map("user_id")
-  userEmail        String          @map("user_email")
-  userName         String          @map("user_name")
-  code             String          @unique
-  status           AffiliateStatus @default(PENDING)
-  momoNumber       String          @map("momo_number")
-  momoName         String          @map("momo_name")
-  totalClicks      Int             @default(0) @map("total_clicks")
-  totalConversions Int             @default(0) @map("total_conversions")
-  totalEarnings    Float           @default(0) @map("total_earnings")
-  pendingEarnings  Float           @default(0) @map("pending_earnings")
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String             @id @default(cuid())
+  userId           String             @unique @map("user_id")
+  userEmail        String             @map("user_email")
+  userName         String             @map("user_name")
+  code             String             @unique
+  status           AffiliateStatus    @default(PENDING)
+  momoNumber       String             @map("momo_number")
+  momoName         String             @map("momo_name")
+  totalClicks      Int                @default(0) @map("total_clicks")
+  totalConversions Int                @default(0) @map("total_conversions")
+  totalEarnings    Float              @default(0) @map("total_earnings")
+  pendingEarnings  Float              @default(0) @map("pending_earnings")
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   clicks           AffiliateClick[]
   earnings         AffiliateEarning[]
 
@@ -352,17 +358,17 @@ model AffiliateEarning {
 // ===========================================
 
 model Post {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  content     String   @db.Text
-  subject     String?
-  isPinned    Boolean  @default(false) @map("is_pinned")
-  isAnnouncement Boolean @default(false) @map("is_announcement")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments    Comment[]
-  likes       PostLike[]
+  id             String     @id @default(cuid())
+  userId         String     @map("user_id")
+  content        String     @db.Text
+  subject        String?
+  isPinned       Boolean    @default(false) @map("is_pinned")
+  isAnnouncement Boolean    @default(false) @map("is_announcement")
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comments       Comment[]
+  likes          PostLike[]
 
   @@index([userId])
   @@index([createdAt])
@@ -370,16 +376,16 @@ model Post {
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  postId    String   @map("post_id")
-  userId    String   @map("user_id")
-  content   String   @db.Text
-  parentId  String?  @map("parent_id")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent    Comment? @relation("CommentReplies", fields: [parentId], references: [id])
+  id        String    @id @default(cuid())
+  postId    String    @map("post_id")
+  userId    String    @map("user_id")
+  content   String    @db.Text
+  parentId  String?   @map("parent_id")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
   replies   Comment[] @relation("CommentReplies")
 
   @@index([postId])
@@ -424,16 +430,16 @@ model Notification {
 // ===========================================
 
 model UserSettings {
-  id              String   @id @default(cuid())
-  userId          String   @unique @map("user_id")
-  emailNotifications Boolean @default(true) @map("email_notifications")
-  pushNotifications Boolean @default(true) @map("push_notifications")
-  darkMode        Boolean  @default(false) @map("dark_mode")
-  language        String   @default("en")
-  timezone        String   @default("Africa/Douala")
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  userId             String   @unique @map("user_id")
+  emailNotifications Boolean  @default(true) @map("email_notifications")
+  pushNotifications  Boolean  @default(true) @map("push_notifications")
+  darkMode           Boolean  @default(false) @map("dark_mode")
+  language           String   @default("en")
+  timezone           String   @default("Africa/Douala")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("user_settings")
 }
@@ -530,4 +536,40 @@ enum NotificationType {
   PAYMENT
   COMMENT
   LIKE
+}
+
+// ===========================================
+// Chat Models
+// ===========================================
+
+model ChatConversation {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  title     String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@index([userId, updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  conversationId String   @map("conversation_id")
+  userId         String   @map("user_id")
+  role           String
+  content        String   @db.Text
+  parts          Json
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([userId])
+  @@map("chat_messages")
 }

@@ -1,10 +1,11 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
@@ -29,6 +30,11 @@ export async function POST(
     await prisma.note.update({
       where: { id },
       data: { status: "PROCESSING" },
+    });
+
+    await inngest.send({
+      name: "note/process",
+      data: { noteId: id },
     });
 
     return NextResponse.json({ success: true, message: "Processing started" });

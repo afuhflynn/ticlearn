@@ -1,16 +1,8 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
-import { redirect } from "next/navigation";
+import { FileText, ListTodo, Plus, TrendingUp, Zap } from "lucide-react";
 import Link from "next/link";
-import {
-  FileText,
-  ListTodo,
-  TrendingUp,
-  Zap,
-  ArrowRight,
-  Plus,
-} from "lucide-react";
+import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,13 +13,14 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useUserStats, useNotes, useQuizzes } from "@/hooks";
+import { useNotes, useQuizzes, useUserStats } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
 
 export default function DashboardPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const { stats, isLoading: statsLoading } = useUserStats();
   const { notes, isLoading: notesLoading } = useNotes();
-  const { quizzes, isLoading: quizzesLoading } = useQuizzes();
+  const { quizzes, isLoading: quizzesLoading } = useQuizzes("my");
 
   if (sessionPending || statsLoading) {
     return (
@@ -115,25 +108,6 @@ export default function DashboardPage() {
           </Button>
         </div>
       </div>
-
-      <Card className="border-primary/20 bg-primary/5">
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h3 className="font-semibold">Upgrade to Premium</h3>
-              <p className="text-sm text-muted-foreground">
-                Unlock unlimited notes, quizzes, and access to GCE exams
-              </p>
-            </div>
-            <Button asChild>
-              <Link href="/pricing">
-                View Plans
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {statsData.map((stat) => (
@@ -249,7 +223,7 @@ export default function DashboardPage() {
                         </p>
                       </div>
                       <Button size="sm" asChild>
-                        <Link href={`/quizzes?id=${quiz.id}`}>Start</Link>
+                        <Link href={`/quiz/${quiz.id}`}>Start</Link>
                       </Button>
                     </div>
                   ),

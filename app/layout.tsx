@@ -1,29 +1,35 @@
 import type { Metadata } from "next";
-import { Inter, Merriweather, JetBrains_Mono } from "next/font/google";
+import { Analytics } from "@vercel/analytics/react";
+import { Plus_Jakarta_Sans, Lora, IBM_Plex_Mono } from "next/font/google";
+import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { Toaster } from "@/components/ui/sonner";
+import { extractRouterConfig } from "uploadthing/server";
+import { ourFileRouter } from "./api/uploadthing/core";
+import { ThemeProvider } from "@/components/theme-provider";
 
-const inter = Inter({
+const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
 });
 
-const merriweather = Merriweather({
+const lora = Lora({
   variable: "--font-serif",
   subsets: ["latin"],
-  weight: ["400", "700"],
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const ibmMono = IBM_Plex_Mono({
   variable: "--font-mono",
+  weight: ["400", "500", "600"],
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
   title: "TiCLearn - AI-Powered Study Platform for GCE A-Level",
   description:
-    "Transform your notes into quizzes, prepare for GCE exams, compete on leaderboards, and chat with an AI tutor. The ultimate study companion for Cameroonian students.",
+    "Transform your notes into quizzes, prepare for GCE exams, compete on leaderboards, and chat with TiC our ai tutor. The ultimate study companion for Cameroonian students.",
   keywords: [
     "GCE",
     "A-Level",
@@ -34,7 +40,7 @@ export const metadata: Metadata = {
     "education",
     "exam preparation",
   ],
-  authors: [{ name: "TiCLearn Team" }],
+  authors: [{ name: "TiCLearn Team", url: "https://ticlearn.ticsummit.org" }],
   openGraph: {
     title: "TiCLearn - Study Smarter, Score Higher",
     description:
@@ -63,13 +69,25 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${merriweather.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      suppressHydrationWarning
+      className={`${plusJakarta.variable} ${lora.variable} ${ibmMono.variable} ${ibmMono.className} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
-        <QueryProvider>
-          {children}
-          <Toaster position="top-right" richColors />
-        </QueryProvider>
+        <NuqsAdapter>
+          <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <QueryProvider>
+              {children}
+              <Toaster position="top-right" richColors />
+              <Analytics />
+            </QueryProvider>
+          </ThemeProvider>
+        </NuqsAdapter>
       </body>
     </html>
   );

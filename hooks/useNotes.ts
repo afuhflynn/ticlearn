@@ -1,33 +1,65 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { api } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import type { NoteSummary, NoteWithRelations } from "@/types";
+
+type NoteMutationPayload = {
+  title: string;
+  subject: string;
+  fileUrl: string;
+  uploadthingKey?: string;
+  fileName: string;
+  fileType: "PDF" | "IMAGE";
+};
 
 export function useNotes() {
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.notes,
-    queryFn: async () => {
-      const res = await fetch("/api/notes");
-      if (!res.ok) throw new Error("Failed to fetch notes");
-      return res.json();
+    queryFn: api.queries.notes.getAll,
+    refetchInterval: (query) => {
+      const notes = query.state.data?.notes ?? [];
+      const shouldPoll = notes.some(
+        (note: { status: string; latestQuiz?: { status: string } | null }) =>
+          note.status === "UPLOADING" ||
+          note.status === "PROCESSING" ||
+          note.latestQuiz?.status === "GENERATING",
+      );
+
+      return shouldPoll ? 3000 : false;
     },
   });
 
   return {
-    notes: data?.notes || [],
+    notes: data?.notes ?? [],
     isLoading,
     error,
+    refetch,
   };
 }
 
 export function useNote(id: string) {
   return useQuery({
     queryKey: queryKeys.note(id),
-    queryFn: async () => {
-      const res = await fetch(`/api/notes/${id}`);
-      if (!res.ok) throw new Error("Failed to fetch note");
-      return res.json();
-    },
+    queryFn: async () => api.queries.notes.getById(id),
     enabled: !!id,
+    refetchInterval: (query) => {
+      const note = query.state.data?.note as
+        | (NoteWithRelations & {
+            latestQuiz?: { status: string } | null;
+          })
+        | undefined;
+
+      if (!note) {
+        return false;
+      }
+
+      return note.status === "UPLOADING" ||
+        note.status === "PROCESSING" ||
+        note.latestQuiz?.status === "GENERATING"
+        ? 3000
+        : false;
+    },
   });
 }
 
@@ -35,24 +67,40 @@ export function useUploadNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      title: string;
-      subject: string;
-      fileUrl: string;
-      fileName: string;
-      fileType: "PDF" | "IMAGE";
-    }) => {
-      const res = await fetch("/api/notes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to upload note");
-      return res.json();
+    mutationFn: async (data: NoteMutationPayload) => {
+      const result = await api.mutations.notes.create(data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notes });
-      toast.success("Note uploaded successfully");
+      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+      toast.success("Note uploaded successfully! It's being processed.");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useUpdateNote() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      id: string;
+      title?: string;
+      subject?: string;
+    }) => {
+      const result = await api.mutations.notes.update(data.id, {
+        title: data.title,
+        subject: data.subject,
+      });
+      return result;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.note(variables.id) });
+      toast.success("Note updated");
     },
     onError: (error: Error) => {
       toast.error(error.message);
@@ -64,13 +112,10 @@ export function useDeleteNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/notes/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete note");
-      return res.json();
-    },
+    mutationFn: async (id: string) => api.mutations.notes.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
       toast.success("Note deleted");
     },
     onError: (error: Error) => {
@@ -80,13 +125,16 @@ export function useDeleteNote() {
 }
 
 export function useProcessNote() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: async (noteId: string) => {
-      const res = await fetch(`/api/notes/${noteId}/process`, {
-        method: "POST",
-      });
-      if (!res.ok) throw new Error("Failed to process note");
-      return res.json();
+    mutationFn: async (noteId: string) => api.mutations.notes.process(noteId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 }

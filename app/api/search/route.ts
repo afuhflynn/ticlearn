@@ -1,6 +1,6 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
           id: q.id,
           title: q.title,
           description: q.noteTitle,
-          url: `/quizzes?id=${q.id}`,
+          url: `/quiz/${q.id}`,
         })),
       );
     }
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
         ...posts.map((p) => ({
           type: "post",
           id: p.id,
-          title: p.content.slice(0, 50) + "...",
+          title: `${p.content.slice(0, 50)}...`,
           description: p.subject || "Community post",
           url: `/community?id=${p.id}`,
         })),

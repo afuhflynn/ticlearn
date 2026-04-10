@@ -1,15 +1,17 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
+import { api } from "@/lib/api-client";
 
 export function useProfile() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.profile,
     queryFn: async () => {
-      const res = await fetch("/api/profile");
-      if (!res.ok) throw new Error("Failed to fetch profile");
-      return res.json();
+      const result = await api.queries.profile();
+      return result;
     },
+    gcTime: 0,
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
   return {
@@ -26,13 +28,8 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: async (data: { name?: string; image?: string }) => {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update profile");
-      return res.json();
+      const result = await api.mutations.profile.update(data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.profile });
@@ -46,10 +43,11 @@ export function useSettings() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.settings,
     queryFn: async () => {
-      const res = await fetch("/api/settings");
-      if (!res.ok) throw new Error("Failed to fetch settings");
-      return res.json();
+      const result = await api.queries.settings();
+      return result;
     },
+    gcTime: 0,
+    staleTime: 24 * 60 * 60 * 1000, // 24 hours
   });
 
   return {
@@ -66,17 +64,10 @@ export function useUpdateSettings() {
     mutationFn: async (data: {
       emailNotifications?: boolean;
       pushNotifications?: boolean;
-      darkMode?: boolean;
-      language?: string;
-      timezone?: string;
+      weeklyDigest?: boolean;
     }) => {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) throw new Error("Failed to update settings");
-      return res.json();
+      const result = await api.mutations.settings.update(data);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings });
@@ -89,11 +80,8 @@ export function useSearch(query: string, type = "all") {
   return useQuery({
     queryKey: queryKeys.search(query),
     queryFn: async () => {
-      const res = await fetch(
-        `/api/search?q=${encodeURIComponent(query)}&type=${type}`,
-      );
-      if (!res.ok) throw new Error("Search failed");
-      return res.json();
+      const result = await api.queries.search(query, type);
+      return result;
     },
     enabled: query.length >= 2,
   });

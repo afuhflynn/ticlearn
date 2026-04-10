@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:15-alpine
     restart: unless-stopped
     container_name: ticlearn-postgres
     environment:
@@ -10,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ticlearn_password
       POSTGRES_DB: ticlearn
     ports:
-      - "5432:5432"
+      - "5435:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

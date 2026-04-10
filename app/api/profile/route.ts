@@ -2,6 +2,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { z } from "zod";
+
+const updateProfileSchema = z
+  .object({
+    name: z.string().min(1).optional(),
+    image: z.string().url().optional(),
+  })
+  .strict();
 
 export async function GET() {
   try {
@@ -62,23 +70,29 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { name, image } = await req.json();
+    const body = await req.json();
+    const { name, image } = updateProfileSchema.parse(body);
 
-    const user = await prisma.user.update({
-      where: { id: session.user.id },
-      data: { name, image },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        image: true,
-        role: true,
-      },
-    });
+    const updateData: { name?: string; image?: string } = {};
+    if (name) updateData.name = name;
+    if (image) updateData.image = image;
 
-    return NextResponse.json({ user, success: true });
+    if (Object.keys(updateData).length > 0) {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: updateData,
+      });
+    }
+
+    return NextResponse.json({ success: true, message: "Profile updated" });
   } catch (error) {
     console.error("Profile PUT error:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0].message },
+        { status: 400 },
+      );
+    }
     return NextResponse.json(
       { error: "Failed to update profile" },
       { status: 500 },

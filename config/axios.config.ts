@@ -10,7 +10,7 @@ export const publicAxios = axios.create({
   },
 });
 
-// Private axios instance (auth required - cookies are sent automatically)
+// Private axios instance (auth required - cookies are sent automaTiClly)
 export const privateAxios = axios.create({
   baseURL: `${baseURL}/api`,
   headers: {

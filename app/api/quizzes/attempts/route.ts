@@ -1,6 +1,7 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { gradeOpenAnswer, explainMCQAnswer } from "@/lib/ai";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
@@ -38,7 +39,35 @@ export async function POST(req: Request) {
       const question = quiz.questions.find((q) => q.id === answer.questionId);
       if (!question) continue;
 
-      const isCorrect = answer.answer === question.correctAnswer;
+      let isCorrect = false;
+      let explanation = question.explanation;
+
+      if (question.type === "OPEN") {
+        const gradingResult = await gradeOpenAnswer(
+          question.question,
+          answer.answer,
+          question.correctAnswer,
+        );
+
+        const scoreMatch = gradingResult.match(/(\d{1,3})/);
+        const aiScore = scoreMatch ? Number(scoreMatch[1]) : 0;
+        isCorrect = aiScore >= 70;
+        explanation =
+          `${question.explanation ?? ""}\n\nAI feedback:\n${gradingResult}`.trim();
+      } else {
+        isCorrect = answer.answer === question.correctAnswer;
+        if (!isCorrect) {
+          const aiExplanation = await explainMCQAnswer(
+            question.question,
+            answer.answer,
+            question.correctAnswer,
+            question.options,
+          );
+          explanation =
+            `${question.explanation ?? ""}\n\n${aiExplanation}`.trim();
+        }
+      }
+
       if (isCorrect) correctCount++;
 
       attemptAnswers.push({
@@ -47,11 +76,15 @@ export async function POST(req: Request) {
         userAnswer: answer.answer,
         correctAnswer: question.correctAnswer,
         isCorrect,
-        explanation: question.explanation,
+        explanation,
       });
     }
 
     const score = Math.round((correctCount / quiz.questions.length) * 100);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
     const attempt = await prisma.quizAttempt.create({
       data: {
@@ -66,6 +99,9 @@ export async function POST(req: Request) {
           create: attemptAnswers,
         },
       },
+      include: {
+        answers: true,
+      },
     });
 
     const userStats = await prisma.userStats.findUnique({
@@ -73,6 +109,21 @@ export async function POST(req: Request) {
     });
 
     const pointsEarned = score >= 80 ? 20 : score >= 50 ? 10 : 5;
+    let currentStreak = 1;
+    let longestStreak = 1;
+
+    if (userStats?.lastActivityDate) {
+      const lastActivityDate = new Date(userStats.lastActivityDate);
+      lastActivityDate.setHours(0, 0, 0, 0);
+
+      if (lastActivityDate.getTime() === today.getTime()) {
+        currentStreak = userStats.currentStreak || 1;
+      } else if (lastActivityDate.getTime() === yesterday.getTime()) {
+        currentStreak = (userStats.currentStreak || 0) + 1;
+      }
+
+      longestStreak = Math.max(userStats.longestStreak, currentStreak);
+    }
 
     if (userStats) {
       await prisma.userStats.update({
@@ -80,6 +131,9 @@ export async function POST(req: Request) {
         data: {
           totalPoints: userStats.totalPoints + pointsEarned,
           quizzesTaken: userStats.quizzesTaken + 1,
+          currentStreak,
+          longestStreak,
+          lastActivityDate: new Date(),
           avgScore: Math.round(
             (userStats.avgScore * userStats.quizzesTaken + score) /
               (userStats.quizzesTaken + 1),
@@ -93,13 +147,19 @@ export async function POST(req: Request) {
           totalPoints: pointsEarned,
           quizzesTaken: 1,
           avgScore: score,
-          currentStreak: 1,
-          longestStreak: 1,
+          currentStreak,
+          longestStreak,
+          lastActivityDate: new Date(),
         },
       });
     }
 
-    return NextResponse.json({ attempt, success: true });
+    return NextResponse.json({
+      attempt,
+      success: true,
+      pointsEarned,
+      currentStreak,
+    });
   } catch (error) {
     console.error("Submit attempt error:", error);
     return NextResponse.json(

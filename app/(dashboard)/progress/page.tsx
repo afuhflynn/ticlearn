@@ -3,73 +3,86 @@
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import {
-  BarChart3,
-  TrendingUp,
-  Target,
-  Award,
-  Plus,
-  ArrowRight,
-} from "lucide-react";
+import { BarChart3, TrendingUp, Target, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useUserStats, useRecentAttempts } from "@/hooks";
+import { Loader2 } from "lucide-react";
 
 export default function ProgressPage() {
   const { data: session, isPending } = useSession();
   const router = useRouter();
+  const { stats, isLoading: statsLoading } = useUserStats();
+  const { data: attemptsData, isLoading: attemptsLoading } =
+    useRecentAttempts(5);
 
-  if (isPending) return null;
+  if (isPending || statsLoading || attemptsLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
   if (!session) {
     router.push("/sign-in");
     return null;
   }
 
-  const stats = [
+  const userStats = stats || {
+    totalAttempts: 0,
+    avgScore: 0,
+    quizzesTaken: 0,
+    currentStreak: 0,
+    totalPoints: 0,
+    totalNotes: 0,
+    totalQuizzes: 0,
+  };
+
+  const recentAttempts = (attemptsData?.attempts || []) as {
+    id: string;
+    quizTitle: string;
+    completedAt: string | null;
+    score: number;
+    correctAnswers: number;
+    totalQuestions: number;
+  }[];
+
+  const bestScore =
+    recentAttempts.length > 0
+      ? Math.max(...recentAttempts.map((a) => a.score))
+      : 0;
+
+  const statsData = [
     {
-      title: "Total Attempts",
-      value: "0",
+      title: "Quizzes Taken",
+      value: userStats.quizzesTaken.toString(),
       icon: BarChart3,
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },
     {
       title: "Average Score",
-      value: "0%",
+      value: `${Math.round(userStats.avgScore)}%`,
       icon: TrendingUp,
       color: "text-green-500",
       bg: "bg-green-500/10",
     },
     {
       title: "Best Score",
-      value: "0%",
+      value: `${bestScore}%`,
       icon: Target,
       color: "text-purple-500",
       bg: "bg-purple-500/10",
     },
     {
-      title: "Pass Rate",
-      value: "0%",
-      icon: Award,
+      title: "Current Streak",
+      value: `${userStats.currentStreak} days`,
+      icon: Target,
       color: "text-orange-500",
       bg: "bg-orange-500/10",
     },
   ];
-
-  const recentAttempts: {
-    id: string;
-    quizTitle: string;
-    completedAt: string;
-    score: number;
-    correctAnswers: number;
-    totalQuestions: number;
-  }[] = [];
 
   return (
     <div className="space-y-8">
@@ -81,7 +94,7 @@ export default function ProgressPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
+        {statsData.map((stat) => (
           <Card key={stat.title}>
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -100,36 +113,23 @@ export default function ProgressPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Weekly Goal</CardTitle>
-          <CardDescription>Complete 5 quizzes this week</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Progress</span>
-              <span className="text-sm font-medium">0 / 5</span>
-            </div>
-            <Progress value={0} className="h-2" />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Recent Attempts</CardTitle>
         </CardHeader>
         <CardContent>
           {recentAttempts.length > 0 ? (
             <div className="space-y-4">
               {recentAttempts.map((attempt) => (
-                <div
+                <Link
                   key={attempt.id}
-                  className="flex items-center justify-between rounded-lg border p-4"
+                  href={`/attempts/${attempt.id}`}
+                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
                 >
                   <div>
                     <p className="font-medium">{attempt.quizTitle}</p>
                     <p className="text-sm text-muted-foreground">
-                      {attempt.completedAt}
+                      {attempt.completedAt
+                        ? new Date(attempt.completedAt).toLocaleDateString()
+                        : "Recently"}
                     </p>
                   </div>
                   <div className="text-right">
@@ -138,7 +138,7 @@ export default function ProgressPage() {
                       {attempt.correctAnswers}/{attempt.totalQuestions} correct
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           ) : (
