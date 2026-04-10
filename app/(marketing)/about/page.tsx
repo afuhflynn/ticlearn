@@ -61,7 +61,7 @@ export default function AboutPage() {
               students struggle to find relevant resources.
             </p>
             <p className="text-muted-foreground">
-              Founded by TIC Summit, a nonprofit organization dedicated to
+              Founded by TIC Foundation, a nonprofit organization dedicated to
               advancing technology and education in Cameroon, TiCLearn combines
               the power of artificial intelligence with deep understanding of
               the local educational context. Our team includes experienced

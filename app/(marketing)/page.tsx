@@ -13,6 +13,7 @@ import {
   CheckCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FaWhatsapp } from "react-icons/fa6";
 
 const features = [
   {
@@ -404,6 +405,19 @@ export default function HomePage() {
             <Button size="lg" variant="secondary" className="gap-2" asChild>
               <Link href="/sign-up">
                 Get Started Free
+                <ArrowRight className="h-4 w-4" />
+              </Link>
+            </Button>
+
+            <Button size="lg" className="gap-2 bg-green-400" asChild>
+              <Link
+                href="https://chat.whatsapp.com/Jr5TCAeDA821gee19AkB8H?mode=gi_t"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={"Join Our WhatsApp community"}
+              >
+                <FaWhatsapp />
+                Join Our WhatsApp Community
                 <ArrowRight className="h-4 w-4" />
               </Link>
             </Button>

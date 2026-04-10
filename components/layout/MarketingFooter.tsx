@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GraduationCap, Mail, Globe, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { FaWhatsapp } from "react-icons/fa6";
 
 const footerLinks = {
   product: [
@@ -21,9 +22,14 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { icon: Globe, href: "https://ticlearn.com", label: "Website" },
-  { icon: Mail, href: "mailto:hello@ticlearn.com", label: "Email" },
+  { icon: Globe, href: "https://ticlearn.ticsummit.org", label: "Website" },
+  { icon: Mail, href: "mailto:ticlearn@ticsummit.org", label: "Email" },
   { icon: ExternalLink, href: "https://ticsummit.org", label: "Organization" },
+  {
+    icon: FaWhatsapp,
+    href: "https://chat.whatsapp.com/Jr5TCAeDA821gee19AkB8H?mode=gi_t",
+    label: "Join Our WhatsApp community",
+  },
 ];
 
 export function MarketingFooter() {
