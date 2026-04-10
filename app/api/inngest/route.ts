@@ -9,6 +9,8 @@ import {
   sendMagicLinkEmail,
   sendUnverifiedWarning,
   deleteUnverifiedAccounts,
+  sendAdminInviteEmail,
+  sendRoleUpdateEmail,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -22,5 +24,7 @@ export const { GET, POST, PUT } = serve({
     sendMagicLinkEmail,
     sendUnverifiedWarning,
     deleteUnverifiedAccounts,
+    sendAdminInviteEmail,
+    sendRoleUpdateEmail,
   ],
 });
