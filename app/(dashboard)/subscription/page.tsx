@@ -215,10 +215,7 @@ export default function SubscriptionPage() {
                       ) : plan === p && status === "ACTIVE" ? (
                         "Current Plan"
                       ) : isPending && plan === p ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Payment Pending...
-                        </>
+                        <>Payment Pending</>
                       ) : (
                         "Upgrade Now"
                       )}
