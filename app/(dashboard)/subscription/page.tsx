@@ -71,7 +71,7 @@ const PLAN_FEATURES = {
 };
 
 const PLAN_PRICES = {
-  STARTER: 2000,
+  STARTER: 3000,
   STANDARD: 5000,
   PREMIUM: 10000,
 };
