@@ -1,7 +1,9 @@
-const FAPSHI_API_URL =
-  process.env.FAPSHI_BASE_URL || "https://sandbox.fapshi.com";
 const FAPSHI_API_USER = process.env.FAPSHI_API_USER || "";
 const FAPSHI_API_KEY = process.env.FAPSHI_API_KEY || "";
+const FAPSHI_BASE =
+  process.env.FAPSHI_SANDBOX === "true"
+    ? "https://sandbox.fapshi.com"
+    : "https://live.fapshi.com";
 
 export interface FapshiPaymentRequest {
   amount: number;
@@ -23,52 +25,39 @@ export async function initiatePayment(
   request: FapshiPaymentRequest,
 ): Promise<FapshiPaymentResponse> {
   if (!FAPSHI_API_USER || !FAPSHI_API_KEY) {
-    console.warn("Fapshi API credentials not configured");
     return { success: false, message: "Payment system not configured" };
   }
 
   try {
-    const auth = Buffer.from(`${FAPSHI_API_USER}:${FAPSHI_API_KEY}`).toString(
-      "base64",
-    );
-
-    const response = await fetch(`${FAPSHI_API_URL}/initiate-pay`, {
+    // FIX 1: Change /direct-pay to /initiate-pay to get a link
+    const response = await fetch(`${FAPSHI_BASE}/initiate-pay`, {
       method: "POST",
       headers: {
-        Authorization: `Basic ${auth}`,
+        apiuser: FAPSHI_API_USER, // FIX 2: String keys
+        apikey: FAPSHI_API_KEY,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
         amount: request.amount,
         email: request.email,
         name: request.name,
-        phone: request.phone,
+        externalId: request.externalId,
         redirectUrl: request.redirectUrl,
-        externalId: request.externalId || `TICLEARN-${Date.now()}`,
-        webhookUrl: process.env.NEXT_PUBLIC_APP_URL + "/api/payment/webhook",
       }),
     });
 
     const data = await response.json();
 
-    if (response.ok && data.transId) {
-      return {
-        success: true,
-        transId: data.transId,
-        link: data.link || `${FAPSHI_API_URL}/pay/${data.transId}`,
-      };
+    if (response.ok && data.link) {
+      return { success: true, transId: data.transId, link: data.link };
     }
 
     return {
       success: false,
-      message: data.message || "Failed to initiate payment",
+      message: data.message || "Fapshi initiation failed",
     };
   } catch (error) {
-    console.error("Fapshi payment error:", error);
-    return {
-      success: false,
-      message: "Payment initiation failed",
-    };
+    return { success: false, message: "Gateway connection error" };
   }
 }
 

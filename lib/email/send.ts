@@ -434,3 +434,133 @@ export async function sendUnverifiedWarningEmail({
 `;
   return sendEmail({ to: email, subject, html });
 }
+
+export async function sendPaymentSuccessEmail({
+  email,
+  name,
+  planLabel,
+  amount,
+  transId,
+}: {
+  email: string;
+  name: string;
+  planLabel: string;
+  amount: number;
+  transId: string;
+}) {
+  const subject = `✅ Payment Confirmed — ${planLabel}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">🚀</div>
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Payment Successful!</h2>
+        <p>Hi <span class="highlight">${name || "there"}</span>,</p>
+        <p>Your payment has been confirmed and your <span class="highlight">${planLabel}</span> is now active. You have full access to all premium features!</p>
+
+        <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #e5e7eb;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #6b7280; text-transform: uppercase;">Receipt Details</h3>
+          <p style="margin: 8px 0;"><strong>Plan:</strong> ${planLabel}</p>
+          <p style="margin: 8px 0;"><strong>Amount:</strong> ${amount.toLocaleString()} FCFA</p>
+          <p style="margin: 8px 0;"><strong>Transaction ID:</strong> <code style="background: #eee; padding: 2px 4px;">${transId}</code></p>
+        </div>
+
+        <div style="text-align: center;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="button">Go to Dashboard</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p>Questions? Reply to this email or visit our help center.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}
+
+export async function sendPaymentFailedEmail({
+  email,
+  name,
+  planLabel,
+  status, // "FAILED" or "EXPIRED"
+}: {
+  email: string;
+  name: string;
+  planLabel: string;
+  status: string;
+}) {
+  const isExpired = status === "EXPIRED";
+  const subject = `⚠️ Payment ${isExpired ? "Expired" : "Failed"}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+        <div class="logo">⚠️</div>
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Payment Unsuccessful</h2>
+        <p>Hi <span class="highlight">${name || "there"}</span>,</p>
+        <p>Unfortunately, your payment attempt for the <span class="highlight">${planLabel}</span> was ${isExpired ? "not completed in time and has expired" : "declined by the provider"}.</p>
+
+        <p>Don't worry, your account is safe! You can try the payment again using the button below:</p>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/pricing" class="button" style="background: #ef4444;">Try Again</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}
+
+export async function sendAdminPaymentAlert({
+  adminEmail,
+  userName,
+  userEmail,
+  planLabel,
+  amount,
+}: {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  planLabel: string;
+  amount: number;
+}) {
+  const subject = `💰 New Sale: ${planLabel} — ${userName}`;
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+      <h2 style="color: #10b981;">New Payment Received!</h2>
+      <p><strong>Customer:</strong> ${userName} (${userEmail})</p>
+      <p><strong>Plan:</strong> ${planLabel}</p>
+      <p><strong>Amount:</strong> ${amount.toLocaleString()} FCFA</p>
+      <hr />
+      <p style="font-size: 12px; color: #999;">Notification sent from TiCLearn Billing System</p>
+    </div>
+  `;
+  return sendEmail({ to: adminEmail, subject, html });
+}
