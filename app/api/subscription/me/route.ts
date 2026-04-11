@@ -14,14 +14,25 @@ export async function GET() {
     }
 
     const subscription = await prisma.subscription.findFirst({
-      where: { 
+      where: {
         userId: session.user.id,
-        status: "ACTIVE" 
+        status: "ACTIVE",
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ subscription });
+    const previousSubscription = await prisma.subscription.findFirst({
+      where: {
+        userId: session.user.id,
+        status: { in: ["PENDING", "FAILED"] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({
+      subscription,
+      previousPlan: previousSubscription?.plan || null,
+    });
   } catch (error) {
     console.error("Subscription fetch error:", error);
     return NextResponse.json({ subscription: null });

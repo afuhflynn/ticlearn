@@ -28,6 +28,7 @@ interface ChatDailyUsage {
 interface UseUsageResult {
   plan: string;
   status: string;
+  previousPlan: string | null;
   limits: PlanLimits;
   usage: Usage;
   canUpload: boolean;
@@ -39,6 +40,7 @@ interface UseUsageResult {
   chatDailyUsage: ChatDailyUsage | null;
   isLoading: boolean;
   isPaid: boolean;
+  isPending: boolean;
   refetch: () => void;
 }
 
@@ -46,15 +48,24 @@ export function useUsage(): UseUsageResult {
   const { data, isLoading, refetch } = useQuery({
     queryKey: queryKeys.usage,
     queryFn: async () => {
-      const result = await api.queries.usage();
+      const result = await fetch("/api/usage").then((r) => r.json());
       return result;
     },
     staleTime: 1000 * 60 * 2,
   });
 
+  const currentStatus = data?.status || "NONE";
+  const isPending = currentStatus === "PENDING";
+  const isPaid = currentStatus === "ACTIVE" && data?.plan !== "FREE";
+
+  // Pending users keep access from their previous plan
+  const displayPlan =
+    isPending && data?.previousPlan ? data.previousPlan : data?.plan || "FREE";
+
   const result: UseUsageResult = {
-    plan: data?.plan || "FREE",
-    status: data?.status || "INACTIVE",
+    plan: displayPlan,
+    status: currentStatus,
+    previousPlan: data?.previousPlan || null,
     limits: data?.limits || {
       pdfUploads: 2,
       quizGenerations: 4,
@@ -76,7 +87,8 @@ export function useUsage(): UseUsageResult {
     canAccessGCE: data?.limits?.canAccessGCE ?? false,
     chatDailyUsage: data?.chatDailyUsage ?? null,
     isLoading,
-    isPaid: data?.plan !== "FREE",
+    isPaid,
+    isPending,
     refetch,
   };
 
@@ -98,23 +110,27 @@ export function useCanAccess(
     canAccessLeaderboard,
     canAccessGCE,
     isPaid,
+    isPending,
     canGenerateQuiz,
     canUseAIChat,
   } = useUsage();
 
+  // Pending users retain access from their previous plan
+  const effectivePaid = isPaid || isPending;
+
   switch (feature) {
     case "community":
-      return canAccessCommunity;
+      return canAccessCommunity || isPending;
     case "leaderboard":
-      return canAccessLeaderboard;
+      return canAccessLeaderboard || isPending;
     case "gce":
-      return canAccessGCE;
+      return canAccessGCE || isPending;
     case "affiliate":
-      return isPaid;
+      return effectivePaid;
     case "chat":
-      return canUseAIChat;
+      return canUseAIChat || isPending;
     case "quiz":
-      return canGenerateQuiz;
+      return canGenerateQuiz || isPending;
     case "upload":
       return true;
     default:

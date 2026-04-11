@@ -14,7 +14,12 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const subscription = await prisma.subscription.findFirst({
+    const activeSubscription = await prisma.subscription.findFirst({
+      where: { userId: session.user.id, status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const latestSubscription = await prisma.subscription.findFirst({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
     });
@@ -27,8 +32,12 @@ export async function GET() {
       where: { userId: session.user.id },
     });
 
-    const plan = subscription?.plan || "FREE";
-    const planStatus = subscription?.status || "INACTIVE";
+    // Only use plan if subscription is ACTIVE
+    const plan = activeSubscription?.plan || "FREE";
+    const currentStatus = latestSubscription?.status || "NONE";
+    const previousPlan = activeSubscription
+      ? null
+      : latestSubscription?.plan || null;
 
     const limits = getPlanLimits(plan);
     const { nextResetAt, resetsInSeconds, windowStart } = getChatResetWindow();
@@ -49,7 +58,8 @@ export async function GET() {
 
     return NextResponse.json({
       plan,
-      status: planStatus,
+      status: currentStatus,
+      previousPlan,
       limits: {
         pdfUploads: limits.pdfUploads,
         quizGenerations: limits.quizGenerations,

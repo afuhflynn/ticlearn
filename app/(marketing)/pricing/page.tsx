@@ -19,6 +19,7 @@ import { toast } from "sonner";
 interface Subscription {
   plan: string;
   status: string;
+  previousPlan?: string | null;
 }
 
 const plans = [
@@ -102,11 +103,13 @@ export default function PricingPage() {
     async function fetchSubscription() {
       if (session?.user) {
         try {
-          const response = await fetch("/api/subscription");
+          const response = await fetch("/api/usage");
           const data = await response.json();
-          if (data.subscription) {
-            setSubscription(data.subscription);
-          }
+          setSubscription({
+            plan: data.plan || "FREE",
+            status: data.status || "NONE",
+            previousPlan: data.previousPlan,
+          });
         } catch (error) {
           console.error("Failed to fetch subscription:", error);
         }
@@ -142,7 +145,12 @@ export default function PricingPage() {
     }
   };
 
-  const currentPlan = subscription?.plan || "FREE";
+  const currentPlanStatus = subscription?.status || "NONE";
+  const isPending = currentPlanStatus === "PENDING";
+  const displayPlan =
+    isPending && subscription?.previousPlan
+      ? subscription.previousPlan
+      : subscription?.plan || "FREE";
 
   if (sessionLoading || isLoadingSub) {
     return (
@@ -168,16 +176,17 @@ export default function PricingPage() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
         {plans.map((plan) => {
-          const isCurrentPlan = currentPlan === plan.priceKey;
+          const isCurrentPlan =
+            displayPlan === plan.priceKey && currentPlanStatus === "ACTIVE";
           const isUpgrade =
             plan.priceKey === "FREE"
               ? false
               : plan.priceKey === "STARTER"
-                ? ["FREE"].includes(currentPlan)
+                ? ["FREE"].includes(displayPlan)
                 : plan.priceKey === "STANDARD"
-                  ? ["FREE", "STARTER"].includes(currentPlan)
+                  ? ["FREE", "STARTER"].includes(displayPlan)
                   : plan.priceKey === "PREMIUM"
-                    ? ["FREE", "STARTER", "STANDARD"].includes(currentPlan)
+                    ? ["FREE", "STARTER", "STANDARD"].includes(displayPlan)
                     : false;
 
           return (
@@ -219,6 +228,25 @@ export default function PricingPage() {
                   isCurrentPlan ? (
                     <Button className="w-full" variant="secondary" disabled>
                       Current Plan
+                    </Button>
+                  ) : isPending ? (
+                    <Button
+                      className="w-full"
+                      variant={plan.popular ? "default" : "outline"}
+                      onClick={() => handleSubscribe(plan.priceKey)}
+                      disabled={isSubscribing === plan.priceKey}
+                    >
+                      {isSubscribing === plan.priceKey ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <CreditCard className="mr-2 h-4 w-4" />
+                          {plan.cta}
+                        </>
+                      )}
                     </Button>
                   ) : (
                     <Button

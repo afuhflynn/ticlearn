@@ -81,6 +81,9 @@ export default function SubscriptionPage() {
     usage,
     limits,
     plan,
+    status,
+    previousPlan,
+    isPending,
     chatDailyUsage,
     isLoading: usageLoading,
   } = useUsage();
@@ -197,14 +200,25 @@ export default function SubscriptionPage() {
                   <CardFooter>
                     <Button
                       className="w-full"
-                      variant={plan === p ? "outline" : "default"}
-                      disabled={plan === p || isProcessing}
+                      variant={
+                        plan === p && status === "ACTIVE"
+                          ? "outline"
+                          : "default"
+                      }
+                      disabled={
+                        (plan === p && status === "ACTIVE") || isProcessing
+                      }
                       onClick={() => handleUpgrade(p)}
                     >
                       {isProcessing ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : plan === p ? (
+                      ) : plan === p && status === "ACTIVE" ? (
                         "Current Plan"
+                      ) : isPending && plan === p ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          Payment Pending...
+                        </>
                       ) : (
                         "Upgrade Now"
                       )}
@@ -221,9 +235,13 @@ export default function SubscriptionPage() {
         {/* Plan Info */}
         <Card className="md:col-span-1 border-primary/20 bg-primary/5">
           <CardHeader>
-            <CardTitle className="text-xl">Your Current Plan</CardTitle>
+            <CardTitle className="text-xl">
+              {isPending ? "Payment Processing" : "Your Current Plan"}
+            </CardTitle>
             <CardDescription>
-              You are currently on the {plan} plan
+              {isPending
+                ? `Upgrading to ${previousPlan || plan} - please complete payment`
+                : `You are currently on the ${plan} plan`}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -231,14 +249,32 @@ export default function SubscriptionPage() {
               <div className="text-center">
                 <Badge
                   variant="outline"
-                  className="mb-2 uppercase tracking-widest text-primary border-primary"
+                  className={`mb-2 uppercase tracking-widest border-primary ${
+                    isPending
+                      ? "text-yellow-600 border-yellow-600"
+                      : status === "ACTIVE"
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                  }`}
                 >
-                  {plan}
+                  {isPending && previousPlan ? previousPlan : plan}
                 </Badge>
                 <div className="text-sm text-muted-foreground">
                   Status:{" "}
-                  <span className="text-green-600 font-semibold uppercase">
-                    Active
+                  <span
+                    className={`font-semibold uppercase ${
+                      status === "ACTIVE"
+                        ? "text-green-600"
+                        : status === "PENDING"
+                          ? "text-yellow-600"
+                          : status === "FAILED"
+                            ? "text-red-600"
+                            : "text-muted-foreground"
+                    }`}
+                  >
+                    {status === "NONE"
+                      ? "No Subscription"
+                      : status.toLowerCase()}
                   </span>
                 </div>
               </div>

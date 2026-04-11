@@ -18,7 +18,10 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json({ subscription });
+    return NextResponse.json({
+      subscription:
+        subscription && subscription.status === "ACTIVE" ? subscription : null,
+    });
   } catch (error) {
     console.error("Subscription GET error:", error);
     return NextResponse.json(

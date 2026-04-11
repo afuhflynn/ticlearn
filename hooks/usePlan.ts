@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
-import { api } from "@/lib/api-client";
 
 interface UsePlanResult {
   plan: string;
+  status: string;
+  previousPlan: string | null;
   isLoading: boolean;
   isPaid: boolean;
+  isPending: boolean;
   canUpload: boolean;
   uploadLimit: number;
   canAccessCommunity: boolean;
@@ -58,28 +60,34 @@ const PLAN_MAP: Record<string, typeof PREMIUM_LIMITS> = {
 };
 
 export function usePlan(): UsePlanResult {
-  const { data: subscription, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: queryKeys.subscription,
     queryFn: async () => {
-      try {
-        const result = await api.queries.subscription();
-        return result;
-      } catch {
-        return null;
-      }
+      const res = await fetch("/api/subscription/me");
+      return res.json();
     },
     staleTime: 1000 * 60 * 5,
   });
 
-  const planName = subscription?.subscription?.plan || "FREE";
-  const isPaid = planName !== "FREE";
+  const subscription = data?.subscription;
+  const previousPlan = data?.previousPlan;
+  const planName = subscription?.plan || "FREE";
+  const status = subscription?.status || "NONE";
 
-  const limits = PLAN_MAP[planName] || FREE_LIMITS;
+  // Only paid if subscription is ACTIVE and not FREE
+  const isPaid = status === "ACTIVE" && planName !== "FREE";
+  const isPending = status === "PENDING" || (previousPlan && !subscription);
+
+  const displayPlan = isPending && previousPlan ? previousPlan : planName;
+  const limits = PLAN_MAP[displayPlan] || FREE_LIMITS;
 
   return {
-    plan: planName,
+    plan: displayPlan,
+    status,
+    previousPlan,
     isLoading,
     isPaid,
+    isPending,
     canUpload: true,
     uploadLimit: limits.pdfUploads,
     canAccessCommunity: limits.canAccessCommunity,
@@ -93,8 +101,29 @@ export function usePlan(): UsePlanResult {
 export function useCanAccess(
   feature: "community" | "leaderboard" | "gce" | "affiliate",
 ): boolean {
-  const { canAccessCommunity, canAccessLeaderboard, canAccessGCE, isPaid } =
-    usePlan();
+  const {
+    canAccessCommunity,
+    canAccessLeaderboard,
+    canAccessGCE,
+    isPaid,
+    isPending,
+  } = usePlan();
+
+  // Pending users still have access from their previous plan
+  if (isPending) {
+    switch (feature) {
+      case "community":
+        return canAccessCommunity;
+      case "leaderboard":
+        return canAccessLeaderboard;
+      case "gce":
+        return canAccessGCE;
+      case "affiliate":
+        return isPaid;
+      default:
+        return false;
+    }
+  }
 
   switch (feature) {
     case "community":
