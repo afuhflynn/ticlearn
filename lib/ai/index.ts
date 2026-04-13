@@ -63,7 +63,10 @@ function normalizeGeneratedQuestions(
     );
 }
 
-export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
+export async function extractTextFromPDF(
+  pdfUrl: string,
+  language: string = "eng",
+): Promise<string> {
   const maxRetries = 3;
   const baseDelay = 1000;
 
@@ -120,7 +123,7 @@ export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
           console.log(
             "[PDF] Extracted text too short, falling back to OCR for scanned PDF",
           );
-          return await extractTextFromPDFWithOCR(pdfUrl);
+          return await extractTextFromPDFWithOCR(pdfUrl, language);
         }
 
         return extractedText;
@@ -152,8 +155,16 @@ export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
   throw new Error("PDF fetch failed after all retries");
 }
 
-async function extractTextFromPDFWithOCR(pdfUrl: string): Promise<string> {
-  console.log("[OCR] Starting Tesseract.js OCR for PDF:", pdfUrl);
+async function extractTextFromPDFWithOCR(
+  pdfUrl: string,
+  language: string = "eng",
+): Promise<string> {
+  console.log(
+    "[OCR] Starting Tesseract.js OCR for PDF:",
+    pdfUrl,
+    "language:",
+    language,
+  );
 
   try {
     const response = await fetch(pdfUrl, {
@@ -167,7 +178,7 @@ async function extractTextFromPDFWithOCR(pdfUrl: string): Promise<string> {
     const arrayBuffer = await response.arrayBuffer();
     const blob = new Blob([arrayBuffer], { type: "application/pdf" });
 
-    const { data } = await Tesseract.recognize(blob, "eng", {
+    const { data } = await Tesseract.recognize(blob, language, {
       logger: (m) => {
         if (m.status === "recognizing text") {
           console.log(`[OCR] Progress: ${Math.round(m.progress * 100)}%`);
@@ -185,11 +196,19 @@ async function extractTextFromPDFWithOCR(pdfUrl: string): Promise<string> {
   }
 }
 
-export async function extractTextFromImage(imageUrl: string): Promise<string> {
-  console.log("[Image OCR] Starting Tesseract.js for image:", imageUrl);
+export async function extractTextFromImage(
+  imageUrl: string,
+  language: string = "eng",
+): Promise<string> {
+  console.log(
+    "[Image OCR] Starting Tesseract.js for image:",
+    imageUrl,
+    "language:",
+    language,
+  );
 
   try {
-    const { data } = await Tesseract.recognize(imageUrl, "eng", {
+    const { data } = await Tesseract.recognize(imageUrl, language, {
       logger: (m) => {
         if (m.status === "recognizing text") {
           console.log(`[Image OCR] Progress: ${Math.round(m.progress * 100)}%`);

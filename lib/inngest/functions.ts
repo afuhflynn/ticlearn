@@ -35,14 +35,20 @@ export const processNote = inngest.createFunction(
         data: { status: "PROCESSING" },
       });
 
+      const userSettings = await prisma.userSettings.findUnique({
+        where: { userId: note.userId },
+      });
+      const language = userSettings?.language || "eng";
+      console.log(`[Inngest] Using language for OCR: ${language}`);
+
       let extractedText: string;
 
       switch (note.fileType) {
         case "PDF":
-          extractedText = await extractTextFromPDF(note.fileUrl);
+          extractedText = await extractTextFromPDF(note.fileUrl, language);
           break;
         case "IMAGE":
-          extractedText = await extractTextFromImage(note.fileUrl);
+          extractedText = await extractTextFromImage(note.fileUrl, language);
           break;
         case "WORD":
           extractedText = await extractTextFromWord(note.fileUrl);
