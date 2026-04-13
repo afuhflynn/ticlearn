@@ -1,4 +1,9 @@
-import { extractTextFromPDF, summarizeText } from "@/lib/ai";
+import {
+  extractTextFromImage,
+  extractTextFromPDF,
+  extractTextFromWord,
+  summarizeText,
+} from "@/lib/ai";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 
@@ -30,13 +35,24 @@ export const processNote = inngest.createFunction(
         data: { status: "PROCESSING" },
       });
 
-      if (note.fileType !== "PDF") {
-        throw new Error("Only PDF note processing is supported right now");
+      let extractedText: string;
+
+      switch (note.fileType) {
+        case "PDF":
+          extractedText = await extractTextFromPDF(note.fileUrl);
+          break;
+        case "IMAGE":
+          extractedText = await extractTextFromImage(note.fileUrl);
+          break;
+        case "WORD":
+          extractedText = await extractTextFromWord(note.fileUrl);
+          break;
+        default:
+          throw new Error(`Unsupported file type: ${note.fileType}`);
       }
 
-      const extractedText = await extractTextFromPDF(note.fileUrl);
       if (!extractedText || extractedText.length < 100) {
-        throw new Error("PDF text extraction returned too little content");
+        throw new Error("Text extraction returned too little content");
       }
 
       const summaryResult = await summarizeText(extractedText);
@@ -468,6 +484,179 @@ export const deleteUnverifiedAccounts = inngest.createFunction(
       deleted: deletedCount,
       total: usersToDelete.length,
     };
+  },
+);
+
+export const generateDefaultQuiz = inngest.createFunction(
+  {
+    name: "Generate Default Quiz",
+    id: "generate-default-quiz",
+    triggers: {
+      event: "quiz/generate-default",
+    },
+  },
+
+  async ({ event }) => {
+    const { userId } = event.data;
+    console.log(`[Inngest] Generating default quizzes for user: ${userId}`);
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        console.error(`[Inngest] User not found: ${userId}`);
+        return { success: false, error: "User not found" };
+      }
+
+      const existingQuizzes = await prisma.quiz.count({
+        where: { userId },
+      });
+
+      if (existingQuizzes > 0) {
+        console.log(
+          `[Inngest] User already has ${existingQuizzes} quizzes, skipping`,
+        );
+        return {
+          success: true,
+          skipped: true,
+          reason: "User already has quizzes",
+        };
+      }
+
+      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } = await import(
+        "@/lib/ai"
+      );
+
+      const shuffledTopics = [...DEFAULT_QUIZ_TOPICS].sort(
+        () => Math.random() - 0.5,
+      );
+      const selectedTopics = shuffledTopics.slice(0, 3);
+
+      console.log(`[Inngest] Selected topics: ${selectedTopics.join(", ")}`);
+
+      const questionsPerQuiz = 20;
+      const questionDistribution = {
+        mcq: 8,
+        mixed: 8,
+        open: 4,
+      };
+
+      for (const topic of selectedTopics) {
+        const quizTitle = `Default Quiz: ${topic}`;
+
+        let questionTypes: "MCQ" | "OPEN" | "MIXED";
+        if (topic === selectedTopics[0]) {
+          questionTypes = "MCQ";
+        } else if (topic === selectedTopics[1]) {
+          questionTypes = "MIXED";
+        } else {
+          questionTypes = "OPEN";
+        }
+
+        console.log(
+          `[Inngest] Generating quiz for topic: ${topic} with ${questionTypes} questions`,
+        );
+
+        const questions = await generateQuizFromTopic(topic, {
+          questionCount: questionsPerQuiz,
+          questionTypes,
+        });
+
+        if (questions.length === 0) {
+          console.error(
+            `[Inngest] Failed to generate questions for topic: ${topic}`,
+          );
+          continue;
+        }
+
+        await prisma.quiz.create({
+          data: {
+            userId,
+            noteId: "__default__",
+            noteTitle: topic,
+            title: quizTitle,
+            questionCount: questions.length,
+            status: "READY",
+            isPublic: false,
+            questions: {
+              create: questions.map((q, index) => ({
+                type: q.type,
+                question: q.question,
+                options: q.type === "MCQ" ? q.options : [],
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation,
+                order: index,
+              })),
+            },
+          },
+        });
+
+        console.log(
+          `[Inngest] Created quiz: ${quizTitle} with ${questions.length} questions`,
+        );
+      }
+
+      console.log(
+        `[Inngest] Default quizzes generated successfully for user: ${userId}`,
+      );
+      return { success: true, userId, quizCount: selectedTopics.length };
+    } catch (error) {
+      console.error("[Inngest] Default quiz generation failed:", error);
+      return { success: false, error: "Failed to generate default quizzes" };
+    }
+  },
+);
+
+export const sendPlatformUpdateEmail = inngest.createFunction(
+  {
+    name: "Send Platform Update Email",
+    id: "send-platform-update-email",
+    triggers: [{ event: "email.platform-update" }, { cron: "0 5 * * 1" }],
+  },
+
+  async () => {
+    console.log("[Inngest] Running platform update email job (cron run)...");
+
+    const users = await prisma.user.findMany({
+      where: {
+        emailVerified: true,
+        role: { not: "ADMIN" },
+      },
+      select: {
+        id: true,
+        email: true,
+        name: true,
+      },
+      take: 50,
+    });
+
+    console.log(`[Inngest] Found ${users.length} users to email`);
+
+    const { sendPlatformUpdateEmail } = await import("@/lib/email/send");
+    let sentCount = 0;
+
+    for (const user of users) {
+      try {
+        await sendPlatformUpdateEmail({
+          email: user.email,
+          name: user.name || "Student",
+        });
+
+        sentCount++;
+        console.log(`[Inngest] Sent platform update to: ${user.email}`);
+
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      } catch (error) {
+        console.error(
+          `[Inngest] Failed to send email to ${user.email}:`,
+          error,
+        );
+      }
+    }
+
+    return { success: true, sent: sentCount, total: users.length };
   },
 );
 

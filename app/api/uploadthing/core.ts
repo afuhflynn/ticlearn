@@ -62,7 +62,14 @@ export const ourFileRouter = {
       return { uploadedBy: metadata.userId, url: file.url, key: file.key };
     }),
 
-  documentUploader: f({ pdf: { maxFileSize: "16MB", maxFileCount: 1 } })
+  documentUploader: f({
+    pdf: { maxFileSize: "16MB", maxFileCount: 1 },
+    image: { maxFileSize: "8MB", maxFileCount: 1 },
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+      maxFileSize: "16MB",
+      maxFileCount: 1,
+    },
+  })
     .middleware(async () => {
       const session = await auth.api.getSession({
         headers: await headers(),
@@ -75,7 +82,13 @@ export const ourFileRouter = {
     .onUploadComplete(async ({ metadata, file }) => {
       console.log("Document upload complete for userId:", metadata.userId);
       console.log("file url", file.url);
-      return { uploadedBy: metadata.userId, url: file.url, key: file.key };
+      console.log("file type", file.type);
+      return {
+        uploadedBy: metadata.userId,
+        url: file.url,
+        key: file.key,
+        type: file.type,
+      };
     }),
 } satisfies FileRouter;
 

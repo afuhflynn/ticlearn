@@ -4,7 +4,9 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
+  ChevronDown,
   ChevronLeft,
+  ChevronRight,
   CreditCard,
   GraduationCap,
   Home,
@@ -14,6 +16,7 @@ import {
   MessageSquare,
   Settings,
   Shield,
+  Sparkles,
   Trophy,
   Upload,
   Users,
@@ -40,41 +43,113 @@ import Link from "next/link";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { usePlan } from "@/hooks";
 
-const mainNavItems = [
-  { href: "/dashboard", icon: Home, label: "Dashboard" },
-  { href: "/upload", icon: Upload, label: "Upload Notes" },
-  { href: "/quizzes", icon: ListTodo, label: "My Quizzes" },
-  { href: "/progress", icon: BarChart3, label: "Progress" },
+interface NavSection {
+  id: string;
+  label: string;
+  icon: React.ElementType;
+  defaultOpen?: boolean;
+  items: NavItem[];
+}
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  paid?: boolean;
+}
+
+const mainNavItems: NavItem[] = [
+  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/upload", label: "Upload Notes", icon: Upload },
+  { href: "/quizzes", label: "My Quizzes", icon: ListTodo },
+  { href: "/progress", label: "Progress", icon: BarChart3 },
 ];
 
-const studyNavItems = [
-  { href: "/gce-exams", icon: BookOpen, label: "GCE Exams", paid: true },
-  { href: "/community", icon: Users, label: "Community", paid: true },
-  { href: "/leaderboard", icon: Trophy, label: "Leaderboard", paid: true },
-  { href: "/chat", icon: MessageSquare, label: "TiC" },
+const learningNavItems: NavItem[] = [
+  { href: "/gce-exams", label: "GCE Exams", icon: BookOpen, paid: true },
+  { href: "/chat", label: "TiC", icon: MessageSquare },
 ];
 
-const accountNavItems = [
-  { href: "/feedback", icon: MessageCircle, label: "Feedback" },
-  { href: "/settings", icon: Settings, label: "Settings" },
-  { href: "/affiliate", icon: Link2, label: "Affiliate" },
-  { href: "/subscription", icon: CreditCard, label: "Subscription" },
+const communityNavItems: NavItem[] = [
+  { href: "/community", label: "Community", icon: Users, paid: true },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, paid: true },
 ];
 
-const adminNavItems = [
-  { href: "/admin", icon: Shield, label: "Admin" },
-  { href: "/admin/users", icon: Settings, label: "Users" },
+const accountNavItems: NavItem[] = [
+  { href: "/feedback", label: "Feedback", icon: MessageCircle },
+  { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/affiliate", label: "Affiliate", icon: Link2 },
+  { href: "/subscription", label: "Subscription", icon: CreditCard },
+];
+
+const adminNavItems: NavItem[] = [
+  { href: "/admin", label: "Admin Dashboard", icon: Shield },
+  { href: "/admin/users", label: "Manage Users", icon: Settings },
+];
+
+const navSections: NavSection[] = [
+  {
+    id: "getting-started",
+    label: "Getting Started",
+    icon: Sparkles,
+    defaultOpen: true,
+    items: mainNavItems,
+  },
+  {
+    id: "learning",
+    label: "My Learning",
+    icon: BookOpen,
+    defaultOpen: true,
+    items: learningNavItems,
+  },
+  {
+    id: "connect",
+    label: "Connect",
+    icon: Users,
+    defaultOpen: false,
+    items: communityNavItems,
+  },
+  {
+    id: "account",
+    label: "My Account",
+    icon: Settings,
+    defaultOpen: false,
+    items: accountNavItems,
+  },
+  {
+    id: "admin",
+    label: "Platform",
+    icon: Shield,
+    defaultOpen: false,
+    items: adminNavItems,
+  },
 ];
 
 export function AppSidebar() {
   const { data: session, isPending } = useSession();
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [expandedSections, setExpandedSections] = useState<
+    Record<string, boolean>
+  >(() => {
+    const initial: Record<string, boolean> = {};
+    navSections.forEach((section) => {
+      initial[section.id] = section.defaultOpen ?? false;
+    });
+    return initial;
+  });
 
   const userRole = (session?.user as { role?: string })?.role;
   const isAdmin = userRole === "ADMIN";
 
   const { isLoading, plan } = usePlan();
+
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
 
   const NavContent = () => (
     <>
@@ -86,106 +161,72 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3">Main</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <Link href={item.href} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navSections.map((section) => {
+          if (section.id === "admin" && !isAdmin) return null;
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3">Study</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {studyNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <Link
-                      href={
-                        item.paid && (session?.user as any)?.role !== "ADMIN"
-                          ? "/subscription"
-                          : item.href
-                      }
-                      className={cn(
-                        "flex items-center gap-3",
-                        item.paid &&
-                          (session?.user as any)?.role !== "ADMIN" &&
-                          "opacity-70",
-                      )}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                      {(session?.user as any)?.role !== "ADMIN" &&
-                        item.paid && (
-                          <span className="ml-auto text-xs text-muted-foreground">
-                            PRO
-                          </span>
-                        )}
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          const isExpanded = expandedSections[section.id] ?? false;
+          const SectionIcon = section.icon;
 
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3">Account</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {accountNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}>
-                    <Link href={item.href} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          return (
+            <SidebarGroup key={section.id}>
+              <SidebarGroupLabel
+                className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
+                onClick={() => toggleSection(section.id)}
+              >
+                <div className="flex items-center gap-2">
+                  <SectionIcon className="h-4 w-4" />
+                  <span className="text-sm font-medium">{section.label}</span>
+                </div>
+                {isExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                )}
+              </SidebarGroupLabel>
+              {isExpanded && (
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {section.items.map((item) => {
+                      const isActive =
+                        section.id === "admin"
+                          ? pathname.startsWith(item.href)
+                          : pathname === item.href;
 
-        {isAdmin && (
-          <SidebarGroup>
-            <SidebarGroupLabel className="px-3">Admin</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {adminNavItems.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton
-                      asChild
-                      isActive={pathname.startsWith(item.href)}
-                    >
-                      <Link
-                        href={item.href}
-                        className="flex items-center gap-3"
-                      >
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+                      return (
+                        <SidebarMenuItem key={item.href}>
+                          <SidebarMenuButton asChild isActive={isActive}>
+                            <Link
+                              href={
+                                item.paid && !isAdmin
+                                  ? "/subscription"
+                                  : item.href
+                              }
+                              className={cn(
+                                "flex items-center gap-3",
+                                item.paid && !isAdmin && "opacity-70",
+                              )}
+                            >
+                              <item.icon className="h-4 w-4" />
+                              <span>{item.label}</span>
+                              {item.paid && !isAdmin && (
+                                <span className="ml-auto text-xs text-muted-foreground">
+                                  PRO
+                                </span>
+                              )}
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              )}
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
-      {!isPending && !isLoading && (session?.user as any)?.role !== "ADMIN" && (
+      {!isPending && !isLoading && !isAdmin && (
         <SidebarFooter className="border-t p-4">
           {plan && plan !== "STANDARD" && plan !== "PREMIUM" && (
             <Card className="border-primary/20 bg-primary/5 max-w-full!">

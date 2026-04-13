@@ -174,10 +174,38 @@ function UploadContent() {
 
   const handleFileSelection = (selectedFile?: File | null) => {
     if (!selectedFile) return;
-    if (!selectedFile.type.includes("pdf")) {
-      toast.error("Only PDF uploads are supported right now");
+
+    const supportedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    const isSupported = supportedTypes.some((type) => {
+      if (type === "application/pdf")
+        return selectedFile.type === "application/pdf";
+      if (type === "image/jpeg" || type === "image/png" || type === "image/jpg")
+        return selectedFile.type.startsWith("image/");
+      if (
+        type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      )
+        return selectedFile.name.endsWith(".docx");
+      return false;
+    });
+
+    if (
+      !isSupported &&
+      !selectedFile.name.match(/\.(pdf|docx|jpg|jpeg|png)$/i)
+    ) {
+      toast.error(
+        "Unsupported file type. Please upload PDF, Word (.docx), or image files.",
+      );
       return;
     }
+
     setFile(selectedFile);
     if (!title.trim()) {
       const baseName = selectedFile.name.replace(/\.[^/.]+$/, "");
@@ -339,7 +367,7 @@ function UploadContent() {
               <input
                 id="note-upload"
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.docx,.jpg,.jpeg,.png"
                 onChange={(e) =>
                   handleFileSelection(e.target.files?.[0] ?? null)
                 }
@@ -353,7 +381,7 @@ function UploadContent() {
                 or drag and drop
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF only, max 16MB
+                PDF, Word (.docx), or Images, max 16MB
               </p>
             </label>
 

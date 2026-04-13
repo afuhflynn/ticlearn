@@ -564,3 +564,78 @@ export async function sendAdminPaymentAlert({
   `;
   return sendEmail({ to: adminEmail, subject, html });
 }
+
+export async function sendPlatformUpdateEmail({
+  email,
+  name,
+}: {
+  email: string;
+  name: string;
+}) {
+  const subject =
+    "🎓 Big News: Your Study Just Got Easier! New Features Inside";
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform Updates</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">🎓</div>
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Big News: Your Study Just Got Easier!</h2>
+        <p>Hi <span class="highlight">${name || "Student"}</span>,</p>
+        <p>We've been working hard to make TiCLearn even better for you. Here are some exciting updates:</p>
+
+        <h3 style="color: #1f2937; margin-top: 28px; margin-bottom: 12px;">🚀 What's New</h3>
+        <ul class="features">
+          <li><span class="features-icon">📄</span> <strong>More File Types</strong> - Now you can upload not just PDFs, but also <strong>Word documents</strong> and <strong>images</strong> directly!</li>
+          <li><span class="features-icon">🔍</span> <strong>Smart OCR Technology</strong> - Even scanned documents and photos of your lecture notes are now readable. Our AI extracts text automatically.</li>
+          <li><span class="features-icon">🎯</span> <strong>Instant Start</strong> - New users now get 3 default quizzes to start practicing immediately!</li>
+          <li><span class="features-icon">👥</span> <strong>Better Navigation</strong> - Our sidebar is now cleaner and easier to navigate.</li>
+        </ul>
+
+        <h3 style="color: #1f2937; margin-top: 28px; margin-bottom: 12px;">🔔 Coming Soon</h3>
+        <ul class="features">
+          <li><span class="features-icon">📊</span> <strong>Excel Support</strong> - Upload and practice with spreadsheet data</li>
+          <li><span class="features-icon">📽️</span> <strong>PowerPoint Support</strong> - Convert presentations to quizzes</li>
+          <li><span class="features-icon">📱</span> <strong>Mobile App</strong> - Study anywhere with our soon-to-launch mobile app</li>
+          <li><span class="features-icon">👥</span> <strong>Study Groups</strong> - Collaborate with classmates</li>
+          <li><span class="features-icon">🎓</span> <strong>Certificates</strong> - Earn completion certificates</li>
+        </ul>
+
+        <a href="https://ticlearn.com/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+          Explore Now →
+        </a>
+
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+          <p style="margin: 0; font-size: 16px; font-weight: 600; color: ${BRAND_COLORS.primary};">
+            Join 5,000+ students already acing their GCE exams!
+          </p>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+          Have questions or need help? Reply to this email - we're here to help you succeed!
+        </p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p>Made with ❤️ for Cameroonian students</p>
+        <p><a href="https://ticlearn.com">ticlearn.com</a> • <a href="https://ticlearn.com/support">Support</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}

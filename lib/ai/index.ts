@@ -5,6 +5,8 @@ import {
   getDocument,
   VerbosityLevel,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
+import mammoth from "mammoth";
+import scribe from "scribe.js-ocr";
 import { z } from "zod";
 
 GlobalWorkerOptions.workerSrc = new URL(
@@ -110,9 +112,18 @@ export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
 
         await pdfDocument.destroy();
 
-        return normalizeExtractedText(
+        const extractedText = normalizeExtractedText(
           pages.filter((page) => page.length > 0).join("\n\n"),
         );
+
+        if (extractedText.length < 100) {
+          console.log(
+            "[PDF] Extracted text too short, falling back to OCR for scanned PDF",
+          );
+          return await extractTextFromPDFWithOCR(pdfUrl);
+        }
+
+        return extractedText;
       } finally {
         await loadingTask.destroy();
       }
@@ -139,6 +150,103 @@ export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
   }
 
   throw new Error("PDF fetch failed after all retries");
+}
+
+async function extractTextFromPDFWithOCR(pdfUrl: string): Promise<string> {
+  console.log("[OCR] Starting Scribe.js OCR for PDF:", pdfUrl);
+
+  try {
+    const response = await fetch(pdfUrl, {
+      signal: AbortSignal.timeout(120000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF for OCR: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const result = await scribe.extractText([new Uint8Array(arrayBuffer)]);
+
+    const text = result.trim();
+    console.log("[OCR] Scribe.js extracted", text.length, "characters");
+
+    return normalizeExtractedText(text);
+  } catch (error) {
+    console.error("[OCR] Scribe.js OCR failed:", error);
+    throw new Error("OCR failed to extract text from PDF");
+  }
+}
+
+export async function extractTextFromImage(imageUrl: string): Promise<string> {
+  console.log("[Image OCR] Starting Scribe.js for image:", imageUrl);
+
+  try {
+    const response = await fetch(imageUrl, {
+      signal: AbortSignal.timeout(60000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const result = await scribe.extractText([new Uint8Array(arrayBuffer)]);
+
+    const text = result.trim();
+    console.log("[Image OCR] Extracted", text.length, "characters");
+
+    if (text.length < 20) {
+      throw new Error(
+        "Image contains insufficient text for meaningful extraction",
+      );
+    }
+
+    return normalizeExtractedText(text);
+  } catch (error) {
+    console.error("[Image OCR] Extraction failed:", error);
+    throw new Error(
+      "Failed to extract text from image. Please use a clearer image.",
+    );
+  }
+}
+
+export async function extractTextFromWord(docxUrl: string): Promise<string> {
+  console.log("[Word] Starting text extraction from Word document:", docxUrl);
+
+  try {
+    const response = await fetch(docxUrl, {
+      signal: AbortSignal.timeout(60000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch Word document: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const result = await mammoth.extractRawText({
+      arrayBuffer,
+    });
+
+    const text = result.value.trim();
+    console.log("[Word] Extracted", text.length, "characters");
+
+    if (text.length < 50) {
+      console.log("[Word] Word text too short, trying OCR fallback");
+      return await extractTextFromImage(docxUrl);
+    }
+
+    return normalizeExtractedText(text);
+  } catch (error) {
+    console.error("[Word] Extraction failed, trying OCR fallback:", error);
+
+    try {
+      return await extractTextFromImage(docxUrl);
+    } catch {
+      throw new Error(
+        "Failed to extract text from Word document. Please convert to PDF.",
+      );
+    }
+  }
 }
 
 export async function summarizeText(
@@ -244,6 +352,99 @@ export async function generateQuizFromNote(
     return questions;
   } catch (error) {
     console.error("[AI] Quiz generation failed:", error);
+    return [];
+  }
+}
+
+export const DEFAULT_QUIZ_TOPICS = [
+  "Cell Biology and Genetics",
+  "Chemistry of Life - Biomolecules",
+  "Motion and Energy in Physics",
+  "Waves and Optics",
+  "Ecosystems and Ecology",
+  "Human Physiology",
+  "Mathematical Techniques",
+  "Statistics and Probability",
+];
+
+const DEFAULT_QUIZ_TOPIC_PROMPTS: Record<string, string> = {
+  "Cell Biology and Genetics":
+    "Topics covering cell structure, cell division (mitosis/meiosis), genetics, DNA, RNA, protein synthesis, inheritance patterns, and molecular biology for GCE A-Level.",
+  "Chemistry of Life - Biomolecules":
+    "Topics covering carbohydrates, proteins, lipids, enzymes, nucleic acids, bioenergetics, and biochemical reactions for GCE A-Level.",
+  "Motion and Energy in Physics":
+    "Topics covering kinematics, Newton's laws, work, energy, power, momentum, and conservation laws for GCE A-Level Physics.",
+  "Waves and Optics":
+    "Topics covering wave properties, reflection, refraction, diffraction, interference, lenses, and optical instruments for GCE A-Level Physics.",
+  "Ecosystems and Ecology":
+    "Topics covering ecosystems, energy flow, nutrient cycles, population dynamics, conservation, biodiversity, and environmental science for GCE A-Level.",
+  "Human Physiology":
+    "Topics covering the human digestive system, circulatory system, respiratory system, nervous system, excretory system, and homeostasis for GCE A-Level Biology.",
+  "Mathematical Techniques":
+    "Topics covering algebra, calculus, trigonometry, logarithms, sequences, series, and mathematical reasoning for GCE A-Level.",
+  "Statistics and Probability":
+    "Topics covering probability theory, random variables, statistical distributions, hypothesis testing, and data analysis for GCE A-Level.",
+};
+
+export async function generateQuizFromTopic(
+  topic: string,
+  options: {
+    questionCount: number;
+    questionTypes: "MCQ" | "OPEN" | "MIXED";
+  },
+) {
+  console.log(`[AI] Generating default quiz for topic: ${topic}`);
+
+  const topicPrompt = DEFAULT_QUIZ_TOPIC_PROMPTS[topic] || topic;
+  const questionTypeText =
+    options.questionTypes === "MIXED"
+      ? "Generate a mix of MCQ and Open-ended questions."
+      : options.questionTypes === "MCQ"
+        ? "Generate only Multiple Choice Questions (MCQ)."
+        : "Generate only Open-ended questions.";
+
+  const prompt = `You are an educational quiz generator for GCE A-Level students. Generate ${options.questionCount} quiz questions based on the following topic.
+
+  Topic: ${topic}
+  Description: ${topicPrompt}
+
+  ${questionTypeText}
+
+  Return JSON only.
+
+  For every question you MUST include all of these fields:
+  - type
+  - question
+  - options
+  - correctAnswer
+  - explanation
+
+  Rules:
+  - MCQ: Provide exactly 4 options in the options array
+  - OPEN: Provide an empty options array []
+  - correctAnswer must always be a string
+  - explanation must always be a non-empty string
+  - Questions should be appropriate for GCE A-Level examination standard
+  - Stay faithful to the topic description provided`;
+
+  const schema = z.object({
+    questions: z.array(generatedQuestionSchema),
+  });
+
+  try {
+    console.log("[AI] Calling OpenAI for default quiz with model: gpt-5.4");
+    const { object } = await generateObject({
+      model: aiModel,
+      schema,
+      prompt,
+    });
+
+    const questions = normalizeGeneratedQuestions(object.questions);
+    console.log(`[AI] Default quiz returned ${questions.length} questions`);
+
+    return questions;
+  } catch (error) {
+    console.error("[AI] Default quiz generation failed:", error);
     return [];
   }
 }

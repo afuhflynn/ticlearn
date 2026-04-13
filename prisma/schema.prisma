@@ -481,6 +481,7 @@ enum UserRole {
 enum FileType {
   PDF
   IMAGE
+  WORD
 }
 
 enum NoteStatus {
