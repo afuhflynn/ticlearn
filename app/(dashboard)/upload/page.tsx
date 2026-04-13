@@ -6,6 +6,7 @@ import {
   Brain,
   ExternalLink,
   FileText,
+  FileType,
   Image,
   Loader2,
   Pencil,
@@ -404,8 +405,10 @@ function UploadContent() {
             {file ? (
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-3">
-                  {file.type.includes("pdf") ? (
+                  {file.name.toLowerCase().endsWith(".pdf") ? (
                     <FileText className="h-8 w-8 text-red-500" />
+                  ) : file.name.toLowerCase().endsWith(".docx") ? (
+                    <FileType className="h-8 w-8 text-blue-600" />
                   ) : (
                     <Image className="h-8 w-8 text-blue-500" />
                   )}
@@ -516,6 +519,8 @@ function UploadContent() {
                           <div className="flex items-center gap-3">
                             {note.fileType === "PDF" ? (
                               <FileText className="h-8 w-8 text-red-500" />
+                            ) : note.fileType === "WORD" ? (
+                              <FileType className="h-8 w-8 text-blue-600" />
                             ) : (
                               <Image className="h-8 w-8 text-blue-500" />
                             )}

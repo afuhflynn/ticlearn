@@ -38,17 +38,40 @@ export const processNote = inngest.createFunction(
       const userSettings = await prisma.userSettings.findUnique({
         where: { userId: note.userId },
       });
-      const language = userSettings?.language || "eng";
+      const language = userSettings?.language ?? "eng";
       console.log(`[Inngest] Using language for OCR: ${language}`);
 
+      const timeoutMs = 120000; // 2 minutes
       let extractedText: string;
+
+      const extractWithTimeout = async (
+        extractionFn: () => Promise<string>,
+        timeout: number,
+      ): Promise<string> => {
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(
+            () =>
+              reject(
+                new Error(`OCR timed out after ${timeout / 1000} seconds`),
+              ),
+            timeout,
+          );
+        });
+        return Promise.race([extractionFn(), timeoutPromise]);
+      };
 
       switch (note.fileType) {
         case "PDF":
-          extractedText = await extractTextFromPDF(note.fileUrl, language);
+          extractedText = await extractWithTimeout(
+            () => extractTextFromPDF(note.fileUrl, language),
+            timeoutMs,
+          );
           break;
         case "IMAGE":
-          extractedText = await extractTextFromImage(note.fileUrl, language);
+          extractedText = await extractWithTimeout(
+            () => extractTextFromImage(note.fileUrl, language),
+            timeoutMs,
+          );
           break;
         case "WORD":
           extractedText = await extractTextFromWord(note.fileUrl);

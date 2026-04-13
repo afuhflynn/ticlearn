@@ -6,7 +6,7 @@ import {
   VerbosityLevel,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import mammoth from "mammoth";
-import Tesseract from "tesseract.js";
+import Tesseract, { createWorker, Worker } from "tesseract.js";
 import { z } from "zod";
 
 GlobalWorkerOptions.workerSrc = new URL(
@@ -207,14 +207,16 @@ export async function extractTextFromImage(
     language,
   );
 
+  let worker: Worker | null = null;
+
   try {
-    const { data } = await Tesseract.recognize(imageUrl, language, {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          console.log(`[Image OCR] Progress: ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
+    console.log("[Image OCR] Initializing Tesseract worker...");
+
+    worker = await createWorker(language);
+
+    console.log("[Image OCR] Worker initialized, starting recognition...");
+
+    const { data } = await worker.recognize(imageUrl);
 
     const text = data.text.trim();
     console.log("[Image OCR] Extracted", text.length, "characters");
@@ -231,6 +233,11 @@ export async function extractTextFromImage(
     throw new Error(
       "Failed to extract text from image. Please use a clearer image.",
     );
+  } finally {
+    if (worker) {
+      console.log("[Image OCR] Terminating worker...");
+      await worker.terminate();
+    }
   }
 }
 
@@ -238,6 +245,7 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
   console.log("[Word] Starting text extraction from Word document:", docxUrl);
 
   try {
+    console.log("[Word] Fetching document...");
     const response = await fetch(docxUrl, {
       signal: AbortSignal.timeout(60000),
     });
@@ -246,7 +254,11 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
       throw new Error(`Failed to fetch Word document: ${response.status}`);
     }
 
+    console.log("[Word] Fetch successful, converting to array buffer...");
     const arrayBuffer = await response.arrayBuffer();
+    console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
+
+    console.log("[Word] Extracting text with mammoth...");
     const result = await mammoth.extractRawText({
       arrayBuffer,
     });
