@@ -68,7 +68,7 @@ type NoteItem = {
   subject: string;
   fileUrl: string;
   fileName: string;
-  fileType: "PDF" | "IMAGE";
+  fileType: "PDF" | "IMAGE" | "WORD";
   status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
   summary?: string | null;
   topics?: string[];
@@ -144,7 +144,23 @@ function UploadContent() {
               ? uploadedFile.key
               : undefined,
           fileName: uploadedFile.name,
-          fileType: uploadedFile.type.includes("pdf") ? "PDF" : "IMAGE",
+          fileType: (() => {
+            const fileName = uploadedFile.name.toLowerCase();
+            if (
+              fileName.endsWith(".docx") ||
+              uploadedFile.type ===
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ) {
+              return "WORD";
+            }
+            if (
+              uploadedFile.type === "application/pdf" ||
+              fileName.endsWith(".pdf")
+            ) {
+              return "PDF";
+            }
+            return "IMAGE";
+          })(),
         });
 
         setFile(null);
