@@ -6,7 +6,7 @@ import {
   VerbosityLevel,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import mammoth from "mammoth";
-import scribe from "scribe.js-ocr";
+import Tesseract from "tesseract.js";
 import { z } from "zod";
 
 GlobalWorkerOptions.workerSrc = new URL(
@@ -153,30 +153,51 @@ export async function extractTextFromPDF(pdfUrl: string): Promise<string> {
 }
 
 async function extractTextFromPDFWithOCR(pdfUrl: string): Promise<string> {
-  console.log("[OCR] Starting Scribe.js OCR for PDF:", pdfUrl);
+  console.log("[OCR] Starting Tesseract.js OCR for PDF:", pdfUrl);
 
   try {
-    const result = await scribe.extractText([pdfUrl], ["eng"], "txt", {
-      skipRecPDFTextNative: false,
+    const response = await fetch(pdfUrl, {
+      signal: AbortSignal.timeout(120000),
     });
 
-    const text = result.trim();
-    console.log("[OCR] Scribe.js extracted", text.length, "characters");
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+
+    const { data } = await Tesseract.recognize(blob, "eng", {
+      logger: (m) => {
+        if (m.status === "recognizing text") {
+          console.log(`[OCR] Progress: ${Math.round(m.progress * 100)}%`);
+        }
+      },
+    });
+
+    const text = data.text.trim();
+    console.log("[OCR] Tesseract.js extracted", text.length, "characters");
 
     return normalizeExtractedText(text);
   } catch (error) {
-    console.error("[OCR] Scribe.js OCR failed:", error);
+    console.error("[OCR] Tesseract.js OCR failed:", error);
     throw new Error("OCR failed to extract text from PDF");
   }
 }
 
 export async function extractTextFromImage(imageUrl: string): Promise<string> {
-  console.log("[Image OCR] Starting Scribe.js for image:", imageUrl);
+  console.log("[Image OCR] Starting Tesseract.js for image:", imageUrl);
 
   try {
-    const result = await scribe.extractText([imageUrl], ["eng"], "txt");
+    const { data } = await Tesseract.recognize(imageUrl, "eng", {
+      logger: (m) => {
+        if (m.status === "recognizing text") {
+          console.log(`[Image OCR] Progress: ${Math.round(m.progress * 100)}%`);
+        }
+      },
+    });
 
-    const text = result.trim();
+    const text = data.text.trim();
     console.log("[Image OCR] Extracted", text.length, "characters");
 
     if (text.length < 20) {
