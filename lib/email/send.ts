@@ -58,6 +58,7 @@ const emailStyles = `
   .features { margin: 24px 0; padding: 0; list-style: none; }
   .features li { padding: 8px 0; display: flex; align-items: center; gap: 12px; }
   .features-icon { color: ${BRAND_COLORS.primary}; }
+  a { text-decoration: none; }
 `;
 
 export async function sendVerificationEmail({
@@ -598,7 +599,7 @@ export async function sendPlatformUpdateEmail({
 
         <h3 style="color: #1f2937; margin-top: 28px; margin-bottom: 12px;">🚀 What's New</h3>
         <ul class="features">
-          <li><span class="features-icon">📄</span> <strong>More File Types</strong> - Now you can upload not just PDFs, but also <strong>Word documents</strong> and <strong>images</strong> directly!</li>
+          <li><span class="features-icon">📄</span> <strong>More File Types</strong> - Now you can upload not just PDFs, but also Word documents and images directly!</li>
           <li><span class="features-icon">🔍</span> <strong>Smart OCR Technology</strong> - Even scanned documents and photos of your lecture notes are now readable. Our AI extracts text automatically.</li>
           <li><span class="features-icon">🎯</span> <strong>Instant Start</strong> - New users now get 3 default quizzes to start practicing immediately!</li>
           <li><span class="features-icon">👥</span> <strong>Better Navigation</strong> - Our sidebar is now cleaner and easier to navigate.</li>
@@ -614,12 +615,12 @@ export async function sendPlatformUpdateEmail({
         </ul>
 
         <a href="https://ticlearn.com/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
-          Explore Now →
+          Explore Now &rarr;
         </a>
 
         <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
           <p style="margin: 0; font-size: 16px; font-weight: 600; color: ${BRAND_COLORS.primary};">
-            Join 5,000+ students already acing their GCE exams!
+            Join 100+ students already acing their GCE exams!
           </p>
         </div>
 

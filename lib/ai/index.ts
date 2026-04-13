@@ -156,16 +156,9 @@ async function extractTextFromPDFWithOCR(pdfUrl: string): Promise<string> {
   console.log("[OCR] Starting Scribe.js OCR for PDF:", pdfUrl);
 
   try {
-    const response = await fetch(pdfUrl, {
-      signal: AbortSignal.timeout(120000),
+    const result = await scribe.extractText([pdfUrl], ["eng"], "txt", {
+      skipRecPDFTextNative: false,
     });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch PDF for OCR: ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const result = await scribe.extractText([new Uint8Array(arrayBuffer)]);
 
     const text = result.trim();
     console.log("[OCR] Scribe.js extracted", text.length, "characters");
@@ -181,16 +174,7 @@ export async function extractTextFromImage(imageUrl: string): Promise<string> {
   console.log("[Image OCR] Starting Scribe.js for image:", imageUrl);
 
   try {
-    const response = await fetch(imageUrl, {
-      signal: AbortSignal.timeout(60000),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch image: ${response.status}`);
-    }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const result = await scribe.extractText([new Uint8Array(arrayBuffer)]);
+    const result = await scribe.extractText([imageUrl], ["eng"], "txt");
 
     const text = result.trim();
     console.log("[Image OCR] Extracted", text.length, "characters");
@@ -231,21 +215,17 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
     console.log("[Word] Extracted", text.length, "characters");
 
     if (text.length < 50) {
-      console.log("[Word] Word text too short, trying OCR fallback");
-      return await extractTextFromImage(docxUrl);
+      throw new Error(
+        "Word document contains insufficient text. Please try a different file.",
+      );
     }
 
     return normalizeExtractedText(text);
   } catch (error) {
-    console.error("[Word] Extraction failed, trying OCR fallback:", error);
-
-    try {
-      return await extractTextFromImage(docxUrl);
-    } catch {
-      throw new Error(
-        "Failed to extract text from Word document. Please convert to PDF.",
-      );
-    }
+    console.error("[Word] Extraction failed:", error);
+    throw new Error(
+      "Failed to extract text from Word document. Please convert to PDF.",
+    );
   }
 }
 
