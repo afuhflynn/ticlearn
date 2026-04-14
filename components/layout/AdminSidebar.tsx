@@ -45,7 +45,7 @@ export function AdminSidebar() {
   return (
     <Sidebar className="hidden md:flex" collapsible="icon">
       <SidebarHeader className="border-b px-4 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 py-2">
           <Shield className="h-6 w-6 text-destructive" />
           <span className="font-bold">Admin</span>
         </div>

@@ -4,19 +4,17 @@ import {
   ArrowRight,
   BarChart3,
   BookOpen,
+  BotMessageSquare,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   CreditCard,
   GraduationCap,
-  Home,
   Link2,
   ListTodo,
+  LucideLayoutDashboard,
   MessageCircle,
-  MessageSquare,
   Settings,
-  Shield,
-  Sparkles,
   Trophy,
   Upload,
   Users,
@@ -46,7 +44,6 @@ import { usePlan } from "@/hooks";
 interface NavSection {
   id: string;
   label: string;
-  icon: React.ElementType;
   defaultOpen?: boolean;
   items: NavItem[];
 }
@@ -59,31 +56,31 @@ interface NavItem {
 }
 
 const mainNavItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/dashboard", label: "Dashboard", icon: LucideLayoutDashboard },
   { href: "/upload", label: "Upload Notes", icon: Upload },
   { href: "/quizzes", label: "My Quizzes", icon: ListTodo },
   { href: "/progress", label: "Progress", icon: BarChart3 },
+  { href: "/chat", label: "TiC", icon: BotMessageSquare },
+  { href: "/subscription", label: "Subscription", icon: CreditCard },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, paid: true },
 ];
 
 const learningNavItems: NavItem[] = [
   { href: "/gce-exams", label: "GCE Exams", icon: BookOpen, paid: true },
-  { href: "/chat", label: "TiC", icon: MessageSquare },
 ];
 
 const communityNavItems: NavItem[] = [
   { href: "/community", label: "Community", icon: Users, paid: true },
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, paid: true },
 ];
 
 const accountNavItems: NavItem[] = [
   { href: "/feedback", label: "Feedback", icon: MessageCircle },
-  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/affiliate", label: "Affiliate", icon: Link2 },
-  { href: "/subscription", label: "Subscription", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 const adminNavItems: NavItem[] = [
-  { href: "/admin", label: "Admin Dashboard", icon: Shield },
+  { href: "/admin", label: "Dashboard", icon: LucideLayoutDashboard },
   { href: "/admin/users", label: "Manage Users", icon: Settings },
 ];
 
@@ -91,35 +88,30 @@ const navSections: NavSection[] = [
   {
     id: "getting-started",
     label: "Getting Started",
-    icon: Sparkles,
     defaultOpen: true,
     items: mainNavItems,
   },
   {
     id: "learning",
     label: "My Learning",
-    icon: BookOpen,
     defaultOpen: true,
     items: learningNavItems,
   },
   {
     id: "connect",
     label: "Connect",
-    icon: Users,
     defaultOpen: false,
     items: communityNavItems,
   },
   {
     id: "account",
     label: "My Account",
-    icon: Settings,
     defaultOpen: false,
     items: accountNavItems,
   },
   {
     id: "admin",
-    label: "Platform",
-    icon: Shield,
+    label: "Admin Panel",
     defaultOpen: false,
     items: adminNavItems,
   },
@@ -165,7 +157,7 @@ export function AppSidebar() {
           if (section.id === "admin" && !isAdmin) return null;
 
           const isExpanded = expandedSections[section.id] ?? false;
-          const SectionIcon = section.icon;
+          // const SectionIcon = section.icon;
 
           return (
             <SidebarGroup key={section.id}>
@@ -174,7 +166,7 @@ export function AppSidebar() {
                 onClick={() => toggleSection(section.id)}
               >
                 <div className="flex items-center gap-2">
-                  <SectionIcon className="h-4 w-4" />
+                  {/* <SectionIcon className="h-4 w-4" /> */}
                   <span className="text-sm font-medium">{section.label}</span>
                 </div>
                 {isExpanded ? (
@@ -184,7 +176,7 @@ export function AppSidebar() {
                 )}
               </SidebarGroupLabel>
               {isExpanded && (
-                <SidebarGroupContent>
+                <SidebarGroupContent className="pl-2">
                   <SidebarMenu>
                     {section.items.map((item) => {
                       const isActive =
