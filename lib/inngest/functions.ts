@@ -79,13 +79,16 @@ export const processNote = inngest.createFunction(
         case "IMAGE":
           console.log("[Inngest] Extracting IMAGE text...");
           extractedText = await extractWithTimeout(
-            () => extractTextFromImage(note.fileUrl, language),
+            () =>
+              extractTextFromImage(note.uploadthingKey || undefined, language),
             timeoutMs,
           );
           break;
         case "WORD":
           console.log("[Inngest] Extracting WORD text...");
-          extractedText = await extractTextFromWord(note.fileUrl);
+          extractedText = await extractTextFromWord(
+            note.uploadthingKey || undefined,
+          );
           break;
         default:
           throw new Error(`Unsupported file type: ${note.fileType}`);

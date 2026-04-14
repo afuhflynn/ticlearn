@@ -7,7 +7,10 @@ import {
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import mammoth from "mammoth";
 import Tesseract from "tesseract.js";
+import { UTApi } from "uploadthing/server";
 import { z } from "zod";
+
+const utapi = new UTApi();
 
 GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/legacy/build/pdf.worker.mjs",
@@ -197,15 +200,38 @@ async function extractTextFromPDFWithOCR(
 }
 
 export async function extractTextFromImage(
-  imageUrl: string,
+  uploadthingKey: string | undefined,
   language: string = "eng",
 ): Promise<string> {
   console.log(
-    "[Image OCR] Starting Tesseract.js for image:",
-    imageUrl,
+    "[Image OCR] Starting Tesseract.js for image",
+    "uploadthingKey:",
+    uploadthingKey,
     "language:",
     language,
   );
+
+  let imageUrl = "";
+
+  if (uploadthingKey) {
+    console.log(
+      "[Image OCR] Getting server-accessible URL from UploadThing...",
+    );
+    try {
+      const fileUrls = await utapi.getFileUrls(uploadthingKey);
+      if (fileUrls.data && fileUrls.data.length > 0) {
+        imageUrl = fileUrls.data[0].url;
+        console.log("[Image OCR] Got URL:", imageUrl);
+      } else {
+        throw new Error("Could not get file URL from UploadThing");
+      }
+    } catch (error) {
+      console.error("[Image OCR] Failed to get UploadThing URL:", error);
+      throw new Error("Failed to access uploaded image from server");
+    }
+  } else {
+    throw new Error("No uploadthingKey provided for image");
+  }
 
   try {
     console.log("[Image OCR] Starting recognition on image...");
@@ -237,11 +263,33 @@ export async function extractTextFromImage(
   }
 }
 
-export async function extractTextFromWord(docxUrl: string): Promise<string> {
-  console.log("[Word] Starting text extraction from Word document:", docxUrl);
+export async function extractTextFromWord(
+  uploadthingKey: string | undefined,
+): Promise<string> {
+  console.log(
+    "[Word] Starting text extraction from Word document, key:",
+    uploadthingKey,
+  );
+
+  if (!uploadthingKey) {
+    throw new Error("No uploadthingKey provided for Word document");
+  }
+
+  let docxUrl = "";
 
   try {
-    console.log("[Word] Step 1: Fetching document...");
+    console.log(
+      "[Word] Step 1: Getting server-accessible URL from UploadThing...",
+    );
+    const fileUrls = await utapi.getFileUrls(uploadthingKey);
+    if (fileUrls.data && fileUrls.data.length > 0) {
+      docxUrl = fileUrls.data[0].url;
+      console.log("[Word] Got URL:", docxUrl);
+    } else {
+      throw new Error("Could not get file URL from UploadThing");
+    }
+
+    console.log("[Word] Step 2: Fetching document...");
     const response = await fetch(docxUrl, {
       signal: AbortSignal.timeout(60000),
     });
@@ -251,7 +299,7 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
       throw new Error(`Failed to fetch Word document: ${response.status}`);
     }
 
-    console.log("[Word] Step 2: Converting to array buffer...");
+    console.log("[Word] Step 3: Converting to array buffer...");
     const arrayBuffer = await response.arrayBuffer();
     console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
 
@@ -259,13 +307,13 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
       throw new Error("Word document is empty (0 bytes)");
     }
 
-    console.log("[Word] Step 3: Extracting text with mammoth...");
+    console.log("[Word] Step 4: Extracting text with mammoth...");
     const buffer = Buffer.from(arrayBuffer);
     const result = await mammoth.extractRawText({
       buffer,
     });
 
-    console.log("[Word] Step 4: Processing result...");
+    console.log("[Word] Step 5: Processing result...");
     const text = result.value.trim();
     console.log("[Word] Extracted", text.length, "characters");
     console.log("[Word] First 200 chars:", text.substring(0, 200));
@@ -275,7 +323,6 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
         "[Word] Warning: Text too short, but continuing...",
         text.length,
       );
-      // Don't throw - just return what we got
       if (text.length < 10) {
         throw new Error("Word document contains insufficient text");
       }
