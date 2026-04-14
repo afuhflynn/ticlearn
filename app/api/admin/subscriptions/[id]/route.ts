@@ -7,6 +7,39 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+async function sendSubscriptionNotification(
+  subscriptionId: string,
+  action: "ACTIVATE" | "REJECT",
+  planLabel?: string,
+  amount?: number,
+  transactionId?: string,
+  reason?: string,
+) {
+  try {
+    await fetch(
+      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/inngest/trigger`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "subscription/action",
+          subscriptionId,
+          action,
+          planLabel,
+          amount,
+          transactionId,
+          reason,
+        }),
+      },
+    );
+    console.log(
+      `[API] Triggered ${action} notification for subscription ${subscriptionId}`,
+    );
+  } catch (error) {
+    console.error(`[API] Failed to trigger notification:`, error);
+  }
+}
+
 export async function GET(req: Request, { params }: RouteParams) {
   try {
     const session = await auth.api.getSession({
@@ -66,17 +99,32 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const { status } = await req.json();
+    const { status, plan, activatedAt } = await req.json();
+
+    const updateData: Record<string, unknown> = {};
+    if (status) updateData.status = status;
+    if (plan) updateData.plan = plan;
+    if (activatedAt) updateData.activatedAt = new Date(activatedAt);
 
     const subscription = await prisma.subscription.update({
       where: { id },
-      data: { status: status as any },
+      data: updateData as any,
       include: {
         user: {
           select: { id: true, name: true, email: true },
         },
       },
     });
+
+    if (status === "ACTIVE") {
+      await sendSubscriptionNotification(
+        id,
+        "ACTIVATE",
+        subscription.plan,
+        subscription.amount,
+        subscription.fapshiTransId || undefined,
+      );
+    }
 
     return NextResponse.json({ subscription, success: true });
   } catch (error) {
@@ -104,11 +152,28 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const { reason } = await req
+      .json()
+      .catch(() => ({ reason: "Payment rejected by admin" }));
 
     const subscription = await prisma.subscription.update({
       where: { id },
       data: { status: "FAILED" },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
+
+    await sendSubscriptionNotification(
+      id,
+      "REJECT",
+      subscription.plan,
+      subscription.amount,
+      subscription.fapshiTransId || undefined,
+      reason,
+    );
 
     return NextResponse.json({ subscription, success: true });
   } catch (error) {

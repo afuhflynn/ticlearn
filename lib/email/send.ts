@@ -641,3 +641,127 @@ export async function sendPlatformUpdateEmail({
 `;
   return sendEmail({ to: email, subject, html });
 }
+
+export async function sendSubscriptionActivatedEmail({
+  email,
+  name,
+  planLabel,
+  amount,
+  transactionId,
+}: {
+  email: string;
+  name: string;
+  planLabel: string;
+  amount: number;
+  transactionId: string;
+}) {
+  const subject = `✅ Payment Approved — ${planLabel} Plan Activated`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Subscription Activated</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">✅</div>
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Your Payment Has Been Approved!</h2>
+        <p>Hi <span class="highlight">${name || "there"}</span>,</p>
+        <p>Great news! Your payment has been verified and your <span class="highlight">${planLabel}</span> plan is now <strong style="color: #10b981;">ACTIVE</strong>.</p>
+
+        <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #e5e7eb;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #6b7280; text-transform: uppercase;">Account Details</h3>
+          <p style="margin: 8px 0;"><strong>Plan:</strong> ${planLabel}</p>
+          <p style="margin: 8px 0;"><strong>Amount Paid:</strong> ${amount.toLocaleString()} XAF</p>
+          <p style="margin: 8px 0;"><strong>Transaction ID:</strong> <code style="background: #eee; padding: 2px 4px;">${transactionId}</code></p>
+        </div>
+
+        <p>You now have full access to all premium features. Start exploring now!</p>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" class="button">Go to Dashboard</a>
+        </div>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p>Made with ❤️ for Cameroonian students</p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/support">Support</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}
+
+export async function sendSubscriptionRejectedEmail({
+  email,
+  name,
+  planLabel,
+  reason,
+}: {
+  email: string;
+  name: string;
+  planLabel: string;
+  reason: string;
+}) {
+  const subject = `⚠️ Payment Not Approved — ${planLabel}`;
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Not Approved</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header" style="background: linear-gradient(135deg, #ef4444 0%, #f87171 100%);">
+        <div class="logo">⚠️</div>
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Payment Not Approved</h2>
+        <p>Hi <span class="highlight">${name || "there"}</span>,</p>
+        <p>Unfortunately, your payment for the <span class="highlight">${planLabel}</span> plan could not be verified.</p>
+
+        <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 24px 0;">
+          <h3 style="margin-top: 0; font-size: 16px; color: #991b1b;">Reason</h3>
+          <p style="color: #991b1b; margin: 0;">${reason}</p>
+        </div>
+
+        <p>Please contact our support team or try again with a valid transaction.</p>
+
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/subscription" class="button" style="background: #ef4444;">Try Again</a>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+          Questions? Contact us at support@ticlearn.ticsummit.org
+        </p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p>Made with ❤️ for Cameroonian students</p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
+}

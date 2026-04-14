@@ -15,6 +15,7 @@ import {
   Clock,
   History,
   AlertCircle,
+  Smartphone,
 } from "lucide-react";
 import {
   Card,
@@ -27,7 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +39,16 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const PLAN_FEATURES = {
   FREE: [
@@ -76,6 +87,13 @@ const PLAN_PRICES = {
   PREMIUM: 10000,
 };
 
+interface PaymentSettings {
+  mtnNumber: string | null;
+  mtnHolderName: string | null;
+  orangeNumber: string | null;
+  orangeHolderName: string | null;
+}
+
 export default function SubscriptionPage() {
   const {
     usage,
@@ -90,6 +108,29 @@ export default function SubscriptionPage() {
   const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
+
+  const [paymentSettings, setPaymentSettings] =
+    useState<PaymentSettings | null>(null);
+  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [manualPlan, setManualPlan] = useState("STARTER");
+  const [paymentMethod, setPaymentMethod] = useState("MTN");
+  const [transactionId, setTransactionId] = useState("");
+  const [isSubmittingManual, setIsSubmittingManual] = useState(false);
+
+  useEffect(() => {
+    async function fetchPaymentSettings() {
+      try {
+        const response = await fetch("/api/payment-settings");
+        const data = await response.json();
+        setPaymentSettings(data);
+      } catch (error) {
+        console.error("Failed to fetch payment settings:", error);
+      } finally {
+        setIsLoadingSettings(false);
+      }
+    }
+    fetchPaymentSettings();
+  }, []);
 
   const handleUpgrade = async (selectedPlan: string) => {
     setIsProcessing(true);
@@ -106,7 +147,6 @@ export default function SubscriptionPage() {
         throw new Error(data.error || "Failed to initiate payment");
       }
 
-      // Redirect to Fapshi payment page
       if (data.link) {
         window.location.href = data.link;
       } else {
@@ -121,7 +161,44 @@ export default function SubscriptionPage() {
     }
   };
 
-  if (usageLoading) {
+  const handleManualSubmit = async () => {
+    if (!transactionId.trim()) {
+      toast.error("Please enter your transaction ID");
+      return;
+    }
+
+    setIsSubmittingManual(true);
+    try {
+      const res = await fetch("/api/subscription/manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          plan: manualPlan,
+          transactionId: transactionId.trim(),
+          paymentMethod,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Failed to submit payment");
+      }
+
+      toast.success(
+        "Payment submitted! Please wait for admin approval. Check your email for updates.",
+      );
+      setTransactionId("");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to submit payment",
+      );
+    } finally {
+      setIsSubmittingManual(false);
+    }
+  };
+
+  if (usageLoading || isLoadingSettings) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -133,6 +210,9 @@ export default function SubscriptionPage() {
     if (limit === -1) return 0;
     return Math.min(100, (used / limit) * 100);
   };
+
+  const hasPaymentNumbers =
+    paymentSettings?.mtnNumber || paymentSettings?.orangeNumber;
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto">
@@ -228,174 +308,321 @@ export default function SubscriptionPage() {
         </Dialog>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Plan Info */}
-        <Card className="md:col-span-1 border-primary/20 bg-primary/5">
-          <CardHeader>
-            <CardTitle className="text-xl">
-              {isPending ? "Payment Processing" : "Your Current Plan"}
-            </CardTitle>
-            <CardDescription>
-              {isPending
-                ? `Upgrading to ${previousPlan || plan} - please complete payment`
-                : `You are currently on the ${plan} plan`}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-center p-6 rounded-2xl bg-background/50 border-2 border-dashed border-primary/30">
-              <div className="text-center">
-                <Badge
-                  variant="outline"
-                  className={`mb-2 uppercase tracking-widest border-primary ${
-                    isPending
-                      ? "text-yellow-600 border-yellow-600"
-                      : status === "ACTIVE"
-                        ? "text-primary"
-                        : "text-muted-foreground"
-                  }`}
-                >
-                  {isPending && previousPlan ? previousPlan : plan}
-                </Badge>
-                <div className="text-sm text-muted-foreground">
-                  Status:{" "}
-                  <span
-                    className={`font-semibold uppercase ${
-                      status === "ACTIVE"
-                        ? "text-green-600"
-                        : status === "PENDING"
-                          ? "text-yellow-600"
-                          : status === "FAILED"
-                            ? "text-red-600"
-                            : "text-muted-foreground"
-                    }`}
-                  >
-                    {status === "NONE"
-                      ? "No Subscription"
-                      : status.toLowerCase()}
-                  </span>
-                </div>
-              </div>
-            </div>
-            <ul className="space-y-3">
-              {PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES]?.map(
-                (feature) => (
-                  <li key={feature} className="flex items-center gap-3 text-sm">
-                    <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                      <Check className="h-3 w-3 text-primary" />
-                    </div>
-                    {feature}
-                  </li>
-                ),
-              )}
-            </ul>
-          </CardContent>
-        </Card>
+      <Tabs defaultValue="auto" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="auto" className="gap-2">
+            <CreditCard className="h-4 w-4" />
+            Auto Payment
+          </TabsTrigger>
+          <TabsTrigger value="manual" className="gap-2">
+            <Smartphone className="h-4 w-4" />
+            Manual Payment
+          </TabsTrigger>
+        </TabsList>
 
-        {/* Usage Analytics */}
-        <Card className="md:col-span-2">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-xl flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-primary" />
-                  Usage Analytics
+        <TabsContent value="auto">
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="md:col-span-1 border-primary/20 bg-primary/5">
+              <CardHeader>
+                <CardTitle className="text-xl">
+                  {isPending ? "Payment Processing" : "Your Current Plan"}
                 </CardTitle>
                 <CardDescription>
-                  Track your monthly usage limits
+                  {isPending
+                    ? `Upgrading to ${previousPlan || plan} - please complete payment`
+                    : `You are currently on the ${plan} plan`}
                 </CardDescription>
-              </div>
-              <Badge variant="secondary" className="gap-1">
-                <Clock className="h-3 w-3" />
-                Resets monthly
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-8">
-            {/* PDF Uploads */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-medium">
-                  <Upload className="h-4 w-4 text-muted-foreground" />
-                  PDF Uploads
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-center p-6 rounded-2xl bg-background/50 border-2 border-dashed border-primary/30">
+                  <div className="text-center">
+                    <Badge
+                      variant="outline"
+                      className={`mb-2 uppercase tracking-widest border-primary ${
+                        isPending
+                          ? "text-yellow-600 border-yellow-600"
+                          : status === "ACTIVE"
+                            ? "text-primary"
+                            : "text-muted-foreground"
+                      }`}
+                    >
+                      {isPending && previousPlan ? previousPlan : plan}
+                    </Badge>
+                    <div className="text-sm text-muted-foreground">
+                      Status:{" "}
+                      <span
+                        className={`font-semibold uppercase ${
+                          status === "ACTIVE"
+                            ? "text-green-600"
+                            : status === "PENDING"
+                              ? "text-yellow-600"
+                              : status === "FAILED"
+                                ? "text-red-600"
+                                : "text-muted-foreground"
+                        }`}
+                      >
+                        {status === "NONE"
+                          ? "No Subscription"
+                          : status.toLowerCase()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  {usage.pdfUploads} /{" "}
-                  {limits.pdfUploads === -1 ? "∞" : limits.pdfUploads}
+                <ul className="space-y-3">
+                  {PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES]?.map(
+                    (feature) => (
+                      <li
+                        key={feature}
+                        className="flex items-center gap-3 text-sm"
+                      >
+                        <div className="h-5 w-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <Check className="h-3 w-3 text-primary" />
+                        </div>
+                        {feature}
+                      </li>
+                    ),
+                  )}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="md:col-span-2">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5 text-primary" />
+                      Usage Analytics
+                    </CardTitle>
+                    <CardDescription>
+                      Track your monthly usage limits
+                    </CardDescription>
+                  </div>
+                  <Badge variant="secondary" className="gap-1">
+                    <Clock className="h-3 w-3" />
+                    Resets monthly
+                  </Badge>
                 </div>
-              </div>
-              <Progress
-                value={getUsagePercentage(usage.pdfUploads, limits.pdfUploads)}
-                className="h-2"
-              />
-              {limits.pdfUploads !== -1 &&
-                usage.pdfUploads >= limits.pdfUploads && (
-                  <p className="text-xs text-destructive flex items-center gap-1">
-                    <AlertCircle className="h-3 w-3" />
-                    You have reached your limit. Upgrade for more uploads.
+              </CardHeader>
+              <CardContent className="space-y-8">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-medium">
+                      <Upload className="h-4 w-4 text-muted-foreground" />
+                      PDF Uploads
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {usage.pdfUploads} /{" "}
+                      {limits.pdfUploads === -1 ? "∞" : limits.pdfUploads}
+                    </div>
+                  </div>
+                  <Progress
+                    value={getUsagePercentage(
+                      usage.pdfUploads,
+                      limits.pdfUploads,
+                    )}
+                    className="h-2"
+                  />
+                  {limits.pdfUploads !== -1 &&
+                    usage.pdfUploads >= limits.pdfUploads && (
+                      <p className="text-xs text-destructive flex items-center gap-1">
+                        <AlertCircle className="h-3 w-3" />
+                        You have reached your limit. Upgrade for more uploads.
+                      </p>
+                    )}
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-medium">
+                      <ListTodo className="h-4 w-4 text-muted-foreground" />
+                      Quiz Generations
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {usage.quizGenerations} /{" "}
+                      {limits.quizGenerations === -1
+                        ? "∞"
+                        : limits.quizGenerations}
+                    </div>
+                  </div>
+                  <Progress
+                    value={getUsagePercentage(
+                      usage.quizGenerations,
+                      limits.quizGenerations,
+                    )}
+                    className="h-2"
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-medium">
+                      <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                      AI Tutor (Daily)
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      {usage.aiTutorMessages} /{" "}
+                      {limits.aiTutorMessages === -1
+                        ? "∞"
+                        : limits.aiTutorMessages}
+                    </div>
+                  </div>
+                  <Progress
+                    value={getUsagePercentage(
+                      usage.aiTutorMessages,
+                      limits.aiTutorMessages,
+                    )}
+                    className="h-2"
+                  />
+                  {chatDailyUsage && (
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
+                      <span className="flex items-center gap-1">
+                        <History className="h-3 w-3" />
+                        Resets at{" "}
+                        {new Date(chatDailyUsage.resetsAt).toLocaleTimeString()}
+                      </span>
+                      <span>{chatDailyUsage.remaining} messages left</span>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+              <CardFooter className="bg-muted/50 border-t rounded-b-xl px-6 py-4">
+                <p className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  Upgrade to Premium for unlimited access and priority support
+                </p>
+              </CardFooter>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="manual">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Smartphone className="h-5 w-5 text-primary" />
+                Manual Payment
+              </CardTitle>
+              <CardDescription>
+                Pay via MTN or Orange Money manually and submit your transaction
+                ID for verification
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {hasPaymentNumbers ? (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    {paymentSettings?.mtnNumber && (
+                      <Card className="bg-yellow-50 border-yellow-200">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-yellow-600 font-bold">
+                              MTN Mobile Money
+                            </span>
+                          </div>
+                          <p className="text-2xl font-bold">
+                            {paymentSettings.mtnNumber}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Holder: {paymentSettings.mtnHolderName || "N/A"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                    {paymentSettings?.orangeNumber && (
+                      <Card className="bg-orange-50 border-orange-200">
+                        <CardContent className="pt-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-orange-600 font-bold">
+                              Orange Money
+                            </span>
+                          </div>
+                          <p className="text-2xl font-bold">
+                            {paymentSettings.orangeNumber}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Holder: {paymentSettings.orangeHolderName || "N/A"}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+
+                  <div className="border-t pt-6 space-y-4">
+                    <div className="grid gap-2">
+                      <Label>Select Plan</Label>
+                      <Select value={manualPlan} onValueChange={setManualPlan}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PLAN_PRICES).map(([key, price]) => (
+                            <SelectItem key={key} value={key}>
+                              {key} - {price.toLocaleString()} XAF / month
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Payment Method</Label>
+                      <Select
+                        value={paymentMethod}
+                        onValueChange={setPaymentMethod}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="MTN">MTN Mobile Money</SelectItem>
+                          <SelectItem value="ORANGE">Orange Money</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label>Transaction ID</Label>
+                      <Input
+                        placeholder="Enter your MoMo transaction ID"
+                        value={transactionId}
+                        onChange={(e) => setTransactionId(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        This is the transaction ID you received in your SMS
+                        after sending money
+                      </p>
+                    </div>
+
+                    <Button
+                      onClick={handleManualSubmit}
+                      disabled={isSubmittingManual}
+                      className="w-full"
+                    >
+                      {isSubmittingManual ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit for Verification"
+                      )}
+                    </Button>
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Smartphone className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>
+                    Manual payment is currently not available. Please try again
+                    later or use auto payment.
                   </p>
-                )}
-            </div>
-
-            {/* Quiz Generations */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-medium">
-                  <ListTodo className="h-4 w-4 text-muted-foreground" />
-                  Quiz Generations
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {usage.quizGenerations} /{" "}
-                  {limits.quizGenerations === -1 ? "∞" : limits.quizGenerations}
-                </div>
-              </div>
-              <Progress
-                value={getUsagePercentage(
-                  usage.quizGenerations,
-                  limits.quizGenerations,
-                )}
-                className="h-2"
-              />
-            </div>
-
-            {/* AI Tutor Messages */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 font-medium">
-                  <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                  AI Tutor (Daily)
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {usage.aiTutorMessages} /{" "}
-                  {limits.aiTutorMessages === -1 ? "∞" : limits.aiTutorMessages}
-                </div>
-              </div>
-              <Progress
-                value={getUsagePercentage(
-                  usage.aiTutorMessages,
-                  limits.aiTutorMessages,
-                )}
-                className="h-2"
-              />
-              {chatDailyUsage && (
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground uppercase tracking-tight">
-                  <span className="flex items-center gap-1">
-                    <History className="h-3 w-3" />
-                    Resets at{" "}
-                    {new Date(chatDailyUsage.resetsAt).toLocaleTimeString()}
-                  </span>
-                  <span>{chatDailyUsage.remaining} messages left</span>
                 </div>
               )}
-            </div>
-          </CardContent>
-          <CardFooter className="bg-muted/50 border-t rounded-b-xl px-6 py-4">
-            <p className="text-xs text-muted-foreground flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Upgrade to Premium for unlimited access and priority support
-            </p>
-          </CardFooter>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
