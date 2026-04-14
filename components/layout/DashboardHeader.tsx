@@ -14,7 +14,7 @@ export function DashboardHeader() {
     <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 w-full justify-between">
       <SidebarTrigger />
 
-      <div className="flex-1">
+      {/* <div className="flex-1">
         <div className="relative max-w-md hidden md:block">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
@@ -23,7 +23,7 @@ export function DashboardHeader() {
             className="pl-9 w-full"
           />
         </div>
-      </div>
+      </div> */}
 
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="icon" className="hidden md:flex">
