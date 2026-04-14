@@ -211,56 +211,95 @@ export async function extractTextFromImage(
     language,
   );
 
-  let imageUrl = "";
-
-  if (uploadthingKey) {
-    console.log(
-      "[Image OCR] Getting server-accessible URL from UploadThing...",
-    );
-    try {
-      const fileUrls = await utapi.getFileUrls(uploadthingKey);
-      if (fileUrls.data && fileUrls.data.length > 0) {
-        imageUrl = fileUrls.data[0].url;
-        console.log("[Image OCR] Got URL:", imageUrl);
-      } else {
-        throw new Error("Could not get file URL from UploadThing");
-      }
-    } catch (error) {
-      console.error("[Image OCR] Failed to get UploadThing URL:", error);
-      throw new Error("Failed to access uploaded image from server");
-    }
-  } else {
+  if (!uploadthingKey) {
     throw new Error("No uploadthingKey provided for image");
   }
 
-  try {
-    console.log("[Image OCR] Starting recognition on image...");
+  const imageUrl = `https://utfs.io/f/${uploadthingKey}`;
+  console.log("[Image OCR] Using direct URL:", imageUrl);
 
-    const { data } = await Tesseract.recognize(imageUrl, language, {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          console.log(`[Image OCR] Progress: ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
+  const maxRetries = 3;
+  const baseDelay = 1000;
 
-    const text = data.text.trim();
-    console.log("[Image OCR] Extracted", text.length, "characters");
-    console.log("[Image OCR] First 200 chars:", text.substring(0, 200));
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log("[Image OCR] Fetching image as Blob...");
 
-    if (text.length < 20) {
-      throw new Error(
-        "Image contains insufficient text for meaningful extraction",
+      const response = await fetch(imageUrl, {
+        signal: AbortSignal.timeout(30000),
+      });
+
+      console.log("[Image OCR] Fetch response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      console.log(
+        "[Image OCR] Array buffer size:",
+        arrayBuffer.byteLength,
+        "bytes",
       );
-    }
 
-    return normalizeExtractedText(text);
-  } catch (error) {
-    console.error("[Image OCR] Extraction failed:", error);
-    throw new Error(
-      `Failed to extract text from image: ${error instanceof Error ? error.message : "Unknown error"}`,
-    );
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error("Image is empty (0 bytes)");
+      }
+
+      const contentType = response.headers.get("content-type") || "image/png";
+      console.log("[Image OCR] Detected content-type:", contentType);
+
+      const buffer = Buffer.from(arrayBuffer);
+      console.log("[Image OCR] Buffer created,", buffer.length, "bytes");
+
+      console.log("[Image OCR] Starting recognition...");
+
+      const { data } = await Tesseract.recognize(buffer, language, {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            console.log(
+              `[Image OCR] Progress: ${Math.round(m.progress * 100)}%`,
+            );
+          }
+        },
+      });
+
+      const text = data.text.trim();
+      console.log("[Image OCR] Extracted", text.length, "characters");
+      console.log("[Image OCR] First 200 chars:", text.substring(0, 200));
+
+      if (text.length < 20) {
+        throw new Error(
+          "Image contains insufficient text for meaningful extraction",
+        );
+      }
+
+      return normalizeExtractedText(text);
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries - 1;
+      const isRetryable =
+        error instanceof TypeError &&
+        (error.message.includes("fetch failed") ||
+          error.message.includes("Connect Timeout") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("ECONNREFUSED"));
+
+      if (isLastAttempt || !isRetryable) {
+        console.error("[Image OCR] Extraction failed:", error);
+        throw new Error(
+          `Failed to extract text from image: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+
+      const delay = baseDelay * 2 ** attempt;
+      console.warn(
+        `[Image OCR] Attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
+
+  throw new Error("Image OCR failed after all retries");
 }
 
 export async function extractTextFromWord(
@@ -275,38 +314,64 @@ export async function extractTextFromWord(
     throw new Error("No uploadthingKey provided for Word document");
   }
 
-  let docxUrl = "";
+  let arrayBuffer: ArrayBuffer | null = null;
+
+  const docxUrl = `https://utfs.io/f/${uploadthingKey}`;
+  console.log("[Word] Using direct URL:", docxUrl);
+
+  const maxRetries = 3;
+  const baseDelay = 1000;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(
+        "[Word] Step 2: Fetching document...",
+        `Attempt ${attempt + 1}`,
+      );
+      const response = await fetch(docxUrl, {
+        signal: AbortSignal.timeout(60000),
+      });
+
+      console.log("[Word] Fetch response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Word document: ${response.status}`);
+      }
+
+      console.log("[Word] Step 3: Converting to array buffer...");
+      arrayBuffer = await response.arrayBuffer();
+      console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
+
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error("Word document is empty (0 bytes)");
+      }
+
+      break;
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries - 1;
+      const isRetryable =
+        error instanceof TypeError &&
+        (error.message.includes("fetch failed") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("ECONNREFUSED"));
+
+      if (isLastAttempt || !isRetryable) {
+        throw error;
+      }
+
+      const delay = baseDelay * 2 ** attempt;
+      console.warn(
+        `[Word] Fetch attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  if (!arrayBuffer) {
+    throw new Error("Word document fetch failed after all retries");
+  }
 
   try {
-    console.log(
-      "[Word] Step 1: Getting server-accessible URL from UploadThing...",
-    );
-    const fileUrls = await utapi.getFileUrls(uploadthingKey);
-    if (fileUrls.data && fileUrls.data.length > 0) {
-      docxUrl = fileUrls.data[0].url;
-      console.log("[Word] Got URL:", docxUrl);
-    } else {
-      throw new Error("Could not get file URL from UploadThing");
-    }
-
-    console.log("[Word] Step 2: Fetching document...");
-    const response = await fetch(docxUrl, {
-      signal: AbortSignal.timeout(60000),
-    });
-
-    console.log("[Word] Fetch response status:", response.status);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch Word document: ${response.status}`);
-    }
-
-    console.log("[Word] Step 3: Converting to array buffer...");
-    const arrayBuffer = await response.arrayBuffer();
-    console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
-
-    if (arrayBuffer.byteLength === 0) {
-      throw new Error("Word document is empty (0 bytes)");
-    }
-
     console.log("[Word] Step 4: Extracting text with mammoth...");
     const buffer = Buffer.from(arrayBuffer);
     const result = await mammoth.extractRawText({
