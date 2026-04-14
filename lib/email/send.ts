@@ -255,7 +255,7 @@ export async function sendWelcomeEmail({
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/support">Support</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/contact">Support</a></p>
       </div>
     </div>
   </div>
@@ -427,7 +427,7 @@ export async function sendUnverifiedWarningEmail({
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/support">Support</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/contact">Support</a></p>
       </div>
     </div>
   </div>
@@ -694,7 +694,7 @@ export async function sendSubscriptionActivatedEmail({
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/support">Support</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/contact">Support</a></p>
       </div>
     </div>
   </div>

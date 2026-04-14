@@ -13,6 +13,7 @@ import {
   sendRoleUpdateEmail,
   generateDefaultQuiz,
   sendPlatformUpdateEmail,
+  handleSubscriptionAction,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -30,5 +31,6 @@ export const { GET, POST, PUT } = serve({
     sendRoleUpdateEmail,
     generateDefaultQuiz,
     sendPlatformUpdateEmail,
+    handleSubscriptionAction,
   ],
 });

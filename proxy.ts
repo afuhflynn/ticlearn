@@ -43,6 +43,7 @@ const protectedRoutes = [
   "/affiliate",
   "/settings",
   "/admin",
+  "/subscription",
 ];
 
 export async function proxy(request: NextRequest) {

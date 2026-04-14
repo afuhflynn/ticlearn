@@ -41,6 +41,7 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const redirect = decodeURIComponent((callbackUrl as string) || "/dashboard");
 
   useEffect(() => {
     if (searchError === "google_sign_in_failed") {
@@ -92,7 +93,7 @@ function SignUpForm() {
     try {
       await signIn.social({
         provider: "google",
-        callbackURL: callbackUrl ?? "/dashboard",
+        callbackURL: redirect,
         errorCallbackURL: "/sign-up?error=google_sign_in_failed",
       });
     } catch (err) {

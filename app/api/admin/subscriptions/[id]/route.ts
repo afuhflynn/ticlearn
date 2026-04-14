@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { inngest } from "@/lib/inngest/client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -16,22 +17,18 @@ async function sendSubscriptionNotification(
   reason?: string,
 ) {
   try {
-    await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/inngest/trigger`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          type: "subscription/action",
-          subscriptionId,
-          action,
-          planLabel,
-          amount,
-          transactionId,
-          reason,
-        }),
+    await inngest.send({
+      name: "subscription/action",
+      data: {
+        subscriptionId,
+        action,
+        planLabel,
+        amount,
+        transactionId,
+        reason,
       },
-    );
+    });
+
     console.log(
       `[API] Triggered ${action} notification for subscription ${subscriptionId}`,
     );
