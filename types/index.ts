@@ -56,7 +56,7 @@ export interface NoteWithRelations {
   fileUrl: string;
   uploadthingKey: string | null;
   fileName: string;
-  fileType: "PDF" | "IMAGE";
+  fileType: "PDF" | "IMAGE" | "WORD";
   extractedText: string | null;
   topics: string[];
   keyPoints: string[];
@@ -75,7 +75,7 @@ export interface NoteSummary {
   fileUrl: string;
   uploadthingKey?: string | null;
   fileName: string;
-  fileType: "PDF" | "IMAGE";
+  fileType: "PDF" | "IMAGE" | "WORD";
   status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
   topics?: string[];
   keyPoints?: string[];

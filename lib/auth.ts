@@ -3,7 +3,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP } from "better-auth/plugins";
 import { prisma } from "./prisma";
-import { triggerWelcomeEmail } from "./inngest/trigger";
+import { triggerWelcomeEmail, triggerDefaultQuiz } from "./inngest/trigger";
 import {
   sendVerificationEmail,
   sendSignInEmail,
@@ -67,6 +67,9 @@ export const auth = betterAuth({
               console.error,
             );
           }
+
+          // Generate default quizzes for new users (after user is created)
+          await triggerDefaultQuiz(user.id).catch(console.error);
         },
       },
     },

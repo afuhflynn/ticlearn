@@ -98,7 +98,7 @@ interface NoteSummary {
   subject: string;
   fileUrl: string;
   fileName: string;
-  fileType: "PDF" | "IMAGE";
+  fileType: "PDF" | "IMAGE" | "WORD";
   status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
   summary?: string | null;
   topics?: string[];
@@ -478,7 +478,7 @@ export const api = {
         subject: string;
         fileUrl: string;
         fileName: string;
-        fileType: "PDF" | "IMAGE";
+        fileType: "PDF" | "IMAGE" | "WORD";
       }) =>
         apiRequest<{ note: NoteSummary }>("/notes", {
           method: "POST",

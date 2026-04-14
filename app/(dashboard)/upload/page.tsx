@@ -6,6 +6,7 @@ import {
   Brain,
   ExternalLink,
   FileText,
+  FileType,
   Image,
   Loader2,
   Pencil,
@@ -68,7 +69,7 @@ type NoteItem = {
   subject: string;
   fileUrl: string;
   fileName: string;
-  fileType: "PDF" | "IMAGE";
+  fileType: "PDF" | "IMAGE" | "WORD";
   status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
   summary?: string | null;
   topics?: string[];
@@ -144,7 +145,23 @@ function UploadContent() {
               ? uploadedFile.key
               : undefined,
           fileName: uploadedFile.name,
-          fileType: uploadedFile.type.includes("pdf") ? "PDF" : "IMAGE",
+          fileType: (() => {
+            const fileName = uploadedFile.name.toLowerCase();
+            if (
+              fileName.endsWith(".docx") ||
+              uploadedFile.type ===
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            ) {
+              return "WORD";
+            }
+            if (
+              uploadedFile.type === "application/pdf" ||
+              fileName.endsWith(".pdf")
+            ) {
+              return "PDF";
+            }
+            return "IMAGE";
+          })(),
         });
 
         setFile(null);
@@ -174,10 +191,38 @@ function UploadContent() {
 
   const handleFileSelection = (selectedFile?: File | null) => {
     if (!selectedFile) return;
-    if (!selectedFile.type.includes("pdf")) {
-      toast.error("Only PDF uploads are supported right now");
+
+    const supportedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/jpg",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ];
+
+    const isSupported = supportedTypes.some((type) => {
+      if (type === "application/pdf")
+        return selectedFile.type === "application/pdf";
+      if (type === "image/jpeg" || type === "image/png" || type === "image/jpg")
+        return selectedFile.type.startsWith("image/");
+      if (
+        type ===
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      )
+        return selectedFile.name.endsWith(".docx");
+      return false;
+    });
+
+    if (
+      !isSupported &&
+      !selectedFile.name.match(/\.(pdf|docx|jpg|jpeg|png)$/i)
+    ) {
+      toast.error(
+        "Unsupported file type. Please upload PDF, Word (.docx), or image files.",
+      );
       return;
     }
+
     setFile(selectedFile);
     if (!title.trim()) {
       const baseName = selectedFile.name.replace(/\.[^/.]+$/, "");
@@ -339,7 +384,7 @@ function UploadContent() {
               <input
                 id="note-upload"
                 type="file"
-                accept=".pdf"
+                accept=".pdf,.docx,.jpg,.jpeg,.png"
                 onChange={(e) =>
                   handleFileSelection(e.target.files?.[0] ?? null)
                 }
@@ -353,15 +398,17 @@ function UploadContent() {
                 or drag and drop
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                PDF only, max 16MB
+                PDF, Word (.docx), or Images, max 16MB
               </p>
             </label>
 
             {file ? (
               <div className="flex items-center justify-between rounded-lg border p-3">
                 <div className="flex items-center gap-3">
-                  {file.type.includes("pdf") ? (
+                  {file.name.toLowerCase().endsWith(".pdf") ? (
                     <FileText className="h-8 w-8 text-red-500" />
+                  ) : file.name.toLowerCase().endsWith(".docx") ? (
+                    <FileType className="h-8 w-8 text-blue-600" />
                   ) : (
                     <Image className="h-8 w-8 text-blue-500" />
                   )}
@@ -472,6 +519,8 @@ function UploadContent() {
                           <div className="flex items-center gap-3">
                             {note.fileType === "PDF" ? (
                               <FileText className="h-8 w-8 text-red-500" />
+                            ) : note.fileType === "WORD" ? (
+                              <FileType className="h-8 w-8 text-blue-600" />
                             ) : (
                               <Image className="h-8 w-8 text-blue-500" />
                             )}

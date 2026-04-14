@@ -235,7 +235,13 @@ If you introduce a new abstraction, it must replace an existing one for a clear 
 - [`prisma/schema.prisma`](./prisma/schema.prisma)
 - [`lib/auth.ts`](./lib/auth.ts)
 
-## 17. Non-Negotiable Safety Rules
+## 17. Package Manager: Use pnpm
+
+- This project uses **pnpm** as the package manager, not npm or yarn.
+- Always use `pnpm install`, `pnpm add`, `pnpm dev`, etc.
+- Do not use `npm` or `yarn` commands directly.
+
+## 18. Non-Negotiable Safety Rules
 
 - Do not commit secrets from `.env`.
 - Do not expose provider keys in client code.

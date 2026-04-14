@@ -11,7 +11,7 @@ const createNoteSchema = z.object({
   fileUrl: z.string().url("A valid file URL is required"),
   uploadthingKey: z.string().min(1).optional(),
   fileName: z.string().min(1, "File name is required"),
-  fileType: z.enum(["PDF", "IMAGE"]),
+  fileType: z.enum(["PDF", "IMAGE", "WORD"]),
 });
 
 export async function GET() {

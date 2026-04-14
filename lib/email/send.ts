@@ -20,7 +20,8 @@ export interface SendEmailOptions {
 export async function sendEmail({ to, subject, html, text }: SendEmailOptions) {
   try {
     await transporter.sendMail({
-      from: process.env.FROM_EMAIL || "TiCLearn <no-reply@ticlearn.com>",
+      from:
+        process.env.FROM_EMAIL || "TiCLearn <no-reply@ticlearn.ticsummit.org>",
       to,
       subject,
       html,
@@ -58,6 +59,7 @@ const emailStyles = `
   .features { margin: 24px 0; padding: 0; list-style: none; }
   .features li { padding: 8px 0; display: flex; align-items: center; gap: 12px; }
   .features-icon { color: ${BRAND_COLORS.primary}; }
+  a { text-decoration: none; }
 `;
 
 export async function sendVerificationEmail({
@@ -100,7 +102,7 @@ export async function sendVerificationEmail({
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a></p>
       </div>
     </div>
   </div>
@@ -149,7 +151,7 @@ export async function sendSignInEmail({
       </div>
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a></p>
       </div>
     </div>
   </div>
@@ -198,7 +200,7 @@ export async function sendPasswordResetEmail({
       </div>
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a></p>
       </div>
     </div>
   </div>
@@ -246,14 +248,14 @@ export async function sendWelcomeEmail({
           <li><span class="features-icon">📚</span> <strong>GCE Exams</strong> - Practice with past papers</li>
         </ul>
 
-        <a href="https://ticlearn.com/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+        <a href="https://ticlearn.ticsummit.org/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
           Go to Dashboard →
         </a>
       </div>
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a> • <a href="https://ticlearn.com/support">Support</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/support">Support</a></p>
       </div>
     </div>
   </div>
@@ -309,7 +311,7 @@ export async function sendAdminInvitationEmail({
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a></p>
       </div>
     </div>
   </div>
@@ -354,11 +356,11 @@ export async function sendRoleUpdateEmail({
         ${
           newRole === "ADMIN"
             ? `<p>You now have access to the administrative dashboard and can manage platform content and users.</p>
-             <a href="https://ticlearn.com/admin" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+             <a href="https://ticlearn.ticsummit.org/admin" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
                Go to Admin Dashboard →
              </a>`
             : `<p>Your administrative privileges have been revoked. You still have full access to all student features on TiCLearn.</p>
-             <a href="https://ticlearn.com/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+             <a href="https://ticlearn.ticsummit.org/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
                Go to Dashboard →
              </a>`
         }
@@ -367,7 +369,7 @@ export async function sendRoleUpdateEmail({
       </div>
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a></p>
       </div>
     </div>
   </div>
@@ -416,16 +418,16 @@ export async function sendUnverifiedWarningEmail({
 
         <p style="color: #6b7280; font-size: 14px;">To verify your account, use the verification code from your original signup email or request a new one.</p>
 
-        <a href="https://ticlearn.com/sign-in" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+        <a href="https://ticlearn.ticsummit.org/sign-in" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
           Sign In to Verify →
         </a>
 
-        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">Having trouble? Contact our support team at support@ticlearn.com</p>
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">Having trouble? Contact our support team at support@ticlearn.ticsummit.org</p>
       </div>
       <div class="footer">
         <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
         <p>Made with ❤️ for Cameroonian students</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a> • <a href="https://ticlearn.com/support">Support</a></p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/support">Support</a></p>
       </div>
     </div>
   </div>
@@ -563,4 +565,79 @@ export async function sendAdminPaymentAlert({
     </div>
   `;
   return sendEmail({ to: adminEmail, subject, html });
+}
+
+export async function sendPlatformUpdateEmail({
+  email,
+  name,
+}: {
+  email: string;
+  name: string;
+}) {
+  const subject =
+    "🎓 Big News: Your Study Just Got Easier! New Features Inside";
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform Updates</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>${emailStyles}</style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="header">
+        <div class="logo">🎓</div>
+        <h1>TiCLearn</h1>
+      </div>
+      <div class="content">
+        <h2 style="color: #1f2937; margin-bottom: 16px;">Big News: Your Study Just Got Easier!</h2>
+        <p>Hi <span class="highlight">${name || "Student"}</span>,</p>
+        <p>We've been working hard to make TiCLearn even better for you. Here are some exciting updates:</p>
+
+        <h3 style="color: #1f2937; margin-top: 28px; margin-bottom: 12px;">🚀 What's New</h3>
+        <ul class="features">
+          <li><span class="features-icon">📄</span> <strong>More File Types</strong> - Now you can upload not just PDFs, but also Word documents and images directly!</li>
+          <li><span class="features-icon">🔍</span> <strong>Smart OCR Technology</strong> - Even scanned documents and photos of your lecture notes are now readable. Our AI extracts text automatically.</li>
+          <li><span class="features-icon">🎯</span> <strong>Instant Start</strong> - New users now get 3 default quizzes to start practicing immediately!</li>
+          <li><span class="features-icon">👥</span> <strong>Better Navigation</strong> - Our sidebar is now cleaner and easier to navigate.</li>
+        </ul>
+
+        <h3 style="color: #1f2937; margin-top: 28px; margin-bottom: 12px;">🔔 Coming Soon</h3>
+        <ul class="features">
+          <li><span class="features-icon">📊</span> <strong>Excel Support</strong> - Upload and practice with spreadsheet data</li>
+          <li><span class="features-icon">📽️</span> <strong>PowerPoint Support</strong> - Convert presentations to quizzes</li>
+          <li><span class="features-icon">📱</span> <strong>Mobile App</strong> - Study anywhere with our soon-to-launch mobile app</li>
+          <li><span class="features-icon">👥</span> <strong>Study Groups</strong> - Collaborate with classmates</li>
+          <li><span class="features-icon">🎓</span> <strong>Certificates</strong> - Earn completion certificates</li>
+        </ul>
+
+        <a href="https://ticlearn.ticsummit.org/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
+          Explore Now &rarr;
+        </a>
+
+        <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
+          <p style="margin: 0; font-size: 16px; font-weight: 600; color: ${BRAND_COLORS.primary};">
+            Join 100+ students already acing their GCE exams!
+          </p>
+        </div>
+
+        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">
+          Have questions or need help? Reply to this email - we're here to help you succeed!
+        </p>
+      </div>
+      <div class="footer">
+        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+        <p>Made with ❤️ for Cameroonian students</p>
+        <p><a href="https://ticlearn.ticsummit.org">ticlearn.ticsummit.org</a> • <a href="https://ticlearn.ticsummit.org/contact">Support</a></p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+`;
+  return sendEmail({ to: email, subject, html });
 }

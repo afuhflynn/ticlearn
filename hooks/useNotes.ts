@@ -10,7 +10,7 @@ type NoteMutationPayload = {
   fileUrl: string;
   uploadthingKey?: string;
   fileName: string;
-  fileType: "PDF" | "IMAGE";
+  fileType: "PDF" | "IMAGE" | "WORD";
 };
 
 export function useNotes() {

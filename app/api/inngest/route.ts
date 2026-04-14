@@ -11,6 +11,8 @@ import {
   deleteUnverifiedAccounts,
   sendAdminInviteEmail,
   sendRoleUpdateEmail,
+  generateDefaultQuiz,
+  sendPlatformUpdateEmail,
 } from "@/lib/inngest/functions";
 
 export const { GET, POST, PUT } = serve({
@@ -26,5 +28,7 @@ export const { GET, POST, PUT } = serve({
     deleteUnverifiedAccounts,
     sendAdminInviteEmail,
     sendRoleUpdateEmail,
+    generateDefaultQuiz,
+    sendPlatformUpdateEmail,
   ],
 });
