@@ -24,12 +24,18 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { FaMoneyBill1 } from "react-icons/fa6";
 
 const adminNavItems = [
   { href: "/admin", icon: BarChart3, label: "Analytics" },
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
+  {
+    href: "/admin/payment-settings",
+    icon: FaMoneyBill1,
+    label: "Payment Settings",
+  },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
 ];
 

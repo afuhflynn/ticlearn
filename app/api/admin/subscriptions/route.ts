@@ -45,6 +45,7 @@ export async function GET(req: Request) {
       ...s,
       userEmail: s.user.email,
       activatedAt: s.activatedAt?.toISOString() || null,
+      fapshiTransId: s.fapshiTransId,
     }));
 
     return NextResponse.json({

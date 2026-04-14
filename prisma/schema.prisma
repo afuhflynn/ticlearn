@@ -245,7 +245,7 @@ model UserStats {
 
 model Subscription {
   id            String             @id @default(cuid())
-  userId        String             @map("user_id")
+  userId        String             @unique @map("user_id")
   userEmail     String             @map("user_email")
   userName      String             @map("user_name")
   plan          Plan
@@ -598,4 +598,17 @@ model ChatMessage {
   @@index([conversationId])
   @@index([userId])
   @@map("chat_messages")
+}
+
+model PaymentSettings {
+  id               String   @id @default(cuid())
+  key              String   @unique @default("global") @map("key")
+  mtnNumber        String?  @unique @map("mtn_number")
+  mtnHolderName    String?  @map("mtn_holder_name")
+  orangeNumber     String?  @unique @map("orange_number")
+  orangeHolderName String?  @map("orange_holder_name")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@map("payment_settings")
 }

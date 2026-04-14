@@ -587,8 +587,9 @@ export const generateDefaultQuiz = inngest.createFunction(
         };
       }
 
-      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } =
-        await import("@/lib/ai");
+      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } = await import(
+        "@/lib/ai"
+      );
 
       const shuffledTopics = [...DEFAULT_QUIZ_TOPICS].sort(
         () => Math.random() - 0.5,
@@ -717,6 +718,77 @@ export const sendPlatformUpdateEmail = inngest.createFunction(
     }
 
     return { success: true, sent: sentCount, total: users.length };
+  },
+);
+
+export const handleSubscriptionAction = inngest.createFunction(
+  {
+    name: "Handle Subscription Action",
+    id: "handle-subscription-action",
+    triggers: {
+      event: "subscription/action",
+    },
+  },
+  async ({ event }) => {
+    const { subscriptionId, action, planLabel, amount, transactionId, reason } =
+      event.data;
+
+    console.log(
+      `[Inngest] Processing subscription action: ${action} for ${subscriptionId}`,
+    );
+
+    const subscription = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+    });
+
+    if (!subscription) {
+      console.error(`[Inngest] Subscription not found: ${subscriptionId}`);
+      return { success: false, error: "Subscription not found" };
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: subscription.userId },
+    });
+
+    if (!user) {
+      console.error(`[Inngest] User not found: ${subscription.userId}`);
+      return { success: false, error: "User not found" };
+    }
+
+    if (action === "ACTIVATE") {
+      const { sendSubscriptionActivatedEmail } = await import(
+        "@/lib/email/send"
+      );
+
+      await sendSubscriptionActivatedEmail({
+        email: user.email,
+        name: user.name || "Student",
+        planLabel: planLabel || subscription.plan,
+        amount: amount || subscription.amount,
+        transactionId: transactionId || subscription.fapshiTransId || "N/A",
+      });
+
+      console.log(`[Inngest] Sent activation email to: ${user.email}`);
+      return { success: true, action: "ACTIVATE" };
+    }
+
+    if (action === "REJECT") {
+      const { sendSubscriptionRejectedEmail } = await import(
+        "@/lib/email/send"
+      );
+
+      await sendSubscriptionRejectedEmail({
+        email: user.email,
+        name: user.name || "Student",
+        planLabel: planLabel || subscription.plan,
+        reason: reason || "Transaction could not be verified",
+      });
+
+      console.log(`[Inngest] Sent rejection email to: ${user.email}`);
+      return { success: true, action: "REJECT" };
+    }
+
+    return { success: false, error: "Unknown action" };
   },
 );
 

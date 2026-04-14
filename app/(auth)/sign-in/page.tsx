@@ -42,6 +42,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
+  const redirect = decodeURIComponent((callbackUrl as string) || "/dashboard");
 
   useEffect(() => {
     if (searchError === "google_sign_in_failed") {
@@ -52,9 +53,9 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (!sessionLoading && session?.user) {
-      router.push(callbackUrl ?? "/dashboard");
+      router.push(redirect);
     }
-  }, [session, sessionLoading, router, callbackUrl]);
+  }, [session, sessionLoading, router, redirect]);
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +77,7 @@ export default function SignInPage() {
           }
         },
         onSuccess() {
+          console.log({ callbackUrl });
           router.push(callbackUrl ?? "/dashboard"); // @todo: Make this better later
         },
       },
@@ -88,7 +90,7 @@ export default function SignInPage() {
     try {
       await signIn.social({
         provider: "google",
-        callbackURL: callbackUrl ?? "/dashboard",
+        callbackURL: redirect,
         errorCallbackURL: "/sign-in?error=google_sign_in_failed",
       });
     } catch (err) {

@@ -8,7 +8,16 @@ import {
   useUpdateAdminSubscription,
   useDeleteAdminSubscription,
 } from "@/hooks/useAdmin";
-import { CreditCard, Loader2, Trash2, Download } from "lucide-react";
+import {
+  CreditCard,
+  Loader2,
+  Trash2,
+  Download,
+  MoreHorizontal,
+  Check,
+  X,
+  Edit,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import {
@@ -26,13 +35,38 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+
+const PLAN_OPTIONS = [
+  { value: "STARTER", label: "Starter", price: 3000 },
+  { value: "STANDARD", label: "Standard", price: 5000 },
+  { value: "PREMIUM", label: "Premium", price: 10000 },
+];
 
 export default function AdminSubscriptionsPage() {
   const { data: session, isPending: sessionLoading } = useSession();
   const router = useRouter();
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
+  const [isChangePlanOpen, setIsChangePlanOpen] = useState(false);
+  const [selectedSub, setSelectedSub] = useState<string | null>(null);
+  const [newPlan, setNewPlan] = useState("STARTER");
 
   const { subscriptions, totalPages, isLoading, refetch } =
     useAdminSubscriptions({
@@ -44,24 +78,42 @@ export default function AdminSubscriptionsPage() {
   const updateMutation = useUpdateAdminSubscription();
   const deleteMutation = useDeleteAdminSubscription();
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleActivate = async (id: string) => {
     try {
-      await updateMutation.mutateAsync({ id, data: { status: newStatus } });
-      toast.success("Subscription status updated");
+      await updateMutation.mutateAsync({
+        id,
+        data: { status: "ACTIVE" },
+      });
+      toast.success("Subscription activated");
       refetch();
     } catch (_error) {
-      toast.error("Failed to update subscription");
+      toast.error("Failed to activate subscription");
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this subscription?")) return;
+  const handleReject = async (id: string) => {
+    if (!confirm("Are you sure you want to reject this payment?")) return;
     try {
       await deleteMutation.mutateAsync(id);
-      toast.success("Subscription deleted");
+      toast.success("Payment rejected");
       refetch();
     } catch (_error) {
-      toast.error("Failed to delete subscription");
+      toast.error("Failed to reject payment");
+    }
+  };
+
+  const handleChangePlan = async () => {
+    if (!selectedSub) return;
+    try {
+      await updateMutation.mutateAsync({
+        id: selectedSub,
+        data: { status: "ACTIVE", plan: newPlan },
+      });
+      toast.success("Plan changed and activated");
+      setIsChangePlanOpen(false);
+      refetch();
+    } catch (_error) {
+      toast.error("Failed to change plan");
     }
   };
 
@@ -94,7 +146,7 @@ export default function AdminSubscriptionsPage() {
     );
   }
 
-  if (!session?.user || (session.user as any)?.role !== "ADMIN") {
+  if (!session?.user || (session.user as { role?: string })?.role !== "ADMIN") {
     router.push("/");
     return null;
   }
@@ -102,8 +154,7 @@ export default function AdminSubscriptionsPage() {
   const getStatusBadge = (s: string) => {
     const colors: Record<string, string> = {
       ACTIVE: "bg-green-500",
-      EXPIRED: "bg-red-500",
-      CANCELLED: "bg-gray-500",
+      FAILED: "bg-red-500",
       PENDING: "bg-yellow-500",
     };
     return (
@@ -115,19 +166,9 @@ export default function AdminSubscriptionsPage() {
     );
   };
 
-  const getPlanBadge = (p: string) => {
-    const colors: Record<string, string> = {
-      FREE: "bg-blue-500",
-      BASIC: "bg-purple-500",
-      PREMIUM: "bg-yellow-500",
-    };
-    return (
-      <span
-        className={`px-2 py-1 rounded-full text-xs text-white ${colors[p] || "bg-gray-500"}`}
-      >
-        {p}
-      </span>
-    );
+  const getPlanLabel = (p: string) => {
+    const plan = PLAN_OPTIONS.find((o) => o.value === p);
+    return plan ? plan.label : p;
   };
 
   return (
@@ -146,16 +187,18 @@ export default function AdminSubscriptionsPage() {
       <Card>
         <CardHeader>
           <div className="flex gap-4">
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="ACTIVE">Active</SelectItem>
-                <SelectItem value="EXPIRED">Expired</SelectItem>
-                <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 <SelectItem value="PENDING">Pending</SelectItem>
+                <SelectItem value="ACTIVE">Active</SelectItem>
+                <SelectItem value="FAILED">Rejected</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -173,51 +216,84 @@ export default function AdminSubscriptionsPage() {
                     <TableHead>User</TableHead>
                     <TableHead>Plan</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Activated</TableHead>
+                    <TableHead>Transaction ID</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Date</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {subscriptions?.map((sub) => (
                     <TableRow key={sub.id}>
-                      <TableCell>{sub.userEmail}</TableCell>
-                      <TableCell>{getPlanBadge(sub.plan)}</TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {sub.userName || "N/A"}
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            {sub.userEmail}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>{getPlanLabel(sub.plan)}</TableCell>
                       <TableCell>{getStatusBadge(sub.status)}</TableCell>
                       <TableCell>
-                        {sub.activatedAt
-                          ? new Date(sub.activatedAt).toLocaleDateString()
-                          : "N/A"}
+                        <code className="text-xs bg-muted px-2 py-1 rounded">
+                          {sub.fapshiTransId || "N/A"}
+                        </code>
                       </TableCell>
                       <TableCell>
-                        {sub.amount ? `$${sub.amount}` : "Free"}
+                        {sub.amount
+                          ? `${sub.amount.toLocaleString()} XAF`
+                          : "Free"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-2">
-                          <Select
-                            value={sub.status}
-                            onValueChange={(v) => handleStatusChange(sub.id, v)}
-                          >
-                            <SelectTrigger className="w-32 h-8">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="ACTIVE">Active</SelectItem>
-                              <SelectItem value="EXPIRED">Expired</SelectItem>
-                              <SelectItem value="CANCELLED">
-                                Cancelled
-                              </SelectItem>
-                              <SelectItem value="PENDING">Pending</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        {new Date(sub.createdAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell>
+                        {sub.status === "PENDING" ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="outline" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent>
+                              <DropdownMenuItem
+                                onClick={() => handleActivate(sub.id)}
+                                className="text-green-600"
+                              >
+                                <Check className="mr-2 h-4 w-4" />
+                                Activate
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleReject(sub.id)}
+                                className="text-red-600"
+                              >
+                                <X className="mr-2 h-4 w-4" />
+                                Reject
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  setSelectedSub(sub.id);
+                                  setNewPlan(sub.plan);
+                                  setIsChangePlanOpen(true);
+                                }}
+                              >
+                                <Edit className="mr-2 h-4 w-4" />
+                                Change Plan
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : sub.status === "ACTIVE" ? (
                           <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(sub.id)}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleReject(sub.id)}
                           >
-                            <Trash2 className="h-4 w-4 text-red-500" />
+                            <X className="h-4 w-4" />
                           </Button>
-                        </div>
+                        ) : null}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -247,6 +323,41 @@ export default function AdminSubscriptionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={isChangePlanOpen} onOpenChange={setIsChangePlanOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Plan</DialogTitle>
+            <DialogDescription>
+              Select a new plan before activating this subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <Label>Select Plan</Label>
+            <Select value={newPlan} onValueChange={setNewPlan}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLAN_OPTIONS.map((plan) => (
+                  <SelectItem key={plan.value} value={plan.value}>
+                    {plan.label} - {plan.price.toLocaleString()} XAF
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsChangePlanOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleChangePlan}>Activate</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

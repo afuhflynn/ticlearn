@@ -2,9 +2,39 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { inngest } from "@/lib/inngest/client";
 
 interface RouteParams {
   params: Promise<{ id: string }>;
+}
+
+async function sendSubscriptionNotification(
+  subscriptionId: string,
+  action: "ACTIVATE" | "REJECT",
+  planLabel?: string,
+  amount?: number,
+  transactionId?: string,
+  reason?: string,
+) {
+  try {
+    await inngest.send({
+      name: "subscription/action",
+      data: {
+        subscriptionId,
+        action,
+        planLabel,
+        amount,
+        transactionId,
+        reason,
+      },
+    });
+
+    console.log(
+      `[API] Triggered ${action} notification for subscription ${subscriptionId}`,
+    );
+  } catch (error) {
+    console.error(`[API] Failed to trigger notification:`, error);
+  }
 }
 
 export async function GET(req: Request, { params }: RouteParams) {
@@ -66,17 +96,50 @@ export async function PUT(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const { status } = await req.json();
+    const { status, plan, activatedAt } = await req.json();
+
+    const existing = await prisma.subscription.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Subscription not found" },
+        { status: 404 },
+      );
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (status) {
+      updateData.status = status;
+      if (status === "ACTIVE" && !activatedAt && !existing.activatedAt) {
+        updateData.activatedAt = new Date();
+      }
+    }
+    if (plan) {
+      updateData.plan = plan;
+      if (status === "ACTIVE" && !existing.activatedAt) {
+        updateData.activatedAt = new Date();
+      }
+    }
+    if (activatedAt) updateData.activatedAt = new Date(activatedAt);
 
     const subscription = await prisma.subscription.update({
       where: { id },
-      data: { status: status as any },
+      data: updateData as any,
       include: {
         user: {
           select: { id: true, name: true, email: true },
         },
       },
     });
+
+    if (status === "ACTIVE") {
+      await sendSubscriptionNotification(
+        id,
+        "ACTIVATE",
+        subscription.plan,
+        subscription.amount,
+        subscription.fapshiTransId || undefined,
+      );
+    }
 
     return NextResponse.json({ subscription, success: true });
   } catch (error) {
@@ -104,11 +167,28 @@ export async function DELETE(req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const { reason } = await req
+      .json()
+      .catch(() => ({ reason: "Payment rejected by admin" }));
 
     const subscription = await prisma.subscription.update({
       where: { id },
       data: { status: "FAILED" },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true },
+        },
+      },
     });
+
+    await sendSubscriptionNotification(
+      id,
+      "REJECT",
+      subscription.plan,
+      subscription.amount,
+      subscription.fapshiTransId || undefined,
+      reason,
+    );
 
     return NextResponse.json({ subscription, success: true });
   } catch (error) {

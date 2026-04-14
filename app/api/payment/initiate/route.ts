@@ -17,9 +17,9 @@ export async function POST(request: Request) {
 
     const price = getPlanPrice(plan as keyof PaymentPlanConfig);
 
-    // FIX 3: Correct update/create logic
     let subscription = await prisma.subscription.findFirst({
       where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
     });
 
     if (subscription) {

@@ -151,6 +151,7 @@ export function useAdminSubscriptions(
       status: string;
       activatedAt: string | null;
       amount: number;
+      fapshiTransId: string | null;
       startDate: string;
       endDate: string | null;
       createdAt: string;
@@ -167,8 +168,13 @@ export function useAdminSubscriptions(
 export function useUpdateAdminSubscription() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, data }: { id: string; data: { status: string } }) =>
-      api.mutations.admin.subscriptions.update(id, data),
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: { status: string; plan?: string };
+    }) => api.mutations.admin.subscriptions.update(id, data),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] }),
   });
