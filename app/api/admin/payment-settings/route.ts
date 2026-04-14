@@ -18,11 +18,13 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    let settings = await prisma.paymentSettings.findFirst();
+    let settings = await prisma.paymentSettings.findUnique({
+      where: { key: "global" },
+    });
 
     if (!settings) {
       settings = await prisma.paymentSettings.create({
-        data: {},
+        data: { key: "global" },
       });
     }
 
@@ -54,28 +56,22 @@ export async function PUT(req: Request) {
     const { mtnNumber, mtnHolderName, orangeNumber, orangeHolderName } =
       await req.json();
 
-    let settings = await prisma.paymentSettings.findFirst();
-
-    if (settings) {
-      settings = await prisma.paymentSettings.update({
-        where: { id: settings.id },
-        data: {
-          mtnNumber: mtnNumber?.trim() || null,
-          mtnHolderName: mtnHolderName?.trim() || null,
-          orangeNumber: orangeNumber?.trim() || null,
-          orangeHolderName: orangeHolderName?.trim() || null,
-        },
-      });
-    } else {
-      settings = await prisma.paymentSettings.create({
-        data: {
-          mtnNumber: mtnNumber?.trim() || null,
-          mtnHolderName: mtnHolderName?.trim() || null,
-          orangeNumber: orangeNumber?.trim() || null,
-          orangeHolderName: orangeHolderName?.trim() || null,
-        },
-      });
-    }
+    const settings = await prisma.paymentSettings.upsert({
+      where: { key: "global" },
+      create: {
+        key: "global",
+        mtnNumber: mtnNumber?.trim() || null,
+        mtnHolderName: mtnHolderName?.trim() || null,
+        orangeNumber: orangeNumber?.trim() || null,
+        orangeHolderName: orangeHolderName?.trim() || null,
+      },
+      update: {
+        mtnNumber: mtnNumber?.trim() || null,
+        mtnHolderName: mtnHolderName?.trim() || null,
+        orangeNumber: orangeNumber?.trim() || null,
+        orangeHolderName: orangeHolderName?.trim() || null,
+      },
+    });
 
     return NextResponse.json({ settings, success: true });
   } catch (error) {

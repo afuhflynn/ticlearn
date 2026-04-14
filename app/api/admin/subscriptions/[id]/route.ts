@@ -98,9 +98,27 @@ export async function PUT(req: Request, { params }: RouteParams) {
     const { id } = await params;
     const { status, plan, activatedAt } = await req.json();
 
+    const existing = await prisma.subscription.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Subscription not found" },
+        { status: 404 },
+      );
+    }
+
     const updateData: Record<string, unknown> = {};
-    if (status) updateData.status = status;
-    if (plan) updateData.plan = plan;
+    if (status) {
+      updateData.status = status;
+      if (status === "ACTIVE" && !activatedAt && !existing.activatedAt) {
+        updateData.activatedAt = new Date();
+      }
+    }
+    if (plan) {
+      updateData.plan = plan;
+      if (status === "ACTIVE" && !existing.activatedAt) {
+        updateData.activatedAt = new Date();
+      }
+    }
     if (activatedAt) updateData.activatedAt = new Date(activatedAt);
 
     const subscription = await prisma.subscription.update({

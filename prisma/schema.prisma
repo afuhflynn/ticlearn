@@ -602,6 +602,7 @@ model ChatMessage {
 
 model PaymentSettings {
   id                String   @id @default(cuid())
+  key               String   @unique @default("global") @map("key")
   mtnNumber         String?  @unique @map("mtn_number")
   mtnHolderName     String?  @map("mtn_holder_name")
   orangeNumber     String?  @unique @map("orange_number")

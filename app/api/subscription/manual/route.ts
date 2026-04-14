@@ -49,25 +49,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const existingPending = await prisma.subscription.findFirst({
-      where: {
-        userId: session.user.id,
-        status: "PENDING",
-      },
-    });
-
-    if (existingPending) {
-      return NextResponse.json(
-        {
-          error:
-            "You already have a pending payment. Please wait for it to be processed.",
-        },
-        { status: 400 },
-      );
-    }
-
-    const subscription = await prisma.subscription.create({
-      data: {
+    const subscription = await prisma.subscription.upsert({
+      where: { userId: session.user.id },
+      create: {
         userId: session.user.id,
         userEmail: user.email,
         userName: user.name,
@@ -75,6 +59,13 @@ export async function POST(req: Request) {
         status: "PENDING",
         amount: planAmounts[plan],
         fapshiTransId: transactionId,
+      },
+      update: {
+        plan: plan as any,
+        status: "PENDING",
+        amount: planAmounts[plan],
+        fapshiTransId: transactionId,
+        activatedAt: null,
       },
     });
 

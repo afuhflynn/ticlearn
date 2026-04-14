@@ -1,5 +1,14 @@
 import nodemailer from "nodemailer";
 
+function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST,
   port: parseInt(process.env.SMTP_PORT || "587"),
@@ -655,7 +664,10 @@ export async function sendSubscriptionActivatedEmail({
   amount: number;
   transactionId: string;
 }) {
-  const subject = `✅ Payment Approved — ${planLabel} Plan Activated`;
+  const safeName = escapeHtml(name || "there");
+  const safePlanLabel = escapeHtml(planLabel);
+  const safeTransactionId = escapeHtml(transactionId || "N/A");
+  const subject = `✅ Payment Approved — ${safePlanLabel} Plan Activated`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -675,14 +687,14 @@ export async function sendSubscriptionActivatedEmail({
       </div>
       <div class="content">
         <h2 style="color: #1f2937; margin-bottom: 16px;">Your Payment Has Been Approved!</h2>
-        <p>Hi <span class="highlight">${name || "there"}</span>,</p>
-        <p>Great news! Your payment has been verified and your <span class="highlight">${planLabel}</span> plan is now <strong style="color: #10b981;">ACTIVE</strong>.</p>
+        <p>Hi <span class="highlight">${safeName}</span>,</p>
+        <p>Great news! Your payment has been verified and your <span class="highlight">${safePlanLabel}</span> plan is now <strong style="color: #10b981;">ACTIVE</strong>.</p>
 
         <div style="background: #f9fafb; border-radius: 12px; padding: 20px; margin: 24px 0; border: 1px solid #e5e7eb;">
           <h3 style="margin-top: 0; font-size: 16px; color: #6b7280; text-transform: uppercase;">Account Details</h3>
-          <p style="margin: 8px 0;"><strong>Plan:</strong> ${planLabel}</p>
+          <p style="margin: 8px 0;"><strong>Plan:</strong> ${safePlanLabel}</p>
           <p style="margin: 8px 0;"><strong>Amount Paid:</strong> ${amount.toLocaleString()} XAF</p>
-          <p style="margin: 8px 0;"><strong>Transaction ID:</strong> <code style="background: #eee; padding: 2px 4px;">${transactionId}</code></p>
+          <p style="margin: 8px 0;"><strong>Transaction ID:</strong> <code style="background: #eee; padding: 2px 4px;">${safeTransactionId}</code></p>
         </div>
 
         <p>You now have full access to all premium features. Start exploring now!</p>
@@ -715,7 +727,10 @@ export async function sendSubscriptionRejectedEmail({
   planLabel: string;
   reason: string;
 }) {
-  const subject = `⚠️ Payment Not Approved — ${planLabel}`;
+  const safeName = escapeHtml(name || "there");
+  const safePlanLabel = escapeHtml(planLabel);
+  const safeReason = escapeHtml(reason || "Transaction could not be verified");
+  const subject = `⚠️ Payment Not Approved — ${safePlanLabel}`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -735,12 +750,12 @@ export async function sendSubscriptionRejectedEmail({
       </div>
       <div class="content">
         <h2 style="color: #1f2937; margin-bottom: 16px;">Payment Not Approved</h2>
-        <p>Hi <span class="highlight">${name || "there"}</span>,</p>
-        <p>Unfortunately, your payment for the <span class="highlight">${planLabel}</span> plan could not be verified.</p>
+        <p>Hi <span class="highlight">${safeName}</span>,</p>
+        <p>Unfortunately, your payment for the <span class="highlight">${safePlanLabel}</span> plan could not be verified.</p>
 
         <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 24px 0;">
           <h3 style="margin-top: 0; font-size: 16px; color: #991b1b;">Reason</h3>
-          <p style="color: #991b1b; margin: 0;">${reason}</p>
+          <p style="color: #991b1b; margin: 0;">${safeReason}</p>
         </div>
 
         <p>Please contact our support team or try again with a valid transaction.</p>

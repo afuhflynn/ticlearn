@@ -3,7 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET() {
   try {
-    const settings = await prisma.paymentSettings.findFirst();
+    const settings = await prisma.paymentSettings.findUnique({
+      where: { key: "global" },
+    });
 
     if (!settings) {
       return NextResponse.json({

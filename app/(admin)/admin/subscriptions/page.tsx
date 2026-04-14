@@ -187,7 +187,10 @@ export default function AdminSubscriptionsPage() {
       <Card>
         <CardHeader>
           <div className="flex gap-4">
-            <Select value={status} onValueChange={setStatus}>
+            <Select
+              value={status}
+              onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+            >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
