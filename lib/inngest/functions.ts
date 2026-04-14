@@ -41,6 +41,10 @@ export const processNote = inngest.createFunction(
       const language = userSettings?.language ?? "eng";
       console.log(`[Inngest] Using language for OCR: ${language}`);
 
+      console.log(
+        `[Inngest] Note fileType: ${note.fileType}, fileUrl: ${note.fileUrl}`,
+      );
+
       const timeoutMs = 120000; // 2 minutes
       let extractedText: string;
 
@@ -60,32 +64,47 @@ export const processNote = inngest.createFunction(
         return Promise.race([extractionFn(), timeoutPromise]);
       };
 
+      console.log(
+        `[Inngest] Starting extraction for fileType: ${note.fileType}`,
+      );
+
       switch (note.fileType) {
         case "PDF":
+          console.log("[Inngest] Extracting PDF text...");
           extractedText = await extractWithTimeout(
             () => extractTextFromPDF(note.fileUrl, language),
             timeoutMs,
           );
           break;
         case "IMAGE":
+          console.log("[Inngest] Extracting IMAGE text...");
           extractedText = await extractWithTimeout(
             () => extractTextFromImage(note.fileUrl, language),
             timeoutMs,
           );
           break;
         case "WORD":
+          console.log("[Inngest] Extracting WORD text...");
           extractedText = await extractTextFromWord(note.fileUrl);
           break;
         default:
           throw new Error(`Unsupported file type: ${note.fileType}`);
       }
 
+      console.log(
+        `[Inngest] Extraction result length: ${extractedText?.length || 0}`,
+      );
+
       if (!extractedText || extractedText.length < 100) {
-        throw new Error("Text extraction returned too little content");
+        throw new Error(
+          `Text extraction returned too little content (got ${extractedText?.length || 0} chars)`,
+        );
       }
 
+      console.log("[Inngest] Generating summary...");
       const summaryResult = await summarizeText(extractedText);
 
+      console.log("[Inngest] Updating note in database...");
       await prisma.note.update({
         where: { id: noteId },
         data: {
@@ -104,13 +123,24 @@ export const processNote = inngest.createFunction(
       return { success: true, noteId };
     } catch (error) {
       console.error("Note processing error:", error);
+      console.error(
+        "Error message:",
+        error instanceof Error ? error.message : "Unknown error",
+      );
+      console.error(
+        "Error stack:",
+        error instanceof Error ? error.stack : "No stack",
+      );
 
       await prisma.note.update({
         where: { id: noteId },
         data: { status: "ERROR" },
       });
 
-      return { success: false, error: "Processing failed" };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Processing failed",
+      };
     }
   },
 );

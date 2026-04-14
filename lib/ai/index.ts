@@ -213,13 +213,14 @@ export async function extractTextFromImage(
     console.log("[Image OCR] Initializing Tesseract worker...");
 
     worker = await createWorker(language);
+    console.log("[Image OCR] Worker initialized successfully");
 
-    console.log("[Image OCR] Worker initialized, starting recognition...");
-
+    console.log("[Image OCR] Starting recognition on image...");
     const { data } = await worker.recognize(imageUrl);
 
     const text = data.text.trim();
     console.log("[Image OCR] Extracted", text.length, "characters");
+    console.log("[Image OCR] First 200 chars:", text.substring(0, 200));
 
     if (text.length < 20) {
       throw new Error(
@@ -231,12 +232,16 @@ export async function extractTextFromImage(
   } catch (error) {
     console.error("[Image OCR] Extraction failed:", error);
     throw new Error(
-      "Failed to extract text from image. Please use a clearer image.",
+      `Failed to extract text from image: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   } finally {
     if (worker) {
       console.log("[Image OCR] Terminating worker...");
-      await worker.terminate();
+      try {
+        await worker.terminate();
+      } catch (e) {
+        console.warn("[Image OCR] Worker termination error:", e);
+      }
     }
   }
 }
@@ -245,38 +250,51 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
   console.log("[Word] Starting text extraction from Word document:", docxUrl);
 
   try {
-    console.log("[Word] Fetching document...");
+    console.log("[Word] Step 1: Fetching document...");
     const response = await fetch(docxUrl, {
       signal: AbortSignal.timeout(60000),
     });
 
+    console.log("[Word] Fetch response status:", response.status);
     if (!response.ok) {
       throw new Error(`Failed to fetch Word document: ${response.status}`);
     }
 
-    console.log("[Word] Fetch successful, converting to array buffer...");
+    console.log("[Word] Step 2: Converting to array buffer...");
     const arrayBuffer = await response.arrayBuffer();
     console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
 
-    console.log("[Word] Extracting text with mammoth...");
+    if (arrayBuffer.byteLength === 0) {
+      throw new Error("Word document is empty (0 bytes)");
+    }
+
+    console.log("[Word] Step 3: Extracting text with mammoth...");
     const result = await mammoth.extractRawText({
       arrayBuffer,
     });
 
+    console.log("[Word] Step 4: Processing result...");
     const text = result.value.trim();
     console.log("[Word] Extracted", text.length, "characters");
+    console.log("[Word] First 200 chars:", text.substring(0, 200));
 
     if (text.length < 50) {
-      throw new Error(
-        "Word document contains insufficient text. Please try a different file.",
+      console.log(
+        "[Word] Warning: Text too short, but continuing...",
+        text.length,
       );
+      // Don't throw - just return what we got
+      if (text.length < 10) {
+        throw new Error("Word document contains insufficient text");
+      }
     }
 
     return normalizeExtractedText(text);
   } catch (error) {
-    console.error("[Word] Extraction failed:", error);
+    console.error("[Word] Extraction failed at step:", error);
+    console.error("[Word] Full error:", JSON.stringify(error, null, 2));
     throw new Error(
-      "Failed to extract text from Word document. Please convert to PDF.",
+      `Failed to extract text from Word document: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
 }
