@@ -6,7 +6,7 @@ import {
   VerbosityLevel,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
 import mammoth from "mammoth";
-import Tesseract, { createWorker, Worker } from "tesseract.js";
+import Tesseract from "tesseract.js";
 import { z } from "zod";
 
 GlobalWorkerOptions.workerSrc = new URL(
@@ -207,16 +207,16 @@ export async function extractTextFromImage(
     language,
   );
 
-  let worker: Worker | null = null;
-
   try {
-    console.log("[Image OCR] Initializing Tesseract worker...");
-
-    worker = await createWorker(language);
-    console.log("[Image OCR] Worker initialized successfully");
-
     console.log("[Image OCR] Starting recognition on image...");
-    const { data } = await worker.recognize(imageUrl);
+
+    const { data } = await Tesseract.recognize(imageUrl, language, {
+      logger: (m) => {
+        if (m.status === "recognizing text") {
+          console.log(`[Image OCR] Progress: ${Math.round(m.progress * 100)}%`);
+        }
+      },
+    });
 
     const text = data.text.trim();
     console.log("[Image OCR] Extracted", text.length, "characters");
@@ -234,15 +234,6 @@ export async function extractTextFromImage(
     throw new Error(
       `Failed to extract text from image: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
-  } finally {
-    if (worker) {
-      console.log("[Image OCR] Terminating worker...");
-      try {
-        await worker.terminate();
-      } catch (e) {
-        console.warn("[Image OCR] Worker termination error:", e);
-      }
-    }
   }
 }
 
@@ -269,8 +260,9 @@ export async function extractTextFromWord(docxUrl: string): Promise<string> {
     }
 
     console.log("[Word] Step 3: Extracting text with mammoth...");
+    const buffer = Buffer.from(arrayBuffer);
     const result = await mammoth.extractRawText({
-      arrayBuffer,
+      buffer,
     });
 
     console.log("[Word] Step 4: Processing result...");
