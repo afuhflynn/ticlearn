@@ -24,10 +24,10 @@ model User {
   updatedAt     DateTime @updatedAt
 
   // Extended fields for TiCLearn
-  role          UserRole   @default(USER)
-  referredBy    String?    @map("referred_by")
-  refApplied    Boolean    @default(false) @map("ref_applied")
-  warningSentAt DateTime?  @map("warning_sent_at")
+  role          UserRole  @default(USER)
+  referredBy    String?   @map("referred_by")
+  refApplied    Boolean   @default(false) @map("ref_applied")
+  warningSentAt DateTime? @map("warning_sent_at")
 
   // Relations
   sessions          Session[]
@@ -131,7 +131,7 @@ model Note {
 model Quiz {
   id            String         @id @default(cuid())
   userId        String         @map("user_id")
-  noteId        String         @map("note_id")
+  noteId        String?        @map("note_id")
   noteTitle     String         @map("note_title")
   title         String
   questionCount Int            @map("question_count")
@@ -142,7 +142,7 @@ model Quiz {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  note          Note           @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  note          Note?          @relation(fields: [noteId], references: [id], onDelete: Cascade)
   questions     QuizQuestion[]
   attempts      QuizAttempt[]
 
@@ -446,16 +446,16 @@ model UserSettings {
 }
 
 model AdminInvite {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  invitedBy String   @map("invited_by")
-  token     String   @unique
+  id        String       @id @default(cuid())
+  email     String       @unique
+  invitedBy String       @map("invited_by")
+  token     String       @unique
   status    InviteStatus @default(PENDING)
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  expiresAt DateTime     @map("expires_at")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  inviter   User     @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: Cascade)
+  inviter User @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: Cascade)
 
   @@index([email])
   @@index([token])

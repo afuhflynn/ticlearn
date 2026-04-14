@@ -587,9 +587,8 @@ export const generateDefaultQuiz = inngest.createFunction(
         };
       }
 
-      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } = await import(
-        "@/lib/ai"
-      );
+      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } =
+        await import("@/lib/ai");
 
       const shuffledTopics = [...DEFAULT_QUIZ_TOPICS].sort(
         () => Math.random() - 0.5,
@@ -636,7 +635,6 @@ export const generateDefaultQuiz = inngest.createFunction(
         await prisma.quiz.create({
           data: {
             userId,
-            noteId: "__default__",
             noteTitle: topic,
             title: quizTitle,
             questionCount: questions.length,
