@@ -629,6 +629,13 @@ export const api = {
           method: "POST",
           body: { code },
         }),
+      requestPayout: () =>
+        apiRequest<{ success: boolean; message: string; amount: number }>(
+          "/affiliate/payout",
+          {
+            method: "POST",
+          },
+        ),
     },
 
     chat: {
@@ -701,6 +708,16 @@ export const api = {
         delete: (id: string) =>
           apiRequest<{ success: boolean }>(`/admin/users/${id}`, {
             method: "DELETE",
+          }),
+        search: (search: string) =>
+          apiRequest<{
+            users: UserSummary[];
+            total: number;
+            page: number;
+            totalPages: number;
+          }>("/admin/users", {
+            method: "POST",
+            body: { search },
           }),
       },
       // Feedback

@@ -310,7 +310,8 @@ export default function SubscriptionPage() {
 
       <Tabs defaultValue="auto" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="auto" className="gap-2">
+          {/* Disabled for the moment while working on fix fapshi issues */}
+          <TabsTrigger value="auto" className="gap-2" disabled>
             <CreditCard className="h-4 w-4" />
             Auto Payment
           </TabsTrigger>

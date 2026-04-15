@@ -33,7 +33,7 @@ import { searchParamsSchema } from "@/nuqs";
 export default function SignInPage() {
   const router = useRouter();
   const [params] = useQueryStates(searchParamsSchema);
-  const { callbackUrl, error: searchError } = params;
+  const { callbackUrl, error: searchError, ref__: refCode } = params;
   const { data: session, isPending: sessionLoading } = useSession();
 
   const [email, setEmail] = useState("");
@@ -43,6 +43,12 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
   const redirect = decodeURIComponent((callbackUrl as string) || "/dashboard");
+
+  useEffect(() => {
+    if (refCode) {
+      localStorage.setItem("pendingReferralCode", refCode);
+    }
+  }, [refCode]);
 
   useEffect(() => {
     if (searchError === "google_sign_in_failed") {
@@ -78,6 +84,14 @@ export default function SignInPage() {
         },
         onSuccess() {
           console.log({ callbackUrl });
+          const pendingRef = localStorage.getItem("pendingReferralCode");
+          if (pendingRef) {
+            fetch("/api/referral/apply", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code: pendingRef }),
+            }).then(() => localStorage.removeItem("pendingReferralCode"));
+          }
           router.push(callbackUrl ?? "/dashboard"); // @todo: Make this better later
         },
       },
@@ -86,6 +100,9 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
+    if (refCode) {
+      localStorage.setItem("pendingReferralCode", refCode);
+    }
     setIsLoading(true);
     try {
       await signIn.social({

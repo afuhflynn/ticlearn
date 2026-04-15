@@ -1,6 +1,7 @@
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { SidebarProvider } from "@/components/ui/sidebar";
+import { ReferralProcessor } from "@/components/referral-processor";
 
 export default function DashboardLayout({
   children,
@@ -16,6 +17,7 @@ export default function DashboardLayout({
           <main className="flex-1 p-4 md:p-6 lg:p-8 w-full">{children}</main>
         </div>
       </div>
+      <ReferralProcessor />
     </SidebarProvider>
   );
 }
