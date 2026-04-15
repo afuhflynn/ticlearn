@@ -7,6 +7,7 @@ import {
 
 export const searchParamsSchema = {
   callbackUrl: parseAsString,
+  ref__: parseAsString,
   page: parseAsString.withDefault("1"),
   limit: parseAsString.withDefault("10"),
   archived: parseAsBoolean.withDefault(false),
@@ -21,6 +22,7 @@ export const searchParamsSchema = {
 
 type ParamsTypes = Values<{
   callbackUrl: SingleParserBuilder<string>;
+  ref__: SingleParserBuilder<string>;
   page: SingleParserBuilder<number>;
   limit: SingleParserBuilder<number>;
   archived: SingleParserBuilder<boolean>;

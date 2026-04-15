@@ -340,11 +340,13 @@ model AffiliateEarning {
   id                String        @id @default(cuid())
   affiliateCode     String        @map("affiliate_code")
   affiliateEmail    String        @map("affiliate_email")
+  referredUserId    String?       @map("referred_user_id")
   referredUserEmail String        @map("referred_user_email")
   plan              Plan
   amount            Int
   commission        Float
   status            EarningStatus @default(PENDING)
+  requestedAt       DateTime?     @map("requested_at")
   paidAt            DateTime?     @map("paid_at")
   createdAt         DateTime      @default(now())
   affiliate         Affiliate     @relation(fields: [affiliateCode], references: [code])
@@ -550,6 +552,7 @@ enum AffiliateStatus {
 
 enum EarningStatus {
   PENDING
+  REQUESTED
   PAID
 }
 

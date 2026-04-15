@@ -19,8 +19,14 @@ export async function GET() {
 
     let affiliate = await prisma.affiliate.findUnique({
       where: { userId: session.user.id },
+      include: {
+        earnings: {
+          orderBy: { createdAt: "desc" },
+        },
+      },
     });
 
+    let createdNew = false;
     if (!affiliate) {
       affiliate = await prisma.affiliate.create({
         data: {
@@ -32,10 +38,69 @@ export async function GET() {
           momoNumber: "",
           momoName: "",
         },
+        include: {
+          earnings: true,
+        },
       });
+      createdNew = true;
     }
 
-    return NextResponse.json({ affiliate });
+    const referredUsers = await prisma.user.findMany({
+      where: { referredBy: affiliate.code },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        createdAt: true,
+        emailVerified: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    const earningsByStatus = affiliate.earnings.reduce(
+      (acc, e) => {
+        acc[e.status] = (acc[e.status] || 0) + e.commission;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const pendingEarnings =
+      (earningsByStatus.PENDING || 0) + (earningsByStatus.REQUESTED || 0);
+    const paidEarnings = earningsByStatus.PAID || 0;
+
+    return NextResponse.json({
+      affiliate: {
+        id: affiliate.id,
+        code: affiliate.code,
+        status: affiliate.status,
+        momoNumber: affiliate.momoNumber,
+        momoName: affiliate.momoName,
+        totalClicks: affiliate.totalClicks,
+        totalConversions: affiliate.totalConversions,
+        totalEarnings: affiliate.totalEarnings,
+        pendingEarnings,
+        paidEarnings,
+        referredUsers: referredUsers.map((u) => ({
+          id: u.id,
+          name: u.name,
+          email: u.email,
+          joinedAt: u.createdAt,
+          emailVerified: u.emailVerified,
+        })),
+        earnings: affiliate.earnings.map((e) => ({
+          id: e.id,
+          referredUserEmail: e.referredUserEmail,
+          plan: e.plan,
+          amount: e.amount,
+          commission: e.commission,
+          status: e.status,
+          createdAt: e.createdAt,
+          requestedAt: e.requestedAt,
+          paidAt: e.paidAt,
+        })),
+      },
+    });
   } catch (error) {
     console.error("Affiliate GET error:", error);
     return NextResponse.json(

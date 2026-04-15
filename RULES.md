@@ -249,3 +249,11 @@ If you introduce a new abstraction, it must replace an existing one for a clear 
 - Do not add protected UI pages without matching auth behavior.
 - Do not add cache mutations without invalidation strategy.
 - Do not assume a missing page or route is intentionally absent; verify first.
+
+## 19. Database Changes Must Use Migrations
+
+- Always use `pnpm db:migrate` to apply schema changes to the database.
+- Never use `pnpm db:push` in production or for schema changes that need to persist.
+- Use `pnpm db:push` only for quick local prototyping, then create a proper migration.
+- When changing Prisma schema, always create a migration: `pnpm db:migrate --name <migration-name>`
+- Review migrations before applying to ensure they are correct.

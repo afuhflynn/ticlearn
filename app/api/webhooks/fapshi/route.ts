@@ -13,6 +13,14 @@ const PLAN_LABELS: Record<string, string> = {
   PREMIUM: "Premium Plan",
 };
 
+const PLAN_PRICES: Record<string, number> = {
+  STARTER: 3000,
+  STANDARD: 5000,
+  PREMIUM: 10000,
+};
+
+const COMMISSION_RATE = 0.2;
+
 export async function POST(req: Request) {
   try {
     // 1. Security Check
@@ -57,6 +65,9 @@ export async function POST(req: Request) {
 
     // 3. Handle SUCCESSFUL Status
     if (status === "SUCCESSFUL") {
+      const planPrice = PLAN_PRICES[sub.plan] || sub.amount;
+      const commission = Math.round(planPrice * COMMISSION_RATE);
+
       await prisma.$transaction([
         prisma.subscription.update({
           where: { id: sub.id },
@@ -72,6 +83,39 @@ export async function POST(req: Request) {
           create: { userId: sub.userId },
         }),
       ]);
+
+      if (sub.user.referredBy) {
+        const affiliate = await prisma.affiliate.findUnique({
+          where: { code: sub.user.referredBy },
+        });
+
+        if (affiliate && affiliate.status === "ACTIVE") {
+          await prisma.affiliateEarning.create({
+            data: {
+              affiliateCode: affiliate.code,
+              affiliateEmail: affiliate.userEmail,
+              referredUserId: sub.userId,
+              referredUserEmail: sub.userEmail,
+              plan: sub.plan,
+              amount: planPrice,
+              commission: commission,
+              status: "PENDING",
+            },
+          });
+
+          await prisma.affiliate.update({
+            where: { id: affiliate.id },
+            data: {
+              pendingEarnings: { increment: commission },
+              totalEarnings: { increment: commission },
+            },
+          });
+
+          console.log(
+            `Created affiliate earning: ${commission} XFA for ${affiliate.code}`,
+          );
+        }
+      }
 
       const planLabel = PLAN_LABELS[sub.plan] || sub.plan;
 

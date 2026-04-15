@@ -56,3 +56,21 @@ export function useApplyReferralCode() {
     },
   });
 }
+
+export function useRequestPayout() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const result = await api.mutations.affiliate.requestPayout();
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.affiliate });
+      toast.success(data.message);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAdminAffiliates, useAdminUsers } from "@/hooks/useAdmin";
+import { useAdminAffiliates } from "@/hooks/useAdmin";
+import { UserCommandSelector } from "@/components/user-command-selector";
 import {
   Link2,
   Plus,
@@ -10,8 +11,6 @@ import {
   ExternalLink,
   Users,
   Search,
-  Filter,
-  CheckCircle2,
   TrendingUp,
   DollarSign,
   AlertCircle,
@@ -67,10 +66,11 @@ import {
 export default function AdminAffiliatesPage() {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // New Affiliate Form State
   const [selectedUserId, setSelectedUserId] = useState("");
+  const [selectedUserName, setSelectedUserName] = useState("");
+  const [selectedUserEmail, setSelectedUserEmail] = useState("");
   const [affiliateCode, setAffiliateCode] = useState("");
   const [momoNumber, setMomoNumber] = useState("");
   const [momoName, setMomoName] = useState("");
@@ -79,10 +79,6 @@ export default function AdminAffiliatesPage() {
 
   const { affiliates, total, isLoading } = useAdminAffiliates({
     search,
-  });
-
-  const { users, isLoading: usersLoading } = useAdminUsers({
-    limit: 100, // Get enough users to select from
   });
 
   const createAffiliateMutation = useMutation({
@@ -105,15 +101,29 @@ export default function AdminAffiliatesPage() {
       resetForm();
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to create affiliate");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create affiliate",
+      );
     },
   });
 
   const resetForm = () => {
     setSelectedUserId("");
+    setSelectedUserName("");
+    setSelectedUserEmail("");
     setAffiliateCode("");
     setMomoNumber("");
     setMomoName("");
+  };
+
+  const handleUserChange = (
+    userId: string,
+    userName: string,
+    userEmail: string,
+  ) => {
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setSelectedUserEmail(userEmail);
   };
 
   const handleCreate = (e: React.FormEvent) => {
@@ -160,19 +170,21 @@ export default function AdminAffiliatesPage() {
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="user">Select User</Label>
-                  <Select onValueChange={setSelectedUserId} value={selectedUserId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Search users..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {users?.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
-                          {user.name} ({user.email})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label>Select User</Label>
+                  <UserCommandSelector
+                    value={selectedUserId}
+                    onChange={handleUserChange}
+                    placeholder="Search users by name or email..."
+                    selectedUser={selectedUserId}
+                  />
+                  {selectedUserId && (
+                    <p className="text-xs text-muted-foreground">
+                      Selected:{" "}
+                      <span className="font-bold text-lg line-clamp-1">
+                        {selectedUserName} ({selectedUserEmail})
+                      </span>
+                    </p>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="code">Affiliate Code</Label>
@@ -181,14 +193,23 @@ export default function AdminAffiliatesPage() {
                       id="code"
                       placeholder="e.g. CAMEROON2024"
                       value={affiliateCode}
-                      onChange={(e) => setAffiliateCode(e.target.value.toUpperCase())}
+                      onChange={(e) =>
+                        setAffiliateCode(e.target.value.toUpperCase())
+                      }
                       required
                     />
-                    <Button 
-                      type="button" 
-                      variant="outline" 
+                    <Button
+                      type="button"
+                      variant="outline"
                       size="icon"
-                      onClick={() => setAffiliateCode(Math.random().toString(36).substring(2, 8).toUpperCase())}
+                      onClick={() =>
+                        setAffiliateCode(
+                          Math.random()
+                            .toString(36)
+                            .substring(2, 8)
+                            .toUpperCase(),
+                        )
+                      }
                     >
                       <TrendingUp className="h-4 w-4" />
                     </Button>
@@ -216,7 +237,10 @@ export default function AdminAffiliatesPage() {
                 </div>
               </div>
               <DialogFooter>
-                <Button type="submit" disabled={createAffiliateMutation.isPending}>
+                <Button
+                  type="submit"
+                  disabled={createAffiliateMutation.isPending}
+                >
                   {createAffiliateMutation.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -235,7 +259,9 @@ export default function AdminAffiliatesPage() {
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Affiliates</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Affiliates
+            </CardTitle>
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -245,12 +271,16 @@ export default function AdminAffiliatesPage() {
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
-            <CardTitle className="text-sm font-medium">Total Earnings</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Total Earnings
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">0 XAF</div>
-            <p className="text-xs text-muted-foreground">Combined commissions</p>
+            <p className="text-xs text-muted-foreground">
+              Combined commissions
+            </p>
           </CardContent>
         </Card>
         <Card>
@@ -260,7 +290,10 @@ export default function AdminAffiliatesPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {affiliates?.reduce((acc, curr) => acc + (curr.totalClicks || 0), 0) || 0}
+              {affiliates?.reduce(
+                (acc, curr) => acc + (curr.totalClicks || 0),
+                0,
+              ) || 0}
             </div>
             <p className="text-xs text-muted-foreground">Across all links</p>
           </CardContent>
@@ -309,7 +342,9 @@ export default function AdminAffiliatesPage() {
                   <TableRow key={affiliate.id}>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="font-medium">{affiliate.userName}</span>
+                        <span className="font-medium">
+                          {affiliate.userName}
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {affiliate.userEmail}
                         </span>
@@ -324,7 +359,11 @@ export default function AdminAffiliatesPage() {
                           variant="ghost"
                           size="icon"
                           className="h-6 w-6"
-                          onClick={() => copyToClipboard(`https://ticlearn.com/sign-up?ref=${affiliate.code}`)}
+                          onClick={() =>
+                            copyToClipboard(
+                              `https://ticlearn.com/sign-up?ref=${affiliate.code}`,
+                            )
+                          }
                         >
                           <Copy className="h-3 w-3" />
                         </Button>
@@ -332,14 +371,20 @@ export default function AdminAffiliatesPage() {
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={affiliate.status === "ACTIVE" ? "default" : "secondary"}
+                        variant={
+                          affiliate.status === "ACTIVE"
+                            ? "default"
+                            : "secondary"
+                        }
                       >
                         {affiliate.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="text-sm">{affiliate.totalClicks || 0} clicks</span>
+                        <span className="text-sm">
+                          {affiliate.totalClicks || 0} clicks
+                        </span>
                         <span className="text-xs text-muted-foreground">
                           {affiliate.totalConversions || 0} conversions
                         </span>
@@ -351,7 +396,8 @@ export default function AdminAffiliatesPage() {
                           {(affiliate.totalEarnings || 0).toLocaleString()} XAF
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {(affiliate.pendingEarnings || 0).toLocaleString()} pending
+                          {(affiliate.pendingEarnings || 0).toLocaleString()}{" "}
+                          pending
                         </span>
                       </div>
                     </TableCell>

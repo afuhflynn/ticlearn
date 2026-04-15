@@ -1,5 +1,9 @@
 export { useIsMobile as useMobile } from "./use-mobile";
-export { useAffiliate, useApplyReferralCode } from "./useAffiliate";
+export {
+  useAffiliate,
+  useApplyReferralCode,
+  useRequestPayout,
+} from "./useAffiliate";
 export {
   useCommunityPosts,
   useCreatePost,
@@ -41,3 +45,4 @@ export {
   useUsage,
 } from "./useUsage";
 export { useLeaderboard, useUserStats } from "./useUserStats";
+export { useUserSearch } from "./useUserSearch";
