@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
 import { Loader2, Save, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +13,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
+import {
+  usePaymentSettings,
+  useUpdatePaymentSettings,
+} from "@/hooks/usePayment";
 
 interface PaymentSettings {
   mtnNumber: string | null;
@@ -25,7 +27,6 @@ interface PaymentSettings {
 
 export default function PaymentSettingsPage() {
   const { data: session, isPending: sessionLoading } = useSession();
-  const router = useRouter();
 
   const [settings, setSettings] = useState<PaymentSettings>({
     mtnNumber: "",
@@ -33,76 +34,25 @@ export default function PaymentSettingsPage() {
     orangeNumber: "",
     orangeHolderName: "",
   });
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
+  const { data, isPending: isLoading } = usePaymentSettings();
+  const { mutateAsync: updateSettings, isPending: isSaving } =
+    useUpdatePaymentSettings();
 
   useEffect(() => {
-    async function fetchSettings() {
-      if (
-        !session?.user ||
-        (session.user as { role?: string })?.role !== "ADMIN"
-      ) {
-        return;
-      }
-
-      try {
-        const response = await fetch("/api/admin/payment-settings");
-        const data = await response.json();
-
-        if (data.settings) {
-          setSettings({
-            mtnNumber: data.settings.mtnNumber || "",
-            mtnHolderName: data.settings.mtnHolderName || "",
-            orangeNumber: data.settings.orangeNumber || "",
-            orangeHolderName: data.settings.orangeHolderName || "",
-          });
-        }
-      } catch (error) {
-        console.error("Failed to fetch payment settings:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchSettings();
-  }, [session]);
-
-  useEffect(() => {
-    if (
-      !sessionLoading &&
-      (!session || (session.user as { role?: string })?.role !== "ADMIN")
-    ) {
-      router.push("/");
-    }
-  }, [session, sessionLoading, router]);
+    if (!data) return;
+    setSettings({
+      ...data,
+    });
+  }, [data]);
 
   const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const response = await fetch("/api/admin/payment-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mtnNumber: settings.mtnNumber,
-          mtnHolderName: settings.mtnHolderName,
-          orangeNumber: settings.orangeNumber,
-          orangeHolderName: settings.orangeHolderName,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to save");
-      }
-
-      toast.success("Payment settings saved successfully");
-    } catch (error) {
-      console.error("Failed to save payment settings:", error);
-      toast.error("Failed to save payment settings");
-    } finally {
-      setIsSaving(false);
-    }
+    const payLoad = {
+      mtnNumber: settings.mtnNumber ?? "",
+      mtnHolderName: settings.mtnHolderName ?? "",
+      orangeNumber: settings.orangeNumber ?? "",
+      orangeHolderName: settings.orangeHolderName ?? "",
+    };
+    await updateSettings(payLoad);
   };
 
   if (sessionLoading || isLoading) {

@@ -8,6 +8,35 @@ import {
   AffiliateClick,
   AffiliateEarning,
 } from "./generated/prisma/client";
+import {
+  CreateAffiliateParams,
+  NoteSummary,
+  NoteWithRelations,
+  PaymentSettingsData,
+  UsageData,
+  UserSettings,
+  Post,
+  AffiliateData,
+  Feedback,
+  ExamSession,
+  UserStats,
+  LeaderboardEntry,
+  ChatConversation,
+  ChatConversationWithMessages,
+  Subscription,
+  Quiz,
+  UserProfile,
+  ChatMessage,
+  UserSummary,
+  UserDetail,
+  NotePreview,
+  QuizPreview,
+  AttemptPreview,
+  FeedbackData,
+  SubscriptionData,
+  AffiliateDetail,
+  AdminStats,
+} from "@/types";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -64,289 +93,6 @@ async function apiRequest<T>(
     }
     throw new Error("An unexpected error occurred");
   }
-}
-
-// ===========================================
-// Type Definitions
-// ===========================================
-
-interface QuizQuestion {
-  id: string;
-  type: "MCQ" | "OPEN";
-  question: string;
-  options: string[];
-  correctAnswer: string;
-  explanation?: string | null;
-  order: number;
-}
-
-interface Quiz {
-  id: string;
-  title: string;
-  noteTitle: string;
-  status: "GENERATING" | "READY" | "ERROR";
-  timed: boolean;
-  timeLimit: number | null;
-  isPublic: boolean;
-  questionCount: number;
-  questions: QuizQuestion[];
-}
-
-interface NoteSummary {
-  id: string;
-  title: string;
-  subject: string;
-  fileUrl: string;
-  fileName: string;
-  fileType: "PDF" | "IMAGE" | "WORD";
-  status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
-  summary?: string | null;
-  topics?: string[];
-  quizCount?: number;
-  createdAt: string;
-}
-
-interface NoteWithRelations extends NoteSummary {
-  userId: string;
-  extractedText?: string | null;
-  keyPoints?: string[];
-  quizzes: Quiz[];
-}
-
-interface UsageData {
-  plan: string;
-  status: string;
-  limits: {
-    pdfUploads: number;
-    quizGenerations: number;
-    aiTutorMessages: number;
-    canAccessCommunity: boolean;
-    canAccessLeaderboard: boolean;
-    canAccessGCE: boolean;
-  };
-  usage: {
-    pdfUploads: number;
-    quizGenerations: number;
-    aiTutorMessages: number;
-  };
-  canUpload: boolean;
-  canGenerateQuiz: boolean;
-  canUseAIChat: boolean;
-  chatDailyUsage: {
-    used: number;
-    limit: number;
-    remaining: number;
-    resetsAt: string;
-    resetsInSeconds: number;
-  } | null;
-}
-
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  image?: string | null;
-  role: string;
-}
-
-interface UserSettings {
-  id: string;
-  userId: string;
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-  weeklyDigest: boolean;
-}
-
-interface Notification {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type: string;
-  read: boolean;
-  createdAt: string;
-}
-
-interface Post {
-  id: string;
-  userId: string;
-  content: string;
-  imageUrl?: string | null;
-  subject?: string | null;
-  likesCount: number;
-  commentsCount: number;
-  isLiked: boolean;
-  user: {
-    id: string;
-    name: string;
-    image?: string | null;
-  };
-  createdAt: string;
-}
-
-interface AffiliateData {
-  code: string;
-  totalClicks: number;
-  totalReferrals: number;
-  earnings: number;
-  pendingPayout: number;
-}
-
-interface Feedback {
-  id: string;
-  userId: string;
-  type: string;
-  message: string;
-  createdAt: string;
-}
-
-interface ExamSession {
-  id: string;
-  title: string;
-  subject: string;
-  status: "GENERATING" | "READY" | "COMPLETED";
-  questions: unknown[];
-  answers?: unknown;
-  score?: number;
-  createdAt: string;
-}
-
-interface UserStats {
-  totalNotes: number;
-  quizzesTaken: number;
-  avgScore: number;
-  currentStreak: number;
-  totalPoints: number;
-}
-
-interface LeaderboardEntry {
-  userId: string;
-  name: string;
-  image?: string | null;
-  totalPoints: number;
-  quizzesTaken: number;
-  avgScore: number;
-  rank: number;
-}
-
-interface Subscription {
-  id: string;
-  plan: string;
-  status: "ACTIVE" | "INACTIVE" | "PENDING" | "FAILED";
-  activatedAt?: string | null;
-}
-
-interface ChatConversation {
-  id: string;
-  title: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface ChatMessage {
-  id: string;
-  role: string;
-  content: string;
-  parts: unknown;
-  createdAt: string;
-}
-
-interface ChatConversationWithMessages extends ChatConversation {
-  messages: ChatMessage[];
-}
-
-// Admin Types
-interface UserSummary {
-  id: string;
-  name: string;
-  email: string;
-  image: string | null;
-  role: string;
-  createdAt: string;
-  notesCount: number;
-  quizzesCount: number;
-  attemptsCount: number;
-}
-
-interface UserDetail extends UserSummary {
-  emailVerified: boolean;
-}
-
-interface UserStats {
-  notesCount: number;
-  quizzesCount: number;
-  attemptsCount: number;
-  sessionsCount: number;
-  subscriptionsCount: number;
-}
-
-interface NotePreview {
-  id: string;
-  title: string;
-  status: string;
-  createdAt: string;
-}
-
-interface QuizPreview {
-  id: string;
-  title: string;
-  status: string;
-  createdAt: string;
-}
-
-interface AttemptPreview {
-  id: string;
-  score: number;
-  totalQuestions: number;
-  completedAt: string;
-  quiz: { title: string };
-}
-
-interface FeedbackData {
-  id: string;
-  type: string;
-  message: string;
-  status: string;
-  adminNote: string | null;
-  createdAt: string;
-  user: {
-    id: string;
-    name: string | null;
-    email: string;
-    image: string | null;
-  };
-}
-
-interface SubscriptionData {
-  id: string;
-  plan: string;
-  status: string;
-  amount: number;
-  startDate: string;
-  endDate: string | null;
-  createdAt: string;
-  userEmail: string;
-  userName: string;
-  activatedAt: string | null;
-  user: { id: string; name: string | null; email: string };
-}
-
-interface AffiliateDetail extends Affiliate {
-  referrals: AffiliateClick[];
-  earnings: AffiliateEarning[];
-}
-
-interface AdminStats {
-  totalUsers: number;
-  totalNotes: number;
-  totalQuizzes: number;
-  totalExams: number;
-  totalSubscriptions: number;
-  activeSubscriptions: number;
-  totalRevenue: number;
-  avgRating: number;
-  recentFeedback: number;
-  pendingAffiliates: number;
 }
 
 // ===========================================
@@ -417,10 +163,22 @@ export const api = {
         }),
     },
 
-    affiliate: () =>
-      apiRequest<{ affiliate: AffiliateData }>("/affiliate", {
-        method: "GET",
-      }),
+    affiliates: {
+      affiliate: () =>
+        apiRequest<{ affiliate: AffiliateData }>("/affiliate", {
+          method: "GET",
+        }),
+    },
+
+    payments: {
+      settings: () =>
+        apiRequest<{ settings: PaymentSettingsData }>(
+          "/admin/payment-settings",
+          {
+            method: "GET",
+          },
+        ),
+    },
 
     feedback: () =>
       apiRequest<{ feedbacks: Feedback[] }>("/feedback", { method: "GET" }),
@@ -469,6 +227,17 @@ export const api = {
         `/search?q=${encodeURIComponent(query)}&type=${type}`,
         { method: "GET" },
       ),
+
+    invites: {
+      accept: (data: { token: string }) =>
+        apiRequest<{ message: string | null } | { error: string | null }>(
+          `/admin/invites/accept$`,
+          {
+            method: "POST",
+            body: { token: data.token },
+          },
+        ),
+    },
   },
 
   mutations: {
@@ -585,6 +354,16 @@ export const api = {
           body: data,
         }),
     },
+    payments: {
+      updateSettings: (data: PaymentSettingsData) =>
+        apiRequest<{ error: string | null } | { message: string | null }>(
+          "/admin/payment-settings",
+          {
+            method: "PUT",
+            body: data,
+          },
+        ),
+    },
 
     notifications: {
       markRead: (id: string) =>
@@ -632,6 +411,22 @@ export const api = {
       requestPayout: () =>
         apiRequest<{ success: boolean; message: string; amount: number }>(
           "/affiliate/payout",
+          {
+            method: "POST",
+          },
+        ),
+
+      create: (data: CreateAffiliateParams) =>
+        apiRequest<{ success: boolean; message: string; amount: number }>(
+          "/admin/affiliates",
+          {
+            method: "POST",
+            body: data,
+          },
+        ),
+      confirmEarnings: (payEarningsId: string) =>
+        apiRequest<{ success: boolean; message: string; amount: number }>(
+          `/admin/affiliates/${payEarningsId}/payout`,
           {
             method: "POST",
           },

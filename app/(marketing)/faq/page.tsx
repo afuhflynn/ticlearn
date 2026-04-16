@@ -1,6 +1,6 @@
 "use client";
 
-import { FAQ_ITEMS } from "@/types";
+import { FAQ_ITEMS } from "@/constants";
 import {
   Accordion,
   AccordionContent,

@@ -66,6 +66,10 @@ export const queryKeys = {
 
   // Search
   search: (query: string) => ["search", query] as const,
+
+  // payment
+  paymentSettings: ["payment", "settings"],
+  savePaymentSettings: ["update-payment", "settings"],
 } as const;
 
 export type QueryKey = typeof queryKeys;

@@ -1,6 +1,8 @@
 import arcjet, { createMiddleware, detectBot, shield } from "@arcjet/next";
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
+import { auth } from "./lib/auth";
+import { headers } from "next/headers";
 
 const aj = arcjet({
   key: process.env.ARCJET_KEY as string,
@@ -49,10 +51,11 @@ const protectedRoutes = [
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const sessionCookie = getSessionCookie(request);
+  const session = await auth.api.getSession({ headers: await headers() });
 
   // Handle root separately with exact match
   if (pathname === "/") {
-    if (sessionCookie) {
+    if (sessionCookie && session) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return NextResponse.next();
@@ -66,7 +69,7 @@ export async function proxy(request: NextRequest) {
   const isProtected = protectedRoutes.some((r) => pathname.startsWith(r));
   const isAuthRoute = authPaths.some((r) => pathname.startsWith(r));
 
-  if (!sessionCookie && isProtected) {
+  if ((!sessionCookie || !session) && isProtected) {
     const { searchParams } = new URL(request.url);
     const loginUrl = new URL("/sign-in", request.url);
     loginUrl.searchParams.set(
@@ -78,8 +81,13 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (sessionCookie && isAuthRoute) {
+  if (sessionCookie && session && isAuthRoute) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Role-based routing
+  if (pathname.startsWith("/admin") && session?.user.role !== "ADMIN") {
+    NextResponse.redirect("/dashboard");
   }
 
   return NextResponse.next();

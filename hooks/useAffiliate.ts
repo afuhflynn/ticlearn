@@ -2,12 +2,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/query-keys";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { CreateAffiliateParams } from "@/types";
 
 export function useAffiliate() {
   const { data, isLoading, error } = useQuery({
     queryKey: queryKeys.affiliate,
     queryFn: async () => {
-      const result = await api.queries.affiliate();
+      const result = await api.queries.affiliates.affiliate();
       return result;
     },
   });
@@ -71,6 +72,40 @@ export function useRequestPayout() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+    },
+  });
+}
+
+export function useCreateAffiliate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: CreateAffiliateParams) =>
+      api.mutations.affiliate.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "affiliates"] });
+      toast.success("Affiliate created successfully");
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to create affiliate",
+      );
+    },
+  });
+}
+
+export function useConfirmEarnings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payEarningsId: string) =>
+      api.mutations.affiliate.confirmEarnings(payEarningsId),
+    onSuccess: (data) => {
+      toast.success(data.message);
+      queryClient.invalidateQueries({ queryKey: ["admin", "affiliates"] });
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to process payout",
+      );
     },
   });
 }

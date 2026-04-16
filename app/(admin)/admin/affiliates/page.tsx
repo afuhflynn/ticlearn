@@ -1,20 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { useAdminAffiliates } from "@/hooks/useAdmin";
+import {
+  useAdminAffiliates,
+  useAdminAffiliate,
+  useUpdateAdminAffiliate,
+} from "@/hooks/useAdmin";
 import { UserCommandSelector } from "@/components/user-command-selector";
 import {
   Link2,
   Plus,
   Loader2,
   MoreVertical,
-  ExternalLink,
   Users,
   Search,
   TrendingUp,
   DollarSign,
   AlertCircle,
   Copy,
+  Mail,
+  CheckCircle,
+  XCircle,
+  Eye,
 } from "lucide-react";
 import {
   Card,
@@ -53,19 +60,26 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useQueryClient, useMutation } from "@tanstack/react-query";
-import { format } from "date-fns";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useConfirmEarnings, useCreateAffiliate } from "@/hooks/useAffiliate";
 
 export default function AdminAffiliatesPage() {
   const [search, setSearch] = useState("");
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+
+  // View Details modal
+  const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
+  const { affiliate: selectedAffiliate, isLoading: detailsLoading } =
+    useAdminAffiliate(viewDetailsId || "");
+
+  // Pay Earnings modal
+  const [payEarningsId, setPayEarningsId] = useState<string | null>(null);
+
+  // Suspend/Activate modal
+  const [suspendActivateId, setSuspendActivateId] = useState<string | null>(
+    null,
+  );
+  const [suspendActivateStatus, setSuspendActivateStatus] =
+    useState<string>("");
 
   // New Affiliate Form State
   const [selectedUserId, setSelectedUserId] = useState("");
@@ -75,37 +89,15 @@ export default function AdminAffiliatesPage() {
   const [momoNumber, setMomoNumber] = useState("");
   const [momoName, setMomoName] = useState("");
 
-  const queryClient = useQueryClient();
-
   const { affiliates, total, isLoading } = useAdminAffiliates({
     search,
   });
 
-  const createAffiliateMutation = useMutation({
-    mutationFn: async (data: any) => {
-      const res = await fetch("/api/admin/affiliates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Failed to create affiliate");
-      }
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["admin", "affiliates"] });
-      toast.success("Affiliate created successfully");
-      setIsCreateOpen(false);
-      resetForm();
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error ? error.message : "Failed to create affiliate",
-      );
-    },
-  });
+  const updateAffiliateMutation = useUpdateAdminAffiliate();
+
+  const createAffiliateMutation = useCreateAffiliate();
+  const { mutate: confirmEarningsMutation, isPending: isPaying } =
+    useConfirmEarnings();
 
   const resetForm = () => {
     setSelectedUserId("");
@@ -128,12 +120,66 @@ export default function AdminAffiliatesPage() {
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
-    createAffiliateMutation.mutate({
-      userId: selectedUserId,
-      code: affiliateCode,
-      momoNumber,
-      momoName,
+    createAffiliateMutation.mutate(
+      {
+        userId: selectedUserId,
+        code: affiliateCode,
+        momoNumber,
+        momoName,
+      },
+      {
+        onSuccess() {
+          setIsCreateOpen(false);
+          resetForm();
+        },
+      },
+    );
+  };
+
+  const handleViewDetails = (id: string) => {
+    setViewDetailsId(id);
+  };
+
+  const handlePayEarnings = (id: string) => {
+    setPayEarningsId(id);
+  };
+
+  const confirmPayEarnings = async () => {
+    if (!payEarningsId) return;
+    confirmEarningsMutation(payEarningsId, {
+      onSuccess() {
+        setPayEarningsId(null);
+      },
     });
+  };
+
+  const handleSuspendActivate = (id: string, currentStatus: string) => {
+    setSuspendActivateId(id);
+    setSuspendActivateStatus(
+      currentStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE",
+    );
+  };
+
+  const confirmSuspendActivate = async () => {
+    if (!suspendActivateId) return;
+    try {
+      await updateAffiliateMutation.mutateAsync({
+        id: suspendActivateId,
+        data: { status: suspendActivateStatus },
+      });
+      toast.success(
+        suspendActivateStatus === "SUSPENDED"
+          ? "Partner suspended"
+          : "Partner activated",
+      );
+      setSuspendActivateId(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to update partner status",
+      );
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -141,8 +187,274 @@ export default function AdminAffiliatesPage() {
     toast.success("Copied to clipboard");
   };
 
+  const handleGenerateCode = () => {
+    const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const code = `TIC-${suffix}`;
+    setAffiliateCode(code);
+  };
+
   return (
     <div className="space-y-6">
+      {/* View Details Modal */}
+      <Dialog
+        open={!!viewDetailsId}
+        onOpenChange={() => setViewDetailsId(null)}
+      >
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Affiliate Details</DialogTitle>
+            <DialogDescription>
+              Full details and earnings history
+            </DialogDescription>
+          </DialogHeader>
+          {detailsLoading ? (
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : selectedAffiliate ? (
+            <div className="space-y-6">
+              {/* Affiliate Info */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Name</Label>
+                  <p className="font-medium">{selectedAffiliate.userName}</p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Email</Label>
+                  <p className="flex items-center gap-2">
+                    <Mail className="h-4 w-4" />
+                    {selectedAffiliate.userEmail}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Code</Label>
+                  <code className="bg-muted px-2 py-1 rounded text-sm font-mono">
+                    {selectedAffiliate.code}
+                  </code>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Status</Label>
+                  <Badge
+                    variant={
+                      selectedAffiliate.status === "ACTIVE"
+                        ? "default"
+                        : "secondary"
+                    }
+                  >
+                    {selectedAffiliate.status}
+                  </Badge>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Total Clicks</Label>
+                  <p className="font-medium">
+                    {selectedAffiliate.totalClicks || 0}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">Conversions</Label>
+                  <p className="font-medium">
+                    {selectedAffiliate.totalConversions || 0}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">
+                    Total Earnings
+                  </Label>
+                  <p className="font-medium text-green-600">
+                    {(selectedAffiliate.totalEarnings || 0).toLocaleString()}{" "}
+                    XFA
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-muted-foreground">
+                    Pending Earnings
+                  </Label>
+                  <p className="font-medium text-yellow-600">
+                    {(selectedAffiliate.pendingEarnings || 0).toLocaleString()}{" "}
+                    XFA
+                  </p>
+                </div>
+              </div>
+
+              {/* Earnings History */}
+              <div>
+                <h4 className="font-medium mb-2">Earnings History</h4>
+                {selectedAffiliate.earnings?.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>User Email</TableHead>
+                        <TableHead>Plan</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Commission</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedAffiliate.earnings.map((e: any) => (
+                        <TableRow key={e.id}>
+                          <TableCell>{e.referredUserEmail}</TableCell>
+                          <TableCell>{e.plan}</TableCell>
+                          <TableCell>{e.amount} XFA</TableCell>
+                          <TableCell className="text-green-600">
+                            +{e.commission} XFA
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                e.status === "PAID"
+                                  ? "default"
+                                  : e.status === "REQUESTED"
+                                    ? "outline"
+                                    : "secondary"
+                              }
+                            >
+                              {e.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {e.createdAt
+                              ? new Date(e.createdAt).toLocaleDateString()
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No earnings yet.
+                  </p>
+                )}
+              </div>
+
+              {/* Referrals */}
+              <div>
+                <h4 className="font-medium mb-2">Referrals</h4>
+                {selectedAffiliate.referrals?.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Converted</TableHead>
+                        <TableHead>Date</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedAffiliate.referrals.map((r: any) => (
+                        <TableRow key={r.id}>
+                          <TableCell>{r.referredUserEmail || "-"}</TableCell>
+                          <TableCell>
+                            {r.converted ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs">
+                            {r.createdAt
+                              ? new Date(r.createdAt).toLocaleDateString()
+                              : "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No referrals yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          ) : (
+            <p>No affiliate found.</p>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewDetailsId(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pay Earnings Modal */}
+      <Dialog
+        open={!!payEarningsId}
+        onOpenChange={() => setPayEarningsId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Payment</DialogTitle>
+            <DialogDescription>
+              Pay pending earnings to this affiliate partner
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              This will mark all pending earnings as paid and update the
+              affiliate&apos;s account.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayEarningsId(null)}>
+              Cancel
+            </Button>
+            <Button onClick={confirmPayEarnings} disabled={isPaying}>
+              {isPaying ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                "Confirm Payment"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Suspend/Activate Modal */}
+      <Dialog
+        open={!!suspendActivateId}
+        onOpenChange={() => setSuspendActivateId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {suspendActivateStatus === "SUSPENDED"
+                ? "Suspend Partner"
+                : "Activate Partner"}
+            </DialogTitle>
+            <DialogDescription>
+              {suspendActivateStatus === "SUSPENDED"
+                ? "This will suspend the affiliate partner."
+                : "This will reactivate the affiliate partner."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setSuspendActivateId(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={confirmSuspendActivate}
+              variant={
+                suspendActivateStatus === "SUSPENDED"
+                  ? "destructive"
+                  : "default"
+              }
+            >
+              {suspendActivateStatus === "SUSPENDED" ? "Suspend" : "Activate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Content */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
@@ -175,7 +487,6 @@ export default function AdminAffiliatesPage() {
                     value={selectedUserId}
                     onChange={handleUserChange}
                     placeholder="Search users by name or email..."
-                    selectedUser={selectedUserId}
                   />
                   {selectedUserId && (
                     <p className="text-xs text-muted-foreground">
@@ -202,14 +513,7 @@ export default function AdminAffiliatesPage() {
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={() =>
-                        setAffiliateCode(
-                          Math.random()
-                            .toString(36)
-                            .substring(2, 8)
-                            .toUpperCase(),
-                        )
-                      }
+                      onClick={handleGenerateCode}
                     >
                       <TrendingUp className="h-4 w-4" />
                     </Button>
@@ -256,6 +560,7 @@ export default function AdminAffiliatesPage() {
         </Dialog>
       </div>
 
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
@@ -300,6 +605,7 @@ export default function AdminAffiliatesPage() {
         </Card>
       </div>
 
+      {/* Affiliate Table */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -411,17 +717,40 @@ export default function AdminAffiliatesPage() {
                         <DropdownMenuContent align="end">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
-                            <ExternalLink className="h-4 w-4" />
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() => handleViewDetails(affiliate.id)}
+                          >
+                            <Eye className="h-4 w-4" />
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 cursor-pointer">
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() => handlePayEarnings(affiliate.id)}
+                          >
                             <DollarSign className="h-4 w-4" />
                             Pay Earnings
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="gap-2 cursor-pointer text-destructive">
-                            <AlertCircle className="h-4 w-4" />
-                            Suspend Partner
+                          <DropdownMenuItem
+                            className="gap-2 cursor-pointer"
+                            onClick={() =>
+                              handleSuspendActivate(
+                                affiliate.id,
+                                affiliate.status,
+                              )
+                            }
+                          >
+                            {affiliate.status === "ACTIVE" ? (
+                              <>
+                                <AlertCircle className="h-4 w-4" />
+                                Suspend Partner
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle className="h-4 w-4" />
+                                Activate Partner
+                              </>
+                            )}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

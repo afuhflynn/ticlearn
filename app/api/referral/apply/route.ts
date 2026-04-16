@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
     });
 
-    if (user?.referredBy) {
+    if (user?.referredBy || !user) {
       return NextResponse.json(
         { error: "Referral code already applied" },
         { status: 400 },
@@ -56,14 +56,22 @@ export async function POST(req: Request) {
       data: { referredBy: code, refApplied: true },
     });
 
-    await prisma.affiliateClick.updateMany({
-      where: {
+    // create a new affilate_click
+    const affiliateClick = await prisma.affiliateClick.create({
+      data: {
+        affiliateEmail: affiliate.userEmail,
         affiliateCode: code,
+        converted: true,
         referredUserEmail: session.user.email,
-        converted: false,
       },
-      data: { converted: true },
     });
+
+    if (!affiliateClick) {
+      return NextResponse.json(
+        { error: "Failed to apply affiliate code" },
+        { status: 500 },
+      );
+    }
 
     await prisma.affiliate.update({
       where: { code },
