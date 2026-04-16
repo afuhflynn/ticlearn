@@ -3,21 +3,38 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Shield, Loader2, CheckCircle2, AlertCircle, ArrowRight } from "lucide-react";
+import {
+  Shield,
+  Loader2,
+  CheckCircle2,
+  AlertCircle,
+  ArrowRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { useSession } from "@/lib/auth-client";
 import { toast } from "sonner";
+import { useAcceptInvite } from "@/hooks/useInvite";
 
 function AcceptInviteContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const { data: session, isPending: sessionLoading } = useSession();
-  
-  const [status, setStatus] = useState<"loading" | "ready" | "success" | "error">("loading");
+
+  const [status, setStatus] = useState<
+    "loading" | "ready" | "success" | "error"
+  >("loading");
   const [error, setError] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const { mutateAsync: acceptInvite, isPending: isProcessing } =
+    useAcceptInvite();
 
   useEffect(() => {
     if (!token) {
@@ -29,7 +46,9 @@ function AcceptInviteContent() {
     if (!sessionLoading) {
       if (!session) {
         // Redirect to sign up/in with return URL
-        const returnUrl = encodeURIComponent(`/admin/accept-invite?token=${token}`);
+        const returnUrl = encodeURIComponent(
+          `/admin/accept-invite?token=${token}`,
+        );
         router.push(`/sign-up?callbackUrl=${returnUrl}`);
         return;
       }
@@ -38,28 +57,15 @@ function AcceptInviteContent() {
   }, [token, session, sessionLoading, router]);
 
   const handleAccept = async () => {
-    setIsProcessing(true);
-    try {
-      const res = await fetch("/api/admin/invites/accept", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to accept invitation");
-      }
-
-      setStatus("success");
-      toast.success("Welcome to the Admin Team!");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred");
-      setStatus("error");
-    } finally {
-      setIsProcessing(false);
-    }
+    await acceptInvite(token!, {
+      onError(error) {
+        setError(error.message ?? "An error occurred");
+      },
+      onSuccess() {
+        setStatus("success");
+        toast.success("Welcome to the Admin Team!");
+      },
+    });
   };
 
   if (status === "loading" || sessionLoading) {
@@ -92,8 +98,12 @@ function AcceptInviteContent() {
             {status === "ready" && (
               <div className="space-y-4">
                 <p className="text-muted-foreground">
-                  You are signed in as <span className="font-semibold text-foreground">{session?.user.email}</span>. 
-                  Click below to accept the invitation and gain administrative access.
+                  You are signed in as{" "}
+                  <span className="font-semibold text-foreground">
+                    {session?.user.email}
+                  </span>
+                  . Click below to accept the invitation and gain administrative
+                  access.
                 </p>
               </div>
             )}
@@ -105,7 +115,8 @@ function AcceptInviteContent() {
                 </div>
                 <p className="text-lg font-medium">Access Granted!</p>
                 <p className="text-muted-foreground">
-                  Your account has been upgraded to Administrator. You now have access to the admin dashboard.
+                  Your account has been upgraded to Administrator. You now have
+                  access to the admin dashboard.
                 </p>
               </div>
             )}
@@ -115,7 +126,9 @@ function AcceptInviteContent() {
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10">
                   <AlertCircle className="h-6 w-6 text-destructive" />
                 </div>
-                <p className="text-lg font-medium text-destructive">Invitation Error</p>
+                <p className="text-lg font-medium text-destructive">
+                  Invitation Error
+                </p>
                 <p className="text-muted-foreground">{error}</p>
               </div>
             )}
@@ -123,9 +136,9 @@ function AcceptInviteContent() {
 
           <CardFooter>
             {status === "ready" && (
-              <Button 
-                onClick={handleAccept} 
-                className="w-full" 
+              <Button
+                onClick={handleAccept}
+                className="w-full"
                 disabled={isProcessing}
               >
                 {isProcessing ? (
@@ -144,7 +157,11 @@ function AcceptInviteContent() {
             )}
 
             {status === "error" && (
-              <Button onClick={() => router.push("/")} variant="outline" className="w-full">
+              <Button
+                onClick={() => router.push("/")}
+                variant="outline"
+                className="w-full"
+              >
                 Back to Home
               </Button>
             )}
@@ -157,11 +174,13 @@ function AcceptInviteContent() {
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[60vh] items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      }
+    >
       <AcceptInviteContent />
     </Suspense>
   );

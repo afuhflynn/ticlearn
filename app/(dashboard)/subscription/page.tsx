@@ -308,7 +308,7 @@ export default function SubscriptionPage() {
         </Dialog>
       </div>
 
-      <Tabs defaultValue="auto" className="w-full">
+      <Tabs defaultValue="manual" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           {/* Disabled for the moment while working on fix fapshi issues */}
           <TabsTrigger value="auto" className="gap-2" disabled>

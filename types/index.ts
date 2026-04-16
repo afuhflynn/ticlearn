@@ -1,6 +1,9 @@
 // TiCLearn Type Definitions
 
 import type {
+  Affiliate,
+  AffiliateClick,
+  AffiliateEarning,
   AffiliateStatus,
   EarningStatus,
   ExamMode,
@@ -48,42 +51,6 @@ export interface SafeUser {
 // Note Types
 // ===========================================
 
-export interface NoteWithRelations {
-  id: string;
-  userId: string;
-  title: string;
-  subject: string;
-  fileUrl: string;
-  uploadthingKey: string | null;
-  fileName: string;
-  fileType: "PDF" | "IMAGE" | "WORD";
-  extractedText: string | null;
-  topics: string[];
-  keyPoints: string[];
-  summary: string | null;
-  status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
-  createdAt: Date;
-  updatedAt: Date;
-  user?: SafeUser;
-  quizzes?: QuizSummary[];
-}
-
-export interface NoteSummary {
-  id: string;
-  title: string;
-  subject: string;
-  fileUrl: string;
-  uploadthingKey?: string | null;
-  fileName: string;
-  fileType: "PDF" | "IMAGE" | "WORD";
-  status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
-  topics?: string[];
-  keyPoints?: string[];
-  summary?: string | null;
-  createdAt: Date;
-  quizCount?: number;
-}
-
 // ===========================================
 // Quiz Types
 // ===========================================
@@ -105,17 +72,6 @@ export interface QuizWithRelations {
   note?: NoteSummary;
   questions?: QuizQuestion[];
   attempts?: QuizAttemptSummary[];
-}
-
-export interface QuizQuestion {
-  id: string;
-  quizId: string;
-  type: "MCQ" | "OPEN";
-  question: string;
-  options: string[];
-  correctAnswer: string;
-  explanation: string | null;
-  order: number;
 }
 
 export interface QuizSummary {
@@ -382,85 +338,269 @@ export interface RatingWithUser {
 }
 
 // ===========================================
-// FAQ Types
+// Type Definitions
 // ===========================================
 
-export interface FAQ {
+export interface QuizQuestion {
+  id: string;
+  type: "MCQ" | "OPEN";
   question: string;
-  answer: string;
+  options: string[];
+  correctAnswer: string;
+  order: number;
+  explanation?: string | null;
 }
 
-export interface FAQItem {
-  question: string;
-  answer: string;
+export interface Quiz {
+  id: string;
+  title: string;
+  noteTitle: string;
+  status: "GENERATING" | "READY" | "ERROR";
+  timed: boolean;
+  timeLimit: number | null;
+  isPublic: boolean;
+  questionCount: number;
+  questions: QuizQuestion[];
 }
 
-export const FAQ_ITEMS: FAQItem[] = [
-  {
-    question: "What is TiCLearn?",
-    answer:
-      "TiCLearn is an AI-powered study platform designed specifically for Cameroonian GCE A-Level students. It helps you transform notes into quizzes, practice with past exams, compete on leaderboards, and get help from an TiC.",
-  },
-  {
-    question: "How does the AI quiz generator work?",
-    answer:
-      "Simply upload your study notes or paste text, and our AI will automaTiClly generate relevant multiple-choice quizzes. You can customize the number of questions, difficulty level, and topics covered.",
-  },
-  {
-    question: "Is TiCLearn free to use?",
-    answer:
-      "Yes! TiCLearn offers a free tier with basic features including note uploading, quiz generation, and access to the TiC. We also offer premium plans with advanced features like unlimited quizzes, exam papers, and priority support.",
-  },
-  {
-    question: "What subjects do you support?",
-    answer:
-      "We support all GCE A-Level subjects including Mathematics, Physics, Chemistry, Biology, Computer Science, Economics, Geography, Literature, and more. Our AI is continuously learning to improve accuracy across all subjects.",
-  },
-  {
-    question: "How do I subscribe to premium?",
-    answer:
-      "Visit our pricing page to view available plans. Subscriptions can be paid via Fapshi (mobile money) or credit card. Once subscribed, you'll get instant access to all premium features.",
-  },
-  {
-    question: "Can I use TiCLearn on my phone?",
-    answer:
-      "Yes! TiCLearn is fully responsive and works on desktop, tablet, and mobile devices. You can study anywhere, anytime.",
-  },
-  {
-    question: "How does the affiliate program work?",
-    answer:
-      "Share your unique referral link with friends and earn rewards when they subscribe. You'll earn 20% of their subscription fees for life. Track your earnings in your dashboard.",
-  },
-  {
-    question: "Is my data secure?",
-    answer:
-      "Absolutely. We take data privacy seriously. Your notes and study data are encrypted and stored securely. We never share your personal information with third parties.",
-  },
-  {
-    question: "How do I reset my password?",
-    answer:
-      "Go to the sign-in page and click 'Forgot Password'. Enter your email address and we'll send you a reset link.",
-  },
-  {
-    question: "Can I cancel my subscription anytime?",
-    answer:
-      "Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period.",
-  },
-  {
-    question: "How can I contact support?",
-    answer:
-      "You can reach us via email at hello@ticlearn.com, use our contact form, or send a message through the app. We typically respond within 24 hours.",
-  },
-  {
-    question: "Do you offer group/school subscriptions?",
-    answer:
-      "Yes! We offer special pricing for schools and organizations. Contact us at hello@ticlearn.com for more information.",
-  },
-];
+export interface NoteSummary {
+  id: string;
+  title: string;
+  subject: string;
+  fileUrl: string;
+  fileName: string;
+  fileType: "PDF" | "IMAGE" | "WORD";
+  status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
+  summary?: string | null;
+  topics?: string[];
+  quizCount?: number;
+  createdAt: string;
+}
 
-// ===========================================
-// API Request/Response Types
-// ===========================================
+export interface NoteWithRelations extends NoteSummary {
+  userId: string;
+  extractedText?: string | null;
+  keyPoints?: string[];
+  quizzes: Quiz[];
+}
+
+export interface UsageData {
+  plan: string;
+  status: string;
+  limits: {
+    pdfUploads: number;
+    quizGenerations: number;
+    aiTutorMessages: number;
+    canAccessCommunity: boolean;
+    canAccessLeaderboard: boolean;
+    canAccessGCE: boolean;
+  };
+  usage: {
+    pdfUploads: number;
+    quizGenerations: number;
+    aiTutorMessages: number;
+  };
+  canUpload: boolean;
+  canGenerateQuiz: boolean;
+  canUseAIChat: boolean;
+  chatDailyUsage: {
+    used: number;
+    limit: number;
+    remaining: number;
+    resetsAt: string;
+    resetsInSeconds: number;
+  } | null;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  email: string;
+  image?: string | null;
+  role: string;
+}
+
+export interface UserSettings {
+  id: string;
+  userId: string;
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  weeklyDigest: boolean;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export interface Post {
+  id: string;
+  userId: string;
+  content: string;
+  imageUrl?: string | null;
+  subject?: string | null;
+  likesCount: number;
+  commentsCount: number;
+  isLiked: boolean;
+  user: {
+    id: string;
+    name: string;
+    image?: string | null;
+  };
+  createdAt: string;
+}
+
+export interface AffiliateData {
+  code: string;
+  totalClicks: number;
+  totalReferrals: number;
+  earnings: number;
+  pendingPayout: number;
+}
+
+export interface Feedback {
+  id: string;
+  userId: string;
+  type: string;
+  message: string;
+  createdAt: string;
+}
+
+export interface ExamSession {
+  id: string;
+  title: string;
+  subject: string;
+  status: "GENERATING" | "READY" | "COMPLETED";
+  questions: unknown[];
+  answers?: unknown;
+  score?: number;
+  createdAt: string;
+}
+
+export interface UserStats {
+  totalNotes: number;
+  quizzesTaken: number;
+  avgScore: number;
+  currentStreak: number;
+  totalPoints: number;
+}
+
+export interface Subscription {
+  id: string;
+  plan: string;
+  status: "ACTIVE" | "INACTIVE" | "PENDING" | "FAILED";
+  activatedAt?: string | null;
+}
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  role: string;
+  content: string;
+  parts: unknown;
+  createdAt: string;
+}
+
+export interface ChatConversationWithMessages extends ChatConversation {
+  messages: ChatMessage[];
+}
+
+// Admin Types
+export interface UserSummary {
+  id: string;
+  name: string;
+  email: string;
+  image: string | null;
+  role: string;
+  createdAt: string;
+  notesCount: number;
+  quizzesCount: number;
+  attemptsCount: number;
+}
+
+export interface UserDetail extends UserSummary {
+  emailVerified: boolean;
+}
+
+export interface NotePreview {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface QuizPreview {
+  id: string;
+  title: string;
+  status: string;
+  createdAt: string;
+}
+
+export interface AttemptPreview {
+  id: string;
+  score: number;
+  totalQuestions: number;
+  completedAt: string;
+  quiz: { title: string };
+}
+
+export interface FeedbackData {
+  id: string;
+  type: string;
+  message: string;
+  status: string;
+  adminNote: string | null;
+  createdAt: string;
+  user: {
+    id: string;
+    name: string | null;
+    email: string;
+    image: string | null;
+  };
+}
+
+export interface SubscriptionData {
+  id: string;
+  plan: string;
+  status: string;
+  amount: number;
+  startDate: string;
+  endDate: string | null;
+  createdAt: string;
+  userEmail: string;
+  userName: string;
+  activatedAt: string | null;
+  user: { id: string; name: string | null; email: string };
+}
+
+export interface AffiliateDetail extends Affiliate {
+  referrals: AffiliateClick[];
+  earnings: AffiliateEarning[];
+}
+
+export interface AdminStats {
+  totalUsers: number;
+  totalNotes: number;
+  totalQuizzes: number;
+  totalExams: number;
+  totalSubscriptions: number;
+  activeSubscriptions: number;
+  totalRevenue: number;
+  avgRating: number;
+  recentFeedback: number;
+  pendingAffiliates: number;
+}
 
 export interface ApiResponse<T> {
   success: boolean;
@@ -476,10 +616,6 @@ export interface PaginatedResponse<T> {
   limit: number;
   hasMore: boolean;
 }
-
-// ===========================================
-// Form Types
-// ===========================================
 
 export interface SignUpFormData {
   name: string;
@@ -529,15 +665,16 @@ export interface DashboardStats {
   totalPoints: number;
 }
 
-export interface AdminStats {
-  totalUsers: number;
-  totalNotes: number;
-  totalQuizzes: number;
-  totalExams: number;
-  totalSubscriptions: number;
-  activeSubscriptions: number;
-  totalRevenue: number;
-  avgRating: number;
-  recentFeedback: number;
-  pendingAffiliates: number;
+export interface CreateAffiliateParams {
+  userId: string;
+  code: string;
+  momoNumber: string;
+  momoName: string;
+}
+
+export interface PaymentSettingsData {
+  mtnNumber: string;
+  mtnHolderName: string;
+  orangeNumber: string;
+  orangeHolderName: string;
 }

@@ -292,6 +292,26 @@ export function useCreateAdminAffiliate() {
   });
 }
 
+export function usePayAffiliateEarnings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const response = await fetch(`/api/admin/affiliates/${id}/payout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || "Failed to process payout");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "affiliates"] });
+    },
+  });
+}
+
 export function useGenerateAdminReport() {
   return useMutation({
     mutationFn: async (type: string) => {
