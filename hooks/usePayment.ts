@@ -4,7 +4,6 @@ import { PaymentSettingsData } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
-const queryClient = useQueryClient();
 export function usePaymentSettings() {
   return useQuery({
     queryKey: queryKeys.paymentSettings,
@@ -23,15 +22,17 @@ export function usePaymentSettings() {
 }
 
 export function useUpdatePaymentSettings() {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationKey: queryKeys.savePaymentSettings,
     mutationFn: async (data: PaymentSettingsData) =>
       api.mutations.payments.updateSettings(data),
-    onSuccess(data, variables, onMutateResult, context) {
+    onSuccess() {
       toast.success("Payment settings saved successfully");
-      queryClient.cancelQueries({ queryKey: queryKeys.paymentSettings });
+      queryClient.invalidateQueries({ queryKey: queryKeys.paymentSettings });
     },
-    onError(error) {
+    onError(error: Error) {
       toast.error(error.message ?? "Failed to save payment settings");
     },
   });
