@@ -199,11 +199,14 @@ export const api = {
         apiRequest<{ stats: UserStats }>("/stats", {
           method: "GET",
         }),
-      leaderboard: () =>
+      leaderboard: (page = 1, limit = 20) =>
         apiRequest<{
           leaderboard: LeaderboardEntry[];
           currentUserRank: number | null;
-        }>("/leaderboard", { method: "GET" }),
+          total: number;
+          totalPages: number;
+          page: number;
+        }>(`/leaderboard?page=${page}&limit=${limit}`, { method: "GET" }),
     },
 
     chat: {

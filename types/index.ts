@@ -261,7 +261,7 @@ export const FREE_LIMITS: PlanLimits = {
   quizGenerations: 4,
   aiTutorMessages: 8,
   canAccessCommunity: false,
-  canAccessLeaderboard: false,
+  canAccessLeaderboard: true,
   canAccessGCE: false,
 };
 

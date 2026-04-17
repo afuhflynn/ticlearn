@@ -775,9 +775,9 @@ function UploadContent() {
                   <SelectItem
                     value="30"
                     disabled={
-                      !isLoading &&
-                      !isPending &&
-                      ["STARTER", "PREMIUM", "STANDARD"].includes(plan)
+                      isLoading ||
+                      isPending ||
+                      !["STARTER", "PREMIUM", "STANDARD"].includes(plan)
                     }
                   >
                     30 questions
@@ -785,9 +785,9 @@ function UploadContent() {
                   <SelectItem
                     value="40"
                     disabled={
-                      !isLoading &&
-                      !isPending &&
-                      ["STARTER", "PREMIUM", "STANDARD"].includes(plan)
+                      isLoading ||
+                      isPending ||
+                      !["STARTER", "PREMIUM", "STANDARD"].includes(plan)
                     }
                   >
                     40 questions
@@ -795,9 +795,9 @@ function UploadContent() {
                   <SelectItem
                     value="50"
                     disabled={
-                      !isLoading &&
-                      !isPending &&
-                      ["STARTER", "PREMIUM", "STANDARD"].includes(plan)
+                      isLoading ||
+                      isPending ||
+                      !["STARTER", "PREMIUM", "STANDARD"].includes(plan)
                     }
                   >
                     50 questions
@@ -805,9 +805,9 @@ function UploadContent() {
                   <SelectItem
                     value="60"
                     disabled={
-                      !isLoading &&
-                      !isPending &&
-                      ["PREMIUM", "STANDARD", "STARTER"].includes(plan)
+                      isLoading ||
+                      isPending ||
+                      !["STARTER", "PREMIUM", "STANDARD"].includes(plan)
                     }
                   >
                     60 questions
@@ -815,9 +815,9 @@ function UploadContent() {
                   <SelectItem
                     value="70"
                     disabled={
-                      !isLoading &&
-                      !isPending &&
-                      ["PREMIUM", "STANDARD"].includes(plan)
+                      isLoading ||
+                      isPending ||
+                      !["PREMIUM", "STANDARD"].includes(plan)
                     }
                   >
                     70 questions
@@ -825,9 +825,9 @@ function UploadContent() {
                   <SelectItem
                     value="80"
                     disabled={
-                      !isLoading &&
-                      !isPending &&
-                      ["PREMIUM", "STANDARD"].includes(plan)
+                      isLoading ||
+                      isPending ||
+                      !["PREMIUM", "STANDARD"].includes(plan)
                     }
                   >
                     80 questions
@@ -835,7 +835,7 @@ function UploadContent() {
                   <SelectItem
                     value="90"
                     disabled={
-                      !isLoading && !isPending && ["PREMIUM"].includes(plan)
+                      isLoading || isPending || !["PREMIUM"].includes(plan)
                     }
                   >
                     90 questions
@@ -843,7 +843,7 @@ function UploadContent() {
                   <SelectItem
                     value="100"
                     disabled={
-                      !isLoading && !isPending && ["PREMIUM"].includes(plan)
+                      isLoading || isPending || !["PREMIUM"].includes(plan)
                     }
                   >
                     100 questions
