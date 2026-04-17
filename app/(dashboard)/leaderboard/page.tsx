@@ -1,17 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { Trophy, Medal, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useLeaderboard } from "@/hooks";
 
 export default function LeaderboardPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
-  const { leaderboard, currentUserRank, isLoading } = useLeaderboard();
+  const [page, setPage] = useState(1);
+  const { leaderboard, currentUserRank, totalPages, isLoading } = useLeaderboard(page, 20);
 
   if (sessionPending || isLoading) {
     return (
@@ -81,38 +84,60 @@ export default function LeaderboardPage() {
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {leaderboard.map((entry: any) => (
-                <div
-                  key={entry.userId}
-                  className={`flex items-center gap-4 rounded-lg border p-4 ${
-                    entry.userId === session.user?.id
-                      ? "border-primary bg-primary/5"
-                      : ""
-                  }`}
+            <>
+              <div className="space-y-4">
+                {leaderboard.map((entry: any) => (
+                  <div
+                    key={entry.userId}
+                    className={`flex items-center gap-4 rounded-lg border p-4 ${
+                      entry.userId === session.user?.id
+                        ? "border-primary bg-primary/5"
+                        : ""
+                    }`}
+                  >
+                    <div className="w-8 flex justify-center">
+                      {getRankIcon(entry.rank)}
+                    </div>
+                    <Avatar>
+                      <AvatarFallback>
+                        {entry.userName?.charAt(0) || "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <p className="font-medium">{entry.userName}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {entry.quizzesTaken} quizzes • {entry.currentStreak} day
+                        streak
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-bold text-lg">{entry.totalPoints}</p>
+                      <p className="text-xs text-muted-foreground">points</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-center gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
                 >
-                  <div className="w-8 flex justify-center">
-                    {getRankIcon(entry.rank)}
-                  </div>
-                  <Avatar>
-                    <AvatarFallback>
-                      {entry.userName?.charAt(0) || "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <p className="font-medium">{entry.userName}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {entry.quizzesTaken} quizzes • {entry.currentStreak} day
-                      streak
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lg">{entry.totalPoints}</p>
-                    <p className="text-xs text-muted-foreground">points</p>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  Previous
+                </Button>
+                <span className="py-2">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

@@ -18,20 +18,23 @@ export function useUserStats() {
   };
 }
 
-export function useLeaderboard() {
+export function useLeaderboard(page: number = 1, limit: number = 20) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: queryKeys.leaderboard,
+    queryKey: [...queryKeys.leaderboard, page, limit],
     queryFn: async () => {
-      const result = await api.queries.stats.leaderboard();
+      const result = await api.queries.stats.leaderboard(page, limit);
       return result;
     },
-    staleTime: 1000 * 60 * 5, // 5 minutes
+    staleTime: 1000 * 60 * 5,
     gcTime: 0,
   });
 
   return {
     leaderboard: data?.leaderboard || [],
     currentUserRank: data?.currentUserRank || null,
+    total: data?.total || 0,
+    totalPages: data?.totalPages || 1,
+    page: data?.page || 1,
     isLoading,
     error,
     refetch,
