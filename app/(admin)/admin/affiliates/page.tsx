@@ -64,6 +64,7 @@ import { useConfirmEarnings, useCreateAffiliate } from "@/hooks/useAffiliate";
 
 export default function AdminAffiliatesPage() {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
   // View Details modal
@@ -89,8 +90,10 @@ export default function AdminAffiliatesPage() {
   const [momoNumber, setMomoNumber] = useState("");
   const [momoName, setMomoName] = useState("");
 
-  const { affiliates, total, isLoading } = useAdminAffiliates({
+  const { affiliates, total, totalPages, isLoading } = useAdminAffiliates({
     search,
+    limit: 20,
+    page,
   });
 
   const updateAffiliateMutation = useUpdateAdminAffiliate();
@@ -631,19 +634,20 @@ export default function AdminAffiliatesPage() {
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Partner</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Clicks/Conv.</TableHead>
-                  <TableHead>Earnings</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+) : (
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Partner</TableHead>
+                      <TableHead>Code</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Clicks/Conv.</TableHead>
+                      <TableHead>Earnings</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                 {affiliates?.map((affiliate) => (
                   <TableRow key={affiliate.id}>
                     <TableCell>
@@ -759,6 +763,27 @@ export default function AdminAffiliatesPage() {
                 ))}
               </TableBody>
             </Table>
+
+              <div className="flex justify-center gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="py-2">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>

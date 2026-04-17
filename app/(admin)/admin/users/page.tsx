@@ -60,15 +60,17 @@ import { format } from "date-fns";
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
 
   const queryClient = useQueryClient();
 
-  const { users, total, isLoading, refetch } = useAdminUsers({
+  const { users, total, totalPages, isLoading, refetch } = useAdminUsers({
     search,
     limit: 20,
+    page,
   });
 
   const { data: invitesData, isLoading: invitesLoading } = useQuery({
@@ -215,13 +217,14 @@ export default function AdminUsersPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
               </div>
             ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>User</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+              <>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Role</TableHead>
+                      <TableHead>Joined</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -283,8 +286,29 @@ export default function AdminUsersPage() {
                     </TableRow>
                   ))}
                 </TableBody>
-              </Table>
-            )}
+</Table>
+
+              <div className="flex justify-center gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="py-2">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </>
+          )}
           </CardContent>
         </Card>
 
