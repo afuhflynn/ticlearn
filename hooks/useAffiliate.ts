@@ -25,8 +25,8 @@ export function useUpdateAffiliate() {
 
   return useMutation({
     mutationFn: async (data: {
-      payoutMethod?: string;
-      payoutAddress?: string;
+      momoNumber?: string;
+      momoName?: string;
     }) => {
       const result = await api.mutations.affiliate.update(data);
       return result;

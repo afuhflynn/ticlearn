@@ -3,7 +3,8 @@
 import { useState, Suspense, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "@/lib/auth-client";
+import { useSession, sendVerificationOTP, verifyEmailOTP } from "@/lib/auth-client";
+import { triggerWelcomeEmail } from "@/lib/inngest/trigger";
 import { motion } from "framer-motion";
 import {
   GraduationCap,
@@ -26,37 +27,6 @@ import {
 import { toast } from "sonner";
 import { useQueryStates } from "nuqs";
 import { searchParamsSchema } from "@/nuqs";
-
-async function sendVerificationOtp(email: string) {
-  const response = await fetch("/api/auth/email-otp/send-verification-otp", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, type: "email-verification" }),
-  });
-  return response.json();
-}
-
-async function verifyEmailOtp(email: string, otp: string) {
-  const response = await fetch("/api/auth/email-otp/verify-email", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, otp }),
-  });
-  return response.json();
-}
-
-async function triggerWelcomeEmailServer(email: string, name: string) {
-  const response = await fetch("/api/inngest/trigger", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      type: "welcome",
-      email,
-      name,
-    }),
-  });
-  return response.json();
-}
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -89,7 +59,7 @@ function VerifyEmailForm() {
     setError("");
 
     try {
-      const data = await sendVerificationOtp(email);
+      const data = await sendVerificationOTP(email);
 
       if (data.error) {
         setError(data.error.message || "Invalid code");
@@ -99,7 +69,7 @@ function VerifyEmailForm() {
         toast.success("Email verified successfully!");
 
         // Trigger welcome email for email/password users
-        await triggerWelcomeEmailServer(email, email.split("@")[0]).catch(
+        await triggerWelcomeEmail(email, email.split("@")[0]).catch(
           console.error,
         );
 
@@ -121,7 +91,7 @@ function VerifyEmailForm() {
     setError("");
 
     try {
-      const data = await verifyEmailOtp(email, otp);
+      const data = await verifyEmailOTP(email, otp);
 
       if (data.error) {
         setError(data.error.message || "Invalid code");
@@ -131,7 +101,7 @@ function VerifyEmailForm() {
         toast.success("Email verified successfully!");
 
         // Trigger welcome email for email/password users
-        await triggerWelcomeEmailServer(email, email.split("@")[0]).catch(
+        await triggerWelcomeEmail(email, email.split("@")[0]).catch(
           console.error,
         );
 
@@ -326,7 +296,7 @@ function VerifyEmailForm() {
                 className="text-primary hover:underline font-medium"
                 onClick={async () => {
                   try {
-                    const data = await sendVerificationOtp(email);
+const data = await sendVerificationOTP(email);
                     if (!data.error) {
                       toast.success("Verification code resent!");
                     }

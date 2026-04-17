@@ -36,6 +36,8 @@ import {
   SubscriptionData,
   AffiliateDetail,
   AdminStats,
+  ContactFormData,
+  ContactResponse,
 } from "@/types";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -218,7 +220,7 @@ export const api = {
     },
 
     subscription: () =>
-      apiRequest<{ subscription: Subscription | null }>("/subscription", {
+      apiRequest<{ subscription: Subscription | null; previousPlan: string | null }>("/subscription/me", {
         method: "GET",
       }),
 
@@ -335,6 +337,14 @@ export const api = {
         }),
     },
 
+    contact: {
+      send: (data: ContactFormData) =>
+        apiRequest<ContactResponse>("/contact", {
+          method: "POST",
+          body: data,
+        }),
+    },
+
     profile: {
       update: (data: { name?: string; image?: string }) =>
         apiRequest<{ user: UserProfile }>("/profile", {
@@ -398,7 +408,7 @@ export const api = {
     },
 
     affiliate: {
-      update: (data: { payoutMethod?: string; payoutAddress?: string }) =>
+      update: (data: { momoNumber?: string; momoName?: string }) =>
         apiRequest<{ affiliate: AffiliateData }>("/affiliate", {
           method: "PUT",
           body: data,

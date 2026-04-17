@@ -7,3 +7,21 @@ export const authClient = createAuthClient({
 });
 
 export const { signIn, signOut, signUp, useSession, getSession } = authClient;
+
+export async function sendVerificationOTP(email: string) {
+  const response = await fetch("/api/auth/email-otp/send-verification-otp", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, type: "email-verification" }),
+  });
+  return response.json();
+}
+
+export async function verifyEmailOTP(email: string, otp: string) {
+  const response = await fetch("/api/auth/email-otp/verify-email", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, otp }),
+  });
+  return response.json();
+}

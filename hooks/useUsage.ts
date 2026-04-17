@@ -48,7 +48,7 @@ export function useUsage(): UseUsageResult {
   const { data, isLoading, refetch } = useQuery({
     queryKey: queryKeys.usage,
     queryFn: async () => {
-      const result = await fetch("/api/usage").then((r) => r.json());
+      const result = await api.queries.usage();
       return result;
     },
     staleTime: 1000 * 60 * 2,
