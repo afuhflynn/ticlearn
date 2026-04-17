@@ -36,6 +36,8 @@ import {
   SubscriptionData,
   AffiliateDetail,
   AdminStats,
+  ContactFormData,
+  ContactResponse,
 } from "@/types";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -218,7 +220,7 @@ export const api = {
     },
 
     subscription: () =>
-      apiRequest<{ subscription: Subscription | null }>("/subscription", {
+      apiRequest<{ subscription: Subscription | null; previousPlan: string | null }>("/subscription", {
         method: "GET",
       }),
 
@@ -330,6 +332,14 @@ export const api = {
     feedback: {
       create: (data: { type: string; message: string; relatedId?: string }) =>
         apiRequest<{ feedback: Feedback }>("/feedback", {
+          method: "POST",
+          body: data,
+        }),
+    },
+
+    contact: {
+      send: (data: ContactFormData) =>
+        apiRequest<ContactResponse>("/contact", {
           method: "POST",
           body: data,
         }),

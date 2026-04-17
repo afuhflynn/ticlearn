@@ -387,6 +387,7 @@ export interface NoteWithRelations extends NoteSummary {
 export interface UsageData {
   plan: string;
   status: string;
+  previousPlan?: string | null;
   limits: {
     pdfUploads: number;
     quizGenerations: number;
@@ -459,8 +460,35 @@ export interface AffiliateData {
   code: string;
   totalClicks: number;
   totalReferrals: number;
-  earnings: number;
+  earnings: number | Earning[];
   pendingPayout: number;
+  id?: string;
+  status?: string;
+  momoNumber?: string | null;
+  momoName?: string | null;
+  totalConversions?: number;
+  totalEarnings?: number;
+  pendingEarnings?: number;
+  paidEarnings?: number;
+  referredUsers?: {
+    id: string;
+    name: string;
+    email: string;
+    joinedAt: string;
+    emailVerified: boolean;
+  }[];
+}
+
+export interface Earning {
+  id: string;
+  referredUserEmail: string;
+  plan: string;
+  amount: number;
+  commission: number;
+  status: string;
+  createdAt: string;
+  requestedAt: string | null;
+  paidAt: string | null;
 }
 
 export interface Feedback {
@@ -677,4 +705,17 @@ export interface PaymentSettingsData {
   mtnHolderName: string;
   orangeNumber: string;
   orangeHolderName: string;
+}
+
+export interface ContactFormData {
+  name: string;
+  email: string;
+  subject: string;
+  message: string;
+}
+
+export interface ContactResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
 }

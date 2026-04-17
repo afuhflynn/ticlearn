@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
+import { useSettings, useUpdateSettings, useUpdateProfile } from "@/hooks";
 import {
   User,
   Mail,
@@ -42,6 +43,10 @@ export default function SettingsPage() {
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { settings, isLoading: settingsLoading } = useSettings();
+  const updateProfileMutation = useUpdateProfile();
+  const updateSettingsMutation = useUpdateSettings();
+
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -69,27 +74,15 @@ export default function SettingsPage() {
       setEmail(session.user.email || "");
       setImage(session.user.image || null);
     }
-
-    async function fetchSettings() {
-      try {
-        const response = await fetch("/api/settings");
-        const data = await response.json();
-
-        if (data.settings) {
-          setEmailNotifications(data.settings.emailNotifications ?? true);
-          setPushNotifications(data.settings.pushNotifications ?? true);
-        }
-      } catch (error) {
-        console.error("Failed to fetch settings:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (session?.user) {
-      fetchSettings();
-    }
   }, [session, sessionLoading, router]);
+
+  useEffect(() => {
+    if (settings) {
+      setEmailNotifications(settings.emailNotifications ?? true);
+      setPushNotifications(settings.pushNotifications ?? true);
+      setIsLoading(false);
+    }
+  }, [settings]);
 
   const handleSaveProfile = async () => {
     if (!name.trim()) {
@@ -99,20 +92,10 @@ export default function SettingsPage() {
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success("Profile updated!");
-      } else {
-        toast.error(data.error || "Failed to update profile");
-      }
-    } catch {
-      toast.error("Failed to update profile");
+      await updateProfileMutation.mutateAsync({ name });
+      toast.success("Profile updated!");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -175,11 +158,7 @@ export default function SettingsPage() {
 
       if (data.url) {
         setImage(data.url);
-        await fetch("/api/profile", {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ image: data.url }),
-        });
+        await updateProfileMutation.mutateAsync({ image: data.url });
         toast.success("Profile photo updated!");
       } else {
         toast.error(data.error || "Failed to upload image");
@@ -199,17 +178,13 @@ export default function SettingsPage() {
     }
 
     try {
-      await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [key]: value }),
-      });
+      await updateSettingsMutation.mutateAsync({ [key]: value });
     } catch (error) {
       console.error("Failed to update notification settings:", error);
     }
   };
 
-  if (sessionLoading || isLoading) {
+  if (sessionLoading || settingsLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

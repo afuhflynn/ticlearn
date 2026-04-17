@@ -3,6 +3,7 @@ export {
   useAffiliate,
   useApplyReferralCode,
   useRequestPayout,
+  useUpdateAffiliate,
 } from "./useAffiliate";
 export {
   useCommunityPosts,

@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import { api } from "@/lib/api-client";
 
 interface Subscription {
   plan: string;
@@ -103,8 +104,7 @@ export default function PricingPage() {
     async function fetchSubscription() {
       if (session?.user) {
         try {
-          const response = await fetch("/api/usage");
-          const data = await response.json();
+          const data = await api.queries.usage();
           setSubscription({
             plan: data.plan || "FREE",
             status: data.status || "NONE",

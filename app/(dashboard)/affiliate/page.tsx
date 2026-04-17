@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
+import { useAffiliate, useUpdateAffiliate, useRequestPayout } from "@/hooks";
+import type { AffiliateData } from "@/types";
 import {
   Copy,
   TrendingUp,
@@ -27,48 +29,17 @@ import { Label } from "@/components/ui/label";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
-interface ReferredUser {
-  id: string;
-  name: string;
-  email: string;
-  joinedAt: string;
-  emailVerified: boolean;
-}
-
-interface Earning {
-  id: string;
-  referredUserEmail: string;
-  plan: string;
-  amount: number;
-  commission: number;
-  status: string;
-  createdAt: string;
-  requestedAt: string | null;
-  paidAt: string | null;
-}
-
-interface AffiliateData {
-  id: string;
-  code: string;
-  status: string;
-  momoNumber: string | null;
-  momoName: string | null;
-  totalClicks: number;
-  totalConversions: number;
-  totalEarnings: number;
-  pendingEarnings: number;
-  paidEarnings: number;
-  referredUsers: ReferredUser[];
-  earnings: Earning[];
-}
-
 export default function AffiliatePage() {
   const { data: session, isPending: sessionLoading } = useSession();
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
-  const [affiliate, setAffiliate] = useState<AffiliateData | null>(null);
+  const { affiliate, isLoading } = useAffiliate();
+  const affiliateData = affiliate as AffiliateData | undefined;
+  const updateAffiliateMutation = useUpdateAffiliate();
+  const requestPayoutMutation = useRequestPayout();
+
+  const affiliateDataData = affiliateData as AffiliateData | undefined;
+
   const [isSaving, setIsSaving] = useState(false);
-  const [isRequestingPayout, setIsRequestingPayout] = useState(false);
   const [momoNumber, setMomoNumber] = useState("");
   const [momoName, setMomoName] = useState("");
   const [copied, setCopied] = useState(false);
@@ -78,92 +49,49 @@ export default function AffiliatePage() {
       router.push("/sign-in");
       return;
     }
-
-    async function fetchAffiliate() {
-      try {
-        const response = await fetch("/api/affiliate");
-        const data = await response.json();
-
-        if (data.affiliate) {
-          setAffiliate(data.affiliate);
-          setMomoNumber(data.affiliate.momoNumber || "");
-          setMomoName(data.affiliate.momoName || "");
-        }
-      } catch (error) {
-        console.error("Failed to fetch affiliate:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    if (session?.user) {
-      fetchAffiliate();
-    }
   }, [session, sessionLoading, router]);
 
-  const handleSaveDetails = async () => {
+  useEffect(() => {
+    if (affiliateDataData) {
+      setMomoNumber(affiliateDataData.momoNumber || "");
+      setMomoName(affiliateDataData.momoName || "");
+    }
+  }, [affiliateDataData]);
+
+const handleSaveDetails = async () => {
     if (!momoNumber || !momoName) {
-      toast.error("Please fill in both mobile money details");
+      toast.error("Please fill in all fields");
       return;
     }
 
     setIsSaving(true);
     try {
-      const response = await fetch("/api/affiliate", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ momoNumber, momoName }),
+      await updateAffiliateMutation.mutateAsync({
+        payoutMethod: momoNumber,
+        payoutAddress: momoName,
       });
-      const data = await response.json();
-
-      if (data.success) {
-        setAffiliate((prev) =>
-          prev ? { ...prev, momoNumber, momoName } : null,
-        );
-        toast.success("Payment details saved!");
-      } else {
-        toast.error(data.error || "Failed to save details");
-      }
-    } catch {
-      toast.error("Failed to save details");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to save details");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleRequestPayout = async () => {
-    if (!affiliate?.pendingEarnings || affiliate.pendingEarnings <= 0) {
+    if (!affiliateData?.pendingEarnings || affiliateData.pendingEarnings <= 0) {
       toast.error("No pending earnings to withdraw");
       return;
     }
 
-    setIsRequestingPayout(true);
     try {
-      const response = await fetch("/api/affiliate/payout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success(data.message);
-        const refreshRes = await fetch("/api/affiliate");
-        const refreshData = await refreshRes.json();
-        if (refreshData.affiliate) {
-          setAffiliate(refreshData.affiliate);
-        }
-      } else {
-        toast.error(data.error || "Failed to request payout");
-      }
-    } catch {
-      toast.error("Failed to request payout");
-    } finally {
-      setIsRequestingPayout(false);
+      await requestPayoutMutation.mutateAsync();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to request payout");
     }
   };
 
   const copyReferralLink = () => {
-    const referralLink = `${window.location.origin}/sign-up?ref__=${affiliate?.code}`;
+    const referralLink = `${window.location.origin}/sign-up?ref__=${affiliateData?.code}`;
     navigator.clipboard.writeText(referralLink);
     setCopied(true);
     toast.success("Referral link copied!");
@@ -207,7 +135,7 @@ export default function AffiliatePage() {
     );
   }
 
-  const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/sign-up?ref__=${affiliate?.code}`;
+  const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/sign-up?ref__=${affiliateData?.code}`;
 
   return (
     <div className="space-y-8">
@@ -227,7 +155,7 @@ export default function AffiliatePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {affiliate?.totalClicks || 0}
+              {affiliateData?.totalClicks || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               People who viewed your link
@@ -242,7 +170,7 @@ export default function AffiliatePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {affiliate?.referredUsers?.length || 0}
+              {affiliateData?.referredUsers?.length || 0}
             </div>
             <p className="text-xs text-muted-foreground">Users who signed up</p>
           </CardContent>
@@ -255,7 +183,7 @@ export default function AffiliatePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {affiliate?.totalConversions || 0}
+              {affiliateData?.totalConversions || 0}
             </div>
             <p className="text-xs text-muted-foreground">
               Friends who subscribed
@@ -272,11 +200,11 @@ export default function AffiliatePage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              XFA {(affiliate?.totalEarnings || 0).toLocaleString()}
+              XFA {(affiliateData?.totalEarnings || 0).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
-              {affiliate?.pendingEarnings
-                ? `${affiliate.pendingEarnings.toLocaleString()} XFA pending`
+              {affiliateData?.pendingEarnings
+                ? `${affiliateData.pendingEarnings.toLocaleString()} XFA pending`
                 : "All earnings paid out"}
             </p>
           </CardContent>
@@ -314,7 +242,7 @@ export default function AffiliatePage() {
       </Card>
 
       {/* Your Referrals */}
-      {affiliate?.referredUsers && affiliate.referredUsers.length > 0 && (
+      {affiliateData?.referredUsers && affiliateData.referredUsers.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Your Referrals</CardTitle>
@@ -334,7 +262,7 @@ export default function AffiliatePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {affiliate.referredUsers.map((user) => (
+                  {affiliateData.referredUsers.map((user) => (
                     <tr key={user.id} className="border-b last:border-0">
                       <td className="py-3">{user.name}</td>
                       <td className="py-3 flex items-center gap-2">
@@ -366,7 +294,7 @@ export default function AffiliatePage() {
       )}
 
       {/* Earnings History */}
-      {affiliate?.earnings && affiliate.earnings.length > 0 && (
+      {affiliateData?.earnings && Array.isArray(affiliateData.earnings) && affiliateData.earnings.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Earnings History</CardTitle>
@@ -388,7 +316,7 @@ export default function AffiliatePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {affiliate.earnings.map((earning) => (
+                  {affiliateData.earnings.map((earning) => (
                     <tr key={earning.id} className="border-b last:border-0">
                       <td className="py-3">{earning.referredUserEmail}</td>
                       <td className="py-3">{earning.plan}</td>
@@ -467,7 +395,7 @@ export default function AffiliatePage() {
                     Pending Earnings
                   </p>
                   <p className="text-2xl font-bold">
-                    XFA {(affiliate?.pendingEarnings || 0).toLocaleString()}
+                    XFA {(affiliateData?.pendingEarnings || 0).toLocaleString()}
                   </p>
                 </div>
                 <Wallet className="h-8 w-8 text-muted-foreground" />
@@ -478,7 +406,7 @@ export default function AffiliatePage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Total Paid</p>
                   <p className="text-2xl font-bold text-green-600">
-                    XFA {(affiliate?.paidEarnings || 0).toLocaleString()}
+                    XFA {(affiliateData?.paidEarnings || 0).toLocaleString()}
                   </p>
                 </div>
                 <DollarSign className="h-8 w-8 text-green-600" />
@@ -487,15 +415,15 @@ export default function AffiliatePage() {
             <Button
               onClick={handleRequestPayout}
               disabled={
-                isRequestingPayout ||
-                !affiliate?.pendingEarnings ||
-                affiliate.pendingEarnings <= 0 ||
-                !affiliate?.momoNumber ||
-                !affiliate?.momoName
+                requestPayoutMutation.isPending ||
+                !affiliateData?.pendingEarnings ||
+                affiliateData.pendingEarnings <= 0 ||
+                !affiliateData?.momoNumber ||
+                !affiliateData?.momoName
               }
               className="w-full"
             >
-              {isRequestingPayout ? (
+              {requestPayoutMutation.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
@@ -504,7 +432,7 @@ export default function AffiliatePage() {
                 "Request Payout"
               )}
             </Button>
-            {(!affiliate?.momoNumber || !affiliate?.momoName) && (
+            {(!affiliateData?.momoNumber || !affiliateData?.momoName) && (
               <p className="text-xs text-muted-foreground text-center">
                 Add your mobile money details to request a payout
               </p>
