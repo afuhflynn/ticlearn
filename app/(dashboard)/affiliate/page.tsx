@@ -33,11 +33,9 @@ export default function AffiliatePage() {
   const { data: session, isPending: sessionLoading } = useSession();
   const router = useRouter();
   const { affiliate, isLoading } = useAffiliate();
-  const affiliateData = affiliate as AffiliateData | undefined;
   const updateAffiliateMutation = useUpdateAffiliate();
   const requestPayoutMutation = useRequestPayout();
-
-  const affiliateDataData = affiliateData as AffiliateData | undefined;
+  const affiliateData = affiliate as AffiliateData | undefined;
 
   const [isSaving, setIsSaving] = useState(false);
   const [momoNumber, setMomoNumber] = useState("");
@@ -52,11 +50,11 @@ export default function AffiliatePage() {
   }, [session, sessionLoading, router]);
 
   useEffect(() => {
-    if (affiliateDataData) {
-      setMomoNumber(affiliateDataData.momoNumber || "");
-      setMomoName(affiliateDataData.momoName || "");
+    if (affiliateData) {
+      setMomoNumber(affiliateData.momoNumber || "");
+      setMomoName(affiliateData.momoName || "");
     }
-  }, [affiliateDataData]);
+  }, [affiliateData]);
 
 const handleSaveDetails = async () => {
     if (!momoNumber || !momoName) {
@@ -67,8 +65,8 @@ const handleSaveDetails = async () => {
     setIsSaving(true);
     try {
       await updateAffiliateMutation.mutateAsync({
-        payoutMethod: momoNumber,
-        payoutAddress: momoName,
+        momoNumber,
+        momoName,
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Failed to save details");
@@ -242,7 +240,7 @@ const handleSaveDetails = async () => {
       </Card>
 
       {/* Your Referrals */}
-      {affiliateData?.referredUsers && affiliateData.referredUsers.length > 0 && (
+      {affiliateData?.referredUsers && affiliateData.referredUsers.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Your Referrals</CardTitle>
@@ -291,10 +289,10 @@ const handleSaveDetails = async () => {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Earnings History */}
-      {affiliateData?.earnings && Array.isArray(affiliateData.earnings) && affiliateData.earnings.length > 0 && (
+      {affiliateData?.earnings && Array.isArray(affiliateData.earnings) && affiliateData.earnings.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Earnings History</CardTitle>
@@ -337,7 +335,7 @@ const handleSaveDetails = async () => {
             </div>
           </CardContent>
         </Card>
-      )}
+      ) : null}
 
       {/* Payment Details & Payout */}
       <div className="grid gap-6 md:grid-cols-2">

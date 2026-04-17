@@ -170,8 +170,8 @@ export default function SettingsPage() {
     }
   };
 
-  const handleNotificationChange = async (key: string, value: boolean) => {
-    if (key === "email") {
+  const handleNotificationChange = async (key: "emailNotifications" | "pushNotifications", value: boolean) => {
+    if (key === "emailNotifications") {
       setEmailNotifications(value);
     } else {
       setPushNotifications(value);
@@ -179,8 +179,10 @@ export default function SettingsPage() {
 
     try {
       await updateSettingsMutation.mutateAsync({ [key]: value });
+      toast.success("Notification settings updated");
     } catch (error) {
       console.error("Failed to update notification settings:", error);
+      toast.error("Failed to update notification settings");
     }
   };
 
@@ -369,7 +371,7 @@ export default function SettingsPage() {
             <Switch
               checked={emailNotifications}
               onCheckedChange={(checked) =>
-                handleNotificationChange("email", checked)
+                handleNotificationChange("emailNotifications", checked)
               }
             />
           </div>
@@ -384,7 +386,7 @@ export default function SettingsPage() {
             <Switch
               checked={pushNotifications}
               onCheckedChange={(checked) =>
-                handleNotificationChange("push", checked)
+                handleNotificationChange("pushNotifications", checked)
               }
             />
           </div>

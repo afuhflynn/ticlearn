@@ -220,7 +220,7 @@ export const api = {
     },
 
     subscription: () =>
-      apiRequest<{ subscription: Subscription | null; previousPlan: string | null }>("/subscription", {
+      apiRequest<{ subscription: Subscription | null; previousPlan: string | null }>("/subscription/me", {
         method: "GET",
       }),
 
@@ -408,7 +408,7 @@ export const api = {
     },
 
     affiliate: {
-      update: (data: { payoutMethod?: string; payoutAddress?: string }) =>
+      update: (data: { momoNumber?: string; momoName?: string }) =>
         apiRequest<{ affiliate: AffiliateData }>("/affiliate", {
           method: "PUT",
           body: data,
