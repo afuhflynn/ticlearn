@@ -23,7 +23,7 @@ export function useSubmitFeedback() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: { type: string; message: string }) => {
+    mutationFn: async (data: { type: string; subject: string; message: string }) => {
       const result = await api.mutations.feedback.create(data);
       return result;
     },
