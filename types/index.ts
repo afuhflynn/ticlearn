@@ -494,8 +494,12 @@ export interface Earning {
 export interface Feedback {
   id: string;
   userId: string;
+  userEmail?: string;
+  userName?: string;
   type: string;
+  subject?: string;
   message: string;
+  status: string;
   createdAt: string;
 }
 

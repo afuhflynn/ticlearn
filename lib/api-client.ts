@@ -333,7 +333,7 @@ export const api = {
     },
 
     feedback: {
-      create: (data: { type: string; message: string; relatedId?: string }) =>
+      create: (data: { type: string; subject: string; message: string }) =>
         apiRequest<{ feedback: Feedback }>("/feedback", {
           method: "POST",
           body: data,

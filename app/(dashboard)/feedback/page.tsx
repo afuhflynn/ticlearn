@@ -2,7 +2,6 @@
 
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { MessageCircle, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useFeedbacks, useSubmitFeedback } from "@/hooks/useFeedback";
+import { format } from "date-fns";
 
 const feedbackTypes = [
   {
@@ -43,7 +44,9 @@ export default function FeedbackPage() {
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
   const [isFlagged, setIsFlagged] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const { feedbacks, isLoading: isLoadingFeedbacks } = useFeedbacks();
+  const submitFeedback = useSubmitFeedback();
 
   if (isPending) {
     return (
@@ -65,26 +68,15 @@ export default function FeedbackPage() {
       return;
     }
 
-    setIsSubmitting(true);
     try {
-      // API call would go here
-      toast.success("Feedback submitted successfully!");
+      await submitFeedback.mutateAsync({ type, subject, message });
       setSubject("");
       setMessage("");
       setType("GENERAL");
     } catch {
       toast.error("Failed to submit feedback");
-    } finally {
-      setIsSubmitting(false);
     }
   };
-
-  const pastFeedback: {
-    id: string;
-    subject: string;
-    message: string;
-    status: string;
-  }[] = [];
 
   return (
     <div className="space-y-8 max-w-2xl mx-auto">
@@ -159,8 +151,8 @@ export default function FeedbackPage() {
               <span className="text-sm">Mark as important</span>
             </label>
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? (
+            <Button type="submit" className="w-full" disabled={submitFeedback.isPending}>
+              {submitFeedback.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Send className="h-4 w-4 mr-2" />
@@ -176,9 +168,13 @@ export default function FeedbackPage() {
           <CardTitle>Your Past Feedback</CardTitle>
         </CardHeader>
         <CardContent>
-          {pastFeedback.length > 0 ? (
+          {isLoadingFeedbacks ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : feedbacks.length > 0 ? (
             <div className="space-y-4">
-              {pastFeedback.map((fb) => (
+              {feedbacks.map((fb) => (
                 <div key={fb.id} className="rounded-lg border p-4">
                   <div className="flex items-start justify-between">
                     <div>
@@ -191,6 +187,9 @@ export default function FeedbackPage() {
                       {fb.status}
                     </span>
                   </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    {format(new Date(fb.createdAt), "MMM d, yyyy 'at' h:mm a")}
+                  </p>
                 </div>
               ))}
             </div>

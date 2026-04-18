@@ -92,6 +92,8 @@ export function useAdminFeedback(
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "feedback", params],
     queryFn: () => api.mutations.admin.feedback.getAll(params),
+    refetchInterval: 30000,
+    staleTime: 0,
   });
   return {
     feedbacks: (data?.feedbacks ?? []) as unknown as {
