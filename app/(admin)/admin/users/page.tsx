@@ -249,7 +249,7 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {format(new Date(user.createdAt), "MMM d, yyyy HH:mm")}
+                        {format(new Date(user.createdAt), "MMM d, yyyy 'at' h:mm a")}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
