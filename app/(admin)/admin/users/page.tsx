@@ -194,12 +194,7 @@ export default function AdminUsersPage() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Platform Users</CardTitle>
-                <CardDescription>
-                  Total of {total} users registered
-                </CardDescription>
-              </div>
+              <CardTitle>Platform Users</CardTitle>
               <div className="relative w-64">
                 <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -212,6 +207,12 @@ export default function AdminUsersPage() {
             </div>
           </CardHeader>
           <CardContent>
+            <div className="mb-6 flex gap-6">
+              <div className="rounded-lg border bg-card px-4 py-3">
+                <p className="text-sm text-muted-foreground">Total Users</p>
+                <p className="text-2xl font-bold">{total}</p>
+              </div>
+            </div>
             {isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -248,7 +249,7 @@ export default function AdminUsersPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
-                        {format(new Date(user.createdAt), "MMM d, yyyy")}
+                        {format(new Date(user.createdAt), "MMM d, yyyy HH:mm")}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
