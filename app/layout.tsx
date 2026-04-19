@@ -10,6 +10,7 @@ import { extractRouterConfig } from "uploadthing/server";
 import { ourFileRouter } from "./api/uploadthing/core";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Suspense } from "react";
+import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -28,6 +29,7 @@ const ibmMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ticlearn.ticsummit.org"),
   title: "TiCLearn - AI-Powered Study Platform for GCE A-Level",
   description:
     "Transform your notes into quizzes, prepare for GCE exams, compete on leaderboards, and chat with TiC our ai tutor. The ultimate study companion for Cameroonian students.",
@@ -88,6 +90,7 @@ export default function RootLayout({
       className={`${plusJakarta.variable} ${lora.variable} ${ibmMono.variable} ${ibmMono.className} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
+        <OrganizationSchema />
         <NuqsAdapter>
           <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
           <ThemeProvider
