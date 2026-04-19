@@ -36,7 +36,7 @@ export default function AdminFeedbackPage() {
   const [status, setStatus] = useState("");
   const [page, setPage] = useState(1);
 
-  const { feedbacks, isLoading, refetch } = useAdminFeedback({
+  const { feedbacks, totalPages, isLoading, refetch } = useAdminFeedback({
     page,
     limit: 20,
     status: status || undefined,
@@ -60,7 +60,6 @@ export default function AdminFeedbackPage() {
     try {
       await updateFeedback.mutateAsync({ id, data: { status: newStatus } });
       toast.success("Feedback status updated");
-      refetch();
     } catch {
       toast.error("Failed to update status");
     }
@@ -71,7 +70,6 @@ export default function AdminFeedbackPage() {
     try {
       await deleteFeedback.mutateAsync(id);
       toast.success("Feedback deleted");
-      refetch();
     } catch {
       toast.error("Failed to delete");
     }
@@ -126,81 +124,103 @@ export default function AdminFeedbackPage() {
               <Loader2 className="h-6 w-6 animate-spin" />
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Message</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {feedbacks.length === 0 ? (
+            <>
+<Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      No feedback found
-                    </TableCell>
+                    <TableHead>User</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Message</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : (
-                  feedbacks.map((fb) => (
-                    <TableRow key={fb.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">
-                            {fb.user?.name || "Unknown"}
-                          </p>
-                          <p className="text-sm text-muted-foreground">
-                            {fb.user?.email}
-                          </p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{fb.type || "OTHER"}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm line-clamp-2 max-w-[200px]">
-                          {fb.message || "No message"}
-                        </p>
-                      </TableCell>
-                      <TableCell>
-                        <Select
-                          value={fb.status}
-                          onValueChange={(v) => handleStatusChange(fb.id, v)}
-                        >
-                          <SelectTrigger className="w-[130px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="OPEN">Open</SelectItem>
-                            <SelectItem value="IN_PROGRESS">
-                              In Progress
-                            </SelectItem>
-                            <SelectItem value="RESOLVED">Resolved</SelectItem>
-                            <SelectItem value="CLOSED">Closed</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(fb.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(fb.id)}
-                          disabled={deleteFeedback.isPending}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                </TableHeader>
+                <TableBody>
+                  {feedbacks.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8">
+                        No feedback found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    feedbacks.map((fb) => (
+                      <TableRow key={fb.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">
+                              {fb.user?.name || "Unknown"}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              {fb.user?.email}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{fb.type || "OTHER"}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm line-clamp-2 max-w-[200px]">
+                            {fb.message || "No message"}
+                          </p>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={fb.status}
+                            onValueChange={(v) => handleStatusChange(fb.id, v)}
+                          >
+                            <SelectTrigger className="w-[130px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="OPEN">Open</SelectItem>
+                              <SelectItem value="IN_PROGRESS">
+                                In Progress
+                              </SelectItem>
+                              <SelectItem value="RESOLVED">Resolved</SelectItem>
+                              <SelectItem value="CLOSED">Closed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </TableCell>
+                        <TableCell>
+                          {new Date(fb.createdAt).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(fb.id)}
+                            disabled={deleteFeedback.isPending}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              <div className="flex justify-center gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  disabled={page === 1}
+                  onClick={() => setPage((p) => p - 1)}
+                >
+                  Previous
+                </Button>
+                <span className="py-2">
+                  Page {page} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  disabled={page === totalPages}
+                  onClick={() => setPage((p) => p + 1)}
+                >
+                  Next
+                </Button>
+              </div>
+            </>
           )}
         </CardContent>
       </Card>
