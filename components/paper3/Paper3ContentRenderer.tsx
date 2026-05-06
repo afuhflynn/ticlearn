@@ -7,175 +7,6 @@ import { ExcelGrid } from "./ExcelGrid";
 import { AccessTable } from "./AccessTable";
 import { CProgram } from "./CProgram";
 
-// constants @todo: Remove them to a dedicated constants file
-const codeBlockRegex = /```(c|pascal)\n([\s\S]*?)```/g;
-const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;
-const arrayGridRegex =
-  /(?:Row\s*(\d+)[,\s]+(?:(\d+)[,\s]+)?(\d+)?)|(?:\[\s*([^\]]+)\s*\])/gi;
-
-// Parse old-style markdown tables |A|B|
-const oldTableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;
-
-// Parse old-style arrays [A, B, C]
-// Match anything in brackets EXCEPT [object Object]
-// Good: [Sales, Stock, Summary], [S001, 01/03/2025, P001, 15]
-// Bad: [object Object]
-const oldArrayRegex = /\[([^\]]+)\]/g;
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-function extractOldVisuals(contentMd: string): {
-  markdown: string;
-  tables: { columns: string[]; data: string[][] }[];
-  arrays: string[][];
-} {
-  const tables: { columns: string[]; data: string[][] }[] = [];
-  const arrays: string[][] = [];
-  
-  // Reset regex lastIndex
-  const tableRegex = new RegExp(oldTableRegex.source, "g");
-  const arrayRegex = new RegExp(oldArrayRegex.source, "g");
-  
-  // Extract tables first
-  let tableMatch;
-  while ((tableMatch = tableRegex.exec(contentMd)) !== null) {
-    const headerRow = tableMatch[1].split("|").map((h) => h.trim()).filter(Boolean);
-    const dataRows: string[][] = [];
-    const dataSection = tableMatch[2];
-    const rowLines = dataSection.trim().split("\n");
-    
-    for (const rowLine of rowLines) {
-      const cells = rowLine.split("|").map((c) => c.trim()).filter(Boolean);
-      if (cells.length > 0) dataRows.push(cells);
-    }
-    
-    if (headerRow.length > 0 && dataRows.length > 0) {
-      tables.push({ columns: headerRow, data: dataRows });
-    }
-  }
-  
-  // Remove tables from markdown - create unique placeholders for EACH table
-  let markdown = contentMd;
-  for (let i = 0; i < tables.length; i++) {
-    const tableStr = `|${tables[i].columns.join("|")}|\n|${tables[i].columns.map(() => "---").join("|")}|\n${tables[i].data.map(row => "|" + row.join("|") + "|").join("\n")}`;
-    markdown = markdown.replace(tableStr, `{{TABLE_${i}}}`);
-  }
-  
-  // Clean up extra newlines from removed tables
-  markdown = markdown.replace(/\n{3,}/g, "\n\n").trim();
-  
-  // Reset and extract arrays
-  let arrayMatch;
-  const foundArrays: string[] = [];
-  while ((arrayMatch = arrayRegex.exec(markdown)) !== null) {
-    const content = arrayMatch[1];
-    // Skip [object Object] and other garbage
-    if (content.includes("object") || content === "") continue;
-    const cells = content.split(",").map((c) => c.trim());
-    if (cells.length >= 1 && cells.some((c) => c.length > 0)) {
-      arrays.push(cells);
-      foundArrays.push(arrayMatch[0]);
-    }
-  }
-  
-  // Replace arrays with placeholders
-  for (let i = 0; i < foundArrays.length; i++) {
-    markdown = markdown.replace(foundArrays[i], `{{ARRAY_${i}}}`);
-  }
-  
-  // Clean up extra newlines from removed tables
-  markdown = markdown.replace(/\n{3,}/g, "\n\n").trim();
-  
-  return { markdown, tables, arrays };
-}
-
-// Visual marker parser: [[type:content]]
-const visualMarkerPattern = /\[\[(\w+):([\s\S]*?)\]\]/g;
-
-interface ParsedVisual {
-  type: string;
-  content: string;
-  fullMatch: string;
-}
-
-function parseVisualMarkers(contentMd: string): {
-  markdown: string;
-  visuals: ParsedVisual[];
-} {
-  const visuals: ParsedVisual[] = [];
-
-  // Find all matches first
-  let match;
-  const regex = new RegExp(visualMarkerPattern.source, "g");
-  while ((match = regex.exec(contentMd)) !== null) {
-    const type = match[1].toLowerCase();
-    const content = match[2].trim();
-    visuals.push({ type, content, fullMatch: match[0] });
-  }
-
-  // Replace markers with placeholders in markdown
-  let markdown = contentMd;
-  for (let i = 0; i < visuals.length; i++) {
-    markdown = markdown.replace(visuals[i].fullMatch, `{{VISUAL_${i}}}`);
-  }
-
-  return { markdown, visuals };
-}
-
-// Render a visual marker to React component
-function renderVisualMarker(visual: ParsedVisual): React.ReactNode {
-  const { type, content } = visual;
-
-  // Excel grid: [[excel:Sales, Stock, Summary]]
-  if (type === "excel") {
-    const cells = content.split(",").map((c) => c.trim());
-    return <ExcelGrid key={`excel-${content.slice(0, 20)}`} data={[cells]} />;
-  }
-
-  // Access table: [[table:|A|B||--|--||1|2||3|4|]]
-  if (type === "table") {
-    const rows = content.split("\n").map((row) =>
-      row
-        .split("|")
-        .map((c) => c.trim())
-        .filter(Boolean),
-    );
-    if (rows.length >= 2) {
-      return (
-        <AccessTable
-          key={`table-${content.slice(0, 20)}`}
-          tableName="Table"
-          columns={rows[0]}
-          data={rows.slice(1)}
-        />
-      );
-    }
-  }
-
-  // C program: [[c:printf("x");]] or [[c:int main() {...}]]
-  if (type === "c") {
-    return (
-      <CProgram key={`c-${content.slice(0, 10)}`} code={content} language="c" />
-    );
-  }
-
-  // Pascal program: [[pascal:writeln(x);]] or [[pascal:begin ... end]]
-  if (type === "pascal") {
-    return (
-      <CProgram
-        key={`pascal-${content.slice(0, 10)}`}
-        code={content}
-        language="pascal"
-      />
-    );
-  }
-
-  // Unknown type - return null
-  return null;
-}
-
 interface VisualElementTable {
   id: string;
   tableName: string;
@@ -212,6 +43,183 @@ interface Paper3ContentRendererProps {
 
 export type { Paper3ContentRendererProps };
 
+interface ParsedTable {
+  type: "table";
+  columns: string[];
+  data: string[][];
+  startIndex: number;
+  endIndex: number;
+}
+
+interface ParsedArray {
+  type: "array";
+  data: string[];
+  startIndex: number;
+  endIndex: number;
+}
+
+type ContentSegment = 
+  | { type: "text"; content: string }
+  | { type: "table"; columns: string[]; data: string[][] }
+  | { type: "array"; data: string[] };
+
+function parseContentMd(contentMd: string): ContentSegment[] {
+  const segments: ContentSegment[] = [];
+  
+  if (!contentMd) return segments;
+  
+  // Regex patterns for tables and arrays
+  // Table: | header | header | \n | --- | --- | \n | row | row |
+  const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;
+  
+  // Array: [item1, item2, item3] - but NOT [object Object]
+  const arrayRegex = /\[([^\]]+)\]/g;
+  
+  // Find all matches with their positions
+  interface Match {
+    type: "table" | "array";
+    start: number;
+    end: number;
+    content: string;
+  }
+  
+  const matches: Match[] = [];
+  
+  // Find tables
+  let tableMatch;
+  while ((tableMatch = tableRegex.exec(contentMd)) !== null) {
+    matches.push({
+      type: "table",
+      start: tableMatch.index,
+      end: tableMatch.index + tableMatch[0].length,
+      content: tableMatch[0],
+    });
+  }
+  
+  // Find arrays (but filter out [object Object] later)
+  let arrayMatch;
+  while ((arrayMatch = arrayRegex.exec(contentMd)) !== null) {
+    const innerContent = arrayMatch[1];
+    // Skip [object Object] or empty content
+    if (innerContent.includes("object") || innerContent.trim() === "") continue;
+    
+    matches.push({
+      type: "array",
+      start: arrayMatch.index,
+      end: arrayMatch.index + arrayMatch[0].length,
+      content: arrayMatch[0],
+    });
+  }
+  
+  // Sort by position
+  matches.sort((a, b) => a.start - b.start);
+  
+  // Build segments
+  let lastEnd = 0;
+  
+  for (const match of matches) {
+    // Add text before this match
+    if (match.start > lastEnd) {
+      const textContent = contentMd.slice(lastEnd, match.start).trim();
+      if (textContent) {
+        segments.push({ type: "text", content: textContent });
+      }
+    }
+    
+    // Add the visual element
+    if (match.type === "table") {
+      const parsed = parseTableMarkdown(match.content);
+      if (parsed) {
+        segments.push({ type: "table", ...parsed });
+      }
+    } else if (match.type === "array") {
+      const parsed = parseArrayString(match.content);
+      if (parsed) {
+        segments.push({ type: "array", data: parsed });
+      }
+    }
+    
+    lastEnd = match.end;
+  }
+  
+  // Add remaining text after last match
+  if (lastEnd < contentMd.length) {
+    const textContent = contentMd.slice(lastEnd).trim();
+    if (textContent) {
+      segments.push({ type: "text", content: textContent });
+    }
+  }
+  
+  return segments;
+}
+
+function parseTableMarkdown(markdown: string): { columns: string[]; data: string[][] } | null {
+  const lines = markdown.trim().split("\n");
+  if (lines.length < 2) return null;
+  
+  // Parse header row
+  const headerLine = lines[0];
+  const columns = headerLine.split("|")
+    .map((c) => c.trim())
+    .filter((c) => c !== "");
+  
+  if (columns.length === 0) return null;
+  
+  // Skip separator line (line 1) and parse data rows
+  const data: string[][] = [];
+  for (let i = 2; i < lines.length; i++) {
+    const row = lines[i].split("|")
+      .map((c) => c.trim())
+      .filter((c) => c !== "");
+    if (row.length > 0) {
+      data.push(row);
+    }
+  }
+  
+  if (data.length === 0) return null;
+  
+  return { columns, data };
+}
+
+function parseArrayString(str: string): string[] | null {
+  // Remove brackets and split by comma
+  const content = str.slice(1, -1); // Remove [ and ]
+  const items = content.split(",").map((c) => c.trim());
+  
+  // Must have at least 1 item and no garbage
+  if (items.length === 0) return null;
+  if (items.some((item) => item === "")) return null;
+  
+  return items;
+}
+
+function isValidTable(table: unknown): table is VisualElementTable {
+  if (!table || typeof table !== "object") return false;
+  const t = table as Record<string, unknown>;
+  if (!Array.isArray(t.columns) || t.columns.length === 0) return false;
+  if (!Array.isArray(t.data) || t.data.length === 0) return false;
+  return true;
+}
+
+function isValidArray(arr: unknown): arr is VisualElementArray {
+  if (!arr || typeof arr !== "object") return false;
+  const a = arr as Record<string, unknown>;
+  if (!Array.isArray(a.data) || a.data.length === 0) return false;
+  return true;
+}
+
+function isValidCodeBlock(block: unknown): block is VisualElementCode {
+  if (!block || typeof block !== "object") return false;
+  const b = block as Record<string, unknown>;
+  const lang = b.language as string;
+  const code = b.code as string;
+  return (
+    (lang === "c" || lang === "pascal") &&
+    typeof code === "string" &&
+    code.length > 0
+  );
+}
+
 interface CodeBlockInlineProps {
   children: string;
   className?: string;
@@ -239,505 +247,93 @@ function CodeBlockInline({ children, className }: CodeBlockInlineProps) {
   );
 }
 
-function isValidTable(table: unknown): table is VisualElementTable {
-  if (!table || typeof table !== "object") return false;
-  const t = table as Record<string, unknown>;
-  if (typeof t.tableName !== "string" || t.tableName.length === 0) return false;
-  if (!Array.isArray(t.columns) || t.columns.length === 0) return false;
-  if (!Array.isArray(t.data) || t.data.length === 0) return false;
-  return t.data.every(
-    (row: unknown) =>
-      Array.isArray(row) &&
-      row.every((cell: unknown) => typeof cell === "string"),
-  );
-}
-
-function isValidArray(arr: unknown): arr is VisualElementArray {
-  if (!arr || typeof arr !== "object") return false;
-  const a = arr as Record<string, unknown>;
-  if (!Array.isArray(a.data) || a.data.length === 0) return false;
-
-  // Accept both formats: number[] (e.g., [3, 4]) or object { rows, cols } or null/undefined
-  const dims = a.dimensions as unknown;
-  if (dims === undefined || dims === null) {
-    // No dimensions provided - compute from data
-    return a.data.every(
-      (row: unknown) =>
-        Array.isArray(row) &&
-        row.every((cell: unknown) => typeof cell === "string"),
-    );
-  }
-  if (Array.isArray(dims) && dims.length >= 2) {
-    return dims.every((d) => !isNaN(Number(d)));
-  }
-  if (typeof dims === "object" && dims !== null) {
-    // Handle { rows, cols } object format
-    const dimObj = dims as Record<string, unknown>;
-    return !isNaN(Number(dimObj.rows)) && !isNaN(Number(dimObj.cols));
-  }
-  // If dimensions exist but invalid format, still allow if data is valid
-  return a.data.every(
-    (row: unknown) =>
-      Array.isArray(row) &&
-      row.every((cell: unknown) => typeof cell === "string"),
-  );
-}
-
-function isValidCodeBlock(block: unknown): block is VisualElementCode {
-  if (!block || typeof block !== "object") return false;
-  const b = block as Record<string, unknown>;
-  const lang = b.language as string;
-  const code = b.code as string;
-  return (
-    (lang === "c" || lang === "pascal") &&
-    typeof code === "string" &&
-    code.length > 0
-  );
-}
-
-function parseMarkdownVisuals(contentMd: string): VisualElements {
-  const visuals: VisualElements = { tables: [], arrays: [], codeBlocks: [] };
-
-  if (!contentMd || typeof contentMd !== "string") return visuals;
-
-  // Parse markdown tables -> Access tables
-
-  let tableMatch;
-  while ((tableMatch = tableRegex.exec(contentMd)) !== null) {
-    const headerRow = tableMatch[1]
-      .split("|")
-      .map((h) => h.trim())
-      .filter(Boolean);
-    const dataRows: string[][] = [];
-    const dataSection = tableMatch[2];
-    const rowLines = dataSection.trim().split("\n");
-    for (const rowLine of rowLines) {
-      const cells = rowLine
-        .split("|")
-        .map((c) => c.trim())
-        .filter(Boolean);
-      if (cells.length > 0) dataRows.push(cells);
-    }
-    if (headerRow.length > 0 && dataRows.length > 0) {
-      visuals.tables!.push({
-        id: `md-table-${visuals.tables!.length + 1}`,
-        tableName: `Table ${visuals.tables!.length + 1}`,
-        columns: headerRow,
-        data: dataRows,
-      });
-    }
-  }
-
-  // Parse ```c or ```pascal code blocks
-  let codeMatch;
-  while ((codeMatch = codeBlockRegex.exec(contentMd)) !== null) {
-    const language = codeMatch[1] as "c" | "pascal";
-    const code = codeMatch[2].trim();
-    if (code.length > 0) {
-      visuals.codeBlocks!.push({
-        language,
-        code,
-      });
-    }
-  }
-
-  // Parse markdown array grids (looking for patterns like [1,2,3] or [Sales,Stock] in rows)
-
-  const arrayRows: string[][] = [];
-  let hasArrays = false;
-  const gridMatch = contentMd.match(arrayGridRegex);
-  if (gridMatch && gridMatch.length >= 2) {
-    for (const m of gridMatch) {
-      const cells = m
-        .replace(/[\[\]]/g, "")
-        .split(",")
-        .map((c) => c.trim());
-      if (cells.length > 0 && cells.some((c) => c.length > 0)) {
-        arrayRows.push(cells);
-        hasArrays = true;
-      }
-    }
-    if (hasArrays) {
-      visuals.arrays!.push({
-        id: `md-array-${visuals.arrays!.length + 1}`,
-        dimensions: [arrayRows.length, arrayRows[0]?.length || 0],
-        data: arrayRows,
-      });
-    }
-  }
-
-  return visuals;
-}
-
 export function Paper3ContentRenderer({
   contentMd,
-  content,
   visualElements,
   className,
 }: Paper3ContentRendererProps) {
-  const renderVisualElements = (): ReactNode[] => {
-    const parts: ReactNode[] = [];
-    let hasVisualData = false;
-
-    // Track what's being processed for debugging
-    const debugLog: string[] = [];
-
-    // 1. Try structured visualElements first (from AI JSON)
-    if (visualElements && typeof visualElements === "object") {
-      // Render Access tables with validation
-      if (visualElements.tables && Array.isArray(visualElements.tables)) {
-        for (const table of visualElements.tables) {
-          const tableData = table as unknown as Record<string, unknown>;
-          if (isValidTable(table)) {
-            parts.push(
-              <AccessTable
-                key={`table-${table.id}`}
-                tableName={table.tableName}
-                columns={table.columns}
-                data={table.data}
-                primaryKey={table.primaryKey}
-                foreignKeys={table.foreignKeys}
-                className="w-full"
-              />,
-            );
-            hasVisualData = true;
-            debugLog.push(
-              `✓ Table rendered: ${table.tableName} (${table.columns.length} cols, ${table.data.length} rows)`,
-            );
-          } else {
-            debugLog.push(
-              `✗ Table skipped: invalid data - id=${tableData.id || "unknown"}`,
-            );
-            // Fallback: try to render with whatever data available
-            const hasData =
-              Array.isArray(tableData.data) && tableData.data.length > 0;
-            if (hasData) {
-              const cols = Array.isArray(tableData.columns)
-                ? tableData.columns
-                : (tableData.data as string[][])[0] || [];
-              parts.push(
-                <AccessTable
-                  key={`table-${tableData.id || "fallback"}-fallback`}
-                  tableName={(tableData.tableName as string) || "Data Table"}
-                  columns={cols}
-                  data={tableData.data as string[][]}
-                  className="w-full"
-                />,
-              );
-              hasVisualData = true;
-              debugLog.push(
-                `✓ Table rendered (fallback): ${tableData.tableName || "Data Table"}`,
-              );
-            }
-          }
-        }
-      }
-
-      // Render Excel grids/arrays with validation
-      if (visualElements.arrays && Array.isArray(visualElements.arrays)) {
-        for (const array of visualElements.arrays) {
-          const arrData = array as unknown as Record<string, unknown>;
-          if (isValidArray(array)) {
-            // Convert number[][] to [number, number][]
-            const highlight: [number, number][] = [];
-            if (array.highlightCells) {
-              for (const cell of array.highlightCells) {
-                if (Array.isArray(cell) && cell.length >= 2) {
-                  highlight.push([cell[0], cell[1]]);
-                }
-              }
-            }
-            parts.push(
-              <ExcelGrid
-                key={`array-${array.id}`}
-                data={array.data}
-                highlightCells={highlight}
-                className="w-full"
-              />,
-            );
-            hasVisualData = true;
-            const rows = array.data.length;
-            const cols = array.data[0]?.length || "?";
-            debugLog.push(`✓ Array rendered: ${array.id} (${rows}x${cols})`);
-          } else {
-            debugLog.push(
-              `✗ Array skipped: invalid data - id=${arrData.id || "unknown"}`,
-            );
-            // Fallback: render with whatever data is available
-            if (Array.isArray(arrData.data) && arrData.data.length > 0) {
-              parts.push(
-                <ExcelGrid
-                  key={`array-${arrData.id || "fallback"}-fallback`}
-                  data={arrData.data as string[][]}
-                />,
-              );
-              hasVisualData = true;
-              debugLog.push(`✓ Array rendered (fallback)`);
-            }
-          }
-        }
-      }
-
-      // Render C/Pascal code blocks with validation
-      if (
-        visualElements.codeBlocks &&
-        Array.isArray(visualElements.codeBlocks)
-      ) {
-        for (const block of visualElements.codeBlocks) {
-          const blockData = block as unknown as Record<string, unknown>;
-          if (isValidCodeBlock(block)) {
-            parts.push(
-              <CProgram
-                key={`code-${String(block.code).slice(0, 10)}`}
-                code={block.code}
-                language={block.language}
-              />,
-            );
-            hasVisualData = true;
-            debugLog.push(
-              `✓ Code block rendered: ${block.language} (${block.code.length} chars)`,
-            );
-          } else {
-            debugLog.push(
-              `✗ Code block skipped: invalid - language=${blockData.language}`,
-            );
-            // Fallback rendering
-            if (
-              typeof blockData.code === "string" &&
-              blockData.code.length > 0
-            ) {
-              parts.push(
-                <CProgram
-                  key={`code-${String(blockData.code).slice(0, 10)}-fallback`}
-                  code={String(blockData.code)}
-                  language={(blockData.language as "c" | "pascal") || "c"}
-                />,
-              );
-              hasVisualData = true;
-              debugLog.push(`✓ Code rendered (fallback)`);
-            }
-          }
-        }
-      }
-    }
-
-    // 2. Fallback: Try parsing from markdown if no structured visuals succeeded
-    if (!hasVisualData && contentMd && typeof contentMd === "string") {
-      // Check if there are tables or code blocks in the markdown
-      const mdHasTables = tableRegex.exec(contentMd);
-      const mdHasCode = codeBlockRegex.exec(contentMd);
-      const mdHasArrays = contentMd.match(arrayGridRegex);
-
-      // console.log({ mdHasArrays, mdHasCode, mdHasTables });
-      if (mdHasTables || mdHasCode || mdHasArrays) {
-        const fallbackVisuals = parseMarkdownVisuals(contentMd);
-
-        for (const table of fallbackVisuals.tables || []) {
-          parts.push(
-            <AccessTable
-              key={`md-table-${table.id}`}
-              tableName={table.tableName}
-              columns={table.columns}
-              data={table.data}
-            />,
-          );
-          hasVisualData = true;
-          debugLog.push(`✓ Table from markdown: ${table.tableName}`);
-        }
-
-        for (const array of fallbackVisuals.arrays || []) {
-          parts.push(
-            <ExcelGrid key={`md-array-${array.id}`} data={array.data} />,
-          );
-          hasVisualData = true;
-          debugLog.push(`✓ Array from markdown: ${array.id}`);
-        }
-
-        for (const block of fallbackVisuals.codeBlocks || []) {
-          parts.push(
-            <CProgram
-              key={`md-code-${block.code.slice(0, 10)}`}
-              code={block.code}
-              language={block.language}
-            />,
-          );
-          hasVisualData = true;
-          debugLog.push(`✓ Code from markdown: ${block.language}`);
-        }
-      }
-    }
-
-    // Log results in development
-    if (debugLog.length > 0) {
-      console.log(
-        "[Paper3ContentRenderer] Visual elements:",
-        debugLog.join(", "),
-      );
-    }
-
-    return parts;
-  };
-
-  // 1. Parse visual markers first (inline intercept) - [[excel:...]], [[table:...]], etc.
-  const { markdown: processedMd, visuals: markerVisuals } = parseVisualMarkers(
-    contentMd || "",
-  );
-
-  // 2. Build component map from markers
-  const visualComponents = markerVisuals.map(renderVisualMarker);
-
-  // 3. If [[markers]] exist, render inline (placeholders replaced with actual components)
-  if (markerVisuals.length > 0) {
-    const placeholderMap = new Map(
-      markerVisuals.map((v, i) => [`{{VISUAL_${i}}}`, visualComponents[i]])
-    );
-
-    return (
-      <div className={cn("space-y-4 w-full", className)}>
-        <ReactMarkdown
-          components={{
-            code({ node, className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || "");
-              const isInline = !match;
-              return isInline ? (
-                <code className="px-1 bg-gray-200 rounded text-sm font-mono" {...props}>
-                  {children}
-                </code>
-              ) : (
-                <CodeBlockInline className={className as string}>
-                  {String(children).replace(/\n$/, "")}
-                </CodeBlockInline>
-              );
-            },
-            // Disable default table rendering - tables handled via placeholders
-            table({ node, children, ...props }) {
-              return null;
-            },
-            // Intercept paragraphs and replace placeholders inline
-            p({ node, children, ...props }) {
-              const text = String(children);
-              for (const [placeholder, component] of placeholderMap) {
-                if (text === placeholder) {
-                  return <>{component}</>;
-                }
-                if (text.includes(placeholder)) {
-                  const parts = text.split(placeholder);
-                  return (
-                    <>
-                      {parts[0]}
-                      {component}
-                      {parts[1]}
-                    </>
-                  );
-                }
-              }
-              return <p {...props}>{children}</p>;
-            },
-            // Also handle list items
-            li({ node, children, ...props }) {
-              const text = String(children);
-              for (const [placeholder, component] of placeholderMap) {
-                if (text.includes(placeholder)) {
-                  const parts = text.split(placeholder);
-                  return (
-                    <li {...props}>
-                      {parts[0]}
-                      {component}
-                      {parts[1]}
-                    </li>
-                  );
-                }
-              }
-              return <li {...props}>{children}</li>;
-            },
-          }}
-        >
-          {processedMd}
-        </ReactMarkdown>
-      </div>
-    );
-  }
-
-  // 4. Try AI visualElements (structured JSON from database) - render inline
+  // Parse contentMd into segments
+  const segments = parseContentMd(contentMd || "");
+  
+  // Build fallback visual elements from visualElements prop (AI structured data)
+  const fallbackTables: { columns: string[]; data: string[][] }[] = [];
+  const fallbackArrays: { data: string[] }[] = [];
+  
   if (visualElements && typeof visualElements === "object") {
-    const aiComponents: React.ReactNode[] = [];
-    const placeholderMap = new Map<string, React.ReactNode>();
-    let tableCount = 0;
-    let arrayCount = 0;
-    let codeCount = 0;
-
-    // Render tables
     if (visualElements.tables && Array.isArray(visualElements.tables)) {
       for (const table of visualElements.tables) {
         if (isValidTable(table)) {
-          const placeholder = `{{TABLE_${tableCount}}}`;
-          const component = (
-            <AccessTable
-              key={`ai-table-${table.id}`}
-              tableName={table.tableName}
-              columns={table.columns}
-              data={table.data}
-              primaryKey={table.primaryKey}
-              foreignKeys={table.foreignKeys}
-              className="w-full"
-            />
-          );
-          placeholderMap.set(placeholder, component);
-          aiComponents.push(component);
-          tableCount++;
+          fallbackTables.push({ columns: table.columns, data: table.data });
         }
       }
     }
-
-    // Render arrays
+    
     if (visualElements.arrays && Array.isArray(visualElements.arrays)) {
       for (const array of visualElements.arrays) {
         if (isValidArray(array)) {
-          const placeholder = `{{ARRAY_${arrayCount}}}`;
-          const component = (
-            <ExcelGrid
-              key={`ai-array-${array.id}`}
-              data={array.data}
-              className="w-full"
-            />
-          );
-          placeholderMap.set(placeholder, component);
-          aiComponents.push(component);
-          arrayCount++;
+          fallbackArrays.push({ data: array.data.flat() });
         }
       }
     }
-
-    // Render code blocks
-    if (visualElements.codeBlocks && Array.isArray(visualElements.codeBlocks)) {
-      for (const block of visualElements.codeBlocks) {
-        if (isValidCodeBlock(block)) {
-          const placeholder = `{{CODE_${codeCount}}}`;
-          const component = (
-            <CProgram
-              key={`ai-code-${String(block.code).slice(0, 10)}`}
-              code={block.code}
-              language={block.language}
-            />
-          );
-          placeholderMap.set(placeholder, component);
-          aiComponents.push(component);
-          codeCount++;
-        }
-      }
+  }
+  
+  // Render each segment
+  const renderSegment = (segment: ContentSegment, index: number): ReactNode => {
+    switch (segment.type) {
+      case "text":
+        return (
+          <ReactMarkdown
+            key={`text-${index}`}
+            components={{
+              code({ node, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || "");
+                const isInline = !match;
+                return isInline ? (
+                  <code className="px-1 bg-gray-200 rounded text-sm font-mono" {...props}>
+                    {children}
+                  </code>
+                ) : (
+                  <CodeBlockInline className={className as string}>
+                    {String(children).replace(/\n$/, "")}
+                  </CodeBlockInline>
+                );
+              },
+            }}
+          >
+            {segment.content}
+          </ReactMarkdown>
+        );
+        
+      case "table":
+        return (
+          <AccessTable
+            key={`table-${index}`}
+            tableName={`Table ${index + 1}`}
+            columns={segment.columns}
+            data={segment.data}
+            className="w-full"
+          />
+        );
+        
+      case "array":
+        return (
+          <ExcelGrid
+            key={`array-${index}`}
+            data={[segment.data]}
+            className="w-full"
+          />
+        );
+        
+      default:
+        return null;
     }
-
-    // If we have AI components, render inline by adding placeholders to markdown
-    if (placeholderMap.size > 0) {
-      // Build markdown with placeholders at start
-      let mdWithPlaceholders = contentMd || "";
-      
-      // Prepend placeholders before the main content
-      const placeholderList = Array.from(placeholderMap.keys()).join("\n\n");
-      mdWithPlaceholders = placeholderList + "\n\n" + mdWithPlaceholders;
-
-      return (
-        <div className={cn("space-y-4 w-full", className)}>
+  };
+  
+  // If we have no segments from contentMd but have fallback visualElements, show them
+  if (segments.length === 0 && fallbackTables.length === 0 && fallbackArrays.length === 0) {
+    return (
+      <div className={cn("space-y-4 w-full", className)}>
+        {contentMd && (
           <ReactMarkdown
             components={{
               code({ node, className, children, ...props }) {
@@ -753,130 +349,37 @@ export function Paper3ContentRenderer({
                   </CodeBlockInline>
                 );
               },
-              // Disable default table rendering for AI visualElements too
-              table({ node, children, ...props }) {
-                return null;
-              },
-              p({ node, children, ...props }) {
-                const text = String(children);
-                for (const [ph, comp] of placeholderMap) {
-                  if (text === ph) return <>{comp}</>;
-                  if (text.includes(ph)) {
-                    const parts = text.split(ph);
-                    return <>{parts[0]}{comp}{parts[1]}</>;
-                  }
-                }
-                return <p {...props}>{children}</p>;
-              },
-              li({ node, children, ...props }) {
-                const text = String(children);
-                for (const [ph, comp] of placeholderMap) {
-                  if (text.includes(ph)) {
-                    const parts = text.split(ph);
-                    return <li {...props}>{parts[0]}{comp}{parts[1]}</li>;
-                  }
-                }
-                return <li {...props}>{children}</li>;
-              },
             }}
           >
-            {mdWithPlaceholders}
+            {contentMd}
           </ReactMarkdown>
-        </div>
-      );
-    }
+        )}
+      </div>
+    );
   }
-
-  // 5. Fallback: No markers, no AI visualElements - extract from markdown
-  const { markdown: processedMdOld, tables, arrays } = extractOldVisuals(contentMd || "");
-
-  // Build component arrays for placeholders
-  const tableComponents = tables.map((t, i) => (
-    <AccessTable key={`table-${i}`} tableName="Table" columns={t.columns} data={t.data} />
-  ));
-  const arrayComponents = arrays.map((a, i) => (
-    <ExcelGrid key={`array-${i}`} data={[a]} />
-  ));
-
-  // Build placeholder map
-  const placeholderMapOld = new Map<string, React.ReactNode>();
-  for (let i = 0; i < tables.length; i++) {
-    placeholderMapOld.set(`{{TABLE_${i}}}`, tableComponents[i]);
-  }
-  for (let i = 0; i < arrays.length; i++) {
-    placeholderMapOld.set(`{{ARRAY_${i}}}`, arrayComponents[i]);
-  }
-
-  // Simple render: replace placeholders in text nodes
-  const renderWithPlaceholders = (text: string): React.ReactNode => {
-    let result: React.ReactNode[] = [];
-    let remaining = text;
-    
-    for (const [placeholder, component] of placeholderMapOld) {
-      if (remaining.includes(placeholder)) {
-        const parts = remaining.split(placeholder);
-        result.push(parts[0], component);
-        remaining = parts[1] || "";
-      }
-    }
-    result.push(remaining);
-    
-    return <>{result}</>;
-  };
-
+  
+  // Render all segments in order
   return (
     <div className={cn("space-y-4 w-full", className)}>
-      {contentMd && (
-        <ReactMarkdown
-          components={{
-            code({ node, className, children, ...props }) {
-              const match = /language-(\w+)/.exec(className || "");
-              const isInline = !match;
-              return isInline ? (
-                <code className="px-1 bg-gray-200 rounded text-sm font-mono" {...props}>
-                  {children}
-                </code>
-              ) : (
-                <CodeBlockInline className={className as string}>
-                  {String(children).replace(/\n$/, "")}
-                </CodeBlockInline>
-              );
-            },
-            // Disable default table rendering - we handle tables via placeholders
-            table({ node, children, ...props }) {
-              return null;
-            },
-            // Replace placeholders in paragraphs
-            p({ node, children, ...props }) {
-              const text = String(children);
-              if (placeholderMapOld.has(text)) {
-                return <>{placeholderMapOld.get(text)}</>;
-              }
-              for (const [ph, comp] of placeholderMapOld) {
-                if (text.includes(ph)) {
-                  return <>{renderWithPlaceholders(text)}</>;
-                }
-              }
-              return <p {...props}>{children}</p>;
-            },
-            // Replace placeholders in list items
-            li({ node, children, ...props }) {
-              const text = String(children);
-              if (placeholderMapOld.has(text)) {
-                return <>{placeholderMapOld.get(text)}</>;
-              }
-              for (const [ph, comp] of placeholderMapOld) {
-                if (text.includes(ph)) {
-                  return <li {...props}>{renderWithPlaceholders(text)}</li>;
-                }
-              }
-              return <li {...props}>{children}</li>;
-            },
-          }}
-        >
-          {processedMdOld}
-        </ReactMarkdown>
-      )}
+      {segments.map(renderSegment)}
+      
+      {/* Also render any fallback tables/arrays from visualElements that weren't in contentMd */}
+      {fallbackTables.map((table, i) => (
+        <AccessTable
+          key={`fallback-table-${i}`}
+          tableName={`Table ${segments.length + i + 1}`}
+          columns={table.columns}
+          data={table.data}
+          className="w-full"
+        />
+      ))}
+      {fallbackArrays.map((array, i) => (
+        <ExcelGrid
+          key={`fallback-array-${i}`}
+          data={[array.data]}
+          className="w-full"
+        />
+      ))}
     </div>
   );
 }
