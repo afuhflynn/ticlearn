@@ -1,0 +1,842 @@
+import { openai } from "@ai-sdk/openai";
+import { generateObject, generateText, streamText } from "ai";
+import {
+  GlobalWorkerOptions,
+  getDocument,
+  VerbosityLevel,
+} from "pdfjs-dist/legacy/build/pdf.mjs";
+import mammoth from "mammoth";
+import Tesseract from "tesseract.js";
+import { UTApi } from "uploadthing/server";
+import { z } from "zod";
+
+const utapi = new UTApi();
+
+GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/legacy/build/pdf.worker.mjs",
+  import.meta.url,
+).href;
+
+export const aiModel = openai("gpt-5.4");
+
+const generatedQuestionSchema = z.object({
+  type: z.enum(["MCQ", "OPEN"]),
+  question: z.string().min(1),
+  options: z.array(z.string()),
+  correctAnswer: z.string().min(1),
+  explanation: z.string().min(1),
+});
+
+function normalizeGeneratedQuestions(
+  questions: z.infer<typeof generatedQuestionSchema>[],
+) {
+  return questions
+    .map((question) => {
+      const normalized = {
+        ...question,
+        question: question.question.trim(),
+        correctAnswer: question.correctAnswer.trim(),
+        explanation: question.explanation.trim(),
+        options: question.options
+          .map((option) => option.trim())
+          .filter(Boolean),
+      };
+
+      if (normalized.type === "MCQ" && normalized.options.length !== 4) {
+        return null;
+      }
+
+      if (normalized.type === "OPEN") {
+        normalized.options = [];
+      }
+
+      if (
+        !normalized.question ||
+        !normalized.correctAnswer ||
+        !normalized.explanation
+      ) {
+        return null;
+      }
+
+      return normalized;
+    })
+    .filter(
+      (question): question is z.infer<typeof generatedQuestionSchema> =>
+        question !== null,
+    );
+}
+
+export async function extractTextFromPDF(
+  fileUrl: string,
+  uploadthingKey?: string,
+  language: string = "eng",
+): Promise<string> {
+  const maxRetries = 3;
+  const baseDelay = 1000;
+
+  // Try using uploadthingKey first (more reliable)
+  const urlToUse = uploadthingKey
+    ? `https://utfs.io/f/${uploadthingKey}`
+    : fileUrl;
+
+  console.log(`[PDF Extraction] Using URL: ${urlToUse}`);
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(`[PDF Extraction] Attempt ${attempt + 1}...`);
+      const response = await fetch(urlToUse, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+          "User-Agent": "TicLearn/1.0",
+        },
+        signal: AbortSignal.timeout(60000), // Increase to 60s
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfData = new Uint8Array(arrayBuffer);
+      const loadingTask = getDocument({
+        data: pdfData,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        verbosity: VerbosityLevel.ERRORS,
+      });
+
+      try {
+        const pdfDocument = await loadingTask.promise;
+        const pages: string[] = [];
+
+        for (
+          let pageNumber = 1;
+          pageNumber <= pdfDocument.numPages;
+          pageNumber++
+        ) {
+          const page = await pdfDocument.getPage(pageNumber);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item: any) => "str" in item ? item.str : "")
+            .join(" ");
+          pages.push(pageText);
+        }
+
+        const text = pages.join("\n\n");
+        console.log(`[PDF Extraction] Success, extracted ${text.length} chars`);
+        return normalizeExtractedText(text);
+      } catch (pdfError) {
+        throw new Error(`PDF parsing error: ${pdfError instanceof Error ? pdfError.message : "Unknown"}`);
+      }
+    } catch (error) {
+      console.error(`[PDF Extraction] Attempt ${attempt + 1} failed:`, error);
+
+      if (attempt === maxRetries - 1) {
+        throw new Error(
+          `PDF extraction failed: ${error instanceof Error ? error.message : "Unknown"}`,
+        );
+      }
+
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`[PDF Extraction] Retrying in ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("PDF extraction failed after all retries");
+}
+
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfData = new Uint8Array(arrayBuffer);
+      const loadingTask = getDocument({
+        data: pdfData,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        verbosity: VerbosityLevel.ERRORS,
+      });
+
+      try {
+        const pdfDocument = await loadingTask.promise;
+        const pages: string[] = [];
+
+        for (
+          let pageNumber = 1;
+          pageNumber <= pdfDocument.numPages;
+          pageNumber++
+        ) {
+          const page = await pdfDocument.getPage(pageNumber);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" ");
+          pages.push(pageText);
+        }
+
+        const text = pages.join("\n\n");
+        console.log(`[PDF Extraction] Success, extracted ${text.length} chars`);
+        return normalizeExtractedText(text);
+      } catch (pdfError) {
+        throw new Error(`PDF parsing error: ${pdfError instanceof Error ? pdfError.message : "Unknown"}`);
+      }
+    } catch (error) {
+      console.error(`[PDF Extraction] Attempt ${attempt + 1} failed:`, error);
+      
+      if (attempt === maxRetries - 1) {
+        throw new Error(
+          `PDF extraction failed: ${error instanceof Error ? error.message : "Unknown"}`,
+        );
+      }
+      
+      const delay = baseDelay * Math.pow(2, attempt);
+      console.log(`[PDF Extraction] Retrying in ${delay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("PDF extraction failed after all retries");
+}
+
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfData = new Uint8Array(arrayBuffer);
+      const loadingTask = getDocument({
+        data: pdfData,
+        useWorkerFetch: false,
+        isEvalSupported: false,
+        verbosity: VerbosityLevel.ERRORS,
+      });
+
+      try {
+        const pdfDocument = await loadingTask.promise;
+        const pages: string[] = [];
+
+        for (
+          let pageNumber = 1;
+          pageNumber <= pdfDocument.numPages;
+          pageNumber++
+        ) {
+          const page = await pdfDocument.getPage(pageNumber);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" ");
+
+          pages.push(normalizeExtractedText(pageText));
+          page.cleanup();
+        }
+
+        await pdfDocument.destroy();
+
+        const extractedText = normalizeExtractedText(
+          pages.filter((page) => page.length > 0).join("\n\n"),
+        );
+
+        if (extractedText.length < 100) {
+          console.log(
+            "[PDF] Extracted text too short, falling back to OCR for scanned PDF",
+          );
+          return await extractTextFromPDFWithOCR(pdfUrl, language);
+        }
+
+        return extractedText;
+      } finally {
+        await loadingTask.destroy();
+      }
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries - 1;
+      const isRetryable =
+        error instanceof TypeError &&
+        (error.message.includes("fetch failed") ||
+          error.message.includes("Connect Timeout") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("ECONNREFUSED"));
+
+      if (isLastAttempt || !isRetryable) {
+        throw error;
+      }
+
+      const delay = baseDelay * 2 ** attempt;
+      console.warn(
+        `PDF fetch attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("PDF fetch failed after all retries");
+}
+
+async function extractTextFromPDFWithOCR(
+  pdfUrl: string,
+  language: string = "eng",
+): Promise<string> {
+  console.log(
+    "[OCR] Starting Tesseract.js OCR for PDF:",
+    pdfUrl,
+    "language:",
+    language,
+  );
+
+  try {
+    const response = await fetch(pdfUrl, {
+      signal: AbortSignal.timeout(120000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch PDF: ${response.status}`);
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+
+    const { data } = await Tesseract.recognize(blob, language, {
+      logger: (m) => {
+        if (m.status === "recognizing text") {
+          console.log(`[OCR] Progress: ${Math.round(m.progress * 100)}%`);
+        }
+      },
+    });
+
+    const text = data.text.trim();
+    console.log("[OCR] Tesseract.js extracted", text.length, "characters");
+
+    return normalizeExtractedText(text);
+  } catch (error) {
+    console.error("[OCR] Tesseract.js OCR failed:", error);
+    throw new Error("OCR failed to extract text from PDF");
+  }
+}
+
+export async function extractTextFromImage(
+  uploadthingKey: string | undefined,
+  language: string = "eng",
+): Promise<string> {
+  console.log(
+    "[Image OCR] Starting Tesseract.js for image",
+    "uploadthingKey:",
+    uploadthingKey,
+    "language:",
+    language,
+  );
+
+  if (!uploadthingKey) {
+    throw new Error("No uploadthingKey provided for image");
+  }
+
+  const imageUrl = `https://utfs.io/f/${uploadthingKey}`;
+  console.log("[Image OCR] Using direct URL:", imageUrl);
+
+  const maxRetries = 3;
+  const baseDelay = 1000;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log("[Image OCR] Fetching image as Blob...");
+
+      const response = await fetch(imageUrl, {
+        signal: AbortSignal.timeout(30000),
+      });
+
+      console.log("[Image OCR] Fetch response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch image: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      console.log(
+        "[Image OCR] Array buffer size:",
+        arrayBuffer.byteLength,
+        "bytes",
+      );
+
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error("Image is empty (0 bytes)");
+      }
+
+      const contentType = response.headers.get("content-type") || "image/png";
+      console.log("[Image OCR] Detected content-type:", contentType);
+
+      const buffer = Buffer.from(arrayBuffer);
+      console.log("[Image OCR] Buffer created,", buffer.length, "bytes");
+
+      console.log("[Image OCR] Starting recognition...");
+
+      const { data } = await Tesseract.recognize(buffer, language, {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            console.log(
+              `[Image OCR] Progress: ${Math.round(m.progress * 100)}%`,
+            );
+          }
+        },
+      });
+
+      const text = data.text.trim();
+      console.log("[Image OCR] Extracted", text.length, "characters");
+      console.log("[Image OCR] First 200 chars:", text.substring(0, 200));
+
+      if (text.length < 20) {
+        throw new Error(
+          "Image contains insufficient text for meaningful extraction",
+        );
+      }
+
+      return normalizeExtractedText(text);
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries - 1;
+      const isRetryable =
+        error instanceof TypeError &&
+        (error.message.includes("fetch failed") ||
+          error.message.includes("Connect Timeout") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("ECONNREFUSED"));
+
+      if (isLastAttempt || !isRetryable) {
+        console.error("[Image OCR] Extraction failed:", error);
+        throw new Error(
+          `Failed to extract text from image: ${error instanceof Error ? error.message : "Unknown error"}`,
+        );
+      }
+
+      const delay = baseDelay * 2 ** attempt;
+      console.warn(
+        `[Image OCR] Attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  throw new Error("Image OCR failed after all retries");
+}
+
+export async function extractTextFromWord(
+  uploadthingKey: string | undefined,
+): Promise<string> {
+  console.log(
+    "[Word] Starting text extraction from Word document, key:",
+    uploadthingKey,
+  );
+
+  if (!uploadthingKey) {
+    throw new Error("No uploadthingKey provided for Word document");
+  }
+
+  let arrayBuffer: ArrayBuffer | null = null;
+
+  const docxUrl = `https://utfs.io/f/${uploadthingKey}`;
+  console.log("[Word] Using direct URL:", docxUrl);
+
+  const maxRetries = 3;
+  const baseDelay = 1000;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      console.log(
+        "[Word] Step 2: Fetching document...",
+        `Attempt ${attempt + 1}`,
+      );
+      const response = await fetch(docxUrl, {
+        signal: AbortSignal.timeout(60000),
+      });
+
+      console.log("[Word] Fetch response status:", response.status);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch Word document: ${response.status}`);
+      }
+
+      console.log("[Word] Step 3: Converting to array buffer...");
+      arrayBuffer = await response.arrayBuffer();
+      console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
+
+      if (arrayBuffer.byteLength === 0) {
+        throw new Error("Word document is empty (0 bytes)");
+      }
+
+      break;
+    } catch (error) {
+      const isLastAttempt = attempt === maxRetries - 1;
+      const isRetryable =
+        error instanceof TypeError &&
+        (error.message.includes("fetch failed") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("ECONNREFUSED"));
+
+      if (isLastAttempt || !isRetryable) {
+        throw error;
+      }
+
+      const delay = baseDelay * 2 ** attempt;
+      console.warn(
+        `[Word] Fetch attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
+        error,
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  if (!arrayBuffer) {
+    throw new Error("Word document fetch failed after all retries");
+  }
+
+  try {
+    console.log("[Word] Step 4: Extracting text with mammoth...");
+    const buffer = Buffer.from(arrayBuffer);
+    const result = await mammoth.extractRawText({
+      buffer,
+    });
+
+    console.log("[Word] Step 5: Processing result...");
+    const text = result.value.trim();
+    console.log("[Word] Extracted", text.length, "characters");
+    console.log("[Word] First 200 chars:", text.substring(0, 200));
+
+    if (text.length < 50) {
+      console.log(
+        "[Word] Warning: Text too short, but continuing...",
+        text.length,
+      );
+      if (text.length < 10) {
+        throw new Error("Word document contains insufficient text");
+      }
+    }
+
+    return normalizeExtractedText(text);
+  } catch (error) {
+    console.error("[Word] Extraction failed at step:", error);
+    console.error("[Word] Full error:", JSON.stringify(error, null, 2));
+    throw new Error(
+      `Failed to extract text from Word document: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
+}
+
+export async function summarizeText(
+  content: string,
+): Promise<{ summary: string; topics: string[]; keyPoints: string[] }> {
+  const schema = z.object({
+    summary: z.string().min(1),
+    topics: z.array(z.string().min(1)).min(3).max(5),
+    keyPoints: z.array(z.string().min(1)).min(3).max(6),
+  });
+
+  const excerpt = content.slice(0, 24_000);
+
+  const prompt = `Analyze the following study notes and return a concise study brief.
+
+Requirements:
+- summary: 2-3 sentences, max 500 characters
+- topics: 3-5 short topic labels
+- keyPoints: 3-6 concrete learning points written as complete sentences
+- stay faithful to the source material
+- avoid generic filler like "general overview"
+
+Notes:
+${excerpt}`;
+
+  const { object } = await generateObject({
+    model: aiModel,
+    schema,
+    prompt,
+  });
+
+  return {
+    summary: object.summary.trim().slice(0, 500),
+    topics: object.topics.map((topic) => topic.trim()).filter(Boolean),
+    keyPoints: object.keyPoints.map((point) => point.trim()).filter(Boolean),
+  };
+}
+
+export async function generateQuizFromNote(
+  noteContent: string,
+  options: {
+    questionCount: number;
+    questionTypes: "MCQ" | "OPEN" | "MIXED";
+  },
+) {
+  console.log(
+    `[AI] Generating quiz with ${options.questionCount} questions, type: ${options.questionTypes}`,
+  );
+  console.log(`[AI] Note content length: ${noteContent.length} chars`);
+
+  const questionTypeText =
+    options.questionTypes === "MIXED"
+      ? "Generate a mix of MCQ and Open-ended questions."
+      : options.questionTypes === "MCQ"
+        ? "Generate only Multiple Choice Questions (MCQ)."
+        : "Generate only Open-ended questions.";
+
+  const prompt = `You are an educational quiz generator. Generate ${options.questionCount} quiz questions based on the following study notes.
+
+  ${questionTypeText}
+
+  Return JSON only.
+
+  For every question you MUST include all of these fields:
+  - type
+  - question
+  - options
+  - correctAnswer
+  - explanation
+
+  Rules:
+  - MCQ: Provide exactly 4 options in the options array
+  - OPEN: Provide an empty options array []
+  - correctAnswer must always be a string
+  - explanation must always be a non-empty string
+  - Stay faithful to the note content
+
+  Study Notes:
+  ${noteContent.slice(0, 8000)} ${noteContent.length > 8000 ? "... (content truncated)" : ""}`;
+
+  const schema = z.object({
+    questions: z.array(generatedQuestionSchema),
+  });
+
+  try {
+    console.log("[AI] Calling OpenAI with model: gpt-5.4");
+    const { object } = await generateObject({
+      model: aiModel,
+      schema,
+      prompt,
+    });
+
+    const questions = normalizeGeneratedQuestions(object.questions);
+
+    console.log(`[AI] OpenAI returned ${questions.length} questions`);
+    if (questions.length > 0) {
+      console.log(
+        `[AI] First question:`,
+        JSON.stringify(questions[0], null, 2),
+      );
+    }
+
+    return questions;
+  } catch (error) {
+    console.error("[AI] Quiz generation failed:", error);
+    return [];
+  }
+}
+
+export const DEFAULT_QUIZ_TOPICS = [
+  "Cell Biology and Genetics",
+  "Chemistry of Life - Biomolecules",
+  "Motion and Energy in Physics",
+  "Waves and Optics",
+  "Ecosystems and Ecology",
+  "Human Physiology",
+  "Mathematical Techniques",
+  "Statistics and Probability",
+];
+
+const DEFAULT_QUIZ_TOPIC_PROMPTS: Record<string, string> = {
+  "Cell Biology and Genetics":
+    "Topics covering cell structure, cell division (mitosis/meiosis), genetics, DNA, RNA, protein synthesis, inheritance patterns, and molecular biology for GCE A-Level.",
+  "Chemistry of Life - Biomolecules":
+    "Topics covering carbohydrates, proteins, lipids, enzymes, nucleic acids, bioenergetics, and biochemical reactions for GCE A-Level.",
+  "Motion and Energy in Physics":
+    "Topics covering kinematics, Newton's laws, work, energy, power, momentum, and conservation laws for GCE A-Level Physics.",
+  "Waves and Optics":
+    "Topics covering wave properties, reflection, refraction, diffraction, interference, lenses, and optical instruments for GCE A-Level Physics.",
+  "Ecosystems and Ecology":
+    "Topics covering ecosystems, energy flow, nutrient cycles, population dynamics, conservation, biodiversity, and environmental science for GCE A-Level.",
+  "Human Physiology":
+    "Topics covering the human digestive system, circulatory system, respiratory system, nervous system, excretory system, and homeostasis for GCE A-Level Biology.",
+  "Mathematical Techniques":
+    "Topics covering algebra, calculus, trigonometry, logarithms, sequences, series, and mathematical reasoning for GCE A-Level.",
+  "Statistics and Probability":
+    "Topics covering probability theory, random variables, statistical distributions, hypothesis testing, and data analysis for GCE A-Level.",
+};
+
+export async function generateQuizFromTopic(
+  topic: string,
+  options: {
+    questionCount: number;
+    questionTypes: "MCQ" | "OPEN" | "MIXED";
+  },
+) {
+  console.log(`[AI] Generating default quiz for topic: ${topic}`);
+
+  const topicPrompt = DEFAULT_QUIZ_TOPIC_PROMPTS[topic] || topic;
+  const questionTypeText =
+    options.questionTypes === "MIXED"
+      ? "Generate a mix of MCQ and Open-ended questions."
+      : options.questionTypes === "MCQ"
+        ? "Generate only Multiple Choice Questions (MCQ)."
+        : "Generate only Open-ended questions.";
+
+  const prompt = `You are an educational quiz generator for GCE A-Level students. Generate ${options.questionCount} quiz questions based on the following topic.
+
+  Topic: ${topic}
+  Description: ${topicPrompt}
+
+  ${questionTypeText}
+
+  Return JSON only.
+
+  For every question you MUST include all of these fields:
+  - type
+  - question
+  - options
+  - correctAnswer
+  - explanation
+
+  Rules:
+  - MCQ: Provide exactly 4 options in the options array
+  - OPEN: Provide an empty options array []
+  - correctAnswer must always be a string
+  - explanation must always be a non-empty string
+  - Questions should be appropriate for GCE A-Level examination standard
+  - Stay faithful to the topic description provided`;
+
+  const schema = z.object({
+    questions: z.array(generatedQuestionSchema),
+  });
+
+  try {
+    console.log("[AI] Calling OpenAI for default quiz with model: gpt-5.4");
+    const { object } = await generateObject({
+      model: aiModel,
+      schema,
+      prompt,
+    });
+
+    const questions = normalizeGeneratedQuestions(object.questions);
+    console.log(`[AI] Default quiz returned ${questions.length} questions`);
+
+    return questions;
+  } catch (error) {
+    console.error("[AI] Default quiz generation failed:", error);
+    return [];
+  }
+}
+
+export async function gradeOpenAnswer(
+  question: string,
+  userAnswer: string,
+  correctAnswer: string,
+) {
+  const prompt = `You are an AI grading assistant. Grade the following open-ended answer.
+
+  Question: ${question}
+  Correct Answer: ${correctAnswer}
+  User's Answer: ${userAnswer}
+
+  Provide:
+  1. A score (0-100)
+  2. Feedback on the answer
+  3. Key points the user missed`;
+
+  const { text } = await generateText({
+    model: aiModel,
+    prompt,
+  });
+
+  return text;
+}
+
+export async function explainMCQAnswer(
+  question: string,
+  userAnswer: string,
+  correctAnswer: string,
+  options: string[],
+) {
+  const prompt = `You are an AI tutoring assistant. Explain why the user's answer is incorrect and why the correct answer is right.
+
+Question: ${question}
+Options: ${options.join(", ")}
+User's Answer: ${userAnswer}
+Correct Answer: ${correctAnswer}
+
+Provide a brief explanation (2-3 sentences) explaining:
+1. Why the user's answer is wrong
+2. Why the correct answer is right
+3. A tip to remember this concept`;
+
+  const { text } = await generateText({
+    model: aiModel,
+    prompt,
+  });
+
+  return text;
+}
+
+export async function generateExamQuestions(
+  subject: string,
+  topic: string,
+  questionCount: number,
+) {
+  const subjectName = subject === "CS" ? "Computer Science" : "ICT";
+
+  const prompt = `You are an exam generator for GCE A-Level ${subjectName}.
+
+  Topic: ${topic}
+  Number of questions: ${questionCount}
+
+  Generate exam-quality questions that:
+  - Follow the Cameroon GCE A-Level syllabus
+  - Include a mix of difficulty levels
+  - Have clear, accurate answers
+  - Include explanations
+  - Always include an options array
+  - Use [] for open-ended questions`;
+
+  const schema = z.object({
+    questions: z.array(generatedQuestionSchema),
+  });
+
+  try {
+    const { object } = await generateObject({
+      model: aiModel,
+      schema,
+      prompt,
+    });
+
+    return normalizeGeneratedQuestions(object.questions);
+  } catch (error) {
+    console.error("Exam generation error:", error);
+    return [];
+  }
+}
+
+export async function processNoteContent(content: string) {
+  return summarizeText(content);
+}
+
+export async function createChatStream(
+  messages: { role: "user" | "assistant"; content: string }[],
+) {
+  const systemPrompt = `You are TiCLearn AI, an intelligent study assistant specialized in helping Cameroon GCE A-Level students.
+
+  Your expertise:
+  - Computer Science and ICT (GCE A-Level syllabus)
+  - Biology, Chemistry, Physics
+  - General academic tutoring
+
+  Guidelines:
+  - Be encouraging and supportive
+  - Explain concepts clearly
+  - Use examples from the Cameroon curriculum when relevant
+  - Stay focused on educational topics
+  - If asked about non-educational topics, politely redirect`;
+
+  const result = await streamText({
+    model: aiModel,
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages.slice(-10),
+    ],
+  });
+
+  return result.textStream;
+}
+
+function normalizeExtractedText(text: string) {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replaceAll(String.fromCharCode(0), "")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

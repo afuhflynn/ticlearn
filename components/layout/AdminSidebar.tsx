@@ -1,16 +1,19 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
 import {
-  Shield,
-  Users,
-  MessageCircle,
-  CreditCard,
-  Link2,
-  GraduationCap,
   BarChart3,
+  CreditCard,
+  FileText,
+  GraduationCap,
+  Link2,
+  ListChecks,
+  MessageCircle,
+  Shield,
+  Upload,
+  Users,
 } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { FaMoneyBill1 } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -24,7 +27,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { FaMoneyBill1 } from "react-icons/fa6";
 
 const adminNavItems = [
   { href: "/admin", icon: BarChart3, label: "Analytics" },
@@ -37,6 +39,13 @@ const adminNavItems = [
     label: "Payment Settings",
   },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
+];
+
+const paper3NavItems = [
+  { href: "/admin/paper3/upload", icon: Upload, label: "Upload Source" },
+  { href: "/admin/paper3/sources", icon: FileText, label: "Sources" },
+  { href: "/admin/paper3/questions", icon: ListChecks, label: "Questions" },
+  { href: "/admin/paper3/mocks", icon: GraduationCap, label: "Mock Exams" },
 ];
 
 export function AdminSidebar() {
@@ -59,6 +68,27 @@ export function AdminSidebar() {
               {adminNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={pathname === item.href}>
+                    <a href={item.href} className="flex items-center gap-3">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3">GCE Paper 3</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {paper3NavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={pathname.startsWith(item.href)}
+                  >
                     <a href={item.href} className="flex items-center gap-3">
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>

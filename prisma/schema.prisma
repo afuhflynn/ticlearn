@@ -30,25 +30,28 @@ model User {
   warningSentAt DateTime? @map("warning_sent_at")
 
   // Relations
-  sessions          Session[]
-  accounts          Account[]
-  notes             Note[]
-  quizzes           Quiz[]
-  quizAttempts      QuizAttempt[]
-  examSessions      ExamSession[]
-  userStats         UserStats?
-  subscriptions     Subscription[]
-  ratings           Rating[]
-  feedbacks         Feedback[]
-  affiliate         Affiliate?
-  posts             Post[]
-  comments          Comment[]
-  postLikes         PostLike[]
-  notifications     Notification[]
-  userSettings      UserSettings?
-  chatConversations ChatConversation[]
-  chatMessages      ChatMessage[]
-  adminInvites      AdminInvite[]      @relation("InvitedBy")
+  sessions           Session[]
+  accounts           Account[]
+  notes              Note[]
+  quizzes            Quiz[]
+  quizAttempts       QuizAttempt[]
+  examSessions       ExamSession[]
+  userStats          UserStats?
+  subscriptions      Subscription[]
+  ratings            Rating[]
+  feedbacks          Feedback[]
+  affiliate          Affiliate?
+  posts              Post[]
+  comments           Comment[]
+  postLikes          PostLike[]
+  notifications      Notification[]
+  userSettings       UserSettings?
+  chatConversations  ChatConversation[]
+  chatMessages       ChatMessage[]
+  adminInvites       AdminInvite[]       @relation("InvitedBy")
+  paper3UserStats    Paper3UserStats?
+  paper3Attempts     Paper3Attempt[]
+  paper3MockAttempts Paper3MockAttempt[]
 
   @@map("users")
 }
@@ -614,4 +617,252 @@ model PaymentSettings {
   createdAt        DateTime @default(now()) @map("created_at")
 
   @@map("payment_settings")
+}
+
+// ===========================================
+// GCE Paper 3 Models
+// ===========================================
+
+model Paper3Source {
+  id              String           @id @default(cuid())
+  title           String
+  year            Int
+  subject         Paper3Subject
+  section         Paper3Section
+  category        Paper3Category
+  paperType       Paper3PaperType
+  sourceType      Paper3SourceType
+  fileUrl         String           @map("file_url")
+  fileName        String?          @map("file_name")
+  uploadthingKey  String?          @map("uploadthing_key")
+  extractedText   String?          @map("extracted_text") @db.Text
+  contentMarkdown String?          @map("content_markdown") @db.Text
+  status          Paper3Status     @default(PENDING)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  questions       Paper3Question[]
+
+  @@index([year, subject])
+  @@index([status])
+  @@map("paper3_sources")
+}
+
+model Paper3Question {
+  id                    String               @id @default(cuid())
+  sourceId              String               @map("source_id")
+  questionNumber        String               @map("question_number")
+  taskNumber           String?              @map("task_number")
+  subPart              String?              @map("sub_part")
+  title                 String
+  section               Paper3Section
+  skillType             Paper3SkillType
+  taskType              Paper3TaskType
+  programmingLanguage  Paper3Language?    @map("programming_language") // C or PASCAL only
+  concepts              String[]
+  content               String               @db.Text
+  contentMd            String?              @db.Text
+  marks                 Int                  @default(1)
+  expectedAnswer        String               @map("expected_answer") @db.Text
+  markingBreakdown      Json?                @map("marking_breakdown")
+  explanation           String?              @db.Text
+  partialCredit         Boolean              @default(false) @map("partial_credit")
+  sourceContentMarkdown String?              @map("source_content_markdown") @db.Text
+  
+  // Structured task/sub-question breakdown
+  taskItems            Json?              @map("task_items")
+  
+  // Enhanced visual elements for Access, Excel, C arrays
+  visualElements      Json?              @map("visual_elements")
+  
+  status                QuestionStatus       @default(PENDING)
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+  source                Paper3Source         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  mockQuestions         Paper3MockQuestion[]
+  attempts              Paper3Attempt[]
+
+  @@index([sourceId])
+  @@index([section, taskType])
+  @@index([status])
+  @@map("paper3_questions")
+}
+
+model Paper3Mock {
+  id          String               @id @default(cuid())
+  title       String
+  description String?              @db.Text
+  subject     Paper3Subject
+  focusCategory Paper3FocusCategory @default(MIXED) @map("focus_category")
+  timeLimit   Int                  @map("time_limit")
+  totalMarks  Int                  @map("total_marks")
+  createdBy   String               @map("created_by")
+  status      MockStatus           @default(DRAFT)
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  questions   Paper3MockQuestion[]
+  attempts    Paper3MockAttempt[]
+
+  @@index([subject, status])
+  @@map("paper3_mocks")
+}
+
+model Paper3MockQuestion {
+  id         String         @id @default(cuid())
+  mockId     String         @map("mock_id")
+  questionId String         @map("question_id")
+  order      Int
+  marks      Int            @default(1)
+  mock       Paper3Mock     @relation(fields: [mockId], references: [id], onDelete: Cascade)
+  question   Paper3Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([mockId, questionId])
+  @@map("paper3_mock_questions")
+}
+
+model Paper3MockAttempt {
+  id          String            @id @default(cuid())
+  userId      String            @map("user_id")
+  mockId      String            @map("mock_id")
+  score       Float
+  totalMarks  Int               @map("total_marks")
+  timeTaken   Int?              @map("time_taken")
+  answers     Json
+  results     Json
+  status      MockAttemptStatus @default(IN_PROGRESS)
+  startedAt   DateTime          @default(now()) @map("started_at")
+  completedAt DateTime?         @map("completed_at")
+  mock        Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([mockId])
+  @@map("paper3_mock_attempts")
+}
+
+model Paper3UserStats {
+  id                 String   @id @default(cuid())
+  userId             String   @unique @map("user_id")
+  questionsAttempted Int      @default(0) @map("questions_attempted")
+  questionsCorrect   Int      @default(0) @map("questions_correct")
+  mockExamsTaken     Int      @default(0) @map("mock_exams_taken")
+  avgScore           Float    @default(0) @map("avg_score")
+  weakConcepts       String[] @default([]) @map("weak_concepts")
+  strongConcepts     String[] @default([]) @map("strong_concepts")
+  readinessScore     Float    @default(0) @map("readiness_score")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("paper3_user_stats")
+}
+
+model Paper3Attempt {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  questionId  String   @map("question_id")
+  userAnswer  String   @map("user_answer") @db.Text
+  isCorrect   Boolean  @map("is_correct")
+  marksEarned Int      @map("marks_earned")
+  totalMarks  Int      @map("total_marks")
+  feedback    String?  @map("feedback") @db.Text
+  evaluatedAt DateTime @default(now()) @map("evaluated_at")
+
+  question Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([questionId])
+  @@map("paper3_attempts")
+}
+
+// ===========================================
+// Paper 3 Enums
+// ===========================================
+
+enum Paper3Subject {
+  ICT
+  COMPUTER_SCIENCE
+}
+
+enum Paper3Section {
+  A
+  B
+}
+
+enum Paper3Category {
+  SPREADSHEET
+  DATABASE
+  PROGRAMMING
+}
+
+enum Paper3PaperType {
+  QUESTION_PAPER
+  MARKING_SCHEME
+}
+
+enum Paper3SourceType {
+  OFFICIAL
+  TEACHER
+  RECONSTRUCTED
+  AI_GENERATED
+}
+
+enum Paper3Status {
+  PENDING
+  PROCESSING
+  READY
+  ERROR
+}
+
+enum Paper3SkillType {
+  ALGORITHMIC_THINKING
+  DATA_MODELING
+  CALCULATION
+  PROGRAMMING
+}
+
+enum Paper3TaskType {
+  // Spreadsheet/Excel
+  EXCEL_FORMULA
+  EXCEL_GRID
+  // Database/Access  
+  ACCESS_TABLE
+  ACCESS_RELATIONSHIP
+  SQL_QUERY
+  // Programming - C or Pascal ONLY (NO Python, JavaScript)
+  C_PROGRAM
+  PASCAL_PROGRAM
+  WEB_PROGRAMMING
+  ALGORITHM_PSEUDOCODE
+  // Generic
+  INPUT_FIELD
+}
+
+enum Paper3FocusCategory {
+  MIXED
+  DATABASE
+  SPREADSHEET
+  PROGRAMMING
+  WEB_PROGRAMMING
+}
+
+enum Paper3Language {
+  C
+  PASCAL
+}
+
+enum QuestionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum MockStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MockAttemptStatus {
+  IN_PROGRESS
+  COMPLETED
 }

@@ -22,6 +22,34 @@ export {
   useUploadNote,
 } from "./useNotes";
 export { useMarkNotificationRead, useNotifications } from "./useNotifications";
+export {
+  useApprovePaper3Question,
+  useCheckPaper3Answer,
+  useCreatePaper3Mock,
+  useDeletePaper3Mock,
+  useDeletePaper3Source,
+  useGeneratePaper3Mock,
+  usePaper3Leaderboard,
+  usePaper3Mock,
+  usePaper3MockAttempt,
+  usePaper3Mocks,
+  usePaper3MyAttempts,
+  usePaper3PracticeQuestion,
+  usePaper3PracticeQuestions,
+  usePaper3Question,
+  usePaper3Questions,
+  usePaper3Recommendations,
+  usePaper3Source,
+  usePaper3Sources,
+  usePaper3Stats,
+  useProcessPaper3Source,
+  usePublishPaper3Mock,
+  useRejectPaper3Question,
+  useStartPaper3MockExam,
+  useSubmitPaper3MockExam,
+  useUpdatePaper3Question,
+  useUploadPaper3Source,
+} from "./usePaper3";
 export { useCanAccess, usePlan } from "./usePlan";
 export {
   useProfile,
@@ -45,5 +73,5 @@ export {
   useCheckLimit,
   useUsage,
 } from "./useUsage";
-export { useLeaderboard, useUserStats } from "./useUserStats";
 export { useUserSearch } from "./useUserSearch";
+export { useLeaderboard, useUserStats } from "./useUserStats";

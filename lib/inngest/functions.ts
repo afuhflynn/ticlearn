@@ -72,7 +72,7 @@ export const processNote = inngest.createFunction(
         case "PDF":
           console.log("[Inngest] Extracting PDF text...");
           extractedText = await extractWithTimeout(
-            () => extractTextFromPDF(note.fileUrl, language),
+            () => extractTextFromPDF(note.uploadthingKey as string, language),
             timeoutMs,
           );
           break;
@@ -80,7 +80,11 @@ export const processNote = inngest.createFunction(
           console.log("[Inngest] Extracting IMAGE text...");
           extractedText = await extractWithTimeout(
             () =>
-              extractTextFromImage(note.uploadthingKey || undefined, language),
+              extractTextFromImage(
+                note.uploadthingKey || undefined,
+                note.fileUrl,
+                language,
+              ),
             timeoutMs,
           );
           break;
@@ -88,6 +92,7 @@ export const processNote = inngest.createFunction(
           console.log("[Inngest] Extracting WORD text...");
           extractedText = await extractTextFromWord(
             note.uploadthingKey || undefined,
+            note.fileUrl,
           );
           break;
         default:
@@ -587,9 +592,8 @@ export const generateDefaultQuiz = inngest.createFunction(
         };
       }
 
-      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } = await import(
-        "@/lib/ai"
-      );
+      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } =
+        await import("@/lib/ai");
 
       const shuffledTopics = [...DEFAULT_QUIZ_TOPICS].sort(
         () => Math.random() - 0.5,
@@ -599,7 +603,7 @@ export const generateDefaultQuiz = inngest.createFunction(
       console.log(`[Inngest] Selected topics: ${selectedTopics.join(", ")}`);
 
       const questionsPerQuiz = 20;
-      const questionDistribution = {
+      const _questionDistribution = {
         mcq: 8,
         mixed: 8,
         open: 4,
@@ -756,9 +760,8 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "ACTIVATE") {
-      const { sendSubscriptionActivatedEmail } = await import(
-        "@/lib/email/send"
-      );
+      const { sendSubscriptionActivatedEmail } =
+        await import("@/lib/email/send");
 
       await sendSubscriptionActivatedEmail({
         email: user.email,
@@ -773,9 +776,8 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "REJECT") {
-      const { sendSubscriptionRejectedEmail } = await import(
-        "@/lib/email/send"
-      );
+      const { sendSubscriptionRejectedEmail } =
+        await import("@/lib/email/send");
 
       await sendSubscriptionRejectedEmail({
         email: user.email,

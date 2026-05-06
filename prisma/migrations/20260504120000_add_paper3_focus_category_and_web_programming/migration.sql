@@ -1,0 +1,12 @@
+ALTER TYPE "Paper3TaskType" ADD VALUE 'WEB_PROGRAMMING';
+
+CREATE TYPE "Paper3FocusCategory" AS ENUM (
+  'MIXED',
+  'DATABASE',
+  'SPREADSHEET',
+  'PROGRAMMING',
+  'WEB_PROGRAMMING'
+);
+
+ALTER TABLE "paper3_mocks"
+ADD COLUMN "focus_category" "Paper3FocusCategory" NOT NULL DEFAULT 'MIXED';

@@ -1,11 +1,11 @@
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText, streamText } from "ai";
+import mammoth from "mammoth";
 import {
   GlobalWorkerOptions,
   getDocument,
   VerbosityLevel,
 } from "pdfjs-dist/legacy/build/pdf.mjs";
-import mammoth from "mammoth";
 import Tesseract from "tesseract.js";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
@@ -67,29 +67,54 @@ function normalizeGeneratedQuestions(
 }
 
 export async function extractTextFromPDF(
-  pdfUrl: string,
+  uploadthingKey: string,
   language: string = "eng",
 ): Promise<string> {
   const maxRetries = 3;
   const baseDelay = 1000;
 
+  // uploadthingKey may be a full URL or just the key — extract just the key
+  const fileKey = uploadthingKey.includes("ufs.sh/f/")
+    ? uploadthingKey.split("ufs.sh/f/").pop()!.split("?")[0]
+    : uploadthingKey;
+
+  console.log("[PDF] Resolved file key:", fileKey);
+
+  const { ufsUrl } = await utapi.generateSignedURL(fileKey, {
+    expiresIn: 60 * 30,
+  });
+
+  console.log("[PDF] Generated signed URL:", ufsUrl);
+
+  if (!ufsUrl) {
+    throw new Error("Failed to generate signed URL — got empty value");
+  }
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await fetch(pdfUrl, {
+      console.log(`[PDF] Attempt ${attempt + 1} — fetching:`, ufsUrl);
+
+      const response = await fetch(ufsUrl, {
         method: "GET",
         headers: {
           Accept: "application/pdf",
-          "User-Agent": "TiCLearn/1.0",
         },
         signal: AbortSignal.timeout(30000),
       });
+
+      console.log(
+        `[PDF] Response status: ${response.status} ${response.statusText}`,
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to fetch PDF: ${response.status}`);
       }
 
       const arrayBuffer = await response.arrayBuffer();
+      console.log("[PDF] Array buffer size:", arrayBuffer.byteLength, "bytes");
+
       const pdfData = new Uint8Array(arrayBuffer);
+
       const loadingTask = getDocument({
         data: pdfData,
         useWorkerFetch: false,
@@ -123,10 +148,8 @@ export async function extractTextFromPDF(
         );
 
         if (extractedText.length < 100) {
-          console.log(
-            "[PDF] Extracted text too short, falling back to OCR for scanned PDF",
-          );
-          return await extractTextFromPDFWithOCR(pdfUrl, language);
+          console.log("[PDF] Text too short, falling back to OCR");
+          return await extractTextFromPDFWithOCR([ufsUrl], language);
         }
 
         return extractedText;
@@ -134,24 +157,13 @@ export async function extractTextFromPDF(
         await loadingTask.destroy();
       }
     } catch (error) {
-      const isLastAttempt = attempt === maxRetries - 1;
-      const isRetryable =
-        error instanceof TypeError &&
-        (error.message.includes("fetch failed") ||
-          error.message.includes("Connect Timeout") ||
-          error.message.includes("ETIMEDOUT") ||
-          error.message.includes("ECONNREFUSED"));
+      console.warn(`[PDF Extraction] Attempt ${attempt + 1} failed:`, error);
+    }
 
-      if (isLastAttempt || !isRetryable) {
-        throw error;
-      }
-
-      const delay = baseDelay * 2 ** attempt;
-      console.warn(
-        `PDF fetch attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
-        error,
+    if (attempt < maxRetries - 1) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, baseDelay * 2 ** attempt),
       );
-      await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
 
@@ -159,48 +171,55 @@ export async function extractTextFromPDF(
 }
 
 async function extractTextFromPDFWithOCR(
-  pdfUrl: string,
+  candidateUrls: string[],
   language: string = "eng",
 ): Promise<string> {
   console.log(
     "[OCR] Starting Tesseract.js OCR for PDF:",
-    pdfUrl,
+    candidateUrls[0],
     "language:",
     language,
   );
 
-  try {
-    const response = await fetch(pdfUrl, {
-      signal: AbortSignal.timeout(120000),
-    });
+  for (const candidateUrl of candidateUrls) {
+    try {
+      const response = await fetch(candidateUrl, {
+        signal: AbortSignal.timeout(120000),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch PDF: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch PDF: ${response.status}`);
+      }
+
+      const arrayBuffer = await response.arrayBuffer();
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
+
+      const { data } = await Tesseract.recognize(blob, language, {
+        logger: (m) => {
+          if (m.status === "recognizing text") {
+            console.log(`[OCR] Progress: ${Math.round(m.progress * 100)}%`);
+          }
+        },
+      });
+
+      const text = data.text.trim();
+      console.log("[OCR] Tesseract.js extracted", text.length, "characters");
+
+      return normalizeExtractedText(text);
+    } catch (error) {
+      console.error(
+        `[OCR] Tesseract.js OCR failed for URL ${candidateUrl}:`,
+        error,
+      );
     }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: "application/pdf" });
-
-    const { data } = await Tesseract.recognize(blob, language, {
-      logger: (m) => {
-        if (m.status === "recognizing text") {
-          console.log(`[OCR] Progress: ${Math.round(m.progress * 100)}%`);
-        }
-      },
-    });
-
-    const text = data.text.trim();
-    console.log("[OCR] Tesseract.js extracted", text.length, "characters");
-
-    return normalizeExtractedText(text);
-  } catch (error) {
-    console.error("[OCR] Tesseract.js OCR failed:", error);
-    throw new Error("OCR failed to extract text from PDF");
   }
+
+  throw new Error("OCR failed to extract text from PDF");
 }
 
 export async function extractTextFromImage(
   uploadthingKey: string | undefined,
+  fileUrl?: string,
   language: string = "eng",
 ): Promise<string> {
   console.log(
@@ -211,92 +230,85 @@ export async function extractTextFromImage(
     language,
   );
 
-  if (!uploadthingKey) {
-    throw new Error("No uploadthingKey provided for image");
+  const candidateUrls = await getFileFetchCandidates(fileUrl, uploadthingKey);
+  if (candidateUrls.length === 0) {
+    throw new Error("No fetchable URL available for image extraction");
   }
 
-  const imageUrl = `https://utfs.io/f/${uploadthingKey}`;
-  console.log("[Image OCR] Using direct URL:", imageUrl);
+  console.log("[Image OCR] Candidate URLs:", candidateUrls);
 
   const maxRetries = 3;
   const baseDelay = 1000;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      console.log("[Image OCR] Fetching image as Blob...");
+    for (const imageUrl of candidateUrls) {
+      try {
+        console.log("[Image OCR] Fetching image as Blob...", imageUrl);
 
-      const response = await fetch(imageUrl, {
-        signal: AbortSignal.timeout(30000),
-      });
+        const response = await fetch(imageUrl, {
+          signal: AbortSignal.timeout(30000),
+        });
 
-      console.log("[Image OCR] Fetch response status:", response.status);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch image: ${response.status}`);
-      }
+        console.log("[Image OCR] Fetch response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.status}`);
+        }
 
-      const arrayBuffer = await response.arrayBuffer();
-      console.log(
-        "[Image OCR] Array buffer size:",
-        arrayBuffer.byteLength,
-        "bytes",
-      );
-
-      if (arrayBuffer.byteLength === 0) {
-        throw new Error("Image is empty (0 bytes)");
-      }
-
-      const contentType = response.headers.get("content-type") || "image/png";
-      console.log("[Image OCR] Detected content-type:", contentType);
-
-      const buffer = Buffer.from(arrayBuffer);
-      console.log("[Image OCR] Buffer created,", buffer.length, "bytes");
-
-      console.log("[Image OCR] Starting recognition...");
-
-      const { data } = await Tesseract.recognize(buffer, language, {
-        logger: (m) => {
-          if (m.status === "recognizing text") {
-            console.log(
-              `[Image OCR] Progress: ${Math.round(m.progress * 100)}%`,
-            );
-          }
-        },
-      });
-
-      const text = data.text.trim();
-      console.log("[Image OCR] Extracted", text.length, "characters");
-      console.log("[Image OCR] First 200 chars:", text.substring(0, 200));
-
-      if (text.length < 20) {
-        throw new Error(
-          "Image contains insufficient text for meaningful extraction",
+        const arrayBuffer = await response.arrayBuffer();
+        console.log(
+          "[Image OCR] Array buffer size:",
+          arrayBuffer.byteLength,
+          "bytes",
         );
+
+        if (arrayBuffer.byteLength === 0) {
+          throw new Error("Image is empty (0 bytes)");
+        }
+
+        const contentType = response.headers.get("content-type") || "image/png";
+        console.log("[Image OCR] Detected content-type:", contentType);
+
+        const buffer = Buffer.from(arrayBuffer);
+        console.log("[Image OCR] Buffer created,", buffer.length, "bytes");
+
+        console.log("[Image OCR] Starting recognition...");
+
+        const { data } = await Tesseract.recognize(buffer, language, {
+          logger: (m) => {
+            if (m.status === "recognizing text") {
+              console.log(
+                `[Image OCR] Progress: ${Math.round(m.progress * 100)}%`,
+              );
+            }
+          },
+        });
+
+        const text = data.text.trim();
+        console.log("[Image OCR] Extracted", text.length, "characters");
+        console.log("[Image OCR] First 200 chars:", text.substring(0, 200));
+
+        if (text.length < 20) {
+          throw new Error(
+            "Image contains insufficient text for meaningful extraction",
+          );
+        }
+
+        return normalizeExtractedText(text);
+      } catch (error) {
+        console.warn(`[Image OCR] Failed for URL ${imageUrl}:`, error);
       }
-
-      return normalizeExtractedText(text);
-    } catch (error) {
-      const isLastAttempt = attempt === maxRetries - 1;
-      const isRetryable =
-        error instanceof TypeError &&
-        (error.message.includes("fetch failed") ||
-          error.message.includes("Connect Timeout") ||
-          error.message.includes("ETIMEDOUT") ||
-          error.message.includes("ECONNREFUSED"));
-
-      if (isLastAttempt || !isRetryable) {
-        console.error("[Image OCR] Extraction failed:", error);
-        throw new Error(
-          `Failed to extract text from image: ${error instanceof Error ? error.message : "Unknown error"}`,
-        );
-      }
-
-      const delay = baseDelay * 2 ** attempt;
-      console.warn(
-        `[Image OCR] Attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
-        error,
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
     }
+
+    const isLastAttempt = attempt === maxRetries - 1;
+    if (isLastAttempt) {
+      throw new Error("Failed to extract text from image after all retries");
+    }
+
+    const delay = baseDelay * 2 ** attempt;
+    console.warn(
+      `[Image OCR] Attempt ${attempt + 1} failed, retrying in ${delay}ms`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
   throw new Error("Image OCR failed after all retries");
@@ -304,67 +316,72 @@ export async function extractTextFromImage(
 
 export async function extractTextFromWord(
   uploadthingKey: string | undefined,
+  fileUrl?: string,
 ): Promise<string> {
   console.log(
     "[Word] Starting text extraction from Word document, key:",
     uploadthingKey,
   );
 
-  if (!uploadthingKey) {
-    throw new Error("No uploadthingKey provided for Word document");
-  }
-
   let arrayBuffer: ArrayBuffer | null = null;
-
-  const docxUrl = `https://utfs.io/f/${uploadthingKey}`;
-  console.log("[Word] Using direct URL:", docxUrl);
+  const candidateUrls = await getFileFetchCandidates(fileUrl, uploadthingKey);
+  if (candidateUrls.length === 0) {
+    throw new Error("No fetchable URL available for Word document extraction");
+  }
+  console.log("[Word] Candidate URLs:", candidateUrls);
 
   const maxRetries = 3;
   const baseDelay = 1000;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      console.log(
-        "[Word] Step 2: Fetching document...",
-        `Attempt ${attempt + 1}`,
-      );
-      const response = await fetch(docxUrl, {
-        signal: AbortSignal.timeout(60000),
-      });
+    for (const docxUrl of candidateUrls) {
+      try {
+        console.log(
+          "[Word] Step 2: Fetching document...",
+          `Attempt ${attempt + 1}`,
+          docxUrl,
+        );
+        const response = await fetch(docxUrl, {
+          signal: AbortSignal.timeout(60000),
+        });
 
-      console.log("[Word] Fetch response status:", response.status);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch Word document: ${response.status}`);
+        console.log("[Word] Fetch response status:", response.status);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch Word document: ${response.status}`);
+        }
+
+        console.log("[Word] Step 3: Converting to array buffer...");
+        arrayBuffer = await response.arrayBuffer();
+        console.log(
+          "[Word] Array buffer size:",
+          arrayBuffer.byteLength,
+          "bytes",
+        );
+
+        if (arrayBuffer.byteLength === 0) {
+          throw new Error("Word document is empty (0 bytes)");
+        }
+
+        break;
+      } catch (error) {
+        console.warn(`[Word] Failed for URL ${docxUrl}:`, error);
       }
-
-      console.log("[Word] Step 3: Converting to array buffer...");
-      arrayBuffer = await response.arrayBuffer();
-      console.log("[Word] Array buffer size:", arrayBuffer.byteLength, "bytes");
-
-      if (arrayBuffer.byteLength === 0) {
-        throw new Error("Word document is empty (0 bytes)");
-      }
-
-      break;
-    } catch (error) {
-      const isLastAttempt = attempt === maxRetries - 1;
-      const isRetryable =
-        error instanceof TypeError &&
-        (error.message.includes("fetch failed") ||
-          error.message.includes("ETIMEDOUT") ||
-          error.message.includes("ECONNREFUSED"));
-
-      if (isLastAttempt || !isRetryable) {
-        throw error;
-      }
-
-      const delay = baseDelay * 2 ** attempt;
-      console.warn(
-        `[Word] Fetch attempt ${attempt + 1} failed, retrying in ${delay}ms:`,
-        error,
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
     }
+
+    if (arrayBuffer) {
+      break;
+    }
+
+    const isLastAttempt = attempt === maxRetries - 1;
+    if (isLastAttempt) {
+      throw new Error("Word document fetch failed after all retries");
+    }
+
+    const delay = baseDelay * 2 ** attempt;
+    console.warn(
+      `[Word] Fetch attempt ${attempt + 1} failed, retrying in ${delay}ms`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, delay));
   }
 
   if (!arrayBuffer) {
@@ -401,6 +418,40 @@ export async function extractTextFromWord(
       `Failed to extract text from Word document: ${error instanceof Error ? error.message : "Unknown error"}`,
     );
   }
+}
+
+async function getFileFetchCandidates(
+  fileUrl?: string,
+  uploadthingKey?: string,
+): Promise<string[]> {
+  const candidates = new Set<string>();
+
+  if (fileUrl) {
+    candidates.add(fileUrl);
+  }
+
+  if (uploadthingKey) {
+    // Normalize: extract just the key if a full URL was passed
+    const fileKey = uploadthingKey.includes("ufs.sh/f/")
+      ? uploadthingKey.split("ufs.sh/f/").pop()!.split("?")[0]
+      : uploadthingKey;
+
+    try {
+      const { ufsUrl } = await utapi.generateSignedURL(fileKey);
+      if (ufsUrl) {
+        candidates.add(ufsUrl);
+      }
+    } catch (error) {
+      console.warn(
+        `[UploadThing] Failed to generate signed URL for key ${fileKey}:`,
+        error,
+      );
+    }
+
+    candidates.add(`https://utfs.io/f/${fileKey}`);
+  }
+
+  return [...candidates];
 }
 
 export async function summarizeText(

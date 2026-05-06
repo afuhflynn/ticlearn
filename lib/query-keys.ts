@@ -70,6 +70,21 @@ export const queryKeys = {
   // payment
   paymentSettings: ["payment", "settings"],
   savePaymentSettings: ["update-payment", "settings"],
+
+  // GCE Paper 3
+  paper3Sources: ["paper3", "sources"],
+  paper3Source: (id: string) => ["paper3", "sources", id],
+  paper3Questions: ["paper3", "questions"],
+  paper3Question: (id: string) => ["paper3", "questions", id],
+  paper3Mocks: ["paper3", "mocks"],
+  paper3Mock: (id: string) => ["paper3", "mocks", id],
+  paper3Practice: ["paper3", "practice"],
+  paper3PracticeQuestion: (id: string) => ["paper3", "practice", id],
+  paper3Stats: ["paper3", "stats"],
+  paper3Recommendations: ["paper3", "recommendations"],
+  paper3Leaderboard: (mockId: string) => ["paper3", "leaderboard", mockId],
+  paper3MyAttempts: ["paper3", "my-attempts"],
+  paper3MockAttempt: (id: string) => ["paper3", "attempts", id],
 } as const;
 
 export type QueryKey = typeof queryKeys;

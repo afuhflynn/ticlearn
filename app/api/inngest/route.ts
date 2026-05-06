@@ -15,6 +15,7 @@ import {
   sendPlatformUpdateEmail,
   handleSubscriptionAction,
 } from "@/lib/inngest/functions";
+import { processPaper3Source, generatePaper3Mock } from "@/lib/inngest";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -32,5 +33,7 @@ export const { GET, POST, PUT } = serve({
     generateDefaultQuiz,
     sendPlatformUpdateEmail,
     handleSubscriptionAction,
+    processPaper3Source,
+    generatePaper3Mock,
   ],
 });
