@@ -392,6 +392,16 @@ function normalizeQuestion(
         ? "PASCAL"
         : null;
 
+  // TaskTypes that DON'T require user input (student does work on computer/software)
+  const taskTypesWithoutInput = [
+    "EXCEL_GRID",
+    "ACCESS_TABLE",
+    "ACCESS_RELATIONSHIP",
+    "WEB_PROGRAMMING",
+    "ALGORITHM_PSEUDOCODE",
+  ];
+  const requireAnswer = !taskTypesWithoutInput.includes(question.taskType);
+
   return {
     questionNumber: question.questionNumber.trim(),
     taskNumber: question.taskNumber ?? null,
@@ -415,6 +425,7 @@ function normalizeQuestion(
     })),
     explanation: question.explanation.trim(),
     partialCredit: Boolean(question.partialCredit),
+    requireAnswer,
     // empty array from AI means no task items
     taskItems:
       (question.taskItems?.length ?? 0) > 0 ? question.taskItems : undefined,
@@ -636,6 +647,12 @@ Focus-category rules:
 - SPREADSHEET => Excel-only practical questions
 - PROGRAMMING => C, Pascal, and algorithmic tasks only
 - WEB_PROGRAMMING => HTML and CSS only, using inline styling only. No JavaScript.
+
+Code skeleton requirement:
+- For C_PROGRAM and PASCAL_PROGRAM questions, the expectedAnswer must be a FUNCTION SIGNATURE ONLY (not full implementation)
+- Format: "returnType functionName(parameterType paramName);" or "returnType functionName(paramType param1, paramType param2);"
+- Example full answer: "int add(int a, int b);" - just the declaration, no body
+- This enables learners to practice writing function signatures
 
 Visual/code rules for web programming:
 - WEB_PROGRAMMING questions must include fenced code blocks
@@ -902,6 +919,7 @@ export const generatePaper3Mock = inngest.createFunction(
                   markingBreakdown: question.markingBreakdown,
                   explanation: question.explanation,
                   partialCredit: question.partialCredit,
+                  requireAnswer: question.requireAnswer ?? true,
                   sourceContentMarkdown: question.sourceContentMarkdown,
                   taskItems: question.taskItems,
                   visualElements: question.visualElements,

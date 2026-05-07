@@ -1,0 +1,56 @@
+import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export async function POST(
+  _req: Request,
+  { params }: { params: Promise<{ attemptId: string }> },
+) {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { attemptId } = await params;
+
+    const attempt = await prisma.paper3MockAttempt.findUnique({
+      where: { id: attemptId, userId: session.user.id },
+    });
+
+    if (!attempt) {
+      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    }
+
+    if (attempt.status !== "COMPLETED") {
+      return NextResponse.json(
+        { error: "Can only view correct answers for completed attempts" },
+        { status: 400 },
+      );
+    }
+
+    if (attempt.correctAnswerViewed) {
+      return NextResponse.json(
+        { error: "Correct answers already viewed for this attempt" },
+        { status: 400 },
+      );
+    }
+
+    const updated = await prisma.paper3MockAttempt.update({
+      where: { id: attemptId },
+      data: { correctAnswerViewed: true },
+    });
+
+    return NextResponse.json({ success: true, attempt: updated });
+  } catch (error) {
+    console.error("Paper3 view answer error:", error);
+    return NextResponse.json(
+      { error: "Failed to mark answer as viewed" },
+      { status: 500 },
+    );
+  }
+}

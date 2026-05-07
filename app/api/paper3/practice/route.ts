@@ -95,6 +95,7 @@ export async function GET(req: Request) {
         explanation: true,
         expectedAnswer: true,
         markingBreakdown: true,
+        requireAnswer: true,
         source: {
           select: {
             id: true,

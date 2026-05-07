@@ -158,6 +158,11 @@ export default function PracticePage() {
                 </TabsTrigger>
               ))}
             </TabsList>
+            <div className="mt-2 text-right">
+              <Link href="/practice/history" className="text-sm text-primary hover:underline">
+                View My Exam History →
+              </Link>
+            </div>
             {categories.map((item) => (
               <TabsContent
                 key={item.value}

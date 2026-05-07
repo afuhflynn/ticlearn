@@ -609,10 +609,39 @@ export async function evaluateAnswer(
     };
   }
 
+  // Always use specialized evaluation for spreadsheet/SQL task types
+  const specializedTypes = ["EXCEL_FORMULA", "EXCEL_GRID", "SQL_QUERY", "ACCESS_TABLE", "ACCESS_RELATIONSHIP"];
+  if (specializedTypes.includes(question.taskType)) {
+    switch (question.taskType) {
+      case "EXCEL_FORMULA":
+      case "EXCEL_GRID":
+        return evaluateSpreadsheetAnswer(
+          userAnswer,
+          question.expectedAnswer,
+          totalMarks,
+        );
+      case "ACCESS_TABLE":
+      case "ACCESS_RELATIONSHIP":
+      case "SQL_QUERY":
+        return evaluateSqlAnswer(userAnswer, question.expectedAnswer, totalMarks);
+    }
+  }
+
+  // Use specialized evaluation for code/programming types
+  const codeTypes = ["C_PROGRAM", "PASCAL_PROGRAM", "WEB_PROGRAMMING", "ALGORITHM_PSEUDOCODE"];
+  if (codeTypes.includes(question.taskType)) {
+    return evaluateCodeAnswer(
+      userAnswer,
+      question.expectedAnswer,
+      totalMarks,
+      question.language ?? "c",
+    );
+  }
+
   if (!question.partialCredit) {
     if (
-      userAnswer.trim().toLowerCase() ===
-      question.expectedAnswer.trim().toLowerCase()
+      normalizeAnswer(userAnswer, question.taskType) ===
+      normalizeAnswer(question.expectedAnswer, question.taskType)
     ) {
       return {
         isCorrect: true,
@@ -648,7 +677,7 @@ export async function evaluateAnswer(
     };
   }
 
-  switch (question.taskType) {
+switch (question.taskType) {
     case "EXCEL_FORMULA":
     case "EXCEL_GRID":
       return evaluateSpreadsheetAnswer(

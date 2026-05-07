@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { queryKeys } from "@/lib/query-keys";
 import { QuestionType } from "@/types";
 import { Paper3Question } from "@/lib/generated/prisma/client";
+import { useRouter } from "next/navigation";
 
 type SourceMutationPayload = {
   title: string;
@@ -379,13 +380,13 @@ function getPaper3MockAttempt(attemptId: string) {
   });
 }
 
-function getPaper3MyAttempts() {
-  return fetch("/api/paper3/my-attempts", { credentials: "include" }).then(
-    (res) => {
-      if (!res.ok) throw new Error("Failed to fetch attempts");
-      return res.json();
-    },
-  );
+function getPaper3MyAttempts(page = 1, limit = 20) {
+  return fetch(`/api/paper3/attempts?page=${page}&limit=${limit}`, {
+    credentials: "include",
+  }).then((res) => {
+    if (!res.ok) throw new Error("Failed to fetch attempts");
+    return res.json();
+  });
 }
 
 function getPaper3Stats() {
@@ -418,6 +419,15 @@ export function usePaper3Sources() {
   return useQuery({
     queryKey: queryKeys.paper3Sources,
     queryFn: getPaper3Sources,
+    refetchInterval: (query) => {
+      const sources = query.state.data?.sources ?? [];
+      const shouldPoll = sources.some(
+        (source: { status: string }) =>
+          source.status === "PENDING" || source.status === "PROCESSING",
+      );
+
+      return shouldPoll ? 3000 : false;
+    },
   });
 }
 
@@ -683,6 +693,7 @@ export function useCheckPaper3Answer() {
 
 export function useStartPaper3MockExam() {
   const queryClient = useQueryClient();
+  const router = useRouter();
 
   return useMutation({
     mutationFn: startPaper3MockExam,
@@ -691,6 +702,7 @@ export function useStartPaper3MockExam() {
     },
     onError: (error: Error) => {
       toast.error(error.message);
+      router.push("/dashboard");
     },
   });
 }
@@ -713,6 +725,36 @@ export function useSubmitPaper3MockExam() {
   });
 }
 
+function viewPaper3CorrectAnswer(attemptId: string) {
+  return fetch(`/api/paper3/attempts/${attemptId}/view-answer`, {
+    method: "POST",
+    credentials: "include",
+  }).then((res) => {
+    if (!res.ok) throw new Error("Failed to view correct answer");
+    return res.json().then((data) => ({ ...data, attemptId }));
+  });
+}
+
+export function useViewPaper3CorrectAnswer() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: viewPaper3CorrectAnswer,
+    onSuccess: (_data, variables) => {
+      toast.success("Correct answers revealed");
+      queryClient.invalidateQueries({
+        // @note Can be handled better later
+        queryKey: queryKeys.paper3MockAttempt(
+          (variables as unknown as { attemptId: string }).attemptId,
+        ),
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function usePaper3MockAttempt(attemptId: string) {
   return useQuery({
     queryKey: queryKeys.paper3MockAttempt(attemptId),
@@ -721,10 +763,10 @@ export function usePaper3MockAttempt(attemptId: string) {
   });
 }
 
-export function usePaper3MyAttempts() {
+export function usePaper3MyAttempts(page = 1, limit = 20) {
   return useQuery({
-    queryKey: queryKeys.paper3MyAttempts,
-    queryFn: getPaper3MyAttempts,
+    queryKey: [...queryKeys.paper3MyAttempts, page, limit],
+    queryFn: () => getPaper3MyAttempts(page, limit),
   });
 }
 
@@ -747,5 +789,66 @@ export function usePaper3Leaderboard(mockId: string, page = 1, limit = 20) {
     queryKey: [...queryKeys.paper3Leaderboard(mockId), page, limit],
     queryFn: () => getPaper3Leaderboard(mockId, page, limit),
     enabled: !!mockId,
+  });
+}
+
+function getPaper3QuestionLeaderboard(
+  questionId: string,
+  page = 1,
+  limit = 20,
+) {
+  return fetch(
+    `/api/paper3/leaderboard/question/${questionId}?page=${page}&limit=${limit}`,
+    { credentials: "include" },
+  ).then((res) => {
+    if (!res.ok) throw new Error("Failed to fetch question leaderboard");
+    return res.json();
+  });
+}
+
+export function usePaper3QuestionLeaderboard(
+  questionId: string,
+  page = 1,
+  limit = 20,
+) {
+  return useQuery({
+    queryKey: ["paper3", "questionLeaderboard", questionId, page, limit],
+    queryFn: () => getPaper3QuestionLeaderboard(questionId, page, limit),
+    enabled: !!questionId,
+  });
+}
+
+interface ChatMessage {
+  role: "user" | "assistant";
+  content: string;
+}
+
+function sendPaper3ChatMessage(
+  attemptId: string,
+  questionId: string | null,
+  messages: ChatMessage[],
+) {
+  return fetch("/api/paper3/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ attemptId, questionId, messages }),
+  }).then((res) => {
+    if (!res.ok) throw new Error("Failed to get chat response");
+    return res.json();
+  });
+}
+
+export function usePaper3Chat() {
+  return useMutation({
+    mutationFn: ({
+      attemptId,
+      questionId,
+      messages,
+    }: {
+      attemptId: string;
+      questionId: string | null;
+      messages: ChatMessage[];
+    }) => sendPaper3ChatMessage(attemptId, questionId, messages),
   });
 }

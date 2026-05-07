@@ -17,7 +17,6 @@ export async function POST(
     }
 
     const { mockId } = await params;
-    console.log({ mockId });
 
     const mock = await prisma.paper3Mock.findUnique({
       where: { id: mockId, status: "PUBLISHED" },
@@ -38,6 +37,7 @@ export async function POST(
                 taskItems: true,
                 explanation: true,
                 concepts: true,
+                requireAnswer: true,
               },
             },
           },
@@ -52,6 +52,31 @@ export async function POST(
       );
     }
 
+    console.log({ questions: mock.questions.map((q) => q.question) });
+
+    const { searchParams } = new URL(_req.url);
+    const retake = searchParams.get("retake") === "true";
+
+    // Check for existing in-progress attempt (allow resuming)
+    if (!retake) {
+      const existingAttempt = await prisma.paper3MockAttempt.findFirst({
+        where: {
+          userId: session.user.id,
+          mockId: mock.id,
+          status: "IN_PROGRESS",
+        },
+      });
+
+      if (existingAttempt) {
+        return NextResponse.json({
+          attempt: existingAttempt,
+          mock,
+          resumed: true,
+        });
+      }
+    }
+
+    // Create new attempt (for fresh start or retake)
     const attempt = await prisma.paper3MockAttempt.create({
       data: {
         userId: session.user.id,
@@ -64,7 +89,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({ attempt, mock });
+    return NextResponse.json({ attempt, mock, resumed: false });
   } catch (error) {
     console.error("Paper3 mock start error:", error);
     return NextResponse.json(

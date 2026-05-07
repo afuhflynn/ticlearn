@@ -25,11 +25,29 @@ export async function GET(
           include: {
             questions: {
               include: {
-                question: true,
+                question: {
+                  select: {
+                    id: true,
+                    title: true,
+                    content: true,
+                    contentMd: true,
+                    taskType: true,
+                    marks: true,
+                    expectedAnswer: true,
+                    explanation: true,
+                    visualElements: true,
+                    requireAnswer: true,
+                    concepts: true,
+                    section: true,
+                  },
+                },
               },
               orderBy: { order: "asc" },
             },
           },
+        },
+        detailedResults: {
+          orderBy: { createdAt: "asc" },
         },
       },
     });
@@ -38,7 +56,83 @@ export async function GET(
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ attempt });
+    // Calculate analytics
+    const results = attempt.results as Array<{
+      questionId: string;
+      isCorrect: boolean;
+      marksEarned: number;
+      totalMarks: number;
+    }>;
+
+    const detailedResults = attempt.detailedResults || [];
+    
+    // Performance by section
+    const sectionPerformance: Record<string, { correct: number; total: number }> = {};
+    // Performance by concept
+    const conceptPerformance: Record<string, { correct: number; total: number }> = {};
+    
+    for (const mq of attempt.mock.questions) {
+      const question = mq.question;
+      const section = question.section;
+      const concepts = (question.concepts as string[]) || [];
+      
+      // Section performance
+      if (!sectionPerformance[section]) {
+        sectionPerformance[section] = { correct: 0, total: 0 };
+      }
+      sectionPerformance[section].total += question.marks;
+      
+      // Concept performance
+      for (const concept of concepts) {
+        if (!conceptPerformance[concept]) {
+          conceptPerformance[concept] = { correct: 0, total: 0 };
+        }
+        conceptPerformance[concept].total += question.marks;
+      }
+    }
+
+    // Mark correct/incorrect for each
+    for (const result of results) {
+      const mq = attempt.mock.questions.find(mq => mq.question.id === result.questionId);
+      if (!mq) continue;
+      
+      const question = mq.question;
+      const section = question.section;
+      const concepts = (question.concepts as string[]) || [];
+      
+      // Section
+      if (sectionPerformance[section] && result.isCorrect) {
+        sectionPerformance[section].correct += result.marksEarned;
+      }
+      
+      // Concepts
+      for (const concept of concepts) {
+        if (conceptPerformance[concept] && result.isCorrect) {
+          conceptPerformance[concept].correct += result.marksEarned;
+        }
+      }
+    }
+
+    // Calculate percentages
+    const analytics = {
+      bySection: Object.entries(sectionPerformance).map(([section, data]) => ({
+        section,
+        marks: data.correct,
+        totalMarks: data.total,
+        percentage: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+      })),
+      byConcept: Object.entries(conceptPerformance).map(([concept, data]) => ({
+        concept,
+        marks: data.correct,
+        totalMarks: data.total,
+        percentage: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+      })),
+      correctCount: results.filter(r => r.isCorrect).length,
+      incorrectCount: results.filter(r => !r.isCorrect).length,
+      partialCount: detailedResults.filter(r => r.partialCredit).length,
+    };
+
+    return NextResponse.json({ attempt, analytics });
   } catch (error) {
     console.error("Paper3 attempt GET error:", error);
     return NextResponse.json(

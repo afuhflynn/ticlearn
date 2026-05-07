@@ -666,6 +666,7 @@ model Paper3Question {
   markingBreakdown      Json?                @map("marking_breakdown")
   explanation           String?              @db.Text
   partialCredit         Boolean              @default(false) @map("partial_credit")
+  requireAnswer        Boolean              @default(true) @map("require_answer")
   sourceContentMarkdown String?              @map("source_content_markdown") @db.Text
   
   // Structured task/sub-question breakdown
@@ -680,6 +681,7 @@ model Paper3Question {
   source                Paper3Source         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   mockQuestions         Paper3MockQuestion[]
   attempts              Paper3Attempt[]
+  detailedResults      Paper3DetailedResult[]
 
   @@index([sourceId])
   @@index([section, taskType])
@@ -720,19 +722,21 @@ model Paper3MockQuestion {
 }
 
 model Paper3MockAttempt {
-  id          String            @id @default(cuid())
-  userId      String            @map("user_id")
-  mockId      String            @map("mock_id")
-  score       Float
-  totalMarks  Int               @map("total_marks")
-  timeTaken   Int?              @map("time_taken")
-  answers     Json
-  results     Json
-  status      MockAttemptStatus @default(IN_PROGRESS)
-  startedAt   DateTime          @default(now()) @map("started_at")
-  completedAt DateTime?         @map("completed_at")
-  mock        Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
-  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                   String            @id @default(cuid())
+  userId               String            @map("user_id")
+  mockId               String            @map("mock_id")
+  score                Float
+  totalMarks           Int               @map("total_marks")
+  timeTaken            Int?              @map("time_taken")
+  answers              Json
+  results              Json
+  status               MockAttemptStatus @default(IN_PROGRESS)
+  correctAnswerViewed  Boolean           @default(false) @map("correct_answer_viewed")
+  startedAt            DateTime          @default(now()) @map("started_at")
+  completedAt           DateTime?         @map("completed_at")
+  mock                 Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
+  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  detailedResults      Paper3DetailedResult[]
 
   @@index([userId])
   @@index([mockId])
@@ -745,6 +749,7 @@ model Paper3UserStats {
   questionsAttempted Int      @default(0) @map("questions_attempted")
   questionsCorrect   Int      @default(0) @map("questions_correct")
   mockExamsTaken     Int      @default(0) @map("mock_exams_taken")
+  totalPoints        Int      @default(0) @map("total_points")
   avgScore           Float    @default(0) @map("avg_score")
   weakConcepts       String[] @default([]) @map("weak_concepts")
   strongConcepts     String[] @default([]) @map("strong_concepts")
@@ -753,6 +758,45 @@ model Paper3UserStats {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("paper3_user_stats")
+}
+
+model Paper3QuestionAttempt {
+  id             String        @id @default(cuid())
+  questionId      String        @map("question_id")
+  mockId         String?       @map("mock_id")
+  attemptId      String        @map("attempt_id")
+  userId         String        @map("user_id")
+  userAnswer    String        @map("user_answer") @db.Text
+  isCorrect      Boolean       @map("is_correct")
+  marksEarned    Int          @map("marks_earned")
+  score         Float        @map("score")
+  timeAnswered   Int          @default(0) @map("time_answered")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  @@index([questionId, score])
+  @@index([questionId, userId])
+  @@map("paper3_question_attempts")
+}
+
+model Paper3DetailedResult {
+  id            String   @id @default(cuid())
+  attemptId     String   @map("attempt_id")
+  questionId    String   @map("question_id")
+  userAnswer    String   @map("user_answer") @db.Text
+  isCorrect     Boolean  @map("is_correct")
+  marksEarned   Int      @map("marks_earned")
+  totalMarks    Int      @map("total_marks")
+  feedback     String?  @map("feedback") @db.Text
+  breakdown    Json?    @map("breakdown")
+  partialCredit Boolean @default(false) @map("partial_credit")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  attempt       Paper3MockAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question      Paper3Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([attemptId])
+  @@index([questionId])
+  @@map("paper3_detailed_results")
 }
 
 model Paper3Attempt {

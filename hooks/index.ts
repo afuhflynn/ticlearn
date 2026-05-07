@@ -1,3 +1,5 @@
+import { useViewPaper3CorrectAnswer } from "./usePaper3";
+
 export { useIsMobile as useMobile } from "./use-mobile";
 export {
   useAffiliate,
@@ -75,3 +77,4 @@ export {
 } from "./useUsage";
 export { useUserSearch } from "./useUserSearch";
 export { useLeaderboard, useUserStats } from "./useUserStats";
+export { useViewPaper3CorrectAnswer, usePaper3Chat } from "./usePaper3";

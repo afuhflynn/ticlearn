@@ -61,8 +61,8 @@ const mainNavItems: NavItem[] = [
   { href: "/quizzes", label: "My Quizzes", icon: ListTodo },
   { href: "/progress", label: "Progress", icon: BarChart3 },
   { href: "/chat", label: "TiC", icon: BotMessageSquare },
-  { href: "/subscription", label: "Subscription", icon: CreditCard },
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, paid: true },
+  // Will become paid maybe later
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, paid: false },
 ];
 
 const learningNavItems: NavItem[] = [
@@ -79,6 +79,7 @@ const accountNavItems: NavItem[] = [
   { href: "/feedback", label: "Feedback", icon: MessageCircle },
   { href: "/affiliate", label: "Affiliate", icon: Link2 },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/subscription", label: "Subscription", icon: CreditCard },
 ];
 
 const adminNavItems: NavItem[] = [

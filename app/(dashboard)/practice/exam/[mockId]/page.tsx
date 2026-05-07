@@ -9,6 +9,8 @@ import {
 } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Paper3ContentRenderer } from "@/components/paper3/Paper3ContentRenderer";
+import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
+import { Badge } from "@/components/ui/badge";
 
 export default function TakeExamPage() {
   const router = useRouter();
@@ -79,6 +81,16 @@ export default function TakeExamPage() {
       const res = await startExam.mutateAsync({ mockId });
       setAttemptId(res.attempt.id);
       setStarted(true);
+      if (res.resumed) {
+        // Restore previous answers if resuming
+        if (res.attempt.answers) {
+          setAnswers(res.attempt.answers as Record<string, string>);
+        }
+        // Restore time if available
+        if (res.attempt.timeTaken && mock?.timeLimit) {
+          setTimeLeft(mock.timeLimit * 60 - res.attempt.timeTaken);
+        }
+      }
     } catch (error) {
       console.error("Failed to start exam:", error);
     }
@@ -90,6 +102,8 @@ export default function TakeExamPage() {
 
   const getTaskTypeInput = (taskType: string) => {
     switch (taskType) {
+      case "EXCEL_FORMULA":
+      case "EXCEL_GRID":
       case "SPREADSHEET_FORMULA":
         return (
           <input
@@ -107,6 +121,8 @@ export default function TakeExamPage() {
           />
         );
       case "SQL_QUERY":
+      case "ACCESS_TABLE":
+      case "ACCESS_RELATIONSHIP":
         return (
           <textarea
             id="answer"
@@ -122,6 +138,9 @@ export default function TakeExamPage() {
             rows={4}
           />
         );
+      case "C_PROGRAM":
+      case "PASCAL_PROGRAM":
+      case "WEB_PROGRAMMING":
       case "CODE_EDITOR":
         return (
           <textarea
@@ -136,6 +155,22 @@ export default function TakeExamPage() {
             placeholder="Your code here..."
             className="w-full p-3 border rounded-lg font-mono min-h-[150px]"
             rows={6}
+          />
+        );
+      case "ALGORITHM_PSEUDOCODE":
+        return (
+          <textarea
+            id="answer"
+            value={answers[currentQuestion?.question?.id] ?? ""}
+            onChange={(e) =>
+              setAnswers({
+                ...answers,
+                [currentQuestion.question.id]: e.target.value,
+              })
+            }
+            placeholder="Write your algorithm in pseudocode..."
+            className="w-full p-3 border rounded-lg font-mono min-h-[120px]"
+            rows={4}
           />
         );
       default:
@@ -239,9 +274,9 @@ export default function TakeExamPage() {
           <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
             <div className="flex justify-between items-start mb-4">
               <div>
-                <span className="text-xs text-gray-500">
+                <Badge className="text-xs h-6 w-6 rounded-full text-center font-semibold flex items-center justify-center mb-2">
                   {currentQuestion.question?.questionNumber}
-                </span>
+                </Badge>
                 <h2 className="text-lg font-medium">
                   {currentQuestion.question?.title}
                 </h2>
@@ -259,15 +294,17 @@ export default function TakeExamPage() {
               />
             </div>
 
-            <div className="mt-6">
-              <label
-                htmlFor="answer"
-                className="block text-sm font-medium mb-2"
-              >
-                Your Answer
-              </label>
-              {getTaskTypeInput(currentQuestion.question?.taskType)}
-            </div>
+            {currentQuestion.question?.requireAnswer !== false && (
+              <div className="mt-6">
+                <label
+                  htmlFor="answer"
+                  className="block text-lg font-medium mb-2"
+                >
+                  Your Answer
+                </label>
+                {getTaskTypeInput(currentQuestion.question?.taskType)}
+              </div>
+            )}
 
             <div className="mt-6 flex gap-3">
               <button
@@ -324,6 +361,13 @@ export default function TakeExamPage() {
           </Button>
         </div>
       </div>
+
+      {started && attemptId && (
+        <TiCExamAssistant
+          attemptId={attemptId}
+          questionId={questions[currentIndex]?.question?.id ?? null}
+        />
+      )}
     </div>
   );
 }
