@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import {
   GraduationCap,
@@ -7,6 +8,23 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "About TiCLearn - AI Study Platform by Tic Foundation",
+  description:
+    "Learn about TiCLearn, developed by Tic Foundation to transform GCE A-Level exam preparation for Cameroonian students through AI-powered study tools.",
+  keywords: [
+    "TiCLearn about",
+    "Tic Foundation",
+    "GCE education Cameroon",
+    "AI study platform Cameroon",
+  ],
+  openGraph: {
+    title: "About TiCLearn - Transforming GCE Education",
+    description:
+      "Discover how TiCLearn is revolutionizing GCE A-Level exam preparation for students in Cameroon.",
+  },
+};
 
 export default function AboutPage() {
   return (

@@ -13,45 +13,73 @@ export interface FAQItem {
 }
 
 export const FAQ_ITEMS: FAQItem[] = [
+  // General Questions
   {
     question: "What is TiCLearn?",
     answer:
-      "TiCLearn is an AI-powered study platform designed specifically for Cameroonian GCE A-Level students. It helps you transform notes into quizzes, practice with past exams, compete on leaderboards, and get help from an TiC.",
+      "TiCLearn is an AI-powered study platform designed specifically for Cameroonian GCE A-Level students. It helps you transform notes into quizzes, prepare for exams with AI-generated mock tests, and track your progress over time with leaderboards.",
   },
   {
-    question: "How does the AI quiz generator work?",
+    question: "How does TiCLearn help with GCE A-Level preparation?",
     answer:
-      "Simply upload your study notes or paste text, and our AI will automaTiClly generate relevant multiple-choice quizzes. You can customize the number of questions, difficulty level, and topics covered.",
+      "TiCLearn offers comprehensive GCE A-Level preparation through AI-generated quizzes from your notes, mock exam simulations for subjects like Computer Science and ICT, a 24/7 AI tutor (TiC) for instant help, and progress tracking with leaderboards to keep you motivated.",
   },
   {
     question: "Is TiCLearn free to use?",
     answer:
-      "Yes! TiCLearn offers a free tier with basic features including note uploading, quiz generation, and access to the TiC. We also offer premium plans with advanced features like unlimited quizzes, exam papers, and priority support.",
+      "TiCLearn offers both free and premium plans. The free plan includes basic features like note uploading and limited quiz generation. Premium plans unlock unlimited access to AI features, mock exams, and advanced progress tracking.",
   },
   {
-    question: "What subjects do you support?",
+    question: "Which GCE A-Level subjects does TiCLearn cover?",
     answer:
-      "We support all GCE A-Level subjects including Mathematics, Physics, Chemistry, Biology, Computer Science, Economics, Geography, Literature, and more. Our AI is continuously learning to improve accuracy across all subjects.",
+      "TiCLearn covers all major GCE A-Level subjects including Computer Science (0795), ICT (0796), Mathematics (0765), Further Mathematics (0775), Biology (0710), Chemistry (0715), Physics (0780), Economics (0725), and more. We're continuously adding more subjects based on the Cameroon GCE syllabus.",
   },
   {
-    question: "How do I subscribe to premium?",
+    question: "How is TiCLearn different from other study platforms?",
     answer:
-      "Visit our pricing page to view available plans. Subscriptions can be paid via Fapshi (mobile money) or credit card. Once subscribed, you'll get instant access to all premium features.",
+      "TiCLearn is specifically tailored for the Cameroon GCE A-Level curriculum. Unlike generic study apps, we understand the local syllabus, exam patterns, and student needs. Our AI adapts to generate questions that match the difficulty and format of actual GCE exams.",
   },
   {
-    question: "Can I use TiCLearn on my phone?",
+    question: "Who is behind TiCLearn?",
     answer:
-      "Yes! TiCLearn is fully responsive and works on desktop, tablet, and mobile devices. You can study anywhere, anytime.",
+      "TiCLearn is developed by Tic Foundation, a Cameroonian organization focused on using technology to improve education access and quality for students across Cameroon.",
+  },
+  // Feature Questions
+  {
+    question: "How do I upload my study notes?",
+    answer:
+      "Simply sign up for an account, navigate to the upload section, and drag and drop your PDF files or images. Our AI will automatically extract the text, summarize key points, and prepare them for quiz generation.",
   },
   {
-    question: "How does the affiliate program work?",
+    question: "How does AI quiz generation work?",
     answer:
-      "Share your unique referral link with friends and earn rewards when they subscribe. You'll earn 20% of their subscription fees for life. Track your earnings in your dashboard.",
+      "After uploading your notes, our AI analyzes the content and generates relevant multiple-choice questions based on the key concepts and topics covered. You can customize the number of questions and difficulty level.",
   },
   {
-    question: "Is my data secure?",
+    question: "Can I practice past GCE exam papers?",
     answer:
-      "Absolutely. We take data privacy seriously. Your notes and study data are encrypted and stored securely. We never share your personal information with third parties.",
+      "Yes! TiCLearn offers mock GCE exam simulations for subjects like Computer Science, ICT, and Mathematics. These exams are designed to mirror the format and difficulty of actual GCE A-Level papers.",
+  },
+  {
+    question: "What is the TiC AI tutor?",
+    answer:
+      "TiC is your personal 24/7 AI study assistant. You can ask TiC questions about any topic from your notes or the GCE syllabus, and get instant, detailed explanations to help you understand difficult concepts.",
+  },
+  {
+    question: "How do leaderboards work?",
+    answer:
+      "Leaderboards track your performance based on quiz scores, points earned, and consistency. You can compete with other students across Cameroon and see how you rank in subjects you're studying.",
+  },
+  {
+    question: "Can I track my progress over time?",
+    answer:
+      "Absolutely! TiCLearn provides detailed analytics showing your quiz scores, time spent studying, topics mastered, and areas that need more practice. This helps you identify weak points and improve systematically.",
+  },
+  // Technical Questions
+  {
+    question: "What file formats can I upload?",
+    answer:
+      "TiCLearn supports PDF files and images (PNG, JPG, JPEG) of your handwritten or typed notes. We recommend clear, well-organized documents for the best AI extraction results.",
   },
   {
     question: "How do I reset my password?",
@@ -59,18 +87,34 @@ export const FAQ_ITEMS: FAQItem[] = [
       "Go to the sign-in page and click 'Forgot Password'. Enter your email address and we'll send you a reset link.",
   },
   {
-    question: "Can I cancel my subscription anytime?",
+    question: "How do I contact support?",
     answer:
-      "Yes, you can cancel your subscription at any time. Your access will continue until the end of your current billing period.",
+      "You can reach our support team through the Contact page, by email, or through our app. We're here to help Monday through Friday during business hours.",
   },
   {
-    question: "How can I contact support?",
+    question: "Is my data secure?",
     answer:
-      "You can reach us via email at hello@ticlearn.com, use our contact form, or send a message through the app. We typically respond within 24 hours.",
+      "Yes, we take data security seriously. Your personal information and study materials are encrypted and stored securely. We never share your data with third parties without your consent.",
+  },
+  // Payment Questions
+  {
+    question: "What payment methods do you accept?",
+    answer:
+      "We accept mobile money payments through MTN MoMo and Orange Money, which are the most popular payment methods in Cameroon. This makes it easy for students to subscribe to premium features.",
   },
   {
-    question: "Do you offer group/school subscriptions?",
+    question: "How do I upgrade to premium?",
     answer:
-      "Yes! We offer special pricing for schools and organizations. Contact us at hello@ticlearn.com for more information.",
+      "Visit our Pricing page, select the plan that suits your needs, and follow the checkout process. Payment is processed securely through Fapshi, and you'll get instant access to premium features.",
+  },
+  {
+    question: "Can I get a refund?",
+    answer:
+      "We offer a 7-day money-back guarantee for premium subscriptions. If you're not satisfied with the service, contact our support team within 7 days of purchase for a full refund.",
+  },
+  {
+    question: "What happens if payment fails?",
+    answer:
+      "If your payment fails, you'll be notified immediately. You can try again or contact our support team for assistance. Your account will remain active until the current subscription period ends.",
   },
 ];
