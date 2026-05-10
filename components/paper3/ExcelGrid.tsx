@@ -8,6 +8,7 @@ interface ExcelGridProps {
   caption?: string;
   showRowNumbers?: boolean;
   showColLetters?: boolean;
+  isHeaderRow?: number;
   className?: string;
 }
 
@@ -17,12 +18,13 @@ export function ExcelGrid({
   caption,
   showRowNumbers = true,
   showColLetters = true,
+  isHeaderRow,
   className,
 }: ExcelGridProps) {
   if (!data || data.length === 0) return null;
 
   const numRows = data.length;
-  const numCols = data[0]?.length || 0;
+  const numCols = Math.max(...data.map((row) => row.length), 0);
 
   // Generate column letters A, B, C, ... Z, AA, AB, ...
   const getColumnLetter = (col: number): string => {
@@ -70,24 +72,35 @@ export function ExcelGrid({
               <tr key={rowIdx}>
                 {/* Row number */}
                 {showRowNumbers && (
-                  <td className="w-10 h-10 bg-gray-200 border border-gray-400 font-mono text-center text-gray-600 px-4">
+                  <td className={cn(
+                    "w-10 h-10 border border-gray-400 font-mono text-center px-4",
+                    rowIdx === isHeaderRow
+                      ? "bg-gray-300 text-gray-700 font-semibold"
+                      : "bg-gray-200 text-gray-600",
+                  )}>
                     {rowIdx + 1}
                   </td>
                 )}
                 {/* Data cells */}
-                {row.map((cell, colIdx) => (
-                  <td
-                    key={colIdx}
-                    className={cn(
-                      "w-12 h-10 border border-gray-400 text-center font-mono px-10",
-                      isHighlighted(rowIdx, colIdx)
-                        ? "bg-blue-500 text-white font-bold"
-                        : "bg-white",
-                    )}
-                  >
-                    {cell}
-                  </td>
-                ))}
+                {Array.from({ length: numCols }).map((_, colIdx) => {
+                  const cell = row[colIdx] ?? "";
+                  const isHeader = rowIdx === isHeaderRow;
+                  return (
+                    <td
+                      key={colIdx}
+                      className={cn(
+                        "w-12 h-10 border border-gray-400 text-center font-mono px-10",
+                        isHighlighted(rowIdx, colIdx)
+                          ? "bg-blue-500 text-white font-bold"
+                          : isHeader
+                            ? "bg-gray-100 font-semibold"
+                            : "bg-white",
+                      )}
+                    >
+                      {cell}
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

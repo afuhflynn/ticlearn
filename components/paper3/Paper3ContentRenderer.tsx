@@ -46,22 +46,59 @@ export type { Paper3ContentRendererProps };
 interface ContentSegment {
   type: "text" | "table" | "array";
   content: string;
-  arrayData?: string[];
+  arrayData?: string[][];
+  arrayHeaderRow?: boolean;
   tableColumns?: string[];
   tableData?: string[][];
 }
 
-function isValidArrayString(str: string): boolean {
-  if (!str.startsWith("[") || !str.endsWith("]")) return false;
-  const inner = str.slice(1, -1);
-  if (inner.includes("object") || inner.includes(":")) return false;
-  const items = inner.split(",").map((s) => s.trim());
-  return items.length > 0 && items.every((s) => s.length > 0);
+function isSingleBracketLine(line: string): boolean {
+  const trimmed = line.trim();
+  return trimmed.startsWith("[") && trimmed.endsWith("]");
 }
 
-function parseArrayString(str: string): string[] {
-  const inner = str.slice(1, -1);
-  return inner.split(",").map((s) => s.trim());
+function isValidArrayBlock(block: string): boolean {
+  const lines = block.split("\n").filter((l) => l.trim());
+  if (lines.length === 0) return false;
+
+  const isArrayLine = (l: string) => {
+    const trimmed = l.trim();
+    if (!trimmed.startsWith("[") || !trimmed.endsWith("]")) return false;
+    const inner = trimmed.slice(1, -1);
+    if (inner.includes("object") || inner.includes(":")) return false;
+    return true;
+  };
+
+  return lines.every(isArrayLine);
+}
+
+function detectHeaderRow(rows: string[][]): boolean {
+  if (rows.length < 2) return false;
+  const firstRow = rows[0];
+  const numericPatterns = /^\d+$|^"?\d+\.?\d*"?$/;
+  const allFirstCellsNumeric = firstRow.every((cell) => numericPatterns.test(cell.trim()));
+  if (allFirstCellsNumeric) return false;
+  const nonNumericCount = firstRow.filter((cell) => !numericPatterns.test(cell.trim())).length;
+  return nonNumericCount > firstRow.length / 2;
+}
+
+function parseArrayBlock(block: string): { data: string[][]; isHeader: boolean } {
+  const lines = block.split("\n").filter((l) => l.trim());
+  const data: string[][] = lines.map((line) => {
+    const trimmed = line.trim();
+    const inner = trimmed.slice(1, -1);
+    const cells = inner.split(",").map((s) => {
+      let cell = s.trim();
+      if ((cell.startsWith('"') && cell.endsWith('"')) || (cell.startsWith("'") && cell.endsWith("'"))) {
+        cell = cell.slice(1, -1);
+      }
+      return cell;
+    });
+    return cells;
+  });
+
+  const isHeader = detectHeaderRow(data);
+  return { data, isHeader };
 }
 
 function parseContentMd(contentMd: string): ContentSegment[] {
@@ -69,8 +106,8 @@ function parseContentMd(contentMd: string): ContentSegment[] {
 
   if (!contentMd) return segments;
 
-  const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/gi;
-  const arrayRegex = /\[([^\]]+)\]/gi;
+  const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;
+  const arrayBlockRegex = /(\[(?:[^\]\\]|\\.)*\])(?:\s*\n\s*(\[(?:[^\]\\]|\\.)*\]))*/g;
 
   interface Match {
     type: "table" | "array";
@@ -92,16 +129,15 @@ function parseContentMd(contentMd: string): ContentSegment[] {
   }
 
   let arrayMatch;
-  while ((arrayMatch = arrayRegex.exec(contentMd)) !== null) {
-    const innerContent = arrayMatch[1];
-    if (innerContent.includes("object") || innerContent.trim() === "") continue;
-    if (!isValidArrayString(arrayMatch[0])) continue;
+  while ((arrayMatch = arrayBlockRegex.exec(contentMd)) !== null) {
+    const block = arrayMatch[0];
+    if (!isValidArrayBlock(block)) continue;
 
     matches.push({
       type: "array",
       start: arrayMatch.index,
-      end: arrayMatch.index + arrayMatch[0].length,
-      content: arrayMatch[0],
+      end: arrayMatch.index + block.length,
+      content: block,
     });
   }
 
@@ -128,17 +164,18 @@ function parseContentMd(contentMd: string): ContentSegment[] {
         });
       }
     } else if (match.type === "array") {
-      const parsed = parseArrayString(match.content);
-      if (parsed) {
+      const { data, isHeader } = parseArrayBlock(match.content);
+      if (data.length > 0) {
         segments.push({
           type: "array",
           content: "",
-          arrayData: parsed,
+          arrayData: data,
+          arrayHeaderRow: isHeader,
         });
       }
     }
 
-    lastEnd = match.end;
+    lastEnd = Math.max(lastEnd, match.end);
   }
 
   if (lastEnd < contentMd.length) {
@@ -330,7 +367,8 @@ export function Paper3ContentRenderer({
         return (
           <ExcelGrid
             key={`array-${index}`}
-            data={[segment.arrayData || []]}
+            data={segment.arrayData || []}
+            isHeaderRow={segment.arrayHeaderRow ? 0 : undefined}
             className="w-full"
           />
         );
