@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { Paper3ContentRenderer } from "@/components/paper3";
+import { HtmlPreview, Paper3ContentRenderer } from "@/components/paper3";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -275,10 +275,17 @@ export default function PracticePage() {
             />
 
             <div className="space-y-3">
+              {selectedQuestion.taskType === "WEB_PROGRAMMING" && (
+                <HtmlPreview html={userAnswer} height="300px" />
+              )}
               <Textarea
                 value={userAnswer}
                 onChange={(event) => setUserAnswer(event.target.value)}
-                placeholder="Enter your answer here..."
+                placeholder={
+                  selectedQuestion.taskType === "WEB_PROGRAMMING"
+                    ? "Enter your HTML code here..."
+                    : "Enter your answer here..."
+                }
                 rows={8}
               />
               <Button
@@ -306,9 +313,18 @@ export default function PracticePage() {
                 </p>
                 <div>
                   <p className="text-sm font-medium">Correct answer</p>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {result.correctAnswer}
-                  </p>
+                  {selectedQuestion.taskType === "WEB_PROGRAMMING" ? (
+                    <HtmlPreview
+                      html={result.correctAnswer}
+                      height="250px"
+                      showToggle={true}
+                      defaultOpen={false}
+                    />
+                  ) : (
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {result.correctAnswer}
+                    </p>
+                  )}
                 </div>
                 {result.breakdown?.length ? (
                   <div className="space-y-2">

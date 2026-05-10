@@ -6,11 +6,25 @@ import {
   usePaper3Mock,
   useStartPaper3MockExam,
   useSubmitPaper3MockExam,
+  usePaper3MyAttempts,
 } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Paper3ContentRenderer } from "@/components/paper3/Paper3ContentRenderer";
 import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
+import { HtmlPreview } from "@/components/paper3/HtmlPreview";
 import { Badge } from "@/components/ui/badge";
+import { isHtmlQuestion } from "@/lib/paper3/evaluate";
+import { usePlan } from "@/hooks/usePlan";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { AlertTriangle, Eye, EyeOff, RefreshCw } from "lucide-react";
+import ReactMarkdown from "react-markdown";
 
 export default function TakeExamPage() {
   const router = useRouter();
@@ -22,13 +36,29 @@ export default function TakeExamPage() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [started, setStarted] = useState(false);
+  const [showRulesModal, setShowRulesModal] = useState(false);
+  const [agreedToRules, setAgreedToRules] = useState(false);
+  const [fullscreenError, setFullscreenError] = useState(false);
+  const [showExitWarning, setShowExitWarning] = useState(false);
+  const [aiMessagesUsed, setAiMessagesUsed] = useState(0);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const { data: mockData, isLoading } = usePaper3Mock(mockId);
+  const { data: attemptsData } = usePaper3MyAttempts(1, 10);
   const startExam = useStartPaper3MockExam();
   const submitExam = useSubmitPaper3MockExam();
+  const { paper3AIExamMessages, isPending, plan } = usePlan();
 
   const mock = mockData?.mock;
   const questions = mock?.questions ?? [];
+
+  const previousAttempt = attemptsData?.attempts?.find(
+    (a: any) => a.mock?.id === mockId && a.status === "COMPLETED",
+  );
+
+  const maxAiMessages = paper3AIExamMessages ?? 4;
+  const canUseAI = maxAiMessages === -1 || aiMessagesUsed < maxAiMessages;
+  const showAIAssistant = started && (canUseAI || maxAiMessages === -1);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -47,6 +77,9 @@ export default function TakeExamPage() {
         answers,
         timeTaken: totalTime,
       });
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
       router.push(`/practice/exam/result/${attemptId}`);
     } catch (error) {
       console.error("Failed to submit exam:", error);
@@ -76,24 +109,66 @@ export default function TakeExamPage() {
     return () => clearInterval(timer);
   }, [started, timeLeft, handleSubmit]);
 
+  useEffect(() => {
+    if (!started) return;
+
+    const handleFullscreenChange = () => {
+      if (!document.fullscreenElement && started && !showExitWarning) {
+        setShowExitWarning(true);
+        setTimeout(() => {
+          if (!document.fullscreenElement) {
+            handleSubmit();
+          }
+          setShowExitWarning(false);
+        }, 3000);
+      }
+    };
+
+    document.addEventListener("fullscreenchange", handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFullscreenChange);
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+    };
+  }, [started, handleSubmit, showExitWarning]);
+
   const handleStart = async () => {
+    if (!agreedToRules) return;
+    setShowRulesModal(false);
+    setStarted(true);
+
+    try {
+      await document.documentElement.requestFullscreen().catch(() => {
+        console.warn("Fullscreen not available or blocked by browser");
+      });
+    } catch {
+      console.warn("Fullscreen not available");
+    }
+
     try {
       const res = await startExam.mutateAsync({ mockId });
       setAttemptId(res.attempt.id);
-      setStarted(true);
-      if (res.resumed) {
-        // Restore previous answers if resuming
-        if (res.attempt.answers) {
-          setAnswers(res.attempt.answers as Record<string, string>);
-        }
-        // Restore time if available
+      if (res.resumed && res.attempt.answers) {
+        setAnswers(res.attempt.answers as Record<string, string>);
         if (res.attempt.timeTaken && mock?.timeLimit) {
           setTimeLeft(mock.timeLimit * 60 - res.attempt.timeTaken);
         }
       }
     } catch (error) {
       console.error("Failed to start exam:", error);
+      setStarted(false);
     }
+  };
+
+  const handleAiMessage = () => {
+    if (maxAiMessages !== -1 && aiMessagesUsed >= maxAiMessages) {
+      setShowUpgradeModal(true);
+      return false;
+    }
+    setAiMessagesUsed((prev) => prev + 1);
+    return true;
   };
 
   const currentQuestion = questions[currentIndex];
@@ -142,36 +217,40 @@ export default function TakeExamPage() {
       case "PASCAL_PROGRAM":
       case "WEB_PROGRAMMING":
       case "CODE_EDITOR":
-        return (
-          <textarea
-            id="answer"
-            value={answers[currentQuestion?.question?.id] ?? ""}
-            onChange={(e) =>
-              setAnswers({
-                ...answers,
-                [currentQuestion.question.id]: e.target.value,
-              })
-            }
-            placeholder="Your code here..."
-            className="w-full p-3 border rounded-lg font-mono min-h-[150px]"
-            rows={6}
-          />
-        );
       case "ALGORITHM_PSEUDOCODE":
         return (
-          <textarea
-            id="answer"
-            value={answers[currentQuestion?.question?.id] ?? ""}
-            onChange={(e) =>
-              setAnswers({
-                ...answers,
-                [currentQuestion.question.id]: e.target.value,
-              })
-            }
-            placeholder="Write your algorithm in pseudocode..."
-            className="w-full p-3 border rounded-lg font-mono min-h-[120px]"
-            rows={4}
-          />
+          <div className="space-y-2">
+            {isHtmlQuestion(
+              currentQuestion.question?.taskType,
+              currentQuestion.question?.contentMd,
+            ) && (
+              <HtmlPreview
+                html={answers[currentQuestion.question?.id] ?? ""}
+                height="200px"
+                className="mb-2"
+              />
+            )}
+            <textarea
+              id="answer"
+              value={answers[currentQuestion?.question?.id] ?? ""}
+              onChange={(e) =>
+                setAnswers({
+                  ...answers,
+                  [currentQuestion.question.id]: e.target.value,
+                })
+              }
+              placeholder={
+                currentQuestion.question?.taskType === "WEB_PROGRAMMING"
+                  ? "Enter your HTML code here..."
+                  : currentQuestion.question?.taskType ===
+                      "ALGORITHM_PSEUDOCODE"
+                    ? "Write your algorithm in pseudocode..."
+                    : "Your code here..."
+              }
+              className="w-full p-3 border rounded-lg font-mono min-h-[150px]"
+              rows={6}
+            />
+          </div>
         );
       default:
         return (
@@ -199,49 +278,232 @@ export default function TakeExamPage() {
     );
   }
 
-  if (!started) {
+  if (fullscreenError) {
     return (
-      <div className="h-full flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
-          <h1 className="text-xl md:text-2xl font-bold">{mock?.title}</h1>
-          <p className="text-gray-600 mt-2">{mock?.description}</p>
-          <div className="mt-6 space-y-3 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500">Questions</span>
-              <span className="font-medium">{questions.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Total Marks</span>
-              <span className="font-medium">{mock?.totalMarks}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Time Limit</span>
-              <span className="font-medium">{mock?.timeLimit} minutes</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500">Subject</span>
-              <span className="font-medium">{mock?.subject}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={handleStart}
-            disabled={startExam.isPending}
-            className="w-full mt-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-          >
-            {startExam.isPending ? "Starting..." : "Start Exam"}
-          </button>
-          <p className="text-xs text-gray-500 text-center mt-4">
-            Once started, the timer will begin. Make sure you have a stable
-            internet connection.
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6 text-center">
+          <AlertTriangle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold mb-2">Fullscreen Required</h2>
+          <p className="text-gray-600 mb-4">
+            This exam requires fullscreen mode to start. Please allow fullscreen
+            access and try again.
           </p>
+          <Button
+            onClick={() => {
+              setFullscreenError(false);
+              setShowRulesModal(true);
+            }}
+          >
+            Try Again
+          </Button>
         </div>
       </div>
     );
   }
 
+  if (!started) {
+    return (
+      <>
+        <div className="h-full flex items-center justify-center p-4">
+          <div className="max-w-md w-full bg-white rounded-xl shadow-lg p-6">
+            <h1 className="text-xl md:text-2xl font-bold">{mock?.title}</h1>
+            <p className="text-gray-600 mt-2">{mock?.description}</p>
+            <div className="mt-6 space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Questions</span>
+                <span className="font-medium">{questions.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Total Marks</span>
+                <span className="font-medium">{mock?.totalMarks}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Time Limit</span>
+                <span className="font-medium">{mock?.timeLimit} minutes</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Subject</span>
+                <span className="font-medium">{mock?.subject}</span>
+              </div>
+              {previousAttempt && (
+                <div className="flex justify-between bg-yellow-50 p-2 rounded">
+                  <span className="text-yellow-700">Previous Score</span>
+                  <span className="font-medium text-yellow-700">
+                    {previousAttempt.score}%
+                  </span>
+                </div>
+              )}
+            </div>
+            <div className="mt-6 space-y-3">
+              <Button
+                onClick={() => setShowRulesModal(true)}
+                className="w-full"
+              >
+                Start Exam
+              </Button>
+              {previousAttempt && (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    router.push(`/practice/exam/result/${previousAttempt.id}`)
+                  }
+                  className="w-full"
+                >
+                  <Eye className="h-4 w-4 mr-2" />
+                  View Previous Result
+                </Button>
+              )}
+            </div>
+            <p className="text-xs text-gray-500 text-center mt-4">
+              Exam will be in fullscreen mode. Exiting fullscreen submits your
+              exam.
+            </p>
+          </div>
+        </div>
+
+        <Dialog open={showRulesModal} onOpenChange={setShowRulesModal}>
+          <DialogContent className="max-w-lg md:min-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Exam Rules & Instructions</DialogTitle>
+              <DialogDescription>
+                Please read and agree to the following rules before starting
+                your exam.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <h3 className="font-semibold text-blue-800 mb-2 flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4" />
+                  Fullscreen Mode Required
+                </h3>
+                <p className="text-sm text-blue-700">
+                  This exam runs in fullscreen mode. The exam will automatically
+                  submit if you exit fullscreen mode.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <h3 className="font-semibold">Exam Rules</h3>
+                <ul className="list-disc pl-5 text-sm space-y-2 text-gray-600">
+                  <li>The timer starts immediately when you begin.</li>
+                  <li>
+                    Exiting fullscreen mode will automatically submit your exam.
+                  </li>
+                  <li>
+                    Switching tabs or minimizing the window will trigger a
+                    warning.
+                  </li>
+                  <li>
+                    Your answers are saved as you progress through questions.
+                  </li>
+                  <li>
+                    You can navigate between questions using the Previous/Next
+                    buttons.
+                  </li>
+                  <li>You can retake this exam with a Premium subscription.</li>
+                </ul>
+              </div>
+
+              {plan === "FREE" && maxAiMessages > 0 && (
+                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                  <h3 className="font-semibold text-purple-800 mb-2">
+                    AI Assistant Preview
+                  </h3>
+                  <p className="text-sm text-purple-700">
+                    You have <strong>{maxAiMessages} free messages</strong> to
+                    use with the AI assistant during this exam. Upgrade to
+                    Premium for unlimited AI assistance.
+                  </p>
+                </div>
+              )}
+
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <h3 className="font-semibold text-yellow-800 mb-2">
+                  Important
+                </h3>
+                <p className="text-sm text-yellow-700">
+                  Once you exit fullscreen, your exam cannot be paused or
+                  resumed. Make sure you have a stable internet connection
+                  before starting.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 p-4 border-t">
+              <input
+                type="checkbox"
+                id="agree-rules"
+                checked={agreedToRules}
+                onChange={(e) => setAgreedToRules(e.target.checked)}
+                className="rounded"
+              />
+              <label htmlFor="agree-rules" className="text-sm">
+                I understand and agree to the exam rules above.
+              </label>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowRulesModal(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleStart}
+                disabled={!agreedToRules || startExam.isPending}
+              >
+                {startExam.isPending ? "Starting..." : "Start Exam"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upgrade to Premium</DialogTitle>
+              <DialogDescription>
+                You have used all your free AI assistant messages for this exam.
+                Upgrade to Premium for unlimited AI assistance.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setShowUpgradeModal(false)}
+              >
+                Maybe Later
+              </Button>
+              <Button onClick={() => (window.location.href = "/subscription")}>
+                View Plans
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
+      <Dialog open={showExitWarning}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-yellow-500" />
+              Warning: Exam Will Submit
+            </DialogTitle>
+            <DialogDescription>
+              You have exited fullscreen mode. Your exam will be automatically
+              submitted in 3 seconds. Please return to fullscreen mode to
+              continue.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+
       <div className="sticky top-0 bg-white border-b px-4 py-3 z-10">
         <div className="container mx-auto max-w-3xl flex justify-between items-center">
           <div>
@@ -362,10 +624,13 @@ export default function TakeExamPage() {
         </div>
       </div>
 
-      {started && attemptId && (
+      {started && attemptId && showAIAssistant && (
         <TiCExamAssistant
           attemptId={attemptId}
           questionId={questions[currentIndex]?.question?.id ?? null}
+          onMessage={handleAiMessage}
+          maxMessages={maxAiMessages}
+          messagesUsed={aiMessagesUsed}
         />
       )}
     </div>

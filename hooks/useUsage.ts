@@ -9,12 +9,20 @@ interface PlanLimits {
   canAccessCommunity: boolean;
   canAccessLeaderboard: boolean;
   canAccessGCE: boolean;
+  paper3ExamLimit: number;
+  paper3RetakeLimit: number;
+  paper3AIExamMessages: number;
+  canViewCorrectAnswers: boolean;
+  canAccessPaper3AI: boolean;
+  canShareResults: boolean;
 }
 
 interface Usage {
   pdfUploads: number;
   quizGenerations: number;
   aiTutorMessages: number;
+  paper3ExamsUsed: number;
+  paper3RetakesUsed: number;
 }
 
 interface ChatDailyUsage {
@@ -23,6 +31,15 @@ interface ChatDailyUsage {
   remaining: number;
   resetsAt: string;
   resetsInSeconds: number;
+}
+
+interface Paper3Usage {
+  examsUsed: number;
+  examsLimit: number;
+  retakesUsed: number;
+  retakesLimit: number;
+  remaining: number;
+  canRetake: boolean;
 }
 
 interface UseUsageResult {
@@ -37,7 +54,15 @@ interface UseUsageResult {
   canAccessCommunity: boolean;
   canAccessLeaderboard: boolean;
   canAccessGCE: boolean;
+  canTakePaper3Exam: boolean;
+  canRetakePaper3Exam: boolean;
+  canViewPaper3CorrectAnswers: boolean;
+  canUsePaper3AI: boolean;
+  paper3AIExamMessages: number;
+  paper3AIExamMessagesUsed: number;
+  canSharePaper3Results: boolean;
   chatDailyUsage: ChatDailyUsage | null;
+  paper3Usage: Paper3Usage | null;
   isLoading: boolean;
   isPaid: boolean;
   isPending: boolean;
@@ -58,26 +83,37 @@ export function useUsage(): UseUsageResult {
   const isPending = currentStatus === "PENDING";
   const isPaid = currentStatus === "ACTIVE" && data?.plan !== "FREE";
 
-  // Pending users keep access from their previous plan
-  const displayPlan =
-    isPending && data?.previousPlan ? data.previousPlan : data?.plan || "FREE";
+  const displayPlan = isPending && data?.previousPlan ? data.previousPlan : data?.plan || "FREE";
+
+  const defaultLimits: PlanLimits = {
+    pdfUploads: 2,
+    quizGenerations: 4,
+    aiTutorMessages: 8,
+    canAccessCommunity: false,
+    canAccessLeaderboard: false,
+    canAccessGCE: false,
+    paper3ExamLimit: 1,
+    paper3RetakeLimit: 0,
+    paper3AIExamMessages: 4,
+    canViewCorrectAnswers: false,
+    canAccessPaper3AI: false,
+    canShareResults: false,
+  };
 
   const result: UseUsageResult = {
     plan: displayPlan,
     status: currentStatus,
     previousPlan: data?.previousPlan || null,
-    limits: data?.limits || {
-      pdfUploads: 2,
-      quizGenerations: 4,
-      aiTutorMessages: 8,
-      canAccessCommunity: false,
-      canAccessLeaderboard: false,
-      canAccessGCE: false,
-    },
-    usage: data?.usage || {
-      pdfUploads: 0,
-      quizGenerations: 0,
-      aiTutorMessages: 0,
+    limits: {
+      ...defaultLimits,
+      ...(data?.limits ?? {}),
+    } as PlanLimits,
+    usage: {
+      pdfUploads: data?.usage?.pdfUploads ?? 0,
+      quizGenerations: data?.usage?.quizGenerations ?? 0,
+      aiTutorMessages: data?.usage?.aiTutorMessages ?? 0,
+      paper3ExamsUsed: data?.usage?.paper3ExamsUsed ?? 0,
+      paper3RetakesUsed: data?.usage?.paper3RetakesUsed ?? 0,
     },
     canUpload: data?.canUpload ?? true,
     canGenerateQuiz: data?.canGenerateQuiz ?? true,
@@ -85,7 +121,15 @@ export function useUsage(): UseUsageResult {
     canAccessCommunity: data?.limits?.canAccessCommunity ?? false,
     canAccessLeaderboard: data?.limits?.canAccessLeaderboard ?? false,
     canAccessGCE: data?.limits?.canAccessGCE ?? false,
+    canTakePaper3Exam: data?.canTakePaper3Exam ?? true,
+    canRetakePaper3Exam: data?.canRetakePaper3Exam ?? false,
+    canViewPaper3CorrectAnswers: data?.limits?.canViewCorrectAnswers ?? false,
+    canUsePaper3AI: data?.limits?.canAccessPaper3AI ?? false,
+    paper3AIExamMessages: data?.limits?.paper3AIExamMessages ?? 4,
+    paper3AIExamMessagesUsed: 0,
+    canSharePaper3Results: data?.limits?.canShareResults ?? false,
     chatDailyUsage: data?.chatDailyUsage ?? null,
+    paper3Usage: data?.paper3Usage ?? null,
     isLoading,
     isPaid,
     isPending,
@@ -103,7 +147,12 @@ export function useCanAccess(
     | "affiliate"
     | "chat"
     | "quiz"
-    | "upload",
+    | "upload"
+    | "paper3"
+    | "paper3Retake"
+    | "paper3AI"
+    | "paper3CorrectAnswers"
+    | "paper3Share",
 ): boolean {
   const {
     canAccessCommunity,
@@ -113,9 +162,13 @@ export function useCanAccess(
     isPending,
     canGenerateQuiz,
     canUseAIChat,
+    canTakePaper3Exam,
+    canRetakePaper3Exam,
+    canViewPaper3CorrectAnswers,
+    canUsePaper3AI,
+    canSharePaper3Results,
   } = useUsage();
 
-  // Pending users retain access from their previous plan
   const effectivePaid = isPaid || isPending;
 
   switch (feature) {
@@ -133,18 +186,27 @@ export function useCanAccess(
       return canGenerateQuiz || isPending;
     case "upload":
       return true;
+    case "paper3":
+      return canTakePaper3Exam || isPending;
+    case "paper3Retake":
+      return canRetakePaper3Exam || isPending;
+    case "paper3AI":
+      return canUsePaper3AI || isPending;
+    case "paper3CorrectAnswers":
+      return canViewPaper3CorrectAnswers || isPending;
+    case "paper3Share":
+      return canSharePaper3Results || isPending;
     default:
       return false;
   }
 }
 
-export function useCheckLimit(feature: "upload" | "quiz" | "chat"): {
+export function useCheckLimit(feature: "upload" | "quiz" | "chat" | "paper3Exam"): {
   allowed: boolean;
   remaining: number;
   limit: number;
 } {
-  const { limits, usage, canUpload, canGenerateQuiz, canUseAIChat } =
-    useUsage();
+  const { limits, usage, canUpload, canGenerateQuiz, canUseAIChat, canTakePaper3Exam, paper3Usage } = useUsage();
 
   switch (feature) {
     case "upload": {
@@ -164,6 +226,12 @@ export function useCheckLimit(feature: "upload" | "quiz" | "chat"): {
       const used = usage.aiTutorMessages;
       const remaining = limit === -1 ? -1 : Math.max(0, limit - used);
       return { allowed: canUseAIChat, remaining, limit };
+    }
+    case "paper3Exam": {
+      const limit = limits.paper3ExamLimit;
+      const used = usage.paper3ExamsUsed;
+      const remaining = limit === -1 ? -1 : Math.max(0, limit - used);
+      return { allowed: canTakePaper3Exam, remaining, limit };
     }
     default:
       return { allowed: true, remaining: -1, limit: -1 };

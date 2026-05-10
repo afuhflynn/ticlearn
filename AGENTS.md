@@ -3,3 +3,87 @@
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
+
+<!-- BEGIN:implementation-summary -->
+# Paper 3 Exam System - Implementation Summary
+
+## Goal
+Implement comprehensive Paper 3 exam system with subscription-based monetization, anti-cheat enforcement, and AI-powered evaluation.
+
+## Constraints & Preferences
+- Retakes: PREMIUM only (unlimited)
+- Shareable card: STANDARD+ only; analytics: PREMIUM only
+- Auto-submit after 2 tab violations; fullscreen required
+- AI chat: 4 messages for FREE/STARTER (preview), unlimited for STANDARD/PREMIUM
+- FREE: 1 exam ever (not per-month)
+- STARTER: 3 exams/month with retakes, 4 AI messages
+- Show upgrade modal with no way to leave when free exam exhausted
+
+## Progress
+### Done
+- Applied isHtmlQuestion() to practice and exam pages
+- Added ProcessingStatus enum + feedbackMd/codeExplanation fields to Prisma schema
+- Created lib/inngest/paper3-exam-functions.ts for async AI evaluation
+- Updated submit route to dispatch Inngest event
+- Enhanced result page with polling (5s), markdown rendering, HTML preview
+- Improved leaderboard with 3 tabs (Quiz, Paper3-Exam, Paper3-Global)
+- Added ReactMarkdown to TiCExamAssistant
+- Removed WEB_PROGRAMMING from taskTypesWithoutInput (requireAnswer=true)
+- Added ALGORITHM_PSEUDOCODE to code editor case with HtmlPreview
+- Updated view-answer API to return correct answers array
+- Added expectedAnswer to feedbackMd for wrong answers
+- Added Paper3 limits to usePlan.ts (paper3ExamLimit, paper3RetakeLimit, paper3AIExamMessages, canViewCorrectAnswers, canAccessPaper3AI, canShareResults)
+- Added Paper3 usage tracking to useUsage.ts and app/api/usage/route.ts
+- ExamAssistant component with 4-message limit for FREE/STARTER (unlimited for STANDARD/PREMIUM)
+- View Previous Result button on practice page (conditional based on previous attempts)
+- Fullscreen enforcement with 3-second warning before auto-submit on exit
+- Upgrade modal when free exam limit exhausted (no exit route)
+- Attempt-level message limit tracking for AI chat
+- Gated retake button (PREMIUM only)
+- Gated view correct answers (STANDARD+ only)
+- Shareable result card system (shareId field, public page at /result/[shareId])
+- Fixed fullscreen requestFullscreen() to be called from user gesture (handleStart) instead of useEffect
+
+### In Progress
+- (none)
+
+### Blocked
+- (none)
+
+## Key Decisions
+- Fullscreen required; exit = auto-submit with 3-second warning
+- AI assistant in exam page only (no AI during exam, limited messages for FREE/STARTER)
+- Result page AI assistant: PREMIUM only
+- Shareable link format: /result/[shareId] (everyone can share, analytics PREMIUM only)
+- STARTER gets 4 AI messages during exam (same as FREE)
+- FREE exam tracked as total count (not per-month)
+- Message limit tracked per attempt, not per session
+
+## Next Steps
+1. **Run pnpm db:push** to apply Prisma schema changes (shareId, sharedAt fields)
+2. **Test share functionality** - verify share button and public result page
+3. **Test fullscreen enforcement** - verify exit triggers warning/auto-submit
+4. **Test AI message limits** - verify 4 messages for FREE/STARTER
+
+## Critical Context
+- Prisma migration was skipped (used db:push); created manual migration to fix drift
+- ProcessingStatus enum values needed manual SQL fix (enum existed but had no values)
+- AiModel changed from "gpt-5.1-chat-latest" to "gpt-5.4" in evaluate.ts and chat route
+- Fullscreen requestFullscreen() must be called inside user gesture (click handler), not useEffect
+
+## Relevant Files
+- `hooks/usePlan.ts`: Paper3 limits per plan tier
+- `hooks/useUsage.ts`: Paper3 usage tracking with canTakePaper3Exam, canRetakePaper3Exam
+- `app/api/usage/route.ts`: Returns paper3Usage object with monthly tracking
+- `app/(dashboard)/practice/exam/[mockId]/page.tsx`: Fullscreen enforcement, rules modal, AI chat with limits
+- `components/paper3/TiCExamAssistant.tsx`: Message limit tracking, upgrade modal
+- `components/paper3/ExamAssistant.tsx`: Per-attempt AI chat with 4-message limit
+- `app/(dashboard)/practice/exam/result/[attemptId]/page.tsx`: Enhanced result display, gated actions, share button
+- `app/(dashboard)/practice/page.tsx`: View Previous Result button
+- `lib/inngest/paper3-functions.ts`: Removed WEB_PROGRAMMING from taskTypesWithoutInput
+- `lib/inngest/paper3-exam-functions.ts`: Added partialCredit field, expectedAnswer in feedbackMd
+- `app/api/paper3/attempts/[attemptId]/view-answer/route.ts`: Returns correctAnswers array
+- `app/api/paper3/attempts/[attemptId]/share/route.ts`: NEW - Share/unshare API
+- `app/result/[shareId]/page.tsx`: NEW - Public shareable result page
+- `prisma/schema.prisma`: Added shareId and sharedAt to Paper3MockAttempt
+<!-- END:implementation-summary -->

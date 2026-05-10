@@ -461,6 +461,320 @@ function tokenizeCode(code: string): string[] {
   return [...new Set(tokens)];
 }
 
+export interface HtmlEvaluationCriteria {
+  hasHeading: boolean;
+  headingLevel: number | null;
+  hasParagraph: boolean;
+  hasTable: boolean;
+  tableRowCount: number;
+  tableCellCount: number;
+  hasTextInput: boolean;
+  hasButton: boolean;
+  hasInlineStyles: boolean;
+  hasForm: boolean;
+  structureScore: number;
+}
+
+function normalizeHtml(html: string): string {
+  return html
+    .replace(/\r\n/g, "\n")
+    .replace(/\r/g, "\n")
+    .replace(/\s+/g, " ")
+    .replace(/>\s+</g, "><")
+    .replace(/<\s+/g, "<")
+    .replace(/\s+>/g, ">")
+    .trim()
+    .toLowerCase();
+}
+
+function extractHtmlElements(html: string): HtmlEvaluationCriteria {
+  const normalized = normalizeHtml(html);
+  const criteria: HtmlEvaluationCriteria = {
+    hasHeading: false,
+    headingLevel: null,
+    hasParagraph: false,
+    hasTable: false,
+    tableRowCount: 0,
+    tableCellCount: 0,
+    hasTextInput: false,
+    hasButton: false,
+    hasInlineStyles: false,
+    hasForm: false,
+    structureScore: 0,
+  };
+
+  const h1Match = normalized.match(/<h1[^>]*>(.*?)<\/h1>/);
+  const h2Match = normalized.match(/<h2[^>]*>(.*?)<\/h2>/);
+  const h3Match = normalized.match(/<h3[^>]*>(.*?)<\/h3>/);
+  const h4Match = normalized.match(/<h4[^>]*>(.*?)<\/h4>/);
+  const h5Match = normalized.match(/<h5[^>]*>(.*?)<\/h5>/);
+  const h6Match = normalized.match(/<h6[^>]*>(.*?)<\/h6>/);
+
+  if (h1Match && h1Match[1].trim().length > 0) {
+    criteria.hasHeading = true;
+    criteria.headingLevel = 1;
+  } else if (h2Match && h2Match[1].trim().length > 0) {
+    criteria.hasHeading = true;
+    criteria.headingLevel = 2;
+  } else if (h3Match && h3Match[1].trim().length > 0) {
+    criteria.hasHeading = true;
+    criteria.headingLevel = 3;
+  } else if (h4Match && h4Match[1].trim().length > 0) {
+    criteria.hasHeading = true;
+    criteria.headingLevel = 4;
+  } else if (h5Match && h5Match[1].trim().length > 0) {
+    criteria.hasHeading = true;
+    criteria.headingLevel = 5;
+  } else if (h6Match && h6Match[1].trim().length > 0) {
+    criteria.hasHeading = true;
+    criteria.headingLevel = 6;
+  }
+
+  const pMatch = normalized.match(/<p[^>]*>(.*?)<\/p>/);
+  if (pMatch && pMatch[1].trim().length > 0) {
+    criteria.hasParagraph = true;
+  }
+
+  if (normalized.includes("<table")) {
+    criteria.hasTable = true;
+    const trMatches = normalized.match(/<tr[^>]*>/g);
+    const tdMatches = normalized.match(/<t[hd][^>]*>/g);
+    criteria.tableRowCount = trMatches ? trMatches.length : 0;
+    criteria.tableCellCount = tdMatches ? tdMatches.length : 0;
+  }
+
+  if (normalized.includes('<input') || normalized.includes("<input ")) {
+    criteria.hasTextInput = true;
+  }
+
+  if (normalized.includes("<button") || normalized.includes('<input type="submit"') || normalized.includes("<input type='submit'")) {
+    criteria.hasButton = true;
+  }
+
+  if (normalized.includes('style=')) {
+    criteria.hasInlineStyles = true;
+  }
+
+  if (normalized.includes("<form")) {
+    criteria.hasForm = true;
+  }
+
+  let openCount = 0;
+  let closeCount = 0;
+  const tags = ["div", "span", "p", "h1", "h2", "h3", "table", "tr", "td", "th", "form", "input", "button"];
+  for (const tag of tags) {
+    const openPattern = new RegExp(`<${tag}[^>]*>`, "gi");
+    const closePattern = new RegExp(`</${tag}>`, "gi");
+    const opens = normalized.match(openPattern);
+    const closes = normalized.match(closePattern);
+    openCount += opens ? opens.length : 0;
+    closeCount += closes ? closes.length : 0;
+  }
+
+  if (openCount === 0 && closeCount === 0) {
+    criteria.structureScore = 0.5;
+  } else if (openCount === closeCount) {
+    criteria.structureScore = 1;
+  } else if (Math.abs(openCount - closeCount) <= 2) {
+    criteria.structureScore = 0.7;
+  } else {
+    criteria.structureScore = 0.3;
+  }
+
+  return criteria;
+}
+
+function evaluateHtmlAnswer(
+  userAnswer: string,
+  correctAnswer: string,
+  totalMarks: number,
+): EvaluationResult {
+  const userCriteria = extractHtmlElements(userAnswer);
+  const correctCriteria = extractHtmlElements(correctAnswer);
+
+  const breakdown: MarkingCriteria[] = [];
+  let earnedMarks = 0;
+
+  const headingMarks = 2;
+  if (userCriteria.hasHeading === correctCriteria.hasHeading) {
+    breakdown.push({
+      criteria: "Heading element",
+      marks: headingMarks,
+      description: userCriteria.hasHeading ? `Found <h${userCriteria.headingLevel}>` : "No heading found",
+    });
+    earnedMarks += headingMarks;
+  } else if (userCriteria.hasHeading && !correctCriteria.hasHeading) {
+    breakdown.push({
+      criteria: "Heading element (extra)",
+      marks: 0,
+      description: "Extra heading found (not required but allowed)",
+    });
+  } else {
+    breakdown.push({
+      criteria: "Heading element",
+      marks: 0,
+      description: "Expected heading element",
+    });
+  }
+
+  const paragraphMarks = 2;
+  if (userCriteria.hasParagraph === correctCriteria.hasParagraph) {
+    breakdown.push({
+      criteria: "Paragraph element",
+      marks: paragraphMarks,
+      description: userCriteria.hasParagraph ? "Found <p> element" : "No paragraph required",
+    });
+    earnedMarks += paragraphMarks;
+  } else if (userCriteria.hasParagraph) {
+    breakdown.push({
+      criteria: "Paragraph element (extra)",
+      marks: 0,
+      description: "Extra paragraph found (not required but allowed)",
+    });
+  } else {
+    breakdown.push({
+      criteria: "Paragraph element",
+      marks: 0,
+      description: "Expected paragraph element",
+    });
+  }
+
+  const tableMarks = 3;
+  if (userCriteria.hasTable) {
+    if (correctCriteria.hasTable) {
+      const rowBonus = Math.min(userCriteria.tableRowCount, correctCriteria.tableRowCount) * 0.3;
+      const cellBonus = Math.min(userCriteria.tableCellCount, correctCriteria.tableCellCount) * 0.1;
+      breakdown.push({
+        criteria: "Table with data",
+        marks: tableMarks,
+        description: `Found table with ${userCriteria.tableRowCount} rows and ${userCriteria.tableCellCount} cells`,
+      });
+      earnedMarks += tableMarks;
+    } else {
+      breakdown.push({
+        criteria: "Table element (not required)",
+        marks: 0,
+        description: `Found table with ${userCriteria.tableRowCount} rows (not required)`,
+      });
+    }
+  } else {
+    if (correctCriteria.hasTable) {
+      breakdown.push({
+        criteria: "Table element",
+        marks: 0,
+        description: "Expected table with data",
+      });
+    } else {
+      breakdown.push({
+        criteria: "No table required",
+        marks: 0,
+        description: "No table required for this question",
+      });
+    }
+  }
+
+  const inputMarks = 2;
+  if (userCriteria.hasTextInput === correctCriteria.hasTextInput) {
+    breakdown.push({
+      criteria: "Text input field",
+      marks: inputMarks,
+      description: userCriteria.hasTextInput ? "Found text input" : "No text input required",
+    });
+    earnedMarks += inputMarks;
+  } else if (userCriteria.hasTextInput) {
+    breakdown.push({
+      criteria: "Text input field (extra)",
+      marks: 0,
+      description: "Extra text input found (not required but allowed)",
+    });
+  } else {
+    breakdown.push({
+      criteria: "Text input field",
+      marks: 0,
+      description: "Expected text input field",
+    });
+  }
+
+  const buttonMarks = 2;
+  if (userCriteria.hasButton === correctCriteria.hasButton) {
+    breakdown.push({
+      criteria: "Submit button",
+      marks: buttonMarks,
+      description: userCriteria.hasButton ? "Found button" : "No button required",
+    });
+    earnedMarks += buttonMarks;
+  } else if (userCriteria.hasButton) {
+    breakdown.push({
+      criteria: "Submit button (extra)",
+      marks: 0,
+      description: "Extra button found (not required but allowed)",
+    });
+  } else {
+    breakdown.push({
+      criteria: "Submit button",
+      marks: 0,
+      description: "Expected submit button",
+    });
+  }
+
+  const styleMarks = 2;
+  if (userCriteria.hasInlineStyles === correctCriteria.hasInlineStyles) {
+    breakdown.push({
+      criteria: "Inline styling",
+      marks: styleMarks,
+      description: userCriteria.hasInlineStyles ? "Found inline styles" : "No inline styling required",
+    });
+    earnedMarks += styleMarks;
+  } else if (userCriteria.hasInlineStyles) {
+    breakdown.push({
+      criteria: "Inline styling (extra)",
+      marks: 0,
+      description: "Extra inline styles found (not required but allowed)",
+    });
+  } else {
+    breakdown.push({
+      criteria: "Inline styling",
+      marks: 0,
+      description: "Expected inline styling",
+    });
+  }
+
+  const structureMarks = 2;
+  const structureEarned = Math.round(userCriteria.structureScore * structureMarks);
+  breakdown.push({
+    criteria: "Structure completeness",
+    marks: structureEarned,
+    description: structureEarned === structureMarks
+      ? "All tags properly opened and closed"
+      : `Structure score: ${Math.round(userCriteria.structureScore * 100)}%`,
+  });
+  earnedMarks += structureEarned;
+
+  const isCorrect = earnedMarks >= totalMarks * 0.8;
+  const partialCredit = earnedMarks > 0 && earnedMarks < totalMarks;
+
+  let feedback = "";
+  if (isCorrect) {
+    feedback = "Excellent! Your HTML page is complete and correct.";
+  } else if (partialCredit) {
+    feedback = `Partially correct. You earned ${earnedMarks}/${totalMarks} marks.`;
+  } else if (earnedMarks === 0) {
+    feedback = "Your HTML does not match the expected structure. Please review the requirements.";
+  } else {
+    feedback = `Needs improvement. You earned ${earnedMarks}/${totalMarks} marks.`;
+  }
+
+  return {
+    isCorrect,
+    marksEarned: earnedMarks,
+    totalMarks,
+    feedback,
+    correctAnswer,
+    breakdown,
+    partialCredit,
+  };
+}
+
 function evaluateInputField(
   userAnswer: string,
   correctAnswer: string,
@@ -582,6 +896,24 @@ function levenshteinDistance(a: string, b: string): number {
   return matrix[b.length][a.length];
 }
 
+export function isHtmlQuestion(taskType: string, contentMd?: string | null): boolean {
+  if (taskType === "WEB_PROGRAMMING") return true;
+  
+  if (contentMd) {
+    const trimmed = contentMd.trim().toLowerCase();
+    if (trimmed.startsWith("<html") || trimmed.startsWith("<!doctype")) return true;
+    const htmlTagPattern = /^<(html|head|body|div|span|p|h[1-6]|table|form|input|button|ul|ol|li|a|img)/;
+    if (htmlTagPattern.test(trimmed)) return true;
+    if (trimmed.includes("<html") || trimmed.includes("<div")) {
+      const htmlDensity = (trimmed.match(/<[a-z][^>]*>/gi) || []).length;
+      const textDensity = trimmed.split(/\s+/).length;
+      if (htmlDensity > 3 && htmlDensity > textDensity * 0.3) return true;
+    }
+  }
+  
+  return false;
+}
+
 export async function evaluateAnswer(
   question: {
     taskType: Paper3TaskType;
@@ -693,7 +1025,6 @@ switch (question.taskType) {
 
     case "C_PROGRAM":
     case "PASCAL_PROGRAM":
-    case "WEB_PROGRAMMING":
     case "ALGORITHM_PSEUDOCODE":
       return evaluateCodeAnswer(
         userAnswer,
@@ -701,6 +1032,8 @@ switch (question.taskType) {
         totalMarks,
         question.language ?? "c",
       );
+    case "WEB_PROGRAMMING":
+      return evaluateHtmlAnswer(userAnswer, question.expectedAnswer, totalMarks);
     default:
       return evaluateInputField(
         userAnswer,

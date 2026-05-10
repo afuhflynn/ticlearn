@@ -395,15 +395,34 @@ export interface UsageData {
     canAccessCommunity: boolean;
     canAccessLeaderboard: boolean;
     canAccessGCE: boolean;
+    paper3ExamLimit: number;
+    paper3RetakeLimit: number;
+    paper3AIExamMessages: number;
+    canViewCorrectAnswers: boolean;
+    canAccessPaper3AI: boolean;
+    canShareResults: boolean;
   };
   usage: {
     pdfUploads: number;
     quizGenerations: number;
     aiTutorMessages: number;
+    paper3ExamsUsed: number;
+    paper3RetakesUsed: number;
   };
   canUpload: boolean;
   canGenerateQuiz: boolean;
   canUseAIChat: boolean;
+  canTakePaper3Exam: boolean;
+  canRetakePaper3Exam: boolean;
+  paper3Usage: {
+    examsUsed: number;
+    examsLimit: number;
+    retakesUsed: number;
+    retakesLimit: number;
+    remaining: number;
+    canRetake: boolean;
+    canTake: boolean;
+  } | null;
   chatDailyUsage: {
     used: number;
     limit: number;

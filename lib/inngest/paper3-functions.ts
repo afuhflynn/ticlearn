@@ -397,8 +397,6 @@ function normalizeQuestion(
     "EXCEL_GRID",
     "ACCESS_TABLE",
     "ACCESS_RELATIONSHIP",
-    "WEB_PROGRAMMING",
-    "ALGORITHM_PSEUDOCODE",
   ];
   const requireAnswer = !taskTypesWithoutInput.includes(question.taskType);
 

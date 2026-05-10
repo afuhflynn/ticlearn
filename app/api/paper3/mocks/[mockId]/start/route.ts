@@ -52,13 +52,6 @@ export async function POST(
       );
     }
 
-    console.log({
-      questions: mock.questions.map((q) => ({
-        ...q.question,
-        visualElements: JSON.stringify(q.question.visualElements),
-      })),
-    });
-
     const { searchParams } = new URL(_req.url);
     const retake = searchParams.get("retake") === "true";
 

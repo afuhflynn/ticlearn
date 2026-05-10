@@ -792,6 +792,23 @@ export function usePaper3Leaderboard(mockId: string, page = 1, limit = 20) {
   });
 }
 
+function getGlobalPaper3Leaderboard(page = 1, limit = 20) {
+  return fetch(
+    `/api/paper3/leaderboard/global?page=${page}&limit=${limit}`,
+    { credentials: "include" },
+  ).then((res) => {
+    if (!res.ok) throw new Error("Failed to fetch global leaderboard");
+    return res.json();
+  });
+}
+
+export function useGlobalPaper3Leaderboard(page = 1, limit = 20) {
+  return useQuery({
+    queryKey: ["paper3", "globalLeaderboard", page, limit],
+    queryFn: () => getGlobalPaper3Leaderboard(page, limit),
+  });
+}
+
 function getPaper3QuestionLeaderboard(
   questionId: string,
   page = 1,

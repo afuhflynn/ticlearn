@@ -2,27 +2,181 @@
 
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { usePaper3MockAttempt, useStartPaper3MockExam, useViewPaper3CorrectAnswer } from "@/hooks";
+import { useEffect, useState } from "react";
+import {
+  usePaper3MockAttempt,
+  useStartPaper3MockExam,
+  useViewPaper3CorrectAnswer,
+} from "@/hooks";
+import { usePlan } from "@/hooks/usePlan";
 import { formatRelativeTime } from "@/lib/utils";
-import { CheckCircle, XCircle, Trophy, Target, BookOpen, Eye, Lock } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Target,
+  BookOpen,
+  Eye,
+  Lock,
+  Loader2,
+  Code,
+  FileText,
+  Award,
+  Crown,
+  Share2,
+  Copy,
+  Check,
+} from "lucide-react";
 import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
+import ReactMarkdown from "react-markdown";
+import { HtmlPreview } from "@/components/paper3/HtmlPreview";
+import { isHtmlQuestion } from "@/lib/paper3/evaluate";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+type ProcessingStatus = "QUEUED" | "PROCESSING" | "COMPLETED" | "FAILED";
+
+interface CorrectAnswer {
+  questionId: string;
+  questionNumber: string;
+  title: string;
+  taskType: string;
+  expectedAnswer: string;
+  explanation: string | null;
+}
 
 export default function ExamResultPage() {
   const router = useRouter();
   const params = useParams();
   const attemptId = params.attemptId as string;
 
-  const { data, isLoading, refetch } = usePaper3MockAttempt(attemptId);
+  const { data, isLoading, refetch, isFetching } =
+    usePaper3MockAttempt(attemptId);
   const startExam = useStartPaper3MockExam();
   const viewCorrectAnswer = useViewPaper3CorrectAnswer();
   const attempt = data?.attempt;
-  const analytics = (data as unknown as { analytics?: { bySection: Array<{ section: string; percentage: number }> } })?.analytics;
+  const analytics = (
+    data as unknown as {
+      analytics?: { bySection: Array<{ section: string; percentage: number }> };
+    }
+  )?.analytics;
   const correctAnswerViewed = attempt?.correctAnswerViewed ?? false;
+  const processingStatus = (attempt?.processingStatus ??
+    "COMPLETED") as ProcessingStatus;
+  const isProcessing =
+    processingStatus === "QUEUED" || processingStatus === "PROCESSING";
+
+  const { canViewCorrectAnswers, canAccessPaper3AI, isPending } = usePlan();
+
+  const [showProcessingBanner, setShowProcessingBanner] = useState(false);
+  const [revealedAnswers, setRevealedAnswers] = useState<CorrectAnswer[]>([]);
+  const [showRevealForm, setShowRevealForm] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeFeature, setUpgradeFeature] = useState("");
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [shareId, setShareId] = useState<string | null>(null);
+  const [isSharing, setIsSharing] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (isProcessing) {
+      setShowProcessingBanner(true);
+      const interval = setInterval(() => {
+        refetch();
+      }, 5000);
+      return () => clearInterval(interval);
+    } else if (showProcessingBanner) {
+      setShowProcessingBanner(false);
+    }
+  }, [isProcessing, refetch, showProcessingBanner]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
     if (score >= 60) return "text-yellow-600";
     return "text-red-600";
+  };
+
+  const handleRevealAnswers = async () => {
+    if (!canViewCorrectAnswers && !isPending) {
+      setUpgradeFeature("View Correct Answers");
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (correctAnswerViewed) {
+      setShowRevealForm(true);
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/paper3/attempts/${attemptId}/view-answer`, {
+        method: "POST",
+        credentials: "include",
+      });
+      const data = await res.json();
+      if (data.correctAnswers) {
+        setRevealedAnswers(data.correctAnswers);
+        setShowRevealForm(true);
+      }
+      refetch();
+    } catch (error) {
+      console.error("Failed to reveal answers:", error);
+    }
+  };
+
+  const handleRetake = async () => {
+    if (!canAccessPaper3AI && !isPending) {
+      setUpgradeFeature("Retake Exam");
+      setShowUpgradeModal(true);
+      return;
+    }
+
+    if (!attempt?.mock) return;
+    try {
+      const res = await startExam.mutateAsync({ mockId: attempt.mock.id });
+      if (res.attempt) router.push(`/practice/exam/${attempt.mock.id}`);
+    } catch (error) {
+      console.error("Failed to retake exam:", error);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!shareId) {
+      setIsSharing(true);
+      try {
+        const res = await fetch(`/api/paper3/attempts/${attemptId}/share`, {
+          method: "POST",
+          credentials: "include",
+        });
+        const data = await res.json();
+        if (data.shareUrl) {
+          setShareUrl(data.shareUrl);
+          setShareId(data.shareId);
+        }
+      } catch (error) {
+        console.error("Failed to share:", error);
+      } finally {
+        setIsSharing(false);
+      }
+    } else {
+      const url = `${window.location.origin}/result/${shareId}`;
+      setShareUrl(url);
+    }
+  };
+
+  const copyShareLink = async () => {
+    if (shareUrl) {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (isLoading) {
@@ -39,21 +193,116 @@ export default function ExamResultPage() {
     isCorrect: boolean;
     marksEarned: number;
     totalMarks: number;
+    feedback?: string;
+    feedbackMd?: string | null;
+    breakdown?: Array<{ criteria: string; marks: number; description: string }>;
   }>;
 
   const totalEarned = results.reduce((sum, r) => sum + r.marksEarned, 0);
   const totalPossible = results.reduce((sum, r) => sum + r.totalMarks, 0);
 
+  const getCorrectAnswer = (questionId: string): CorrectAnswer | undefined => {
+    return revealedAnswers.find((a) => a.questionId === questionId);
+  };
+
+  const getResultStyles = (isCorrect: boolean, partialCredit: boolean, requireAnswer: boolean) => {
+    if (!requireAnswer) {
+      return "bg-blue-50 border-blue-200";
+    }
+    if (isCorrect) {
+      return "bg-green-50 border-green-200";
+    }
+    if (partialCredit) {
+      return "bg-yellow-50 border-yellow-200";
+    }
+    return "bg-red-50 border-red-200";
+  };
+
+  const getResultIcon = (isCorrect: boolean, partialCredit: boolean, requireAnswer: boolean) => {
+    if (!requireAnswer) {
+      return <Award className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />;
+    }
+    if (isCorrect) {
+      return <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 shrink-0" />;
+    }
+    if (partialCredit) {
+      return (
+        <div className="h-5 w-5 rounded-full bg-yellow-500 flex items-center justify-center mt-0.5 shrink-0">
+          <span className="text-white text-xs font-bold">!</span>
+        </div>
+      );
+    }
+    return <XCircle className="h-5 w-5 text-red-600 mt-0.5 shrink-0" />;
+  };
+
+  const renderAnswerContent = (
+    content: string,
+    taskType: string,
+    label: string,
+    isCorrect: boolean
+  ) => {
+    const isHtml = isHtmlQuestion(taskType);
+
+    return (
+      <div className="mt-2">
+        <p className="text-xs font-medium text-gray-600 mb-1">{label}</p>
+        {isHtml ? (
+          <HtmlPreview
+            html={content}
+            height="180px"
+            showToggle={true}
+            defaultOpen={true}
+          />
+        ) : (
+          <div
+            className={`p-3 rounded-lg ${
+              isCorrect
+                ? "bg-green-50 border border-green-200"
+                : "bg-gray-50 border border-gray-200"
+            }`}
+          >
+            {taskType === "C_PROGRAM" ||
+            taskType === "PASCAL_PROGRAM" ||
+            taskType === "ALGORITHM_PSEUDOCODE" ? (
+              <pre className="text-xs font-mono whitespace-pre-wrap overflow-x-auto">
+                <code>{content}</code>
+              </pre>
+            ) : (
+              <p className="text-sm whitespace-pre-wrap">{content}</p>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-4 md:py-8">
       <div className="container mx-auto max-w-3xl px-4">
+        {showProcessingBanner && (
+          <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <div>
+              <p className="font-medium text-blue-800">Processing your exam...</p>
+              <p className="text-sm text-blue-600">
+                AI is evaluating your answers. This page will update automatically.
+              </p>
+            </div>
+            {isFetching && (
+              <span className="ml-auto text-xs text-blue-400">Refreshing...</span>
+            )}
+          </div>
+        )}
+
         <div className="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6">
           <div className="text-center">
             <h1 className="text-2xl md:text-3xl font-bold mb-2">
-              Exam Complete!
+              {isProcessing ? "Processing..." : "Exam Complete!"}
             </h1>
             <p className="text-gray-500">
-              {formatRelativeTime(attempt?.completedAt)}
+              {attempt?.completedAt
+                ? formatRelativeTime(attempt.completedAt)
+                : "Submitted just now"}
             </p>
           </div>
 
@@ -65,7 +314,14 @@ export default function ExamResultPage() {
                 aria-hidden="true"
               >
                 <title>Score progress</title>
-                <circle cx="50" cy="50" r="45" fill="none" stroke="#e5e7eb" strokeWidth="8" />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="#e5e7eb"
+                  strokeWidth="8"
+                />
                 <circle
                   cx="50"
                   cy="50"
@@ -80,10 +336,20 @@ export default function ExamResultPage() {
                 />
               </svg>
               <div className="absolute text-center">
-                <span className={`text-3xl md:text-4xl font-bold ${getScoreColor(attempt?.score ?? 0)}`}>
-                  {Math.round(attempt?.score ?? 0)}
+                <span
+                  className={`text-3xl md:text-4xl font-bold ${getScoreColor(
+                    attempt?.score ?? 0
+                  )}`}
+                >
+                  {isProcessing ? (
+                    <Loader2 className="h-8 w-8 animate-spin mx-auto" />
+                  ) : (
+                    Math.round(attempt?.score ?? 0)
+                  )}
                 </span>
-                <span className="text-sm text-gray-500">%</span>
+                {!isProcessing && (
+                  <span className="text-sm text-gray-500">%</span>
+                )}
               </div>
             </div>
           </div>
@@ -114,35 +380,43 @@ export default function ExamResultPage() {
           {analytics && (
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h3 className="font-semibold text-blue-800 mb-3 flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Performance by Topic
+                <Target className="h-4 w-4" /> Performance by Topic
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {analytics.bySection?.map((topic: { section: string; percentage: number }) => (
-                  <div key={topic.section} className="bg-white p-3 rounded">
-                    <p className="text-xs font-medium text-gray-600">{topic.section}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full ${
-                            topic.percentage >= 70 ? "bg-green-500" : topic.percentage >= 40 ? "bg-yellow-500" : "bg-red-500"
-                          }`}
-                          style={{ width: `${topic.percentage}%` }}
-                        />
+                {analytics.bySection?.map(
+                  (topic: { section: string; percentage: number }) => (
+                    <div key={topic.section} className="bg-white p-3 rounded">
+                      <p className="text-xs font-medium text-gray-600">
+                        {topic.section}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className={`h-full ${
+                              topic.percentage >= 70
+                                ? "bg-green-500"
+                                : topic.percentage >= 40
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
+                            }`}
+                            style={{ width: `${topic.percentage}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-bold">
+                          {topic.percentage}%
+                        </span>
                       </div>
-                      <span className="text-sm font-bold">{topic.percentage}%</span>
                     </div>
-                  </div>
-                ))}
+                  )
+                )}
               </div>
             </div>
           )}
 
-          {results.filter((r) => !r.isCorrect).length > 0 && (
+          {results.filter((r) => !r.isCorrect).length > 0 && !isProcessing && (
             <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
               <h3 className="font-semibold text-orange-800 mb-3 flex items-center gap-2">
-                <BookOpen className="h-4 w-4" />
-                Questions to Review
+                <BookOpen className="h-4 w-4" /> Questions to Review
               </h3>
               <div className="space-y-2">
                 {results
@@ -156,8 +430,12 @@ export default function ExamResultPage() {
                         href={`/leaderboard?questionId=${r.questionId}`}
                         className="flex items-center justify-between p-2 bg-white rounded text-sm hover:bg-gray-50"
                       >
-                        <span className="truncate">Q{r.index + 1}: {q?.title?.slice(0, 50)}...</span>
-                        <span className="text-orange-600 text-xs">View Leaderboard →</span>
+                        <span className="truncate">
+                          Q{r.index + 1}: {q?.title?.slice(0, 50)}...
+                        </span>
+                        <span className="text-orange-600 text-xs">
+                          View Leaderboard
+                        </span>
                       </Link>
                     );
                   })}
@@ -170,117 +448,331 @@ export default function ExamResultPage() {
               <div className="flex items-center gap-2 text-yellow-800">
                 <Lock className="h-4 w-4" />
                 <p className="text-sm font-medium">
-                  You have viewed the correct answers. Retaking this exam will not earn any marks.
+                  You have viewed the correct answers. Retaking this exam will
+                  not earn any marks.
                 </p>
               </div>
             </div>
           )}
 
-          <div className="mt-8 flex flex-col sm:flex-row gap-3">
-            {!correctAnswerViewed && (
-              <button
-                type="button"
-                onClick={async () => {
-                  try {
-                    await viewCorrectAnswer.mutateAsync(attemptId);
-                    refetch();
-                  } catch (error) {
-                    console.error("Failed to view correct answer:", error);
-                  }
-                }}
-                disabled={viewCorrectAnswer.isPending}
-                className="flex-1 py-3 text-center border border-yellow-500 text-yellow-700 rounded-lg hover:bg-yellow-50 disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                <Eye className="h-4 w-4" />
-                {viewCorrectAnswer.isPending ? "Revealing..." : "View Correct Answers"}
-              </button>
-            )}
-            <Link
-              href="/practice"
-              className="flex-1 py-3 text-center border rounded-lg hover:bg-gray-50"
-            >
-              Practice More
-            </Link>
-            {attempt?.mock && (
+          {!isProcessing && (
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              {canViewCorrectAnswers || isPending ? (
+                <button
+                  type="button"
+                  onClick={handleRevealAnswers}
+                  disabled={viewCorrectAnswer.isPending}
+                  className="flex-1 py-3 text-center border border-yellow-500 text-yellow-700 rounded-lg hover:bg-yellow-50 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Eye className="h-4 w-4" />
+                  {correctAnswerViewed ? "View Answers" : "View Correct Answers"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUpgradeFeature("View Correct Answers");
+                    setShowUpgradeModal(true);
+                  }}
+                  className="flex-1 py-3 text-center border border-gray-300 text-gray-500 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <Lock className="h-4 w-4" />
+                  View Correct Answers
+                </button>
+              )}
               <Link
-                href={`/leaderboard?mockId=${attempt.mock.id}`}
+                href="/practice"
                 className="flex-1 py-3 text-center border rounded-lg hover:bg-gray-50"
               >
-                View Leaderboard
+                Practice More
               </Link>
-            )}
-            <button
-              type="button"
-              onClick={async () => {
-                if (!attempt?.mock) return;
-                try {
-                  const res = await startExam.mutateAsync({ mockId: attempt.mock.id });
-                  if (res.attempt) {
-                    router.push(`/practice/exam/${attempt.mock.id}`);
-                  }
-                } catch (error) {
-                  console.error("Failed to retake exam:", error);
-                }
-              }}
-              disabled={startExam.isPending}
-              className="flex-1 py-3 text-center bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-            >
-              {startExam.isPending ? "Retaking..." : "Retake Exam"}
-            </button>
-          </div>
+              {attempt?.mock && (
+                <Link
+                  href={`/leaderboard?mockId=${attempt.mock.id}`}
+                  className="flex-1 py-3 text-center border rounded-lg hover:bg-gray-50"
+                >
+                  Leaderboard
+                </Link>
+              )}
+              {shareUrl ? (
+                <button
+                  type="button"
+                  onClick={copyShareLink}
+                  className="flex-1 py-3 text-center border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center gap-2"
+                >
+                  {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                  {copied ? "Copied!" : "Copy Link"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleShare}
+                  disabled={isSharing}
+                  className="flex-1 py-3 text-center border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Share2 className="h-4 w-4" />
+                  {isSharing ? "Sharing..." : "Share Result"}
+                </button>
+              )}
+              {canAccessPaper3AI || isPending ? (
+                <button
+                  type="button"
+                  onClick={handleRetake}
+                  disabled={startExam.isPending}
+                  className="flex-1 py-3 text-center bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {startExam.isPending ? "Retaking..." : "Retake Exam"}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUpgradeFeature("Retake Exam");
+                    setShowUpgradeModal(true);
+                  }}
+                  className="flex-1 py-3 text-center bg-gray-200 text-gray-600 rounded-lg flex items-center justify-center gap-2"
+                >
+                  <Crown className="h-4 w-4 text-yellow-500" />
+                  Retake (Premium)
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
-          <h2 className="text-lg font-bold mb-4">Question Breakdown</h2>
-          <div className="space-y-4">
-            {results.map((result, index) => {
-              const question = attempt?.mock?.questions[index]?.question;
-              const detailedResult = attempt?.detailedResults?.[index];
-              return (
-                <div
-                  key={result.questionId}
-                  className={`p-4 rounded-lg border ${
-                    result.isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200"
-                  }`}
-                >
-                  <div className="flex justify-between items-start">
-                    <div className="flex items-start gap-2">
-                      {result.isCorrect ? (
-                        <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                      ) : (
-                        <XCircle className="h-5 w-5 text-red-600 mt-0.5" />
-                      )}
-                      <div>
-                        <span className="text-sm font-medium">Question {index + 1}</span>
-                        <p className="text-xs text-gray-500 mt-1 line-clamp-2">
-                          {question?.title || question?.content?.slice(0, 100)}
-                        </p>
-                        {question?.concepts && (question.concepts as string[]).length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {(question.concepts as string[]).slice(0, 3).map((concept: string, ci: number) => (
-                              <span key={ci} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
-                                {concept}
+        {!isProcessing && (
+          <div className="bg-white rounded-xl shadow-sm p-4 md:p-6">
+            <h2 className="text-lg font-bold mb-4">Question Breakdown</h2>
+            <div className="space-y-4">
+              {results.map((result, index) => {
+                const question = attempt?.mock?.questions[index]?.question;
+                const detailedResult = attempt?.detailedResults?.[index];
+                const correctAnswer = getCorrectAnswer(result.questionId);
+                const requireAnswer = question?.requireAnswer !== false;
+                const taskType = question?.taskType ?? "INPUT_FIELD";
+                const isHtml = isHtmlQuestion(taskType, question?.contentMd);
+
+                const partialMarks =
+                  result.marksEarned > 0 && result.marksEarned < result.totalMarks;
+
+                return (
+                  <div
+                    key={result.questionId}
+                    className={`p-4 rounded-lg border ${getResultStyles(
+                      result.isCorrect,
+                      partialMarks,
+                      requireAnswer
+                    )}`}
+                  >
+                    <div className="flex items-start gap-3 mb-3">
+                      {getResultIcon(result.isCorrect, partialMarks, requireAnswer)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="text-sm font-medium">
+                              Question {index + 1}
+                              {question?.questionNumber &&
+                                ` (${question.questionNumber})`}
+                            </span>
+                            <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
+                              {question?.title || question?.content?.slice(0, 80)}
+                            </p>
+                            {!requireAnswer && (
+                              <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                Practical Task
                               </span>
-                            ))}
-                            {(question.concepts as string[]).length > 3 && (
-                              <span className="text-xs text-gray-400">+{(question.concepts as string[]).length - 3}</span>
+                            )}
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span
+                              className={`text-sm font-bold ${
+                                result.isCorrect
+                                  ? "text-green-600"
+                                  : partialMarks
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                              }`}
+                            >
+                              {result.marksEarned}/{result.totalMarks}
+                            </span>
+                          </div>
+                        </div>
+
+                        {question?.concepts &&
+                          (question.concepts as string[]).length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {(question.concepts as string[])
+                                .slice(0, 3)
+                                .map((concept: string, ci: number) => (
+                                  <span
+                                    key={ci}
+                                    className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded"
+                                  >
+                                    {concept}
+                                  </span>
+                                ))}
+                            </div>
+                          )}
+                      </div>
+                    </div>
+
+                    {requireAnswer && (
+                      <div className="space-y-3 mt-3">
+                        {renderAnswerContent(
+                          result.userAnswer || "(No answer provided)",
+                          taskType,
+                          "Your Answer:",
+                          result.isCorrect
+                        )}
+
+                        {showRevealForm && correctAnswer && (
+                          <>
+                            {renderAnswerContent(
+                              correctAnswer.expectedAnswer,
+                              taskType,
+                              "Correct Answer:",
+                              true
+                            )}
+
+                            {correctAnswer.explanation && (
+                              <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p className="text-xs font-medium text-blue-800 mb-1">
+                                  Explanation
+                                </p>
+                                <p className="text-sm text-blue-700">
+                                  {correctAnswer.explanation}
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
+
+                        {(detailedResult?.feedbackMd ||
+                          detailedResult?.feedback ||
+                          result.feedbackMd ||
+                          result.feedback) && (
+                          <div className="mt-3 p-3 bg-white border border-gray-200 rounded-lg">
+                            <p className="text-xs font-medium text-gray-600 mb-2">
+                              {result.isCorrect ? "Explanation" : "Feedback"}
+                            </p>
+                            {detailedResult?.feedbackMd ? (
+                              <div className="prose prose-sm max-w-none">
+                                <ReactMarkdown>
+                                  {detailedResult.feedbackMd}
+                                </ReactMarkdown>
+                              </div>
+                            ) : result.feedbackMd ? (
+                              <div className="prose prose-sm max-w-none">
+                                <ReactMarkdown>{result.feedbackMd}</ReactMarkdown>
+                              </div>
+                            ) : (
+                              <p className="text-sm text-gray-700">
+                                {detailedResult?.feedback || result.feedback}
+                              </p>
                             )}
                           </div>
                         )}
-                        {detailedResult?.feedback && (
-                          <p className="text-xs mt-2 text-gray-600">{detailedResult.feedback}</p>
+
+                        {detailedResult?.codeExplanation && (
+                          <div className="mt-3 p-3 bg-gray-900 rounded-lg overflow-x-auto">
+                            <pre className="text-xs text-gray-100 whitespace-pre-wrap">
+                              <code>{detailedResult.codeExplanation}</code>
+                            </pre>
+                          </div>
+                        )}
+
+                        {result.breakdown && result.breakdown.length > 0 && (
+                          <div className="mt-3 p-3 bg-white border rounded-lg">
+                            <p className="text-xs font-medium text-gray-600 mb-2">
+                              Marking Breakdown:
+                            </p>
+                            <div className="space-y-1">
+                              {result.breakdown.map((item, bi) => (
+                                <div key={bi} className="flex justify-between text-xs">
+                                  <span className="text-gray-600">
+                                    {item.description || item.criteria}
+                                  </span>
+                                  <span
+                                    className={`font-medium ${
+                                      item.marks > 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                    }`}
+                                  >
+                                    {item.marks}/{item.marks || 1}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         )}
                       </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                    )}
 
-        <TiCExamAssistant attemptId={attemptId} />
+                    {!requireAnswer && (
+                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                        <p className="text-xs text-blue-600 italic">
+                          This practical task was evaluated automatically. Your score
+                          reflects your practical work completion.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {!isProcessing && (canAccessPaper3AI || isPending) && (
+          <TiCExamAssistant attemptId={attemptId} />
+        )}
       </div>
+
+      <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="h-5 w-5 text-yellow-500" />
+              Upgrade to Premium
+            </DialogTitle>
+            <DialogDescription>
+              {upgradeFeature} requires a Premium subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-green-500" />
+                <span>Unlimited exam retakes</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-green-500" />
+                <span>View correct answers with explanations</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-green-500" />
+                <span>AI-powered exam assistant</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-green-500" />
+                <span>Shareable result cards</span>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowUpgradeModal(false)}
+            >
+              Maybe Later
+            </Button>
+            <Button onClick={() => router.push("/subscription")}>
+              View Plans
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

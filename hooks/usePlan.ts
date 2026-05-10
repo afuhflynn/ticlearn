@@ -16,6 +16,12 @@ interface UsePlanResult {
   canAccessGCE: boolean;
   aiTutorLimit: number;
   quizLimit: number;
+  paper3ExamLimit: number;
+  paper3RetakeLimit: number;
+  paper3AIExamMessages: number;
+  canViewCorrectAnswers: boolean;
+  canAccessPaper3AI: boolean;
+  canShareResults: boolean;
 }
 
 const FREE_LIMITS = {
@@ -25,6 +31,12 @@ const FREE_LIMITS = {
   canAccessCommunity: false,
   canAccessLeaderboard: false,
   canAccessGCE: false,
+  paper3ExamLimit: 1,
+  paper3RetakeLimit: 0,
+  paper3AIExamMessages: 4,
+  canViewCorrectAnswers: false,
+  canAccessPaper3AI: false,
+  canShareResults: false,
 };
 
 const PREMIUM_LIMITS = {
@@ -34,6 +46,12 @@ const PREMIUM_LIMITS = {
   canAccessCommunity: true,
   canAccessLeaderboard: true,
   canAccessGCE: true,
+  paper3ExamLimit: -1,
+  paper3RetakeLimit: -1,
+  paper3AIExamMessages: -1,
+  canViewCorrectAnswers: true,
+  canAccessPaper3AI: true,
+  canShareResults: true,
 };
 
 const STARTER_LIMITS = {
@@ -43,6 +61,12 @@ const STARTER_LIMITS = {
   canAccessCommunity: true,
   canAccessLeaderboard: true,
   canAccessGCE: true,
+  paper3ExamLimit: 3,
+  paper3RetakeLimit: 0,
+  paper3AIExamMessages: 4,
+  canViewCorrectAnswers: false,
+  canAccessPaper3AI: false,
+  canShareResults: false,
 };
 
 const STANDARD_LIMITS = {
@@ -52,6 +76,12 @@ const STANDARD_LIMITS = {
   canAccessCommunity: true,
   canAccessLeaderboard: true,
   canAccessGCE: true,
+  paper3ExamLimit: 5,
+  paper3RetakeLimit: 0,
+  paper3AIExamMessages: -1,
+  canViewCorrectAnswers: true,
+  canAccessPaper3AI: false,
+  canShareResults: true,
 };
 
 const PLAN_MAP: Record<string, typeof PREMIUM_LIMITS> = {
@@ -75,7 +105,6 @@ export function usePlan(): UsePlanResult {
   const planName = subscription?.plan || "FREE";
   const status = subscription?.status || "NONE";
 
-  // Only paid if subscription is ACTIVE and not FREE
   const isPaid = status === "ACTIVE" && planName !== "FREE" || false;
   const isPending = status === "PENDING" || (previousPlan && !subscription) || false;
 
@@ -96,46 +125,11 @@ export function usePlan(): UsePlanResult {
     canAccessGCE: limits.canAccessGCE,
     aiTutorLimit: limits.aiTutorMessages,
     quizLimit: limits.quizGenerations,
+    paper3ExamLimit: limits.paper3ExamLimit,
+    paper3RetakeLimit: limits.paper3RetakeLimit,
+    paper3AIExamMessages: limits.paper3AIExamMessages,
+    canViewCorrectAnswers: limits.canViewCorrectAnswers,
+    canAccessPaper3AI: limits.canAccessPaper3AI,
+    canShareResults: limits.canShareResults,
   };
-}
-
-export function useCanAccess(
-  feature: "community" | "leaderboard" | "gce" | "affiliate",
-): boolean {
-  const {
-    canAccessCommunity,
-    canAccessLeaderboard,
-    canAccessGCE,
-    isPaid,
-    isPending,
-  } = usePlan();
-
-  // Pending users still have access from their previous plan
-  if (isPending) {
-    switch (feature) {
-      case "community":
-        return canAccessCommunity;
-      case "leaderboard":
-        return canAccessLeaderboard;
-      case "gce":
-        return canAccessGCE;
-      case "affiliate":
-        return isPaid;
-      default:
-        return false;
-    }
-  }
-
-  switch (feature) {
-    case "community":
-      return canAccessCommunity;
-    case "leaderboard":
-      return canAccessLeaderboard;
-    case "gce":
-      return canAccessGCE;
-    case "affiliate":
-      return isPaid;
-    default:
-      return false;
-  }
 }

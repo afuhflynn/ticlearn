@@ -51,8 +51,9 @@ export {
   useSubmitPaper3MockExam,
   useUpdatePaper3Question,
   useUploadPaper3Source,
+  useGlobalPaper3Leaderboard,
 } from "./usePaper3";
-export { useCanAccess, usePlan } from "./usePlan";
+export { usePlan } from "./usePlan";
 export {
   useProfile,
   useSearch,

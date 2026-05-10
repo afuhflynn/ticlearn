@@ -731,15 +731,19 @@ model Paper3MockAttempt {
   answers              Json
   results              Json
   status               MockAttemptStatus @default(IN_PROGRESS)
+  processingStatus     ProcessingStatus  @default(QUEUED) @map("processing_status")
   correctAnswerViewed  Boolean           @default(false) @map("correct_answer_viewed")
+  shareId              String?          @unique @map("share_id")
+  sharedAt             DateTime?         @map("shared_at")
   startedAt            DateTime          @default(now()) @map("started_at")
-  completedAt           DateTime?         @map("completed_at")
+  completedAt          DateTime?         @map("completed_at")
   mock                 Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
   user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   detailedResults      Paper3DetailedResult[]
 
   @@index([userId])
   @@index([mockId])
+  @@index([shareId])
   @@map("paper3_mock_attempts")
 }
 
@@ -787,6 +791,8 @@ model Paper3DetailedResult {
   marksEarned   Int      @map("marks_earned")
   totalMarks    Int      @map("total_marks")
   feedback     String?  @map("feedback") @db.Text
+  feedbackMd   String?  @map("feedback_md") @db.Text
+  codeExplanation String? @map("code_explanation") @db.Text
   breakdown    Json?    @map("breakdown")
   partialCredit Boolean @default(false) @map("partial_credit")
   createdAt     DateTime @default(now()) @map("created_at")
@@ -909,4 +915,11 @@ enum MockStatus {
 enum MockAttemptStatus {
   IN_PROGRESS
   COMPLETED
+}
+
+enum ProcessingStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
 }

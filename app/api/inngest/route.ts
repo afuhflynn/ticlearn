@@ -16,6 +16,7 @@ import {
   handleSubscriptionAction,
 } from "@/lib/inngest/functions";
 import { processPaper3Source, generatePaper3Mock } from "@/lib/inngest";
+import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -35,5 +36,6 @@ export const { GET, POST, PUT } = serve({
     handleSubscriptionAction,
     processPaper3Source,
     generatePaper3Mock,
+    evaluatePaper3Exam,
   ],
 });

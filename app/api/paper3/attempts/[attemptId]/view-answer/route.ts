@@ -20,6 +20,16 @@ export async function POST(
 
     const attempt = await prisma.paper3MockAttempt.findUnique({
       where: { id: attemptId, userId: session.user.id },
+      include: {
+        mock: {
+          include: {
+            questions: {
+              include: { question: true },
+              orderBy: { order: "asc" },
+            },
+          },
+        },
+      },
     });
 
     if (!attempt) {
@@ -40,12 +50,25 @@ export async function POST(
       );
     }
 
+    const correctAnswers = attempt.mock.questions.map((mq) => ({
+      questionId: mq.question.id,
+      questionNumber: mq.question.questionNumber,
+      title: mq.question.title,
+      taskType: mq.question.taskType,
+      expectedAnswer: mq.question.expectedAnswer,
+      explanation: mq.question.explanation,
+    }));
+
     const updated = await prisma.paper3MockAttempt.update({
       where: { id: attemptId },
       data: { correctAnswerViewed: true },
     });
 
-    return NextResponse.json({ success: true, attempt: updated });
+    return NextResponse.json({
+      success: true,
+      attempt: updated,
+      correctAnswers,
+    });
   } catch (error) {
     console.error("Paper3 view answer error:", error);
     return NextResponse.json(
