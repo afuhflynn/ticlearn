@@ -157,14 +157,16 @@ export default function SignInPage() {
       >
         <Card className="border-2">
           <CardHeader className="text-center">
-            <Link href="/" className="flex items-center gap-2">
-              <Image
-                src="/icons/favicon-32x32.png"
-                alt="TiCLearn Logo"
-                className="h-8 w-8 text-primary"
-              />
-              <span className="text-xl font-bold">TiCLearn</span>
-            </Link>
+            <div className="w-full flex items-center justify-center py-4">
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/icons/favicon-32x32.png"
+                  alt="TiCLearn Logo"
+                  className="h-8 w-8 text-primary"
+                />
+                <span className="text-xl font-bold">TiCLearn</span>
+              </Link>
+            </div>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>
               Sign in to continue your learning journey
