@@ -15,13 +15,13 @@ export default function manifest(): MetadataRoute.Manifest {
     lang: "en",
     icons: [
       {
-        src: "/icons/icon-192.png",
+        src: "/icons/android-chrome-192x192.png",
         sizes: "192x192",
         type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icons/icon-512.png",
+        src: "/icons/android-chrome-512x512.png",
         sizes: "512x512",
         type: "image/png",
         purpose: "maskable",
@@ -32,19 +32,19 @@ export default function manifest(): MetadataRoute.Manifest {
         name: "Start Quiz",
         description: "Start a new quiz from your notes",
         url: "/upload",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+        icons: [{ src: "/icons/android-chrome-192x192.png", sizes: "192x192" }],
       },
       {
         name: "Leaderboard",
         description: "See top performers",
         url: "/leaderboard",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+        icons: [{ src: "/icons/android-chrome-192x192.png", sizes: "192x192" }],
       },
       {
         name: "Chat with TiC",
         description: "Ask AI for help",
         url: "/chat",
-        icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }],
+        icons: [{ src: "/icons/android-chrome-192x192.png", sizes: "192x192" }],
       },
     ],
   };
