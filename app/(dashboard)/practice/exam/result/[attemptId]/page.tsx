@@ -28,6 +28,7 @@ import {
   Star,
   ThumbsUp,
   MessageSquare,
+  Sparkles,
 } from "lucide-react";
 import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
 import ReactMarkdown from "react-markdown";
@@ -513,6 +514,16 @@ export default function ExamResultPage() {
               >
                 Practice More
               </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  router.push("/quizzes?generate=weak-areas");
+                }}
+                className="flex-1 py-3 text-center border border-purple-500 text-purple-700 rounded-lg hover:bg-purple-50 flex items-center justify-center gap-2"
+              >
+                <Sparkles className="h-4 w-4" />
+                Quiz Weak Areas
+              </button>
               {attempt?.mock && (
                 <Link
                   href={`/leaderboard?mockId=${attempt.mock.id}`}
