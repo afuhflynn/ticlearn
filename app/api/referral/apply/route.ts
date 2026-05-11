@@ -78,9 +78,41 @@ export async function POST(req: Request) {
       data: { totalConversions: { increment: 1 } },
     });
 
+    // Award 500 credits to the referrer
+    const CREDITS_PER_REFERRAL = 500;
+
+    await prisma.$transaction([
+      // Update referrer's credits
+      prisma.user.update({
+        where: { id: affiliate.userId },
+        data: {
+          credits: { increment: CREDITS_PER_REFERRAL },
+          totalCreditsEarned: { increment: CREDITS_PER_REFERRAL },
+        },
+      }),
+      // Create credit transaction for referrer
+      prisma.creditTransaction.create({
+        data: {
+          userId: affiliate.userId,
+          amount: CREDITS_PER_REFERRAL,
+          type: "REFERRAL_BONUS",
+          description: `Referral bonus: ${session.user.email} signed up`,
+        },
+      }),
+      // Create referral bonus record
+      prisma.referralBonus.create({
+        data: {
+          referrerId: affiliate.userId,
+          refereeId: session.user.id,
+          creditsAwarded: CREDITS_PER_REFERRAL,
+        },
+      }),
+    ]);
+
     return NextResponse.json({
       success: true,
       message: "Referral code applied successfully",
+      creditsEarned: CREDITS_PER_REFERRAL,
     });
   } catch (error) {
     console.error("Apply referral error:", error);

@@ -29,6 +29,10 @@ model User {
   refApplied    Boolean   @default(false) @map("ref_applied")
   warningSentAt DateTime? @map("warning_sent_at")
 
+  // Credits system
+  credits       Int       @default(0) @map("credits")
+  totalCreditsEarned Int   @default(0) @map("total_credits_earned")
+
   // Relations
   sessions           Session[]
   accounts           Account[]
@@ -53,6 +57,8 @@ model User {
   paper3Attempts     Paper3Attempt[]
   paper3MockAttempts Paper3MockAttempt[]
   paper3QuestionAttempts Paper3QuestionAttempt[]
+  creditTransactions CreditTransaction[] @relation("UserCredits")
+  referralBonuses    ReferralBonus[]    @relation("ReferrerCredits")
 
   @@map("users")
 }
@@ -930,4 +936,46 @@ enum ProcessingStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+// ===========================================
+// Credits System
+// ===========================================
+
+model CreditTransaction {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  amount      Int      // positive for earning, negative for spending
+  type        CreditType
+  description String?
+  referenceId String? @map("reference_id") // e.g., quiz attempt ID, practice question ID
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation("UserCredits", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("credit_transactions")
+}
+
+enum CreditType {
+  REFERRAL_BONUS    // 500 credits when someone signs up using your code
+  QUIZ_GENERATION   // Spending credits to generate quizzes
+  PRACTICE_QUESTION // Spending credits on practice questions
+  BONUS             // Admin or promotional bonuses
+}
+
+model ReferralBonus {
+  id             String   @id @default(cuid())
+  referrerId     String   @map("referrer_id") // User who earned the bonus
+  refereeId      String   @map("referee_id") // User who signed up
+  creditsAwarded Int      @default(500) @map("credits_awarded")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  referrer User @relation("ReferrerCredits", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@unique([referrerId, refereeId]) // One bonus per referral pair
+  @@index([referrerId])
+  @@index([refereeId])
+  @@map("referral_bonuses")
 }
