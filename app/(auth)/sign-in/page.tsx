@@ -29,6 +29,7 @@ import {
 import { toast } from "sonner";
 import { useQueryStates } from "nuqs";
 import { searchParamsSchema } from "@/nuqs";
+import Image from "next/image";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -156,12 +157,13 @@ export default function SignInPage() {
       >
         <Card className="border-2">
           <CardHeader className="text-center">
-            <Link
-              href="/"
-              className="mx-auto mb-4 flex items-center justify-center gap-2"
-            >
-              <GraduationCap className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">TiCLearn</span>
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src="/icons/favicon-32x32.png"
+                alt="TiCLearn Logo"
+                className="h-8 w-8 text-primary"
+              />
+              <span className="text-xl font-bold">TiCLearn</span>
             </Link>
             <CardTitle className="text-2xl">Welcome back</CardTitle>
             <CardDescription>

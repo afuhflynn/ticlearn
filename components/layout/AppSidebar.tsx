@@ -40,6 +40,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
 import { usePlan } from "@/hooks";
+import Image from "next/image";
 
 interface NavSection {
   id: string;
@@ -149,10 +150,14 @@ export function AppSidebar() {
   const NavContent = () => (
     <>
       <SidebarHeader className="border-b px-4 py-5">
-        <div className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 text-primary" />
-          <span className="font-bold">TiCLearn</span>
-        </div>
+        <Link href="/" className="flex items-center gap-2">
+          <Image
+            src="/icons/favicon-32x32.png"
+            alt="TiCLearn Logo"
+            className="h-8 w-8 text-primary"
+          />
+          <span className="text-xl font-bold">TiCLearn</span>
+        </Link>
       </SidebarHeader>
 
       <SidebarContent>

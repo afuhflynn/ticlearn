@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth-client";
 import { Skeleton } from "../ui/skeleton";
 import { UserButton } from "../user/user-button";
+import Image from "next/image";
 
 const navLinks = [
   { href: "/#features", label: "Features" },
@@ -80,7 +81,11 @@ export function MarketingNav() {
                 className="flex items-center gap-2"
                 onClick={() => setIsOpen(false)}
               >
-                <GraduationCap className="h-7 w-7 text-primary" />
+                <Image
+                  src="/icons/favicon-32x32.png"
+                  alt="TiCLearn Logo"
+                  className="h-8 w-8 text-primary"
+                />
                 <span className="text-lg font-bold">TiCLearn</span>
               </Link>
               <nav className="flex flex-col gap-2">

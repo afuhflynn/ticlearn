@@ -27,6 +27,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import Image from "next/image";
 
 const adminNavItems = [
   { href: "/admin", icon: BarChart3, label: "Analytics" },
@@ -55,7 +56,11 @@ export function AdminSidebar() {
     <Sidebar className="hidden md:flex" collapsible="icon">
       <SidebarHeader className="border-b px-4 py-3">
         <div className="flex items-center gap-2 py-2">
-          <Shield className="h-6 w-6 text-destructive" />
+          <Image
+            src="/icons/favicon-32x32.png"
+            alt="TiCLearn Logo"
+            className="h-8 w-8 text-primary"
+          />
           <span className="font-bold">Admin</span>
         </div>
       </SidebarHeader>

@@ -25,6 +25,7 @@ import {
   useDeleteConversation,
 } from "@/hooks/useChat";
 import { ChatUsageCard } from "./chat-usage-card";
+import Image from "next/image";
 
 export function ChatSidebar() {
   const pathname = usePathname();
@@ -58,9 +59,13 @@ export function ChatSidebar() {
     <Sidebar collapsible="offcanvas" variant="sidebar">
       <SidebarHeader className="border-b px-3 py-[1.2rem]">
         <div className="flex items-center justify-between gap-2">
-          <Link className="flex items-center gap-2 font-semibold" href="/chat">
-            <MessageSquareText className="h-5 w-5 text-primary" />
-            <span>TiC</span>
+          <Link href="/dashboard" className="flex items-center gap-2">
+            <Image
+              src="/icons/favicon-32x32.png"
+              alt="TiCLearn Logo"
+              className="h-8 w-8 text-primary"
+            />
+            <span className="text-xl font-bold">TiC</span>
           </Link>
           <Button
             onClick={handleCreateConversation}
