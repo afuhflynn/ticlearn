@@ -128,6 +128,23 @@ export const api = {
 
     usage: () => apiRequest<UsageData>("/usage", { method: "GET" }),
 
+    credits: () =>
+      apiRequest<{
+        balance: number;
+        totalEarned: number;
+        earned: number;
+        spent: number;
+        referralCode: string | null;
+        transactions: Array<{
+          id: string;
+          amount: number;
+          type: string;
+          description: string | null;
+          referenceId: string | null;
+          createdAt: string;
+        }>;
+      }>("/credits", { method: "GET" }),
+
     profile: () =>
       apiRequest<{
         user: UserProfile;
@@ -284,6 +301,22 @@ export const api = {
         isPublic?: boolean;
       }) =>
         apiRequest<{ quiz: Quiz; success: boolean }>("/quizzes/generate", {
+          method: "POST",
+          body: data,
+        }),
+      generateFromWeakAreas: (data: {
+        questionCount?: number;
+        timed?: boolean;
+        timeLimit?: number;
+        isPublic?: boolean;
+      }) =>
+        apiRequest<{
+          quizId: string;
+          status: string;
+          creditsUsed: number;
+          weakAreasTargeted: string[];
+          message: string;
+        }>("/quizzes/generate/from-weak-areas", {
           method: "POST",
           body: data,
         }),

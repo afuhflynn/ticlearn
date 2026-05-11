@@ -64,6 +64,7 @@ export {
 export {
   useDeleteQuiz,
   useGenerateQuiz,
+  useGenerateQuizFromWeakAreas,
   useQuiz,
   useQuizAttempt,
   useQuizAttempts,
@@ -79,3 +80,4 @@ export {
 export { useUserSearch } from "./useUserSearch";
 export { useLeaderboard, useUserStats } from "./useUserStats";
 export { useViewPaper3CorrectAnswer, usePaper3Chat } from "./usePaper3";
+export { useCredits } from "./useCredits";

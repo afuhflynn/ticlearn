@@ -3,7 +3,7 @@
 import { ListTodo, Loader2, Play, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,6 +34,27 @@ export default function QuizzesPage() {
   const { quizzes, isLoading } = useQuizzes("my");
   const deleteQuiz = useDeleteQuiz();
 
+  const hasGeneratingQuiz = (quizzes as QuizListItem[])?.some(
+    (q) => q.status === "GENERATING"
+  );
+
+  const prevQuizStatuses = useRef<Map<string, string>>(new Map());
+
+  useEffect(() => {
+    const newlyReadyQuiz = (quizzes as QuizListItem[])?.find((q) => {
+      const prevStatus = prevQuizStatuses.current.get(q.id);
+      return q.status === "READY" && prevStatus === "GENERATING";
+    });
+
+    if (newlyReadyQuiz) {
+      router.push(`/quiz/${newlyReadyQuiz.id}`);
+    }
+
+    (quizzes as QuizListItem[])?.forEach((q) => {
+      prevQuizStatuses.current.set(q.id, q.status);
+    });
+  }, [quizzes, router]);
+
   if (sessionPending) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -63,7 +84,15 @@ export default function QuizzesPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">My Quizzes</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">My Quizzes</h1>
+            {hasGeneratingQuiz && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                Generating
+              </span>
+            )}
+          </div>
           <p className="text-muted-foreground">
             View and manage your generated quizzes
           </p>

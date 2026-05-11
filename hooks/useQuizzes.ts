@@ -72,6 +72,30 @@ export function useGenerateQuiz() {
   });
 }
 
+export function useGenerateQuizFromWeakAreas() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (data: {
+      questionCount?: number;
+      timed?: boolean;
+      timeLimit?: number;
+      isPublic?: boolean;
+    }) => {
+      const result = await api.mutations.quizzes.generateFromWeakAreas(data);
+      return result;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+      toast.success(`Quiz generation started! Uses 50 credits. Targeted areas: ${data.weakAreasTargeted?.join(", ") || "general"}`);
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
 export function useDeleteQuiz() {
   const queryClient = useQueryClient();
 

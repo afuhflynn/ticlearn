@@ -250,6 +250,85 @@ export const generateQuiz = inngest.createFunction(
   },
 );
 
+export const generateQuizFromWeakAreas = inngest.createFunction(
+  {
+    name: "Generate Quiz from Weak Areas",
+    id: "generate-quiz-from-weak-areas",
+    triggers: {
+      event: "quiz/generate-from-weak-areas",
+    },
+  },
+  async ({ event }) => {
+    const { quizId, userId, weakConcepts, notes, questionCount, readinessScore } = event.data;
+    console.log(
+      `[Inngest] Generating quiz from weak areas for user: ${userId}, quiz: ${quizId}`,
+    );
+    console.log(`[Inngest] Weak concepts: ${weakConcepts.join(", ")}`);
+    console.log(`[Inngest] Readiness score: ${readinessScore}%`);
+    console.log(`[Inngest] Using ${notes.length} notes`);
+
+    try {
+      const { generateQuizFromWeakAreas } = await import("@/lib/ai");
+      console.log(`[Inngest] Calling AI to generate quiz from weak areas...`);
+
+      const generatedQuestions = await generateQuizFromWeakAreas(
+        notes,
+        weakConcepts,
+        {
+          questionCount: questionCount || 10,
+          readinessScore: readinessScore || 0,
+        },
+      );
+
+      console.log(
+        `[Inngest] AI returned ${generatedQuestions.length} questions`,
+      );
+
+      if (generatedQuestions.length === 0) {
+        console.error(
+          `[Inngest] AI returned 0 questions - marking quiz as ERROR`,
+        );
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: { status: "ERROR" },
+        });
+        return { success: false, error: "AI returned no questions" };
+      }
+
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          questionCount: generatedQuestions.length,
+          status: "READY",
+          questions: {
+            create: generatedQuestions.map((q, index) => ({
+              type: q.type,
+              question: q.question,
+              options: q.type === "MCQ" ? q.options : [],
+              correctAnswer: q.correctAnswer,
+              explanation: q.explanation,
+              order: index,
+            })),
+          },
+        },
+      });
+
+      console.log(`[Inngest] Quiz generated successfully: ${quizId}`);
+
+      return { success: true, quizId, questionCount: generatedQuestions.length };
+    } catch (error) {
+      console.error(`[Inngest] Quiz from weak areas generation failed:`, error);
+
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: { status: "ERROR" },
+      });
+
+      return { success: false, error: "Quiz generation failed" };
+    }
+  },
+);
+
 export const sendVerificationEmail = inngest.createFunction(
   {
     name: "Send Verification Email",

@@ -27,6 +27,9 @@ export const queryKeys = {
   plan: ["plan"] as const,
   usage: ["usage"] as const,
 
+  // Credits
+  credits: ["credits"] as const,
+
   // Feedback
   feedbacks: ["feedbacks"] as const,
   feedback: (id: string) => ["feedbacks", id] as const,

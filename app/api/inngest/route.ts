@@ -3,6 +3,7 @@ import { inngest } from "@/lib/inngest/client";
 import {
   processNote,
   generateQuiz,
+  generateQuizFromWeakAreas,
   sendVerificationEmail,
   sendWelcomeEmail,
   sendPasswordResetEmail,
@@ -23,6 +24,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     processNote,
     generateQuiz,
+    generateQuizFromWeakAreas,
     sendVerificationEmail,
     sendWelcomeEmail,
     sendPasswordResetEmail,

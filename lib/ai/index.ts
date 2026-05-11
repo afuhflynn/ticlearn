@@ -561,6 +561,101 @@ export async function generateQuizFromNote(
   }
 }
 
+interface NoteContext {
+  id: string;
+  title: string;
+  extractedText: string;
+  subject: string;
+}
+
+export async function generateQuizFromWeakAreas(
+  notes: NoteContext[],
+  weakConcepts: string[],
+  options: {
+    questionCount: number;
+    readinessScore: number;
+  },
+) {
+  console.log(
+    `[AI] Generating quiz from weak areas with ${options.questionCount} questions`,
+  );
+  console.log(`[AI] Weak concepts: ${weakConcepts.join(", ")}`);
+  console.log(`[AI] Readiness score: ${options.readinessScore}%`);
+  console.log(`[AI] Using ${notes.length} notes`);
+
+  const noteContext = notes
+    .map((n) => `Subject: ${n.subject}\nTitle: ${n.title}\nContent: ${n.extractedText?.slice(0, 3000) || "No content"}\n---\n`)
+    .join("\n");
+
+  const difficultyLevel = options.readinessScore < 30 
+    ? "basic foundational questions" 
+    : options.readinessScore < 60 
+      ? "medium difficulty questions that bridge basic and advanced concepts"
+      : "challenging advanced questions";
+
+  const prompt = `You are an educational quiz generator specialized in helping students improve on their weak areas.
+
+USER PROFILE:
+- Current readiness score: ${options.readinessScore}%
+- Weak areas to focus on: ${weakConcepts.join(", ") || "General topics"}
+- Recommended difficulty: ${difficultyLevel}
+
+CONTEXT FROM NOTES:
+${noteContext.slice(0, 15000)}
+
+TASK:
+Generate ${options.questionCount} quiz questions that specifically target the user's weak areas while building on their existing knowledge.
+
+IMPORTANT GUIDELINES:
+1. Prioritize questions on: ${weakConcepts.join(", ") || "topics where student shows weakness"}
+2. Gradually increase difficulty to help student improve
+3. Include some review questions on topics they know to build confidence
+4. Make explanations educational - teach the concept, don't just give the answer
+
+Return JSON only.
+
+For every question you MUST include all of these fields:
+- type (MCQ or OPEN)
+- question
+- options (array of 4 strings for MCQ, empty array for OPEN)
+- correctAnswer
+- explanation (must be educational, explain the concept)
+
+Rules:
+- MCQ: Provide exactly 4 options in the options array
+- OPEN: Provide an empty options array []
+- correctAnswer must always be a string
+- explanation must always be a non-empty string (minimum 50 words, explain the concept)
+- Stay faithful to the note content
+- Questions should be appropriate for Cameroon GCE A-Level curriculum`;
+
+  const schema = z.object({
+    questions: z.array(generatedQuestionSchema),
+  });
+
+  try {
+    console.log("[AI] Calling OpenAI with model: gpt-5.4 for weak areas quiz");
+    const { object } = await generateObject({
+      model: aiModel,
+      schema,
+      prompt,
+    });
+
+    const questions = normalizeGeneratedQuestions(object.questions);
+
+    console.log(`[AI] OpenAI returned ${questions.length} questions for weak areas`);
+    console.log(
+      `[AI] Sample:`,
+      JSON.stringify(questions[0], null, 2).slice(0, 500),
+    );
+
+    return questions;
+  } catch (error) {
+    console.error("[AI] Quiz generation from weak areas failed:", error);
+    return [];
+  }
+}
+
 export const DEFAULT_QUIZ_TOPICS = [
   "Cell Biology and Genetics",
   "Chemistry of Life - Biomolecules",
