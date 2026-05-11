@@ -58,20 +58,21 @@ export const metadata: Metadata = {
     capable: true,
     title: "TiCLearn",
   },
-  openGraph: {
-    title: "TiCLearn - Study Smarter, Score Higher",
-    description:
-      "AI-powered study platform for Cameroonian GCE A-Level students",
-    type: "website",
-    locale: "en_CM",
-    siteName: "TiCLearn",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "TiCLearn - Study Smarter, Score Higher",
-    description:
-      "AI-powered study platform for Cameroonian GCE A-Level students",
-  },
+  // The image is sufficient for now
+  // openGraph: {
+  //   title: "TiCLearn - Study Smarter, Score Higher",
+  //   description:
+  //     "AI-powered study platform for Cameroonian GCE A-Level students",
+  //   type: "website",
+  //   locale: "en_CM",
+  //   siteName: "TiCLearn",
+  // },
+  // twitter: {
+  //   card: "summary_large_image",
+  //   title: "TiCLearn - Study Smarter, Score Higher",
+  //   description:
+  //     "AI-powered study platform for Cameroonian GCE A-Level students",
+  // },
   robots: {
     index: true,
     follow: true,
