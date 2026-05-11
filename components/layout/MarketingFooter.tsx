@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GraduationCap, Mail, Globe, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FaWhatsapp } from "react-icons/fa6";
+import Image from "next/image";
 
 const footerLinks = {
   product: [
@@ -40,7 +41,11 @@ export function MarketingFooter() {
           {/* Brand */}
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
-              <GraduationCap className="h-8 w-8 text-primary" />
+              <Image
+                src="/icons/favicon-32x32.png"
+                alt="TiCLearn Logo"
+                className="h-8 w-8 text-primary"
+              />
               <span className="text-xl font-bold">TiCLearn</span>
             </Link>
             <p className="text-sm text-muted-foreground">
