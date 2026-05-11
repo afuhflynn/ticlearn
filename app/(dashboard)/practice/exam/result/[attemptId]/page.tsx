@@ -97,7 +97,9 @@ export default function ExamResultPage() {
   const [selectedQuestionForAI, setSelectedQuestionForAI] = useState<
     string | null
   >(null);
-  const [openPerQuestionChats, setOpenPerQuestionChats] = useState<Set<string>>(new Set());
+  const [openPerQuestionChats, setOpenPerQuestionChats] = useState<Set<string>>(
+    new Set(),
+  );
 
   useEffect(() => {
     if (isProcessing) {
@@ -767,15 +769,6 @@ export default function ExamResultPage() {
                                 {question?.questionNumber &&
                                   ` (${question.questionNumber})`}
                               </span>
-                              <button
-                                onClick={() =>
-                                  setSelectedQuestionForAI(result.questionId)
-                                }
-                                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
-                              >
-                                <MessageSquare className="h-3 w-3" />
-                                Ask TiC
-                              </button>
                             </div>
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                               {question?.title ||
@@ -825,7 +818,9 @@ export default function ExamResultPage() {
                       <PerQuestionChat
                         attemptId={attemptId}
                         questionId={result.questionId}
-                        questionTitle={question?.title || `Question ${index + 1}`}
+                        questionTitle={
+                          question?.title || `Question ${index + 1}`
+                        }
                         questionNumber={index + 1}
                         isOpen={openPerQuestionChats.has(result.questionId)}
                         onOpenChange={(open) => {
