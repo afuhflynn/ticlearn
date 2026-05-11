@@ -93,6 +93,7 @@ export default function ExamResultPage() {
   const [feedbackMessage, setFeedbackMessage] = useState("");
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
   const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [selectedQuestionForAI, setSelectedQuestionForAI] = useState<string | null>(null);
 
   useEffect(() => {
     if (isProcessing) {
@@ -589,12 +590,21 @@ export default function ExamResultPage() {
                       )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <span className="text-sm font-medium">
-                              Question {index + 1}
-                              {question?.questionNumber &&
-                                ` (${question.questionNumber})`}
-                            </span>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium">
+                                Question {index + 1}
+                                {question?.questionNumber &&
+                                  ` (${question.questionNumber})`}
+                              </span>
+                              <button
+                                onClick={() => setSelectedQuestionForAI(result.questionId)}
+                                className="inline-flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 transition-colors"
+                              >
+                                <MessageSquare className="h-3 w-3" />
+                                Ask TiC
+                              </button>
+                            </div>
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
                               {question?.title ||
                                 question?.content?.slice(0, 80)}
@@ -755,7 +765,10 @@ export default function ExamResultPage() {
         )}
 
         {!isProcessing && (
-          <TiCExamAssistant attemptId={attemptId} />
+          <TiCExamAssistant 
+            attemptId={attemptId} 
+            questionId={selectedQuestionForAI}
+          />
         )}
       </div>
 

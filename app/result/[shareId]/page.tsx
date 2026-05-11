@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { CheckCircle, XCircle, Award, Clock, Target, BookOpen } from "lucide-react";
+import { Award, BookOpen } from "lucide-react";
 
 interface ResultPageProps {
   params: Promise<{ shareId: string }>;
@@ -39,14 +39,38 @@ async function getSharedResult(shareId: string) {
 
 function getScoreColor(score: number) {
   if (score >= 80) return "text-green-600";
+  if (score >= 70) return "text-blue-600";
   if (score >= 60) return "text-yellow-600";
+  if (score >= 50) return "text-orange-600";
   return "text-red-600";
 }
 
 function getScoreBgColor(score: number) {
   if (score >= 80) return "bg-green-100";
+  if (score >= 70) return "bg-blue-100";
   if (score >= 60) return "bg-yellow-100";
+  if (score >= 50) return "bg-orange-100";
   return "bg-red-100";
+}
+
+function getCameroonGrade(score: number): string {
+  if (score >= 80) return "A";
+  if (score >= 70) return "B";
+  if (score >= 60) return "C";
+  if (score >= 50) return "D";
+  if (score >= 40) return "E";
+  return "F";
+}
+
+function getGradeDescription(grade: string): string {
+  switch (grade) {
+    case "A": return "Excellent";
+    case "B": return "Very Good";
+    case "C": return "Good";
+    case "D": return "Satisfactory";
+    case "E": return "Pass";
+    default: return "Needs Improvement";
+  }
 }
 
 export default async function SharedResultPage({ params }: ResultPageProps) {
@@ -67,19 +91,25 @@ export default async function SharedResultPage({ params }: ResultPageProps) {
 
   const correctCount = results.filter((r) => r.isCorrect).length;
   const totalQuestions = results.length;
+  const grade = getCameroonGrade(attempt.score);
+  const gradeDescription = getGradeDescription(grade);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 py-8">
       <div className="container mx-auto max-w-2xl px-4">
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center">
-              <Award className="h-5 w-5 text-white" />
+          {attempt.user.image && (
+            <div className="mb-4">
+              <img 
+                src={attempt.user.image} 
+                alt={attempt.user.name || "User"}
+                className="w-20 h-20 rounded-full mx-auto object-cover border-4 border-white shadow-lg"
+              />
             </div>
-            <h1 className="text-2xl font-bold">Paper 3 Exam Result</h1>
-          </div>
-          <p className="text-gray-500">
-            {attempt.user.name} completed {attempt.mock.title}
+          )}
+          <h1 className="text-2xl font-bold">{attempt.user.name}</h1>
+          <p className="text-gray-500 mt-1">
+            Completed {attempt.mock.title}
           </p>
         </div>
 
@@ -96,21 +126,22 @@ export default async function SharedResultPage({ params }: ResultPageProps) {
                   transform="rotate(-90 50 50)"
                 />
               </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
+              <div className="absolute inset-0 flex items-center justify-center flex-col">
                 <span className={`text-4xl font-bold ${getScoreColor(attempt.score)}`}>
-                  {Math.round(attempt.score)}%
+                  {grade}
                 </span>
+                <span className="text-xs text-gray-600">{gradeDescription}</span>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mt-6">
               <div className="text-center">
-                <p className="text-2xl font-bold">{correctCount}</p>
-                <p className="text-sm text-gray-600">Correct</p>
+                <p className="text-2xl font-bold">{Math.round(attempt.score)}%</p>
+                <p className="text-sm text-gray-600">Score</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">{totalQuestions - correctCount}</p>
-                <p className="text-sm text-gray-600">Wrong</p>
+                <p className="text-2xl font-bold">{correctCount}/{totalQuestions}</p>
+                <p className="text-sm text-gray-600">Correct</p>
               </div>
               <div className="text-center">
                 <p className="text-2xl font-bold">
@@ -133,38 +164,12 @@ export default async function SharedResultPage({ params }: ResultPageProps) {
           </div>
         </div>
 
-        <div className="mt-8 bg-white rounded-xl p-6">
-          <h2 className="font-semibold mb-4 flex items-center gap-2">
-            <Target className="h-4 w-4" /> Performance Summary
-          </h2>
-          <div className="space-y-3">
-            {results.slice(0, 10).map((result, index) => (
-              <div key={index} className="flex items-center gap-3">
-                {result.isCorrect ? (
-                  <CheckCircle className="h-4 w-4 text-green-600 shrink-0" />
-                ) : (
-                  <XCircle className="h-4 w-4 text-red-600 shrink-0" />
-                )}
-                <span className="text-sm">Question {index + 1}</span>
-                <span className="ml-auto text-sm font-medium">
-                  {result.marksEarned}/{result.totalMarks}
-                </span>
-              </div>
-            ))}
-            {results.length > 10 && (
-              <p className="text-sm text-gray-500 text-center">
-                +{results.length - 10} more questions
-              </p>
-            )}
-          </div>
-        </div>
-
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-500 mb-4">
             Want to track your own progress?
           </p>
           <a
-            href="/practice"
+            href={`/practice/exam/${attempt.mock.id}`}
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90"
           >
             <BookOpen className="h-4 w-4" />

@@ -10,7 +10,6 @@ import {
 } from "@/hooks";
 import { Button } from "@/components/ui/button";
 import { Paper3ContentRenderer } from "@/components/paper3/Paper3ContentRenderer";
-import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
 import { HtmlPreview } from "@/components/paper3/HtmlPreview";
 import { Badge } from "@/components/ui/badge";
 import { isHtmlQuestion } from "@/lib/paper3/evaluate";
@@ -40,14 +39,12 @@ export default function TakeExamPage() {
   const [agreedToRules, setAgreedToRules] = useState(false);
   const [fullscreenError, setFullscreenError] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
-  const [aiMessagesUsed, setAiMessagesUsed] = useState(0);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const { data: mockData, isLoading } = usePaper3Mock(mockId);
   const { data: attemptsData } = usePaper3MyAttempts(1, 10);
   const startExam = useStartPaper3MockExam();
   const submitExam = useSubmitPaper3MockExam();
-  const { paper3AIExamMessages, isPending, plan } = usePlan();
+  const { isPending } = usePlan();
 
   const mock = mockData?.mock;
   const questions = mock?.questions ?? [];
@@ -55,10 +52,6 @@ export default function TakeExamPage() {
   const previousAttempt = attemptsData?.attempts?.find(
     (a: any) => a.mock?.id === mockId && a.status === "COMPLETED",
   );
-
-  const maxAiMessages = paper3AIExamMessages ?? 4;
-  const canUseAI = maxAiMessages === -1 || aiMessagesUsed < maxAiMessages;
-  const showAIAssistant = started && (canUseAI || maxAiMessages === -1);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -139,12 +132,18 @@ export default function TakeExamPage() {
     setShowRulesModal(false);
     setStarted(true);
 
+    let fullscreenSuccess = false;
     try {
-      await document.documentElement.requestFullscreen().catch(() => {
-        console.warn("Fullscreen not available or blocked by browser");
-      });
+      await document.documentElement.requestFullscreen();
+      fullscreenSuccess = true;
     } catch {
-      console.warn("Fullscreen not available");
+      console.warn("Fullscreen not available or blocked by browser");
+    }
+
+    if (!fullscreenSuccess) {
+      setFullscreenError(true);
+      setStarted(false);
+      return;
     }
 
     try {
@@ -160,15 +159,6 @@ export default function TakeExamPage() {
       console.error("Failed to start exam:", error);
       setStarted(false);
     }
-  };
-
-  const handleAiMessage = () => {
-    if (maxAiMessages !== -1 && aiMessagesUsed >= maxAiMessages) {
-      setShowUpgradeModal(true);
-      return false;
-    }
-    setAiMessagesUsed((prev) => prev + 1);
-    return true;
   };
 
   const currentQuestion = questions[currentIndex];
@@ -405,19 +395,6 @@ export default function TakeExamPage() {
                 </ul>
               </div>
 
-              {plan === "FREE" && maxAiMessages > 0 && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-purple-800 mb-2">
-                    AI Assistant Preview
-                  </h3>
-                  <p className="text-sm text-purple-700">
-                    You have <strong>{maxAiMessages} free messages</strong> to
-                    use with the AI assistant during this exam. Upgrade to
-                    Premium for unlimited AI assistance.
-                  </p>
-                </div>
-              )}
-
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
                 <h3 className="font-semibold text-yellow-800 mb-2">
                   Important
@@ -455,29 +432,6 @@ export default function TakeExamPage() {
                 disabled={!agreedToRules || startExam.isPending}
               >
                 {startExam.isPending ? "Starting..." : "Start Exam"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Upgrade to Premium</DialogTitle>
-              <DialogDescription>
-                You have used all your free AI assistant messages for this exam.
-                Upgrade to Premium for unlimited AI assistance.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => setShowUpgradeModal(false)}
-              >
-                Maybe Later
-              </Button>
-              <Button onClick={() => (window.location.href = "/subscription")}>
-                View Plans
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -624,15 +578,6 @@ export default function TakeExamPage() {
         </div>
       </div>
 
-      {started && attemptId && showAIAssistant && (
-        <TiCExamAssistant
-          attemptId={attemptId}
-          questionId={questions[currentIndex]?.question?.id ?? null}
-          onMessage={handleAiMessage}
-          maxMessages={maxAiMessages}
-          messagesUsed={aiMessagesUsed}
-        />
-      )}
-    </div>
+      </div>
   );
 }
