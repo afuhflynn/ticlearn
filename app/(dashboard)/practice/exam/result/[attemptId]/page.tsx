@@ -30,7 +30,7 @@ import {
   MessageSquare,
   Sparkles,
 } from "lucide-react";
-import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
+import { PerQuestionChat } from "@/components/paper3/PerQuestionChat";
 import ReactMarkdown from "react-markdown";
 import { HtmlPreview } from "@/components/paper3/HtmlPreview";
 import { isHtmlQuestion } from "@/lib/paper3/evaluate";
@@ -97,6 +97,7 @@ export default function ExamResultPage() {
   const [selectedQuestionForAI, setSelectedQuestionForAI] = useState<
     string | null
   >(null);
+  const [openPerQuestionChats, setOpenPerQuestionChats] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (isProcessing) {
@@ -820,6 +821,25 @@ export default function ExamResultPage() {
                             </div>
                           )}
                       </div>
+
+                      <PerQuestionChat
+                        attemptId={attemptId}
+                        questionId={result.questionId}
+                        questionTitle={question?.title || `Question ${index + 1}`}
+                        questionNumber={index + 1}
+                        isOpen={openPerQuestionChats.has(result.questionId)}
+                        onOpenChange={(open) => {
+                          setOpenPerQuestionChats((prev) => {
+                            const next = new Set(prev);
+                            if (open) {
+                              next.add(result.questionId);
+                            } else {
+                              next.delete(result.questionId);
+                            }
+                            return next;
+                          });
+                        }}
+                      />
                     </div>
 
                     {requireAnswer && (
@@ -933,13 +953,6 @@ export default function ExamResultPage() {
               })}
             </div>
           </div>
-        )}
-
-        {!isProcessing && (
-          <TiCExamAssistant
-            attemptId={attemptId}
-            questionId={selectedQuestionForAI}
-          />
         )}
       </div>
 
