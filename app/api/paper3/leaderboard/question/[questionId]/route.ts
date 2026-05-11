@@ -55,7 +55,7 @@ export async function GET(
     // Get user details for leaderboard
     const userIds = [...new Set(attempts.map((a) => a.userId))];
     const users = await prisma.user.findMany({
-      where: { id: { in: userIds } },
+      where: { id: { in: userIds }, role: { not: "ADMIN" } },
       select: { id: true, name: true, image: true },
     });
     const userMap = new Map(users.map((u) => [u.id, u]));
@@ -81,6 +81,7 @@ export async function GET(
       const rankResult = await prisma.paper3QuestionAttempt.count({
         where: {
           questionId,
+          user: { role: { not: "ADMIN" } },
           OR: [
             { score: { gt: currentUserAttempt.score } },
             {

@@ -103,6 +103,9 @@ export function useAdminFeedback(
       status: string;
       message: string;
       createdAt: string;
+      attemptId: string | null;
+      mockId: string | null;
+      rating: number | null;
     }[],
     total: data?.total ?? 0,
     page: data?.page ?? 1,

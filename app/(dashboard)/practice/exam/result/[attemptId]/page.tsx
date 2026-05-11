@@ -25,6 +25,9 @@ import {
   Share2,
   Copy,
   Check,
+  Star,
+  ThumbsUp,
+  MessageSquare,
 } from "lucide-react";
 import { TiCExamAssistant } from "@/components/paper3/TiCExamAssistant";
 import ReactMarkdown from "react-markdown";
@@ -73,7 +76,7 @@ export default function ExamResultPage() {
   const isProcessing =
     processingStatus === "QUEUED" || processingStatus === "PROCESSING";
 
-  const { canViewCorrectAnswers, canAccessPaper3AI, isPending } = usePlan();
+  const { canViewCorrectAnswers, isPending } = usePlan();
 
   const [showProcessingBanner, setShowProcessingBanner] = useState(false);
   const [revealedAnswers, setRevealedAnswers] = useState<CorrectAnswer[]>([]);
@@ -84,6 +87,12 @@ export default function ExamResultPage() {
   const [shareId, setShareId] = useState<string | null>(null);
   const [isSharing, setIsSharing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showFeedbackModal, setShowFeedbackModal] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackDifficulty, setFeedbackDifficulty] = useState<string>("");
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
 
   useEffect(() => {
     if (isProcessing) {
@@ -96,6 +105,44 @@ export default function ExamResultPage() {
       setShowProcessingBanner(false);
     }
   }, [isProcessing, refetch, showProcessingBanner]);
+
+  useEffect(() => {
+    if (!isProcessing && !feedbackSubmitted) {
+      const hasSeenFeedback = localStorage.getItem(`feedback_seen_${attemptId}`);
+      if (!hasSeenFeedback) {
+        setTimeout(() => setShowFeedbackModal(true), 2000);
+      }
+    }
+  }, [isProcessing, feedbackSubmitted, attemptId]);
+
+  const handleSubmitFeedback = async () => {
+    if (feedbackSubmitted) return;
+    setIsSubmittingFeedback(true);
+    try {
+      await fetch("/api/feedback/exam", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: feedbackMessage || `Difficulty: ${feedbackDifficulty || "Not specified"}. ${feedbackRating ? `Rating: ${feedbackRating}/5` : ""}`,
+          rating: feedbackRating,
+          attemptId,
+          mockId: attempt?.mock?.id,
+        }),
+      });
+      setFeedbackSubmitted(true);
+      localStorage.setItem(`feedback_seen_${attemptId}`, "true");
+      setShowFeedbackModal(false);
+    } catch (error) {
+      console.error("Failed to submit feedback:", error);
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleSkipFeedback = () => {
+    localStorage.setItem(`feedback_seen_${attemptId}`, "true");
+    setShowFeedbackModal(false);
+  };
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "text-green-600";
@@ -132,12 +179,6 @@ export default function ExamResultPage() {
   };
 
   const handleRetake = async () => {
-    if (!canAccessPaper3AI && !isPending) {
-      setUpgradeFeature("Retake Exam");
-      setShowUpgradeModal(true);
-      return;
-    }
-
     if (!attempt?.mock) return;
     try {
       const res = await startExam.mutateAsync({ mockId: attempt.mock.id });
@@ -503,28 +544,14 @@ export default function ExamResultPage() {
                   {isSharing ? "Sharing..." : "Share Result"}
                 </button>
               )}
-              {canAccessPaper3AI || isPending ? (
-                <button
-                  type="button"
-                  onClick={handleRetake}
-                  disabled={startExam.isPending}
-                  className="flex-1 py-3 text-center bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {startExam.isPending ? "Retaking..." : "Retake Exam"}
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setUpgradeFeature("Retake Exam");
-                    setShowUpgradeModal(true);
-                  }}
-                  className="flex-1 py-3 text-center bg-gray-200 text-gray-600 rounded-lg flex items-center justify-center gap-2"
-                >
-                  <Crown className="h-4 w-4 text-yellow-500" />
-                  Retake (Premium)
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={handleRetake}
+                disabled={startExam.isPending}
+                className="flex-1 py-3 text-center bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+              >
+                {startExam.isPending ? "Retaking..." : "Retake Exam"}
+              </button>
             </div>
           )}
         </div>
@@ -727,7 +754,7 @@ export default function ExamResultPage() {
           </div>
         )}
 
-        {!isProcessing && (canAccessPaper3AI || isPending) && (
+        {!isProcessing && (
           <TiCExamAssistant attemptId={attemptId} />
         )}
       </div>
@@ -772,6 +799,94 @@ export default function ExamResultPage() {
             </Button>
             <Button onClick={() => router.push("/subscription")}>
               View Plans
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showFeedbackModal} onOpenChange={setShowFeedbackModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ThumbsUp className="h-5 w-5 text-primary" />
+              Help Us Improve
+            </DialogTitle>
+            <DialogDescription>
+              How was your exam experience? Your feedback helps us get better.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div>
+              <p className="text-sm font-medium mb-2">Rate your experience</p>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => setFeedbackRating(star === feedbackRating ? 0 : star)}
+                    className="p-1 hover:scale-110 transition-transform"
+                  >
+                    <Star
+                      className={`h-8 w-8 ${
+                        star <= feedbackRating
+                          ? "fill-yellow-400 text-yellow-400"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Difficulty level</p>
+              <div className="flex gap-2">
+                {["Easy", "Medium", "Hard"].map((level) => (
+                  <button
+                    key={level}
+                    type="button"
+                    onClick={() => setFeedbackDifficulty(level === feedbackDifficulty ? "" : level)}
+                    className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      level === feedbackDifficulty
+                        ? level === "Easy"
+                          ? "bg-green-100 border-green-500 text-green-700"
+                          : level === "Medium"
+                          ? "bg-yellow-100 border-yellow-500 text-yellow-700"
+                          : "bg-red-100 border-red-500 text-red-700"
+                        : "border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {level}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-medium mb-2">Any suggestions? (optional)</p>
+              <textarea
+                value={feedbackMessage}
+                onChange={(e) => setFeedbackMessage(e.target.value)}
+                placeholder="Share your thoughts..."
+                className="w-full p-3 border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary/50"
+                rows={3}
+                maxLength={500}
+              />
+              <p className="text-xs text-gray-400 mt-1 text-right">
+                {feedbackMessage.length}/500
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="flex-row-reverse gap-2">
+            <Button
+              onClick={handleSubmitFeedback}
+              disabled={isSubmittingFeedback}
+            >
+              {isSubmittingFeedback ? "Submitting..." : "Submit Feedback"}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={handleSkipFeedback}
+            >
+              Skip for now
             </Button>
           </DialogFooter>
         </DialogContent>

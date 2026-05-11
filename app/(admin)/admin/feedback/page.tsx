@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import {
@@ -9,7 +10,7 @@ import {
   useDeleteAdminFeedback,
   useGenerateAdminReport,
 } from "@/hooks/useAdmin";
-import { MessageCircle, Loader2, Trash2, Download } from "lucide-react";
+import { MessageCircle, Loader2, Trash2, Download, Star } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -30,10 +31,42 @@ import {
 } from "@/components/ui/select";
 import { toast } from "sonner";
 
+function StarRating({ rating }: { rating: number | null }) {
+  if (!rating || rating === 0) {
+    return <span className="text-gray-400 text-sm">No rating</span>;
+  }
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((star) => (
+        <Star
+          key={star}
+          className={`h-4 w-4 ${
+            star <= rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+function getTypeBadgeVariant(type: string) {
+  switch (type) {
+    case "EXAM":
+      return "default";
+    case "BUG":
+      return "destructive";
+    case "FEATURE":
+      return "secondary";
+    default:
+      return "outline";
+  }
+}
+
 export default function AdminFeedbackPage() {
   const { data: session, isPending: sessionLoading } = useSession();
   const router = useRouter();
   const [status, setStatus] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
   const [page, setPage] = useState(1);
 
   const { feedbacks, totalPages, isLoading, refetch } = useAdminFeedback({
@@ -75,6 +108,10 @@ export default function AdminFeedbackPage() {
     }
   };
 
+  const filteredFeedbacks = typeFilter
+    ? feedbacks.filter((fb) => fb.type === typeFilter)
+    : feedbacks;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -97,11 +134,11 @@ export default function AdminFeedbackPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             <Select
               value={status}
               onValueChange={(v) => {
-                setStatus(v);
+                setStatus(v === "ALL" ? "" : v);
                 setPage(1);
               }}
             >
@@ -116,6 +153,24 @@ export default function AdminFeedbackPage() {
                 <SelectItem value="CLOSED">Closed</SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={typeFilter}
+              onValueChange={(v) => {
+                setTypeFilter(v === "ALL" ? "" : v);
+                setPage(1);
+              }}
+            >
+              <SelectTrigger className="w-[150px]">
+                <SelectValue placeholder="Filter by type" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Types</SelectItem>
+                <SelectItem value="EXAM">Exam Feedback</SelectItem>
+                <SelectItem value="BUG">Bug Report</SelectItem>
+                <SelectItem value="FEATURE">Feature Request</SelectItem>
+                <SelectItem value="GENERAL">General</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent>
@@ -125,11 +180,13 @@ export default function AdminFeedbackPage() {
             </div>
           ) : (
             <>
-<Table>
+              <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>User</TableHead>
                     <TableHead>Type</TableHead>
+                    <TableHead>Rating</TableHead>
+                    <TableHead>Exam</TableHead>
                     <TableHead>Message</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
@@ -137,15 +194,20 @@ export default function AdminFeedbackPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {feedbacks.length === 0 ? (
+                  {filteredFeedbacks.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8">
+                      <TableCell colSpan={8} className="text-center py-8">
                         No feedback found
                       </TableCell>
                     </TableRow>
                   ) : (
-                    feedbacks.map((fb) => (
-                      <TableRow key={fb.id}>
+                    filteredFeedbacks.map((fb) => (
+                      <TableRow
+                        key={fb.id}
+                        className={
+                          fb.type === "EXAM" ? "bg-purple-50/50" : ""
+                        }
+                      >
                         <TableCell>
                           <div>
                             <p className="font-medium">
@@ -157,7 +219,24 @@ export default function AdminFeedbackPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline">{fb.type || "OTHER"}</Badge>
+                          <Badge variant={getTypeBadgeVariant(fb.type)}>
+                            {fb.type || "OTHER"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <StarRating rating={fb.rating} />
+                        </TableCell>
+                        <TableCell>
+                          {fb.mockId ? (
+                            <Link
+                              href={`/practice/exam/${fb.mockId}`}
+                              className="text-sm text-blue-600 hover:underline"
+                            >
+                              View Exam
+                            </Link>
+                          ) : (
+                            <span className="text-gray-400 text-sm">-</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <p className="text-sm line-clamp-2 max-w-[200px]">

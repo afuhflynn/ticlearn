@@ -130,10 +130,9 @@ export default function PracticePage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Paper 3 Practice</h1>
+        <h1 className="text-2xl font-bold">AcePaper 3</h1>
         <p className="text-muted-foreground">
-          Choose a category, practise individual questions, or jump into a full
-          mock.
+          Master Paper 3 with AI-powered practice, mock exams, and instant feedback.
         </p>
       </div>
 

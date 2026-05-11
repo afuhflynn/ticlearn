@@ -52,6 +52,7 @@ model User {
   paper3UserStats    Paper3UserStats?
   paper3Attempts     Paper3Attempt[]
   paper3MockAttempts Paper3MockAttempt[]
+  paper3QuestionAttempts Paper3QuestionAttempt[]
 
   @@map("users")
 }
@@ -292,6 +293,9 @@ model Feedback {
   isFlagged Boolean        @default(false) @map("is_flagged")
   isUrgent  Boolean        @default(false) @map("is_urgent")
   adminNote String?        @map("admin_note") @db.Text
+  attemptId String?        @map("attempt_id")
+  mockId    String?        @map("mock_id")
+  rating    Int?            @default(0) @map("rating")
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -299,6 +303,7 @@ model Feedback {
   @@index([userId])
   @@index([status])
   @@index([type])
+  @@index([attemptId])
   @@map("feedbacks")
 }
 
@@ -539,6 +544,7 @@ enum FeedbackType {
   BUG
   FEATURE
   GENERAL
+  EXAM
 }
 
 enum FeedbackStatus {
@@ -776,6 +782,8 @@ model Paper3QuestionAttempt {
   score         Float        @map("score")
   timeAnswered   Int          @default(0) @map("time_answered")
   createdAt     DateTime      @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([questionId, score])
   @@index([questionId, userId])

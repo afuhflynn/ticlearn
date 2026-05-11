@@ -102,7 +102,7 @@ export async function GET(
 
     const [attempts, total, currentUserAttempt] = await Promise.all([
       prisma.paper3MockAttempt.findMany({
-        where: { mockId, status: "COMPLETED" },
+        where: { mockId, status: "COMPLETED", user: { role: { not: "ADMIN" } } },
         skip,
         take: limit,
         orderBy: [{ score: "desc" }, { timeTaken: "asc" }],
@@ -113,10 +113,10 @@ export async function GET(
         },
       }),
       prisma.paper3MockAttempt.count({
-        where: { mockId, status: "COMPLETED" },
+        where: { mockId, status: "COMPLETED", user: { role: { not: "ADMIN" } } },
       }),
       prisma.paper3MockAttempt.findFirst({
-        where: { mockId, userId: session.user.id, status: "COMPLETED" },
+        where: { mockId, userId: session.user.id, status: "COMPLETED", user: { role: { not: "ADMIN" } } },
         orderBy: [{ score: "desc" }, { timeTaken: "asc" }],
       }),
     ]);
@@ -136,6 +136,7 @@ export async function GET(
         where: {
           mockId,
           status: "COMPLETED",
+          user: { role: { not: "ADMIN" } },
           OR: [
             { score: { gt: currentUserAttempt.score } },
             {

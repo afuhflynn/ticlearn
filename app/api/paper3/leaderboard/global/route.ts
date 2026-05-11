@@ -22,6 +22,7 @@ export async function GET(
 
     const [stats, total] = await Promise.all([
       prisma.paper3UserStats.findMany({
+        where: { user: { role: { not: "ADMIN" } } },
         orderBy: [{ totalPoints: "desc" }, { avgScore: "desc" }],
         skip,
         take: limit,
@@ -31,7 +32,9 @@ export async function GET(
           },
         },
       }),
-      prisma.paper3UserStats.count(),
+      prisma.paper3UserStats.count({
+        where: { user: { role: { not: "ADMIN" } } },
+      }),
     ]);
 
     const leaderboard = stats.map((stat, index) => {
@@ -56,9 +59,10 @@ export async function GET(
 
     let currentUserRank: number | null = null;
     if (userStats) {
-      const rankResult = await prisma.paper3UserStats.count({
-        where: {
-          OR: [
+const rankResult = await prisma.paper3UserStats.count({
+          where: {
+            user: { role: { not: "ADMIN" } },
+            OR: [
             { totalPoints: { gt: userStats.totalPoints } },
             {
               totalPoints: { equals: userStats.totalPoints },

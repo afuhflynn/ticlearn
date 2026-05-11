@@ -68,7 +68,7 @@ const mainNavItems: NavItem[] = [
 const learningNavItems: NavItem[] = [
   // { href: "/gce-exams", label: "GCE Exams", icon: BookOpen, paid: true },
   // Will reuire payment later
-  { href: "/practice", label: "Practice", icon: GraduationCap, paid: false },
+  { href: "/practice", label: "AcePaper 3", icon: GraduationCap, paid: false },
 ];
 
 const communityNavItems: NavItem[] = [
