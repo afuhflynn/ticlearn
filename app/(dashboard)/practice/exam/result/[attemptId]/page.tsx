@@ -222,6 +222,50 @@ export default function ExamResultPage() {
     }
   };
 
+  const getShareText = () => {
+    const grade = attempt?.score !== undefined 
+      ? (attempt.score >= 80 ? 'A' : attempt.score >= 70 ? 'B' : attempt.score >= 60 ? 'C' : attempt.score >= 50 ? 'D' : 'F')
+      : '';
+    return `I just scored ${grade} (${Math.round(attempt?.score ?? 0)}%) on my GCE Paper 3 exam! Check out TiCLearn to prepare for your exams.`;
+  };
+
+  const handleTwitterShare = () => {
+    if (!shareUrl) {
+      handleShare().then(() => {
+        const url = `${window.location.origin}/result/${shareId}`;
+        const text = encodeURIComponent(getShareText());
+        window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(url)}`, '_blank');
+      });
+    } else {
+      const text = encodeURIComponent(getShareText());
+      window.open(`https://twitter.com/intent/tweet?text=${text}&url=${encodeURIComponent(shareUrl)}`, '_blank');
+    }
+  };
+
+  const handleWhatsAppShare = () => {
+    if (!shareUrl) {
+      handleShare().then(() => {
+        const url = `${window.location.origin}/result/${shareId}`;
+        const text = encodeURIComponent(`${getShareText()} ${url}`);
+        window.open(`https://wa.me/?text=${text}`, '_blank');
+      });
+    } else {
+      const text = encodeURIComponent(`${getShareText()} ${shareUrl}`);
+      window.open(`https://wa.me/?text=${text}`, '_blank');
+    }
+  };
+
+  const handleFacebookShare = () => {
+    if (!shareUrl) {
+      handleShare().then(() => {
+        const url = `${window.location.origin}/result/${shareId}`;
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`, '_blank');
+      });
+    } else {
+      window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`, '_blank');
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -533,18 +577,41 @@ export default function ExamResultPage() {
                 </Link>
               )}
               {shareUrl ? (
-                <button
-                  type="button"
-                  onClick={copyShareLink}
-                  className="flex-1 py-3 text-center border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center gap-2"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Share2 className="h-4 w-4" />
-                  )}
-                  {copied ? "Copied!" : "Copy Link"}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={copyShareLink}
+                    className="flex-1 py-3 text-center border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center gap-2"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    {copied ? "Copied!" : "Copy"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleTwitterShare}
+                    className="py-3 px-3 text-center border border-blue-400 text-blue-500 rounded-lg hover:bg-blue-50 text-sm font-medium"
+                  >
+                    X
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleWhatsAppShare}
+                    className="py-3 px-3 text-center border border-green-500 text-green-600 rounded-lg hover:bg-green-50 text-sm font-medium"
+                  >
+                    WA
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleFacebookShare}
+                    className="py-3 px-3 text-center border border-blue-600 text-blue-700 rounded-lg hover:bg-blue-50 text-sm font-medium"
+                  >
+                    FB
+                  </button>
+                </>
               ) : (
                 <button
                   type="button"
