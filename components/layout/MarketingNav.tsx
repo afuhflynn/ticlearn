@@ -33,7 +33,11 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-14 md:h-16 items-center justify-between px-3 md:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <GraduationCap className="h-6 w-6 md:h-8 md:w-8 text-primary" />
+          <Image
+            src="/icons/favicon-32x32.png"
+            alt="TiCLearn Logo"
+            className="h-8 w-8 text-primary"
+          />
           <span className="text-lg md:text-xl font-bold tracking-tight">
             TiCLearn
           </span>
