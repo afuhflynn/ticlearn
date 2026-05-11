@@ -26,9 +26,10 @@ export function HtmlPreview({
   const blobUrl = useMemo(() => {
     if (!html || html.trim().length === 0) return null;
 
-    const wrappedHtml = html.includes("<!DOCTYPE") || html.includes("<html")
-      ? html
-      : `<!DOCTYPE html>
+    const wrappedHtml =
+      html.includes("<!DOCTYPE") || html.includes("<html")
+        ? html
+        : `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -80,7 +81,7 @@ ${html}
   }
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-2 h-auto", className)}>
       {showToggle && (
         <div className="flex items-center gap-2">
           <Button
@@ -117,7 +118,7 @@ ${html}
 
       {isVisible && (
         <div
-          className="overflow-hidden rounded-lg border bg-white"
+          className="overflow-auto rounded-lg border bg-white"
           style={{ height }}
         >
           <iframe

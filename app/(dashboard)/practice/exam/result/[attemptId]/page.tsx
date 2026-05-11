@@ -9,7 +9,7 @@ import {
   useViewPaper3CorrectAnswer,
 } from "@/hooks";
 import { usePlan } from "@/hooks/usePlan";
-import { formatRelativeTime } from "@/lib/utils";
+import { cn, formatRelativeTime } from "@/lib/utils";
 import {
   CheckCircle,
   XCircle,
@@ -205,7 +205,11 @@ export default function ExamResultPage() {
     return revealedAnswers.find((a) => a.questionId === questionId);
   };
 
-  const getResultStyles = (isCorrect: boolean, partialCredit: boolean, requireAnswer: boolean) => {
+  const getResultStyles = (
+    isCorrect: boolean,
+    partialCredit: boolean,
+    requireAnswer: boolean,
+  ) => {
     if (!requireAnswer) {
       return "bg-blue-50 border-blue-200";
     }
@@ -218,7 +222,11 @@ export default function ExamResultPage() {
     return "bg-red-50 border-red-200";
   };
 
-  const getResultIcon = (isCorrect: boolean, partialCredit: boolean, requireAnswer: boolean) => {
+  const getResultIcon = (
+    isCorrect: boolean,
+    partialCredit: boolean,
+    requireAnswer: boolean,
+  ) => {
     if (!requireAnswer) {
       return <Award className="h-5 w-5 text-blue-600 mt-0.5 shrink-0" />;
     }
@@ -239,7 +247,7 @@ export default function ExamResultPage() {
     content: string,
     taskType: string,
     label: string,
-    isCorrect: boolean
+    isCorrect: boolean,
   ) => {
     const isHtml = isHtmlQuestion(taskType);
 
@@ -249,7 +257,7 @@ export default function ExamResultPage() {
         {isHtml ? (
           <HtmlPreview
             html={content}
-            height="180px"
+            className="py-4 min-h-[200px]"
             showToggle={true}
             defaultOpen={true}
           />
@@ -283,13 +291,18 @@ export default function ExamResultPage() {
           <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
             <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
             <div>
-              <p className="font-medium text-blue-800">Processing your exam...</p>
+              <p className="font-medium text-blue-800">
+                Processing your exam...
+              </p>
               <p className="text-sm text-blue-600">
-                AI is evaluating your answers. This page will update automatically.
+                AI is evaluating your answers. This page will update
+                automatically.
               </p>
             </div>
             {isFetching && (
-              <span className="ml-auto text-xs text-blue-400">Refreshing...</span>
+              <span className="ml-auto text-xs text-blue-400">
+                Refreshing...
+              </span>
             )}
           </div>
         )}
@@ -338,7 +351,7 @@ export default function ExamResultPage() {
               <div className="absolute text-center">
                 <span
                   className={`text-3xl md:text-4xl font-bold ${getScoreColor(
-                    attempt?.score ?? 0
+                    attempt?.score ?? 0,
                   )}`}
                 >
                   {isProcessing ? (
@@ -396,8 +409,8 @@ export default function ExamResultPage() {
                               topic.percentage >= 70
                                 ? "bg-green-500"
                                 : topic.percentage >= 40
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
                             }`}
                             style={{ width: `${topic.percentage}%` }}
                           />
@@ -407,38 +420,8 @@ export default function ExamResultPage() {
                         </span>
                       </div>
                     </div>
-                  )
+                  ),
                 )}
-              </div>
-            </div>
-          )}
-
-          {results.filter((r) => !r.isCorrect).length > 0 && !isProcessing && (
-            <div className="mt-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
-              <h3 className="font-semibold text-orange-800 mb-3 flex items-center gap-2">
-                <BookOpen className="h-4 w-4" /> Questions to Review
-              </h3>
-              <div className="space-y-2">
-                {results
-                  .map((result, index) => ({ ...result, index }))
-                  .filter((r) => !r.isCorrect)
-                  .map((r) => {
-                    const q = attempt?.mock?.questions[r.index]?.question;
-                    return (
-                      <Link
-                        key={r.questionId}
-                        href={`/leaderboard?questionId=${r.questionId}`}
-                        className="flex items-center justify-between p-2 bg-white rounded text-sm hover:bg-gray-50"
-                      >
-                        <span className="truncate">
-                          Q{r.index + 1}: {q?.title?.slice(0, 50)}...
-                        </span>
-                        <span className="text-orange-600 text-xs">
-                          View Leaderboard
-                        </span>
-                      </Link>
-                    );
-                  })}
               </div>
             </div>
           )}
@@ -465,7 +448,9 @@ export default function ExamResultPage() {
                   className="flex-1 py-3 text-center border border-yellow-500 text-yellow-700 rounded-lg hover:bg-yellow-50 disabled:opacity-50 flex items-center justify-center gap-2"
                 >
                   <Eye className="h-4 w-4" />
-                  {correctAnswerViewed ? "View Answers" : "View Correct Answers"}
+                  {correctAnswerViewed
+                    ? "View Answers"
+                    : "View Correct Answers"}
                 </button>
               ) : (
                 <button
@@ -500,7 +485,11 @@ export default function ExamResultPage() {
                   onClick={copyShareLink}
                   className="flex-1 py-3 text-center border border-blue-500 text-blue-600 rounded-lg hover:bg-blue-50 flex items-center justify-center gap-2"
                 >
-                  {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Share2 className="h-4 w-4" />
+                  )}
                   {copied ? "Copied!" : "Copy Link"}
                 </button>
               ) : (
@@ -553,19 +542,24 @@ export default function ExamResultPage() {
                 const isHtml = isHtmlQuestion(taskType, question?.contentMd);
 
                 const partialMarks =
-                  result.marksEarned > 0 && result.marksEarned < result.totalMarks;
+                  result.marksEarned > 0 &&
+                  result.marksEarned < result.totalMarks;
 
                 return (
                   <div
                     key={result.questionId}
-                    className={`p-4 rounded-lg border ${getResultStyles(
+                    className={`p-4 rounded-lg border h-auto ${getResultStyles(
                       result.isCorrect,
                       partialMarks,
-                      requireAnswer
+                      requireAnswer,
                     )}`}
                   >
-                    <div className="flex items-start gap-3 mb-3">
-                      {getResultIcon(result.isCorrect, partialMarks, requireAnswer)}
+                    <div className="flex items-start gap-3 mb-3 h-auto">
+                      {getResultIcon(
+                        result.isCorrect,
+                        partialMarks,
+                        requireAnswer,
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2">
                           <div>
@@ -575,7 +569,8 @@ export default function ExamResultPage() {
                                 ` (${question.questionNumber})`}
                             </span>
                             <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
-                              {question?.title || question?.content?.slice(0, 80)}
+                              {question?.title ||
+                                question?.content?.slice(0, 80)}
                             </p>
                             {!requireAnswer && (
                               <span className="inline-block mt-1 text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded">
@@ -585,13 +580,16 @@ export default function ExamResultPage() {
                           </div>
                           <div className="text-right shrink-0">
                             <span
-                              className={`text-sm font-bold ${
-                                result.isCorrect
-                                  ? "text-green-600"
-                                  : partialMarks
-                                  ? "text-yellow-600"
-                                  : "text-red-600"
-                              }`}
+                              className={cn(
+                                `text-sm font-bold ${
+                                  result.isCorrect
+                                    ? "text-green-600"
+                                    : partialMarks
+                                      ? "text-yellow-600"
+                                      : "text-red-600"
+                                }`,
+                                !requireAnswer ? "hidden" : "block",
+                              )}
                             >
                               {result.marksEarned}/{result.totalMarks}
                             </span>
@@ -622,7 +620,7 @@ export default function ExamResultPage() {
                           result.userAnswer || "(No answer provided)",
                           taskType,
                           "Your Answer:",
-                          result.isCorrect
+                          result.isCorrect,
                         )}
 
                         {showRevealForm && correctAnswer && (
@@ -631,7 +629,7 @@ export default function ExamResultPage() {
                               correctAnswer.expectedAnswer,
                               taskType,
                               "Correct Answer:",
-                              true
+                              true,
                             )}
 
                             {correctAnswer.explanation && (
@@ -651,7 +649,7 @@ export default function ExamResultPage() {
                           detailedResult?.feedback ||
                           result.feedbackMd ||
                           result.feedback) && (
-                          <div className="mt-3 p-3 bg-white border border-gray-200 rounded-lg">
+                          <div className="mt-3 p-3 bg-white border border-gray-200 rounded-lg text-wrap">
                             <p className="text-xs font-medium text-gray-600 mb-2">
                               {result.isCorrect ? "Explanation" : "Feedback"}
                             </p>
@@ -663,7 +661,9 @@ export default function ExamResultPage() {
                               </div>
                             ) : result.feedbackMd ? (
                               <div className="prose prose-sm max-w-none">
-                                <ReactMarkdown>{result.feedbackMd}</ReactMarkdown>
+                                <ReactMarkdown>
+                                  {result.feedbackMd}
+                                </ReactMarkdown>
                               </div>
                             ) : (
                               <p className="text-sm text-gray-700">
@@ -688,7 +688,10 @@ export default function ExamResultPage() {
                             </p>
                             <div className="space-y-1">
                               {result.breakdown.map((item, bi) => (
-                                <div key={bi} className="flex justify-between text-xs">
+                                <div
+                                  key={bi}
+                                  className="flex justify-between text-xs"
+                                >
                                   <span className="text-gray-600">
                                     {item.description || item.criteria}
                                   </span>
@@ -712,8 +715,8 @@ export default function ExamResultPage() {
                     {!requireAnswer && (
                       <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-xs text-blue-600 italic">
-                          This practical task was evaluated automatically. Your score
-                          reflects your practical work completion.
+                          This practical task was evaluated automatically. Your
+                          score reflects your practical work completion.
                         </p>
                       </div>
                     )}

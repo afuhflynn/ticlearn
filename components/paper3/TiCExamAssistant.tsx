@@ -2,9 +2,25 @@
 
 import { useState, useRef, useEffect } from "react";
 import { usePaper3Chat } from "@/hooks";
-import { Send, Bot, X, Minimize2, Maximize2, MessageCircle, Crown, Lock } from "lucide-react";
+import {
+  Send,
+  Bot,
+  X,
+  Minimize2,
+  Maximize2,
+  MessageCircle,
+  Crown,
+  Lock,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import ReactMarkdown from "react-markdown";
 
 interface TiCExamAssistantProps {
@@ -20,9 +36,9 @@ interface Message {
   content: string;
 }
 
-export function TiCExamAssistant({ 
-  attemptId, 
-  questionId = null, 
+export function TiCExamAssistant({
+  attemptId,
+  questionId = null,
   onMessage,
   maxMessages = -1,
   messagesUsed = 0,
@@ -35,7 +51,8 @@ export function TiCExamAssistant({
   const chatMutation = usePaper3Chat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const messagesRemaining = maxMessages === -1 ? -1 : maxMessages - messagesUsed;
+  const messagesRemaining =
+    maxMessages === -1 ? -1 : maxMessages - messagesUsed;
   const canSendMessage = maxMessages === -1 || messagesRemaining > 0;
 
   useEffect(() => {
@@ -57,7 +74,14 @@ export function TiCExamAssistant({
     if (onMessage) {
       const allowed = onMessage();
       if (!allowed) {
-        setMessages((prev) => [...prev, { role: "assistant", content: "You've reached your message limit for this exam. Upgrade to Premium for unlimited assistance." }]);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content:
+              "You've reached your message limit for this exam. Upgrade to Premium for unlimited assistance.",
+          },
+        ]);
         return;
       }
     }
@@ -77,7 +101,10 @@ export function TiCExamAssistant({
       console.error("Chat error:", error);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "Sorry, I couldn't process that. Try again." },
+        {
+          role: "assistant",
+          content: "Sorry, I couldn't process that. Try again.",
+        },
       ]);
     }
   };
@@ -104,8 +131,8 @@ export function TiCExamAssistant({
   return (
     <>
       <div
-        className={`fixed bottom-4 right-4 bg-white rounded-xl shadow-2xl flex flex-col transition-all z-50 ${
-          isMinimized ? "h-14 w-72" : "h-[450px] w-96"
+        className={`fixed bottom-4 md:right-4 right-1 bg-white rounded-xl shadow-2xl flex flex-col transition-all z-50 ${
+          isMinimized ? "h-14 w-72" : "md:h-[600px] h-[450px] md:w-96 w-screen"
         }`}
       >
         <div className="flex items-center justify-between p-3 border-b bg-primary text-white rounded-t-xl">
@@ -144,7 +171,8 @@ export function TiCExamAssistant({
               {messages.length === 0 && (
                 <div className="bg-blue-50 rounded-lg p-3">
                   <p className="text-sm text-blue-800 text-center">
-                    Hi! I'm TiC, your exam assistant. Ask me about the questions you found challenging!
+                    Hi! I'm TiC, your exam assistant. Ask me about the questions
+                    you found challenging!
                     {maxMessages !== -1 && (
                       <span className="block mt-1 text-xs">
                         You have {messagesRemaining} free messages.
@@ -180,7 +208,9 @@ export function TiCExamAssistant({
               {chatMutation.isPending && (
                 <div className="text-left">
                   <span className="inline-block p-3 rounded-lg bg-gray-100">
-                    <span className="animate-pulse text-gray-500">Thinking...</span>
+                    <span className="animate-pulse text-gray-500">
+                      Thinking...
+                    </span>
                   </span>
                 </div>
               )}
@@ -194,14 +224,20 @@ export function TiCExamAssistant({
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  placeholder={canSendMessage ? "Ask TiC about this question..." : "Message limit reached"}
+                  placeholder={
+                    canSendMessage
+                      ? "Ask TiC about this question..."
+                      : "Message limit reached"
+                  }
                   className="flex-1 text-sm border rounded-lg px-3 py-2"
                   disabled={!canSendMessage || chatMutation.isPending}
                 />
                 <Button
                   onClick={handleSend}
                   size="sm"
-                  disabled={!input.trim() || !canSendMessage || chatMutation.isPending}
+                  disabled={
+                    !input.trim() || !canSendMessage || chatMutation.isPending
+                  }
                 >
                   <Send className="h-4 w-4" />
                 </Button>
@@ -220,7 +256,8 @@ export function TiCExamAssistant({
             </DialogTitle>
             <DialogDescription>
               You've used all your free AI assistant messages for this exam.
-              Upgrade to Premium for unlimited AI assistance and other exclusive features.
+              Upgrade to Premium for unlimited AI assistance and other exclusive
+              features.
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
@@ -244,10 +281,13 @@ export function TiCExamAssistant({
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowUpgradeModal(false)}>
+            <Button
+              variant="outline"
+              onClick={() => setShowUpgradeModal(false)}
+            >
               Maybe Later
             </Button>
-            <Button onClick={() => window.location.href = "/subscription"}>
+            <Button onClick={() => (window.location.href = "/subscription")}>
               View Plans
             </Button>
           </DialogFooter>

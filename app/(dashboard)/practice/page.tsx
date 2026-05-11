@@ -159,7 +159,10 @@ export default function PracticePage() {
               ))}
             </TabsList>
             <div className="mt-2 text-right">
-              <Link href="/practice/history" className="text-sm text-primary hover:underline">
+              <Link
+                href="/practice/history"
+                className="text-sm text-primary hover:underline"
+              >
                 View My Exam History →
               </Link>
             </div>
@@ -267,7 +270,7 @@ export default function PracticePage() {
               layouts stay intact.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 h-auto">
             <Paper3ContentRenderer
               content={selectedQuestion.content}
               contentMd={selectedQuestion.contentMd}
@@ -276,7 +279,10 @@ export default function PracticePage() {
 
             <div className="space-y-3">
               {selectedQuestion.taskType === "WEB_PROGRAMMING" && (
-                <HtmlPreview html={userAnswer} height="300px" />
+                <HtmlPreview
+                  html={userAnswer}
+                  className="min-h-[800px]! h-[800px]"
+                />
               )}
               <Textarea
                 value={userAnswer}
@@ -286,7 +292,7 @@ export default function PracticePage() {
                     ? "Enter your HTML code here..."
                     : "Enter your answer here..."
                 }
-                rows={8}
+                rows={18}
               />
               <Button
                 onClick={handleCheck}
@@ -316,7 +322,8 @@ export default function PracticePage() {
                   {selectedQuestion.taskType === "WEB_PROGRAMMING" ? (
                     <HtmlPreview
                       html={result.correctAnswer}
-                      height="250px"
+                      // height="600px"
+                      className="min-h-[600px] h-[600px]"
                       showToggle={true}
                       defaultOpen={false}
                     />
