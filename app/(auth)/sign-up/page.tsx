@@ -139,6 +139,8 @@ function SignUpForm() {
                   src="/icons/favicon-32x32.png"
                   alt="TiCLearn Logo"
                   className="h-8 w-8 text-primary"
+                  width={32}
+                  height={32}
                 />
                 <span className="text-xl font-bold">TiCLearn</span>
               </Link>

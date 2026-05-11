@@ -36,6 +36,8 @@ export function MarketingNav() {
           <Image
             src="/icons/favicon-32x32.png"
             alt="TiCLearn Logo"
+            width={32}
+            height={32}
             className="h-8 w-8 text-primary"
           />
           <span className="text-lg md:text-xl font-bold tracking-tight">
@@ -80,18 +82,22 @@ export function MarketingNav() {
           </SheetTrigger>
           <SheetContent side="right" className="w-72 sm:w-80">
             <div className="flex flex-col gap-6 pt-6 px-4">
-              <Link
-                href="/"
-                className="flex items-center gap-2"
-                onClick={() => setIsOpen(false)}
-              >
-                <Image
-                  src="/icons/favicon-32x32.png"
-                  alt="TiCLearn Logo"
-                  className="h-8 w-8 text-primary"
-                />
-                <span className="text-lg font-bold">TiCLearn</span>
-              </Link>
+              <div className="w-full flex items-center justify-center">
+                <Link
+                  href="/"
+                  className="flex items-center gap-2"
+                  onClick={() => setIsOpen(false)}
+                >
+                  <Image
+                    src="/icons/favicon-32x32.png"
+                    alt="TiCLearn Logo"
+                    width={32}
+                    height={32}
+                    className="h-8 w-8 text-primary"
+                  />
+                  <span className="text-lg font-bold">TiCLearn</span>
+                </Link>
+              </div>
               <nav className="flex flex-col gap-2">
                 {navLinks.map((link) => (
                   <SheetClose asChild key={link.href}>

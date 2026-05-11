@@ -162,6 +162,8 @@ export default function SignInPage() {
                 <Image
                   src="/icons/favicon-32x32.png"
                   alt="TiCLearn Logo"
+                  width={32}
+                  height={32}
                   className="h-8 w-8 text-primary"
                 />
                 <span className="text-xl font-bold">TiCLearn</span>
