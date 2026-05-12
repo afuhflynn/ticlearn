@@ -809,9 +809,10 @@ export const processPaper3Source = inngest.createFunction(
         });
       });
 
-      await inngest
-        .send({ name: "paper3/harvest-knowledge", data: { sourceId: source.sourceId } })
-        .catch((err) => console.error("Failed to trigger Paper3 harvest:", err));
+      await step.sendEvent("fire-paper3-harvest", {
+        name: "paper3/harvest-knowledge",
+        data: { sourceId: source.sourceId },
+      });
 
       return {
         success: true,

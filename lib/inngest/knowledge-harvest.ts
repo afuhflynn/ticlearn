@@ -9,20 +9,14 @@ export const harvestNoteKnowledge = inngest.createFunction(
       event: "note/harvest-knowledge",
     },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { noteId } = event.data as { noteId: string };
 
-    const note = await prisma.note.findUnique({
-      where: { id: noteId },
-      select: {
-        id: true,
-        title: true,
-        summary: true,
-        topics: true,
-        keyPoints: true,
-        extractedText: true,
-        subject: true,
-      },
+    const note = await step.run("load-note", async () => {
+      return prisma.note.findUnique({
+        where: { id: noteId },
+        select: { id: true, title: true, summary: true, topics: true, keyPoints: true, subject: true },
+      });
     });
 
     if (!note || !note.summary) {
@@ -30,61 +24,80 @@ export const harvestNoteKnowledge = inngest.createFunction(
       return { success: false, reason: "no_summary" };
     }
 
-    let chunksCreated = 0;
+    const result = await step.run("harvest-note-chunks", async () => {
+      const topicNames = [...new Set(note.topics)];
+      if (topicNames.length === 0) return { chunksCreated: 0 };
 
-    for (const topicName of note.topics) {
       const topics = await prisma.topic.findMany({
         where: {
-          name: { contains: topicName, mode: "insensitive" },
-          component: { program: { name: { contains: note.subject, mode: "insensitive" } } },
+          OR: topicNames.map((name) => ({
+            name: { contains: name, mode: "insensitive" as const },
+            component: { program: { name: { contains: note.subject ?? "", mode: "insensitive" as const } } },
+          })),
         },
-        take: 1,
+        take: topicNames.length,
       });
 
-      if (topics.length === 0) continue;
+      const topicMap = new Map<string, string>();
+      for (const topic of topics) {
+        topicMap.set(topic.name.toLowerCase(), topic.id);
+      }
 
-      const topic = topics[0];
+      const chunks: Array<{
+        id: string;
+        topicId: string;
+        sourceType: string;
+        sourceId: string;
+        title: string;
+        content: string;
+        contentType: string;
+      }> = [];
 
-      // Summary chunk
-      await prisma.knowledgeChunk.upsert({
-        where: {
-          id: `note_summary_${note.id}_${topic.id}`,
-        },
-        update: { content: note.summary },
-        create: {
-          id: `note_summary_${note.id}_${topic.id}`,
-          topicId: topic.id,
+      for (const topicName of note.topics) {
+        const lowerName = topicName.toLowerCase();
+        const topicId = topicMap.get(lowerName);
+        if (!topicId) continue;
+
+        chunks.push({
+          id: `note_summary_${note.id}_${topicId}`,
+          topicId,
           sourceType: "NOTE",
           sourceId: note.id,
           title: `${note.title} — Summary`,
-          content: note.summary,
+          content: note.summary ?? "",
           contentType: "SUMMARY",
-        },
-      });
-      chunksCreated++;
+        });
 
-      // Key points chunks
-      for (let i = 0; i < note.keyPoints.length; i++) {
-        const point = note.keyPoints[i];
-        await prisma.knowledgeChunk.upsert({
-          where: { id: `note_kp_${note.id}_${topic.id}_${i}` },
-          update: { content: point },
-          create: {
-            id: `note_kp_${note.id}_${topic.id}_${i}`,
-            topicId: topic.id,
+        for (let i = 0; i < note.keyPoints.length; i++) {
+          chunks.push({
+            id: `note_kp_${note.id}_${topicId}_${i}`,
+            topicId,
             sourceType: "NOTE",
             sourceId: note.id,
             title: `${note.title} — Key Point ${i + 1}`,
-            content: point,
+            content: note.keyPoints[i],
             contentType: "TOPIC_EXPLANATION",
-          },
-        });
-        chunksCreated++;
+          });
+        }
       }
-    }
 
-    console.log(`[Harvest] Created ${chunksCreated} knowledge chunks from note ${noteId}`);
-    return { success: true, chunksCreated };
+      if (chunks.length === 0) return { chunksCreated: 0 };
+
+      await prisma.$transaction(
+        chunks.map((chunk) =>
+          prisma.knowledgeChunk.upsert({
+            where: { id: chunk.id },
+            update: { content: chunk.content },
+            create: chunk,
+          }),
+        ),
+      );
+
+      return { chunksCreated: chunks.length };
+    });
+
+    console.log(`[Harvest] Created ${result.chunksCreated} knowledge chunks from note ${noteId}`);
+    return { success: true, ...result };
   },
 );
 
@@ -96,58 +109,76 @@ export const harvestPaper3Knowledge = inngest.createFunction(
       event: "paper3/harvest-knowledge",
     },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { sourceId } = event.data as { sourceId: string };
 
-    const questions = await prisma.paper3Question.findMany({
-      where: { sourceId },
-      select: {
-        id: true,
-        title: true,
-        explanation: true,
-        content: true,
-        contentMd: true,
-        expectedAnswer: true,
-        concepts: true,
-      },
-    });
+    const result = await step.run("harvest-paper3-chunks", async () => {
+      const questions = await prisma.paper3Question.findMany({
+        where: { sourceId },
+        select: {
+          id: true,
+          title: true,
+          explanation: true,
+          content: true,
+          expectedAnswer: true,
+          concepts: true,
+        },
+      });
 
-    let chunksCreated = 0;
+      const allConcepts = [...new Set(questions.flatMap((q) => q.concepts))];
+      if (allConcepts.length === 0) return { chunksCreated: 0 };
 
-    for (const question of questions) {
-      const explanation = question.explanation || question.expectedAnswer;
-      if (!explanation) continue;
+      const topics = await prisma.topic.findMany({
+        where: { name: { in: allConcepts, mode: "insensitive" } },
+      });
+      const topicMap = new Map(topics.map((t) => [t.name.toLowerCase(), t.id]));
 
-      for (const conceptName of question.concepts) {
-        const topics = await prisma.topic.findMany({
-          where: {
-            name: { contains: conceptName, mode: "insensitive" },
-          },
-          take: 1,
-        });
+      const chunks: Array<{
+        id: string;
+        topicId: string;
+        sourceType: string;
+        sourceId: string;
+        title: string;
+        content: string;
+        contentType: string;
+      }> = [];
 
-        if (topics.length === 0) continue;
+      for (const question of questions) {
+        const explanation = question.explanation || question.expectedAnswer;
+        if (!explanation) continue;
 
-        const topic = topics[0];
+        for (const conceptName of question.concepts) {
+          const topicId = topicMap.get(conceptName.toLowerCase());
+          if (!topicId) continue;
 
-        await prisma.knowledgeChunk.upsert({
-          where: { id: `p3_${question.id}_${topic.id}` },
-          update: { content: explanation },
-          create: {
-            id: `p3_${question.id}_${topic.id}`,
-            topicId: topic.id,
+          chunks.push({
+            id: `p3_${question.id}_${topicId}`,
+            topicId,
             sourceType: "PAPER3_QUESTION",
             sourceId: question.id,
             title: question.title,
             content: explanation,
             contentType: "TOPIC_EXPLANATION",
-          },
-        });
-        chunksCreated++;
+          });
+        }
       }
-    }
 
-    console.log(`[Harvest] Created ${chunksCreated} knowledge chunks from Paper3 source ${sourceId}`);
-    return { success: true, chunksCreated };
+      if (chunks.length === 0) return { chunksCreated: 0 };
+
+      await prisma.$transaction(
+        chunks.map((chunk) =>
+          prisma.knowledgeChunk.upsert({
+            where: { id: chunk.id },
+            update: { content: chunk.content },
+            create: chunk,
+          }),
+        ),
+      );
+
+      return { chunksCreated: chunks.length };
+    });
+
+    console.log(`[Harvest] Created ${result.chunksCreated} knowledge chunks from Paper3 source ${sourceId}`);
+    return { success: true, ...result };
   },
 );
