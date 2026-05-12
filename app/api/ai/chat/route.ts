@@ -16,6 +16,8 @@ import {
 } from "@/lib/chat-messages";
 import { getChatResetWindow } from "@/lib/chat-usage";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
+import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
@@ -205,10 +207,42 @@ export async function POST(req: Request) {
       });
     }
 
+    const profileId = await getActiveProfileId(userId);
+    let profileContext = "";
+
+    if (profileId) {
+      const profile = await prisma.examProfile.findUnique({
+        where: { id: profileId },
+        include: { program: { include: { examLevel: true } } },
+      });
+
+      if (profile) {
+        const { readiness, weakestTopic } = await computeReadiness(profileId);
+        const daysRemaining = profile.examDate
+          ? Math.ceil((profile.examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+          : null;
+
+        profileContext = `\n
+ACTIVE EXAM PROFILE:
+- Level: ${profile.program.examLevel.name}
+- Program: ${profile.program.name}
+- Exam Year: ${profile.examYear ?? "Not set"}
+${profile.examDate ? `- Days Remaining: ${daysRemaining}` : ""}
+- Baseline Readiness: ${readiness}%
+${weakestTopic ? `- Weakest Topic: ${weakestTopic}` : ""}
+- Study Hours/Week: ${profile.studyHoursPerWeek ?? "Not set"}
+- Retaking: ${profile.isRetaking ? "Yes" : "No"}
+
+Use this profile to personalize study recommendations, focus on the weakest topic, and align advice with the student's exam level and program.
+`;
+      }
+    }
+
     const systemPrompt = `You are TiCLearn AI and your name is TiC, an intelligent study assistant specialized in helping Cameroon GCE A-Level students.
     NOTE:
     1. Here is the users name use it to make the conversation more personal: ${session.user.name}.
     2. Avoid using too many emojis. Be friendly and use emojis only when necessary but be clean and serious.
+    ${profileContext}
 
 Your expertise:
 - Computer Science and ICT (GCE A-Level syllabus)
