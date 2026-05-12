@@ -33,7 +33,11 @@ model User {
   credits       Int       @default(0) @map("credits")
   totalCreditsEarned Int   @default(0) @map("total_credits_earned")
 
+  // Active exam profile
+  activeProfileId String? @map("active_profile_id")
+
   // Relations
+  examProfiles       ExamProfile[]
   sessions           Session[]
   accounts           Account[]
   notes              Note[]
@@ -111,6 +115,79 @@ model Verification {
 }
 
 // ===========================================
+// Exam Abstraction Hierarchy
+// ===========================================
+
+model ExamLevel {
+  id        String     @id @default(cuid())
+  name      String
+  code      String     @unique
+  programs     Program[]
+  examProfiles ExamProfile[]
+  createdAt    DateTime   @default(now())
+
+  @@map("exam_levels")
+}
+
+model Program {
+  id           String      @id @default(cuid())
+  examLevelId  String      @map("exam_level_id")
+  name         String
+  code         String      @unique
+  components   Component[]
+  examProfiles ExamProfile[]
+  createdAt    DateTime    @default(now())
+
+  examLevel ExamLevel @relation(fields: [examLevelId], references: [id], onDelete: Cascade)
+
+  @@index([examLevelId])
+  @@map("programs")
+}
+
+model Component {
+  id        String        @id @default(cuid())
+  programId String        @map("program_id")
+  name      String
+  code      String
+  type      ComponentType // PAPER | COURSE
+  timeLimit  Int?
+
+  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@index([programId])
+  @@map("components")
+}
+
+model ExamProfile {
+  id                   String   @id @default(cuid())
+  userId               String   @map("user_id")
+  examLevelId          String   @map("exam_level_id")
+  programId            String   @map("program_id")
+  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
+  onboardingStep       Int      @default(0)     @map("onboarding_step")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examLevel ExamLevel   @relation(fields: [examLevelId], references: [id])
+  program   Program     @relation(fields: [programId], references: [id])
+
+  examSessions           ExamSession[]
+  quizAttempts           QuizAttempt[]
+  paper3Attempts         Paper3Attempt[]
+  paper3MockAttempts     Paper3MockAttempt[]
+  paper3QuestionAttempts Paper3QuestionAttempt[]
+
+  @@index([userId])
+  @@map("exam_profiles")
+}
+
+enum ComponentType {
+  PAPER
+  COURSE
+}
+
+// ===========================================
 // App Models
 // ===========================================
 
@@ -182,6 +259,7 @@ model QuizQuestion {
 model QuizAttempt {
   id             String              @id @default(cuid())
   userId         String              @map("user_id")
+  examProfileId  String?             @map("exam_profile_id")
   quizId         String              @map("quiz_id")
   quizTitle      String              @map("quiz_title")
   noteTitle      String              @map("note_title")
@@ -190,10 +268,12 @@ model QuizAttempt {
   correctAnswers Int                 @map("correct_answers")
   completedAt    DateTime            @default(now()) @map("completed_at")
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile    ExamProfile?        @relation(fields: [examProfileId], references: [id])
   quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   answers        QuizAttemptAnswer[]
 
   @@index([userId])
+  @@index([examProfileId])
   @@index([quizId])
   @@index([completedAt])
   @@map("quiz_attempts")
@@ -219,6 +299,8 @@ model QuizAttemptAnswer {
 model ExamSession {
   id           String      @id @default(cuid())
   userId       String      @map("user_id")
+  examProfileId String?    @map("exam_profile_id")
+  componentId  String?     @map("component_id")
   subject      ExamSubject
   subjectLabel String      @map("subject_label")
   mode         ExamMode
@@ -232,8 +314,10 @@ model ExamSession {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile  ExamProfile? @relation(fields: [examProfileId], references: [id])
 
   @@index([userId])
+  @@index([examProfileId])
   @@index([status])
   @@map("exam_sessions")
 }
@@ -241,6 +325,7 @@ model ExamSession {
 model UserStats {
   id               String    @id @default(cuid())
   userId           String    @unique @map("user_id")
+  examProfileId    String?   @map("exam_profile_id")
   totalPoints      Int       @default(0) @map("total_points")
   currentStreak    Int       @default(0) @map("current_streak")
   longestStreak    Int       @default(0) @map("longest_streak")
@@ -250,6 +335,7 @@ model UserStats {
   avgScore         Float     @default(0) @map("avg_score")
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([examProfileId])
   @@index([totalPoints])
   @@map("user_stats")
 }
@@ -640,6 +726,7 @@ model Paper3Source {
   id              String           @id @default(cuid())
   title           String
   year            Int
+  componentId     String?          @map("component_id")
   subject         Paper3Subject
   section         Paper3Section
   category        Paper3Category
@@ -656,6 +743,7 @@ model Paper3Source {
   questions       Paper3Question[]
 
   @@index([year, subject])
+  @@index([componentId])
   @@index([status])
   @@map("paper3_sources")
 }
@@ -663,6 +751,7 @@ model Paper3Source {
 model Paper3Question {
   id                    String               @id @default(cuid())
   sourceId              String               @map("source_id")
+  componentId           String?              @map("component_id")
   questionNumber        String               @map("question_number")
   taskNumber           String?              @map("task_number")
   subPart              String?              @map("sub_part")
@@ -737,6 +826,7 @@ model Paper3MockQuestion {
 model Paper3MockAttempt {
   id                   String            @id @default(cuid())
   userId               String            @map("user_id")
+  examProfileId        String?           @map("exam_profile_id")
   mockId               String            @map("mock_id")
   score                Float
   totalMarks           Int               @map("total_marks")
@@ -752,9 +842,11 @@ model Paper3MockAttempt {
   completedAt          DateTime?         @map("completed_at")
   mock                 Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
   user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile          ExamProfile?      @relation(fields: [examProfileId], references: [id])
   detailedResults      Paper3DetailedResult[]
 
   @@index([userId])
+  @@index([examProfileId])
   @@index([mockId])
   @@index([shareId])
   @@map("paper3_mock_attempts")
@@ -763,6 +855,7 @@ model Paper3MockAttempt {
 model Paper3UserStats {
   id                 String   @id @default(cuid())
   userId             String   @unique @map("user_id")
+  examProfileId      String?  @map("exam_profile_id")
   questionsAttempted Int      @default(0) @map("questions_attempted")
   questionsCorrect   Int      @default(0) @map("questions_correct")
   mockExamsTaken     Int      @default(0) @map("mock_exams_taken")
@@ -774,6 +867,7 @@ model Paper3UserStats {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([examProfileId])
   @@map("paper3_user_stats")
 }
 
@@ -783,6 +877,7 @@ model Paper3QuestionAttempt {
   mockId         String?       @map("mock_id")
   attemptId      String        @map("attempt_id")
   userId         String        @map("user_id")
+  examProfileId  String?       @map("exam_profile_id")
   userAnswer    String        @map("user_answer") @db.Text
   isCorrect      Boolean       @map("is_correct")
   marksEarned    Int          @map("marks_earned")
@@ -791,9 +886,11 @@ model Paper3QuestionAttempt {
   createdAt     DateTime      @default(now()) @map("created_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile   ExamProfile?  @relation(fields: [examProfileId], references: [id])
 
   @@index([questionId, score])
   @@index([questionId, userId])
+  @@index([examProfileId])
   @@map("paper3_question_attempts")
 }
 
@@ -821,20 +918,23 @@ model Paper3DetailedResult {
 }
 
 model Paper3Attempt {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  questionId  String   @map("question_id")
-  userAnswer  String   @map("user_answer") @db.Text
-  isCorrect   Boolean  @map("is_correct")
-  marksEarned Int      @map("marks_earned")
-  totalMarks  Int      @map("total_marks")
-  feedback    String?  @map("feedback") @db.Text
-  evaluatedAt DateTime @default(now()) @map("evaluated_at")
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  examProfileId String?  @map("exam_profile_id")
+  questionId    String   @map("question_id")
+  userAnswer    String   @map("user_answer") @db.Text
+  isCorrect     Boolean  @map("is_correct")
+  marksEarned   Int      @map("marks_earned")
+  totalMarks    Int      @map("total_marks")
+  feedback      String?  @map("feedback") @db.Text
+  evaluatedAt   DateTime @default(now()) @map("evaluated_at")
 
-  question Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  user     User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile ExamProfile?   @relation(fields: [examProfileId], references: [id])
 
   @@index([userId])
+  @@index([examProfileId])
   @@index([questionId])
   @@map("paper3_attempts")
 }
