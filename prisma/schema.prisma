@@ -539,6 +539,7 @@ enum Plan {
   STARTER
   STANDARD
   PREMIUM
+  PRO
 }
 
 enum SubscriptionStatus {
