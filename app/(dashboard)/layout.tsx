@@ -1,13 +1,10 @@
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ReferralProcessor } from "@/components/referral-processor";
-
-const PUBLIC_PATHS = ["/api/", "/sign-in", "/sign-up", "/sign-out", "/onboarding"];
 
 export default async function DashboardLayout({
   children,
@@ -28,34 +25,20 @@ export default async function DashboardLayout({
       },
     });
 
-    if (user?.activeProfileId) {
-      const activeProfile = user.examProfiles.find(
-        (p) => p.id === user.activeProfileId,
-      );
-
-      if (activeProfile && !activeProfile.onboardingCompleted) {
-        redirect("/onboarding");
-      }
-    } else if (user) {
-      // Auto-create profile for users without one (older accounts)
+    if (user && !user.activeProfileId) {
       const unknownProgram = await prisma.program.findUnique({
         where: { code: "UNKNOWN" },
       });
       if (unknownProgram) {
-        const gceAL = await prisma.examLevel.findFirst({ orderBy: { createdAt: "asc" } });
-        if (gceAL) {
-          const profile = await prisma.examProfile.create({
-            data: {
-              userId: user.id,
-              programId: unknownProgram.id,
-            },
+        await prisma.$transaction(async (tx) => {
+          const profile = await tx.examProfile.create({
+            data: { userId: user.id, programId: unknownProgram.id },
           });
-          await prisma.user.update({
+          await tx.user.update({
             where: { id: user.id },
             data: { activeProfileId: profile.id },
           });
-          redirect("/onboarding");
-        }
+        });
       }
     }
   }
