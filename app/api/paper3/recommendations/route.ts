@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET(_req: Request) {
   try {
@@ -13,9 +14,10 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userStats = await prisma.paper3UserStats.findUnique({
-      where: { userId: session.user.id },
-    });
+    const profileId = await getActiveProfileId(session.user.id);
+    const userStats = profileId
+      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
+      : await prisma.paper3UserStats.findUnique({ where: { userId: session.user.id } });
 
     if (!userStats || userStats.weakConcepts.length === 0) {
       const randomQuestions = await prisma.paper3Question.findMany({

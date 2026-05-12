@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET() {
   try {
@@ -14,6 +15,8 @@ export async function GET() {
     }
 
     const userId = session.user.id;
+    const profileId = await getActiveProfileId(userId);
+    const attemptFilter = profileId ? { examProfileId: profileId } : { userId };
 
     const [userStats, noteCount, quizCount, attemptCount, avgScore] =
       await Promise.all([
@@ -22,9 +25,9 @@ export async function GET() {
         }),
         prisma.note.count({ where: { userId } }),
         prisma.quiz.count({ where: { userId } }),
-        prisma.quizAttempt.count({ where: { userId } }),
+        prisma.quizAttempt.count({ where: attemptFilter }),
         prisma.quizAttempt.aggregate({
-          where: { userId },
+          where: attemptFilter,
           _avg: { score: true },
         }),
       ]);

@@ -12,6 +12,7 @@ type EvaluateExamEvent = {
   attemptId: string;
   mockId: string;
   userId: string;
+  examProfileId?: string | null;
   answers: Record<string, string>;
   timeTaken: number;
 };
@@ -40,7 +41,7 @@ export const evaluatePaper3Exam = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { attemptId, mockId, userId, answers, timeTaken } = event.data as EvaluateExamEvent;
+    const { attemptId, mockId, userId, examProfileId, answers, timeTaken } = event.data as EvaluateExamEvent;
 
     await step.run("update-status-to-processing", async () => {
       await prisma.paper3MockAttempt.update({
@@ -260,6 +261,7 @@ Provide line-by-line explanations in a code comment style.`,
               mockId: mock.id,
               attemptId: attemptId,
               userId,
+              ...(examProfileId ? { examProfileId } : {}),
               userAnswer: result.userAnswer,
               isCorrect: result.isCorrect,
               marksEarned: result.marksEarned,
@@ -268,16 +270,16 @@ Provide line-by-line explanations in a code comment style.`,
           });
         }
 
-        const existingStats = await tx.paper3UserStats.findUnique({
-          where: { userId },
-        });
+        const existingStats = examProfileId
+          ? await tx.paper3UserStats.findFirst({ where: { examProfileId } })
+          : await tx.paper3UserStats.findUnique({ where: { userId } });
 
         if (existingStats) {
           const newExamsTaken = existingStats.mockExamsTaken + 1;
           const newAvg = (existingStats.avgScore * existingStats.mockExamsTaken + score) / newExamsTaken;
 
           await tx.paper3UserStats.update({
-            where: { userId },
+            where: { id: existingStats.id },
             data: {
               mockExamsTaken: newExamsTaken,
               avgScore: Math.round(newAvg),
@@ -289,6 +291,7 @@ Provide line-by-line explanations in a code comment style.`,
           await tx.paper3UserStats.create({
             data: {
               userId,
+              ...(examProfileId ? { examProfileId } : {}),
               mockExamsTaken: 1,
               avgScore: score,
               questionsCorrect: correctCount,
@@ -314,6 +317,7 @@ Provide line-by-line explanations in a code comment style.`,
           await tx.userStats.create({
             data: {
               userId,
+              ...(examProfileId ? { examProfileId } : {}),
               totalPoints: pointsEarned,
               quizzesTaken: 1,
               lastActivityDate: new Date(),

@@ -19,6 +19,8 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit;
 
+    const profileFilter = { examProfileId: { not: null } };
+
     const [leaderboard, total] = await Promise.all([
       prisma.userStats.findMany({
         orderBy: { totalPoints: "desc" },
@@ -30,31 +32,22 @@ export async function GET(req: Request) {
           },
         },
         where: {
-          user: {
-            role: {
-              not: "ADMIN",
-            },
-          },
+          ...profileFilter,
+          user: { role: { not: "ADMIN" } },
         },
       }),
       prisma.userStats.count({
         where: {
-          user: {
-            role: {
-              not: "ADMIN",
-            },
-          },
+          ...profileFilter,
+          user: { role: { not: "ADMIN" } },
         },
       }),
     ]);
 
     const currentUserRank = await prisma.userStats.count({
       where: {
-        user: {
-          role: {
-            not: "ADMIN",
-          },
-        },
+        ...profileFilter,
+        user: { role: { not: "ADMIN" } },
         totalPoints: {
           gt: (
             await prisma.userStats.findUnique({

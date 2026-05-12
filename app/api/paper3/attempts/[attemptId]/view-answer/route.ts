@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(
   _req: Request,
@@ -17,9 +18,25 @@ export async function POST(
     }
 
     const { attemptId } = await params;
+    const profileId = await getActiveProfileId(session.user.id);
+    const ownershipWhere = profileId
+      ? { id: attemptId, examProfileId: profileId }
+      : { id: attemptId, userId: session.user.id };
+
+    const sub = await prisma.subscription.findFirst({
+      where: { userId: session.user.id, status: "ACTIVE" },
+      select: { plan: true },
+    });
+    const canView = sub?.plan === "STANDARD" || sub?.plan === "PREMIUM";
+    if (!canView) {
+      return NextResponse.json(
+        { error: "Upgrade to STANDARD or higher to view correct answers" },
+        { status: 403 },
+      );
+    }
 
     const attempt = await prisma.paper3MockAttempt.findUnique({
-      where: { id: attemptId, userId: session.user.id },
+      where: ownershipWhere,
       include: {
         mock: {
           include: {

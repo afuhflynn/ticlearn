@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 const aiModel = openai("gpt-5.4");
 
@@ -24,6 +25,7 @@ export async function POST(req: Request) {
     }
 
     const { attemptId, questionId, messages } = await req.json();
+    const profileId = await getActiveProfileId(session.user.id);
 
     if (!attemptId || !messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -32,8 +34,12 @@ export async function POST(req: Request) {
       );
     }
 
+    const ownershipWhere = profileId
+      ? { id: attemptId, examProfileId: profileId }
+      : { id: attemptId, userId: session.user.id };
+
     const attempt = await prisma.paper3MockAttempt.findUnique({
-      where: { id: attemptId, userId: session.user.id },
+      where: ownershipWhere,
       include: {
         mock: {
           include: {

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
 import { NextResponse } from "next/server";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(
   request: Request,
@@ -17,17 +18,27 @@ export async function POST(
     }
 
     const { attemptId } = await params;
+    const profileId = await getActiveProfileId(session.user.id);
 
     const attempt = await prisma.paper3MockAttempt.findUnique({
       where: { id: attemptId },
-      select: { userId: true, shareId: true, score: true, mock: { select: { title: true } } },
+      select: {
+        userId: true,
+        examProfileId: true,
+        shareId: true,
+        score: true,
+        mock: { select: { title: true } },
+      },
     });
 
     if (!attempt) {
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
-    if (attempt.userId !== session.user.id) {
+    const ownsAttempt = profileId
+      ? attempt.examProfileId === profileId
+      : attempt.userId === session.user.id;
+    if (!ownsAttempt) {
       return NextResponse.json({ error: "Not your attempt" }, { status: 403 });
     }
 

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(
   req: Request,
@@ -19,6 +20,7 @@ export async function POST(
 
     const { mockId } = await params;
     const { attemptId, answers, timeTaken } = await req.json();
+    const profileId = await getActiveProfileId(session.user.id);
 
     const mock = await prisma.paper3Mock.findUnique({
       where: { id: mockId },
@@ -42,7 +44,10 @@ export async function POST(
       );
     }
 
-    if (attempt.userId !== session.user.id) {
+    const ownsAttempt = profileId
+      ? attempt.examProfileId === profileId
+      : attempt.userId === session.user.id;
+    if (!ownsAttempt) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
@@ -59,6 +64,7 @@ export async function POST(
         attemptId,
         mockId,
         userId: session.user.id,
+        examProfileId: profileId,
         answers,
         timeTaken,
       },
