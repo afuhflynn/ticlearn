@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(
   _req: Request,
@@ -17,6 +18,7 @@ export async function POST(
     }
 
     const { mockId } = await params;
+    const profileId = await getActiveProfileId(session.user.id);
 
     const mock = await prisma.paper3Mock.findUnique({
       where: { id: mockId, status: "PUBLISHED" },
@@ -55,14 +57,13 @@ export async function POST(
     const { searchParams } = new URL(_req.url);
     const retake = searchParams.get("retake") === "true";
 
-    // Check for existing in-progress attempt (allow resuming)
     if (!retake) {
+      const existingWhere = profileId
+        ? { userId: session.user.id, mockId: mock.id, status: "IN_PROGRESS" as const }
+        : { userId: session.user.id, mockId: mock.id, status: "IN_PROGRESS" as const };
+
       const existingAttempt = await prisma.paper3MockAttempt.findFirst({
-        where: {
-          userId: session.user.id,
-          mockId: mock.id,
-          status: "IN_PROGRESS",
-        },
+        where: existingWhere,
       });
 
       if (existingAttempt) {
@@ -74,10 +75,10 @@ export async function POST(
       }
     }
 
-    // Create new attempt (for fresh start or retake)
     const attempt = await prisma.paper3MockAttempt.create({
       data: {
         userId: session.user.id,
+        ...(profileId ? { examProfileId: profileId } : {}),
         mockId: mock.id,
         score: 0,
         totalMarks: mock.totalMarks,

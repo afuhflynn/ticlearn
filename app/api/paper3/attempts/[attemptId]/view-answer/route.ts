@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(
   _req: Request,
@@ -17,9 +18,13 @@ export async function POST(
     }
 
     const { attemptId } = await params;
+    const profileId = await getActiveProfileId(session.user.id);
+    const ownershipWhere = profileId
+      ? { id: attemptId, examProfileId: profileId }
+      : { id: attemptId, userId: session.user.id };
 
     const attempt = await prisma.paper3MockAttempt.findUnique({
-      where: { id: attemptId, userId: session.user.id },
+      where: ownershipWhere,
       include: {
         mock: {
           include: {

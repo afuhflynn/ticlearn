@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET(_req: Request) {
   try {
@@ -13,30 +14,33 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let stats = await prisma.paper3UserStats.findUnique({
-      where: { userId: session.user.id },
-    });
+    const userId = session.user.id;
+    const profileId = await getActiveProfileId(userId);
+    const attemptWhere = profileId ? { examProfileId: profileId } : { userId };
+
+    let stats = profileId
+      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
+      : await prisma.paper3UserStats.findUnique({ where: { userId } });
 
     if (!stats) {
       stats = await prisma.paper3UserStats.create({
         data: {
-          userId: session.user.id,
+          userId,
+          ...(profileId ? { examProfileId: profileId } : {}),
         },
       });
     }
 
     const attemptedQuestions = await prisma.paper3Attempt.count({
-      where: { userId: session.user.id },
+      where: attemptWhere,
     });
 
     if (attemptedQuestions > 0) {
       const conceptStats = await prisma.paper3Attempt.groupBy({
         by: ["questionId"],
-        where: { userId: session.user.id },
+        where: attemptWhere,
         _count: true,
-        _sum: {
-          marksEarned: true,
-        },
+        _sum: { marksEarned: true },
       });
 
       const questionIdsWithAttempts = conceptStats.map((cs) => cs.questionId);
@@ -51,19 +55,13 @@ export async function GET(_req: Request) {
         const question = questions.find((q) => q.id === cs.questionId);
         if (question) {
           for (const concept of question.concepts) {
-            const currentTotal = conceptTotalMap.get(concept) || 0;
-            const currentCorrect = conceptCorrectMap.get(concept) || 0;
-            conceptTotalMap.set(concept, currentTotal + 1);
+            conceptTotalMap.set(concept, (conceptTotalMap.get(concept) || 0) + 1);
             if (cs.questionId) {
               const attempt = await prisma.paper3Attempt.findFirst({
-                where: {
-                  questionId: cs.questionId,
-                  userId: session.user.id,
-                  isCorrect: true,
-                },
+                where: { questionId: cs.questionId, ...attemptWhere, isCorrect: true },
               });
               if (attempt) {
-                conceptCorrectMap.set(concept, currentCorrect + 1);
+                conceptCorrectMap.set(concept, (conceptCorrectMap.get(concept) || 0) + 1);
               }
             }
           }
@@ -76,34 +74,21 @@ export async function GET(_req: Request) {
       for (const [concept, total] of conceptTotalMap) {
         const correct = conceptCorrectMap.get(concept) || 0;
         const rate = total > 0 ? (correct / total) * 100 : 0;
-        if (rate < 50) {
-          weakConcepts.push(concept);
-        } else if (rate >= 80) {
-          strongConcepts.push(concept);
-        }
+        if (rate < 50) weakConcepts.push(concept);
+        else if (rate >= 80) strongConcepts.push(concept);
       }
 
-      const readinessScore =
-        attemptedQuestions > 0
-          ? (stats.questionsCorrect / attemptedQuestions) * 100
-          : 0;
+      const readinessScore = attemptedQuestions > 0
+        ? (stats.questionsCorrect / attemptedQuestions) * 100
+        : 0;
 
       await prisma.paper3UserStats.update({
-        where: { userId: session.user.id },
-        data: {
-          weakConcepts,
-          strongConcepts,
-          readinessScore,
-        },
+        where: { id: stats.id },
+        data: { weakConcepts, strongConcepts, readinessScore },
       });
 
       return NextResponse.json({
-        stats: {
-          ...stats,
-          weakConcepts,
-          strongConcepts,
-          readinessScore,
-        },
+        stats: { ...stats, weakConcepts, strongConcepts, readinessScore },
       });
     }
 

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET(req: Request) {
   try {
@@ -13,6 +14,9 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const profileId = await getActiveProfileId(session.user.id);
+    const whereFilter = profileId ? { examProfileId: profileId } : { userId: session.user.id };
+
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
@@ -20,10 +24,7 @@ export async function GET(req: Request) {
 
     const [attempts, total] = await Promise.all([
       prisma.paper3MockAttempt.findMany({
-        where: {
-          userId: session.user.id,
-          status: "COMPLETED",
-        },
+        where: { ...whereFilter, status: "COMPLETED" },
         skip,
         take: limit,
         orderBy: { completedAt: "desc" },
@@ -40,10 +41,7 @@ export async function GET(req: Request) {
         },
       }),
       prisma.paper3MockAttempt.count({
-        where: {
-          userId: session.user.id,
-          status: "COMPLETED",
-        },
+        where: { ...whereFilter, status: "COMPLETED" },
       }),
     ]);
 

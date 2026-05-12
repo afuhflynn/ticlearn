@@ -70,6 +70,31 @@ export const auth = betterAuth({
 
           // Generate default quizzes for new users (after user is created)
           await triggerDefaultQuiz(user.id).catch(console.error);
+
+          // Create ExamProfile for new user
+          try {
+            const unknownProgram = await prisma.program.findUnique({
+              where: { code: "UNKNOWN" },
+            });
+            const defaultLevel = await prisma.examLevel.findFirst({
+              orderBy: { createdAt: "asc" },
+            });
+            if (unknownProgram && defaultLevel) {
+              const profile = await prisma.examProfile.create({
+                data: {
+                  userId: user.id,
+                  examLevelId: defaultLevel.id,
+                  programId: unknownProgram.id,
+                },
+              });
+              await prisma.user.update({
+                where: { id: user.id },
+                data: { activeProfileId: profile.id },
+              });
+            }
+          } catch {
+            console.error("Failed to create ExamProfile for user", user.id);
+          }
         },
       },
     },

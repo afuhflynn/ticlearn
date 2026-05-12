@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET(
   _req: Request,
@@ -17,9 +18,13 @@ export async function GET(
     }
 
     const { attemptId } = await params;
+    const profileId = await getActiveProfileId(session.user.id);
+    const ownershipWhere = profileId
+      ? { id: attemptId, examProfileId: profileId }
+      : { id: attemptId, userId: session.user.id };
 
     const attempt = await prisma.paper3MockAttempt.findUnique({
-      where: { id: attemptId, userId: session.user.id },
+      where: ownershipWhere,
       include: {
         mock: {
           include: {
@@ -56,7 +61,6 @@ export async function GET(
       return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
-    // Calculate analytics
     const results = attempt.results as Array<{
       questionId: string;
       isCorrect: boolean;
@@ -65,24 +69,20 @@ export async function GET(
     }>;
 
     const detailedResults = attempt.detailedResults || [];
-    
-    // Performance by section
+
     const sectionPerformance: Record<string, { correct: number; total: number }> = {};
-    // Performance by concept
     const conceptPerformance: Record<string, { correct: number; total: number }> = {};
-    
+
     for (const mq of attempt.mock.questions) {
       const question = mq.question;
       const section = question.section;
       const concepts = (question.concepts as string[]) || [];
-      
-      // Section performance
+
       if (!sectionPerformance[section]) {
         sectionPerformance[section] = { correct: 0, total: 0 };
       }
       sectionPerformance[section].total += question.marks;
-      
-      // Concept performance
+
       for (const concept of concepts) {
         if (!conceptPerformance[concept]) {
           conceptPerformance[concept] = { correct: 0, total: 0 };
@@ -91,21 +91,18 @@ export async function GET(
       }
     }
 
-    // Mark correct/incorrect for each
     for (const result of results) {
       const mq = attempt.mock.questions.find(mq => mq.question.id === result.questionId);
       if (!mq) continue;
-      
+
       const question = mq.question;
       const section = question.section;
       const concepts = (question.concepts as string[]) || [];
-      
-      // Section
+
       if (sectionPerformance[section] && result.isCorrect) {
         sectionPerformance[section].correct += result.marksEarned;
       }
-      
-      // Concepts
+
       for (const concept of concepts) {
         if (conceptPerformance[concept] && result.isCorrect) {
           conceptPerformance[concept].correct += result.marksEarned;
@@ -113,7 +110,6 @@ export async function GET(
       }
     }
 
-    // Calculate percentages
     const analytics = {
       bySection: Object.entries(sectionPerformance).map(([section, data]) => ({
         section,

@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { evaluateAnswer } from "@/lib/paper3/evaluate";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET(
   _req: Request,
@@ -72,6 +73,7 @@ export async function POST(
 
     const { questionId } = await params;
     const { userAnswer } = await req.json();
+    const profileId = await getActiveProfileId(session.user.id);
 
     if (!userAnswer) {
       return NextResponse.json(
@@ -110,6 +112,7 @@ export async function POST(
     const attempt = await prisma.paper3Attempt.create({
       data: {
         userId: session.user.id,
+        ...(profileId ? { examProfileId: profileId } : {}),
         questionId,
         userAnswer,
         isCorrect: result.isCorrect,
@@ -119,9 +122,9 @@ export async function POST(
       },
     });
 
-    const userStats = await prisma.paper3UserStats.findUnique({
-      where: { userId: session.user.id },
-    });
+    const userStats = profileId
+      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
+      : await prisma.paper3UserStats.findUnique({ where: { userId: session.user.id } });
 
     if (userStats) {
       const newAttempted = userStats.questionsAttempted + 1;
@@ -133,7 +136,7 @@ export async function POST(
         newAttempted;
 
       await prisma.paper3UserStats.update({
-        where: { userId: session.user.id },
+        where: { id: userStats.id },
         data: {
           questionsAttempted: newAttempted,
           questionsCorrect: newCorrect,
@@ -144,6 +147,7 @@ export async function POST(
       await prisma.paper3UserStats.create({
         data: {
           userId: session.user.id,
+          ...(profileId ? { examProfileId: profileId } : {}),
           questionsAttempted: 1,
           questionsCorrect: result.isCorrect ? 1 : 0,
           avgScore: (result.marksEarned / result.totalMarks) * 100,

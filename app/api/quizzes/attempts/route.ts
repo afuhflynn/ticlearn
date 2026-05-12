@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { gradeOpenAnswer, explainMCQAnswer } from "@/lib/ai";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(req: Request) {
   try {
@@ -15,6 +16,7 @@ export async function POST(req: Request) {
     }
 
     const { quizId, answers } = await req.json();
+    const profileId = await getActiveProfileId(session.user.id);
 
     if (!quizId || !answers) {
       return NextResponse.json(
@@ -89,6 +91,7 @@ export async function POST(req: Request) {
     const attempt = await prisma.quizAttempt.create({
       data: {
         userId: session.user.id,
+        ...(profileId ? { examProfileId: profileId } : {}),
         quizId,
         quizTitle: quiz.title,
         noteTitle: quiz.noteTitle,
@@ -144,6 +147,7 @@ export async function POST(req: Request) {
       await prisma.userStats.create({
         data: {
           userId: session.user.id,
+          ...(profileId ? { examProfileId: profileId } : {}),
           totalPoints: pointsEarned,
           quizzesTaken: 1,
           avgScore: score,
