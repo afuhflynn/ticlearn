@@ -51,6 +51,17 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!session) return;
+
+    // Check if onboarding already completed
+    fetch("/api/onboarding/readiness")
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.needsAssessment === false && d.readiness > 0) {
+          router.push("/dashboard");
+        }
+      })
+      .catch(() => {});
+
     apiFetch("/api/exam-levels")
       .then((d) => { if (Array.isArray(d.levels)) setLevels(d.levels); })
       .catch((e) => console.error("Failed to load exam levels:", e));

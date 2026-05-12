@@ -47,6 +47,7 @@ const protectedRoutes = [
   "/admin",
   "/subscription",
   "/practice",
+  "/onboarding",
 ];
 
 export async function proxy(request: NextRequest) {

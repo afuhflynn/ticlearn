@@ -38,15 +38,31 @@ export async function POST(req: Request) {
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { activeProfileId: true },
+      select: { id: true, activeProfileId: true },
     });
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 401 });
     }
 
-    if (!user.activeProfileId) {
-      return NextResponse.json({ error: "No active profile" }, { status: 400 });
+    let activeProfileId = user.activeProfileId;
+
+    if (!activeProfileId) {
+      const unknownProgram = await prisma.program.findUnique({
+        where: { code: "UNKNOWN" },
+      });
+      if (unknownProgram) {
+        const profile = await prisma.examProfile.create({
+          data: { userId: user.id, programId: unknownProgram.id },
+        });
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { activeProfileId: profile.id },
+        });
+        activeProfileId = profile.id;
+      } else {
+        return NextResponse.json({ error: "UNKNOWN program not found" }, { status: 500 });
+      }
     }
 
     // Validate each baseline

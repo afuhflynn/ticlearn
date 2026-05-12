@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AppSidebar } from "@/components/layout/AppSidebar";
@@ -25,21 +26,15 @@ export default async function DashboardLayout({
       },
     });
 
-    if (user && !user.activeProfileId) {
-      const unknownProgram = await prisma.program.findUnique({
-        where: { code: "UNKNOWN" },
-      });
-      if (unknownProgram) {
-        await prisma.$transaction(async (tx) => {
-          const profile = await tx.examProfile.create({
-            data: { userId: user.id, programId: unknownProgram.id },
-          });
-          await tx.user.update({
-            where: { id: user.id },
-            data: { activeProfileId: profile.id },
-          });
-        });
+    if (user?.activeProfileId) {
+      const activeProfile = user.examProfiles.find(
+        (p) => p.id === user.activeProfileId,
+      );
+      if (activeProfile && !activeProfile.onboardingCompleted) {
+        redirect("/onboarding");
       }
+    } else {
+      redirect("/onboarding");
     }
   }
 
