@@ -1,8 +1,9 @@
 "use client";
 
-import { FileText, ListTodo, Plus, TrendingUp, Zap } from "lucide-react";
+import { FileText, ListTodo, Plus, TrendingUp, Zap, Brain, AlertCircle } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,14 +14,31 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useNotes, useQuizzes, useUserStats } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+
+interface TopicPerf {
+  topic: { name: string; component: { name: string } };
+  masteryScore: number;
+  attempts: number;
+}
 
 export default function DashboardPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const { stats, isLoading: statsLoading } = useUserStats();
   const { notes, isLoading: notesLoading } = useNotes();
   const { quizzes, isLoading: quizzesLoading } = useQuizzes("my");
+  const [performances, setPerformances] = useState<TopicPerf[]>([]);
+  const [perfLoading, setPerfLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/performance")
+      .then(r => r.json())
+      .then(d => setPerformances(d.performances || []))
+      .catch(() => {})
+      .finally(() => setPerfLoading(false));
+  }, []);
 
   if (sessionPending || statsLoading) {
     return (
@@ -126,6 +144,42 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      {!perfLoading && performances.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Topic Mastery</CardTitle>
+                <CardDescription>Your weakest areas based on practice performance.</CardDescription>
+              </div>
+              <Badge variant="outline">{performances.length} topics tracked</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {performances.slice(0, 5).map((perf) => {
+              const weak = perf.masteryScore < 40;
+              return (
+                <div key={perf.topic.name} className="flex items-center gap-4">
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{perf.topic.name}</span>
+                      <span className={`text-sm font-mono ${weak ? "text-red-500" : "text-green-500"}`}>
+                        {Math.round(perf.masteryScore)}%
+                      </span>
+                    </div>
+                    <Progress
+                      value={perf.masteryScore}
+                      className={weak ? "bg-red-100 [&>div]:bg-red-500" : ""}
+                    />
+                  </div>
+                  <span className="text-xs text-muted-foreground w-12 text-right">{perf.attempts} attempts</span>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
