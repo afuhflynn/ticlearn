@@ -30,40 +30,40 @@ model User {
   warningSentAt DateTime? @map("warning_sent_at")
 
   // Credits system
-  credits       Int       @default(0) @map("credits")
-  totalCreditsEarned Int   @default(0) @map("total_credits_earned")
+  credits            Int @default(0) @map("credits")
+  totalCreditsEarned Int @default(0) @map("total_credits_earned")
 
   // Active exam profile
-  activeProfileId String? @map("active_profile_id")
+  activeProfileId String?      @map("active_profile_id")
   activeProfile   ExamProfile? @relation("UserActiveProfile", fields: [activeProfileId], references: [id], onDelete: SetNull)
 
   // Relations
-  examProfiles       ExamProfile[]
-  sessions           Session[]
-  accounts           Account[]
-  notes              Note[]
-  quizzes            Quiz[]
-  quizAttempts       QuizAttempt[]
-  examSessions       ExamSession[]
-  userStats          UserStats?
-  subscriptions      Subscription[]
-  ratings            Rating[]
-  feedbacks          Feedback[]
-  affiliate          Affiliate?
-  posts              Post[]
-  comments           Comment[]
-  postLikes          PostLike[]
-  notifications      Notification[]
-  userSettings       UserSettings?
-  chatConversations  ChatConversation[]
-  chatMessages       ChatMessage[]
-  adminInvites       AdminInvite[]       @relation("InvitedBy")
-  paper3UserStats    Paper3UserStats?
-  paper3Attempts     Paper3Attempt[]
-  paper3MockAttempts Paper3MockAttempt[]
+  examProfiles           ExamProfile[]
+  sessions               Session[]
+  accounts               Account[]
+  notes                  Note[]
+  quizzes                Quiz[]
+  quizAttempts           QuizAttempt[]
+  examSessions           ExamSession[]
+  userStats              UserStats?
+  subscriptions          Subscription[]
+  ratings                Rating[]
+  feedbacks              Feedback[]
+  affiliate              Affiliate?
+  posts                  Post[]
+  comments               Comment[]
+  postLikes              PostLike[]
+  notifications          Notification[]
+  userSettings           UserSettings?
+  chatConversations      ChatConversation[]
+  chatMessages           ChatMessage[]
+  adminInvites           AdminInvite[]           @relation("InvitedBy")
+  paper3UserStats        Paper3UserStats?
+  paper3Attempts         Paper3Attempt[]
+  paper3MockAttempts     Paper3MockAttempt[]
   paper3QuestionAttempts Paper3QuestionAttempt[]
-  creditTransactions CreditTransaction[] @relation("UserCredits")
-  referralBonuses    ReferralBonus[]    @relation("ReferrerCredits")
+  creditTransactions     CreditTransaction[]     @relation("UserCredits")
+  referralBonuses        ReferralBonus[]         @relation("ReferrerCredits")
 
   @@map("users")
 }
@@ -120,23 +120,23 @@ model Verification {
 // ===========================================
 
 model ExamLevel {
-  id        String     @id @default(cuid())
+  id        String    @id @default(cuid())
   name      String
-  code      String     @unique
-  programs     Program[]
-  createdAt    DateTime   @default(now())
+  code      String    @unique
+  programs  Program[]
+  createdAt DateTime  @default(now())
 
   @@map("exam_levels")
 }
 
 model Program {
-  id           String      @id @default(cuid())
-  examLevelId  String      @map("exam_level_id")
+  id           String        @id @default(cuid())
+  examLevelId  String        @map("exam_level_id")
   name         String
-  code         String      @unique
+  code         String        @unique
   components   Component[]
   examProfiles ExamProfile[]
-  createdAt    DateTime    @default(now())
+  createdAt    DateTime      @default(now())
 
   examLevel ExamLevel @relation(fields: [examLevelId], references: [id], onDelete: Cascade)
 
@@ -150,38 +150,92 @@ model Component {
   name      String
   code      String
   type      ComponentType // PAPER | COURSE
-  timeLimit  Int?
+  timeLimit Int?
 
-  program        Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
-  examSessions   ExamSession[]
-  paper3Sources  Paper3Source[]
+  program         Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  examSessions    ExamSession[]
+  paper3Sources   Paper3Source[]
   paper3Questions Paper3Question[]
+  topics          Topic[]
 
   @@unique([programId, code])
   @@index([programId])
   @@map("components")
 }
 
+model Topic {
+  id          String @id @default(cuid())
+  componentId String @map("component_id")
+  name        String
+  order       Int    @default(0)
+
+  component       Component           @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  userBaselines   UserTopicBaseline[]
+  knowledgeChunks KnowledgeChunk[]
+
+  @@unique([componentId, name])
+  @@index([componentId])
+  @@map("topics")
+}
+
+model UserTopicBaseline {
+  id            String   @id @default(cuid())
+  examProfileId String   @map("exam_profile_id")
+  topicId       String   @map("topic_id")
+  confidence    Int      @default(3)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
+  topic       Topic       @relation(fields: [topicId], references: [id])
+
+  @@unique([examProfileId, topicId])
+  @@index([examProfileId])
+  @@map("user_topic_baselines")
+}
+
+model KnowledgeChunk {
+  id          String   @id @default(cuid())
+  topicId     String   @map("topic_id")
+  sourceType  String   @map("source_type")
+  sourceId    String   @map("source_id")
+  title       String
+  content     String   @db.Text
+  contentType String   @map("content_type")
+  createdAt   DateTime @default(now())
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([sourceType])
+  @@map("knowledge_chunks")
+}
+
 model ExamProfile {
-  id                   String   @id @default(cuid())
-  userId               String   @map("user_id")
-  programId            String   @map("program_id")
-  onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
-  onboardingStep       Int      @default(0)     @map("onboarding_step")
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  id                  String    @id @default(cuid())
+  userId              String    @map("user_id")
+  programId           String    @map("program_id")
+  onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
+  onboardingStep      Int       @default(0) @map("onboarding_step")
+  examYear            Int?      @map("exam_year")
+  examDate            DateTime? @map("exam_date")
+  isRetaking          Boolean   @default(false) @map("is_retaking")
+  studyHoursPerWeek   Int?      @map("study_hours_per_week")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  program   Program     @relation(fields: [programId], references: [id])
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  program Program @relation(fields: [programId], references: [id])
 
-  activeForUsers       User[]                @relation("UserActiveProfile")
-  examSessions         ExamSession[]
-  quizAttempts         QuizAttempt[]
-  paper3Attempts       Paper3Attempt[]
-  paper3MockAttempts   Paper3MockAttempt[]
+  activeForUsers         User[]                  @relation("UserActiveProfile")
+  examSessions           ExamSession[]
+  quizAttempts           QuizAttempt[]
+  paper3Attempts         Paper3Attempt[]
+  paper3MockAttempts     Paper3MockAttempt[]
   paper3QuestionAttempts Paper3QuestionAttempt[]
-  userStats            UserStats[]
-  paper3UserStats      Paper3UserStats[]
+  userStats              UserStats[]
+  paper3UserStats        Paper3UserStats[]
+  topicBaselines         UserTopicBaseline[]
 
   @@index([userId])
   @@map("exam_profiles")
@@ -231,7 +285,7 @@ model Quiz {
   isPublic      Boolean        @default(false) @map("is_public")
   timed         Boolean        @default(false)
   timeLimit     Int?           @map("time_limit")
-  metadata     Json?          // For storing additional info like weak areas source
+  metadata      Json? // For storing additional info like weak areas source
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -302,25 +356,25 @@ model QuizAttemptAnswer {
 }
 
 model ExamSession {
-  id           String      @id @default(cuid())
-  userId       String      @map("user_id")
-  examProfileId String?    @map("exam_profile_id")
-  componentId  String?     @map("component_id")
-  subject      ExamSubject
-  subjectLabel String      @map("subject_label")
-  mode         ExamMode
-  topic        String
-  status       ExamStatus  @default(GENERATING)
-  score        Float?
-  timeLimit    Int         @map("time_limit")
-  timeTaken    Int?        @map("time_taken")
-  questions    Json
-  answers      Json?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile  ExamProfile? @relation(fields: [examProfileId], references: [id])
-  component    Component?   @relation(fields: [componentId], references: [id], onDelete: SetNull)
+  id            String       @id @default(cuid())
+  userId        String       @map("user_id")
+  examProfileId String?      @map("exam_profile_id")
+  componentId   String?      @map("component_id")
+  subject       ExamSubject
+  subjectLabel  String       @map("subject_label")
+  mode          ExamMode
+  topic         String
+  status        ExamStatus   @default(GENERATING)
+  score         Float?
+  timeLimit     Int          @map("time_limit")
+  timeTaken     Int?         @map("time_taken")
+  questions     Json
+  answers       Json?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile   ExamProfile? @relation(fields: [examProfileId], references: [id])
+  component     Component?   @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([examProfileId])
@@ -329,17 +383,17 @@ model ExamSession {
 }
 
 model UserStats {
-  id               String    @id @default(cuid())
-  userId           String    @unique @map("user_id")
-  examProfileId    String?   @map("exam_profile_id")
-  totalPoints      Int       @default(0) @map("total_points")
-  currentStreak    Int       @default(0) @map("current_streak")
-  longestStreak    Int       @default(0) @map("longest_streak")
-  lastActivityDate DateTime? @map("last_activity_date")
-  quizzesTaken     Int       @default(0) @map("quizzes_taken")
-  totalChats       Int       @default(0) @map("total_chats")
-  avgScore         Float     @default(0) @map("avg_score")
-  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id               String       @id @default(cuid())
+  userId           String       @unique @map("user_id")
+  examProfileId    String?      @map("exam_profile_id")
+  totalPoints      Int          @default(0) @map("total_points")
+  currentStreak    Int          @default(0) @map("current_streak")
+  longestStreak    Int          @default(0) @map("longest_streak")
+  lastActivityDate DateTime?    @map("last_activity_date")
+  quizzesTaken     Int          @default(0) @map("quizzes_taken")
+  totalChats       Int          @default(0) @map("total_chats")
+  avgScore         Float        @default(0) @map("avg_score")
+  user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   examProfile      ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
   @@index([examProfileId])
@@ -395,7 +449,7 @@ model Feedback {
   adminNote String?        @map("admin_note") @db.Text
   attemptId String?        @map("attempt_id")
   mockId    String?        @map("mock_id")
-  rating    Int?            @default(0) @map("rating")
+  rating    Int?           @default(0) @map("rating")
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -757,42 +811,42 @@ model Paper3Source {
 }
 
 model Paper3Question {
-  id                    String               @id @default(cuid())
-  sourceId              String               @map("source_id")
-  componentId           String?              @map("component_id")
-  questionNumber        String               @map("question_number")
-  taskNumber           String?              @map("task_number")
-  subPart              String?              @map("sub_part")
+  id                    String          @id @default(cuid())
+  sourceId              String          @map("source_id")
+  componentId           String?         @map("component_id")
+  questionNumber        String          @map("question_number")
+  taskNumber            String?         @map("task_number")
+  subPart               String?         @map("sub_part")
   title                 String
   section               Paper3Section
   skillType             Paper3SkillType
   taskType              Paper3TaskType
-  programmingLanguage  Paper3Language?    @map("programming_language") // C or PASCAL only
+  programmingLanguage   Paper3Language? @map("programming_language") // C or PASCAL only
   concepts              String[]
-  content               String               @db.Text
-  contentMd            String?              @db.Text
-  marks                 Int                  @default(1)
-  expectedAnswer        String               @map("expected_answer") @db.Text
-  markingBreakdown      Json?                @map("marking_breakdown")
-  explanation           String?              @db.Text
-  partialCredit         Boolean              @default(false) @map("partial_credit")
-  requireAnswer        Boolean              @default(true) @map("require_answer")
-  sourceContentMarkdown String?              @map("source_content_markdown") @db.Text
-  
+  content               String          @db.Text
+  contentMd             String?         @db.Text
+  marks                 Int             @default(1)
+  expectedAnswer        String          @map("expected_answer") @db.Text
+  markingBreakdown      Json?           @map("marking_breakdown")
+  explanation           String?         @db.Text
+  partialCredit         Boolean         @default(false) @map("partial_credit")
+  requireAnswer         Boolean         @default(true) @map("require_answer")
+  sourceContentMarkdown String?         @map("source_content_markdown") @db.Text
+
   // Structured task/sub-question breakdown
-  taskItems            Json?              @map("task_items")
-  
+  taskItems Json? @map("task_items")
+
   // Enhanced visual elements for Access, Excel, C arrays
-  visualElements      Json?              @map("visual_elements")
-  
-  status                QuestionStatus       @default(PENDING)
-  createdAt             DateTime             @default(now())
-  updatedAt             DateTime             @updatedAt
-  source                Paper3Source         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
-  component             Component?           @relation(fields: [componentId], references: [id], onDelete: SetNull)
-  mockQuestions         Paper3MockQuestion[]
-  attempts              Paper3Attempt[]
-  detailedResults      Paper3DetailedResult[]
+  visualElements Json? @map("visual_elements")
+
+  status          QuestionStatus         @default(PENDING)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @updatedAt
+  source          Paper3Source           @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  component       Component?             @relation(fields: [componentId], references: [id], onDelete: SetNull)
+  mockQuestions   Paper3MockQuestion[]
+  attempts        Paper3Attempt[]
+  detailedResults Paper3DetailedResult[]
 
   @@index([sourceId])
   @@index([componentId])
@@ -802,19 +856,19 @@ model Paper3Question {
 }
 
 model Paper3Mock {
-  id          String               @id @default(cuid())
-  title       String
-  description String?              @db.Text
-  subject     Paper3Subject
-  focusCategory Paper3FocusCategory @default(MIXED) @map("focus_category")
-  timeLimit   Int                  @map("time_limit")
-  totalMarks  Int                  @map("total_marks")
-  createdBy   String               @map("created_by")
-  status      MockStatus           @default(DRAFT)
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
-  questions   Paper3MockQuestion[]
-  attempts    Paper3MockAttempt[]
+  id            String               @id @default(cuid())
+  title         String
+  description   String?              @db.Text
+  subject       Paper3Subject
+  focusCategory Paper3FocusCategory  @default(MIXED) @map("focus_category")
+  timeLimit     Int                  @map("time_limit")
+  totalMarks    Int                  @map("total_marks")
+  createdBy     String               @map("created_by")
+  status        MockStatus           @default(DRAFT)
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  questions     Paper3MockQuestion[]
+  attempts      Paper3MockAttempt[]
 
   @@index([subject, status])
   @@map("paper3_mocks")
@@ -834,26 +888,26 @@ model Paper3MockQuestion {
 }
 
 model Paper3MockAttempt {
-  id                   String            @id @default(cuid())
-  userId               String            @map("user_id")
-  examProfileId        String?           @map("exam_profile_id")
-  mockId               String            @map("mock_id")
-  score                Float
-  totalMarks           Int               @map("total_marks")
-  timeTaken            Int?              @map("time_taken")
-  answers              Json
-  results              Json
-  status               MockAttemptStatus @default(IN_PROGRESS)
-  processingStatus     ProcessingStatus  @default(QUEUED) @map("processing_status")
-  correctAnswerViewed  Boolean           @default(false) @map("correct_answer_viewed")
-  shareId              String?          @unique @map("share_id")
-  sharedAt             DateTime?         @map("shared_at")
-  startedAt            DateTime          @default(now()) @map("started_at")
-  completedAt          DateTime?         @map("completed_at")
-  mock                 Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
-  user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile          ExamProfile?      @relation(fields: [examProfileId], references: [id])
-  detailedResults      Paper3DetailedResult[]
+  id                  String                 @id @default(cuid())
+  userId              String                 @map("user_id")
+  examProfileId       String?                @map("exam_profile_id")
+  mockId              String                 @map("mock_id")
+  score               Float
+  totalMarks          Int                    @map("total_marks")
+  timeTaken           Int?                   @map("time_taken")
+  answers             Json
+  results             Json
+  status              MockAttemptStatus      @default(IN_PROGRESS)
+  processingStatus    ProcessingStatus       @default(QUEUED) @map("processing_status")
+  correctAnswerViewed Boolean                @default(false) @map("correct_answer_viewed")
+  shareId             String?                @unique @map("share_id")
+  sharedAt            DateTime?              @map("shared_at")
+  startedAt           DateTime               @default(now()) @map("started_at")
+  completedAt         DateTime?              @map("completed_at")
+  mock                Paper3Mock             @relation(fields: [mockId], references: [id], onDelete: Cascade)
+  user                User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile         ExamProfile?           @relation(fields: [examProfileId], references: [id])
+  detailedResults     Paper3DetailedResult[]
 
   @@index([userId])
   @@index([examProfileId])
@@ -875,7 +929,7 @@ model Paper3UserStats {
   strongConcepts     String[] @default([]) @map("strong_concepts")
   readinessScore     Float    @default(0) @map("readiness_score")
 
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   examProfile ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
   @@index([examProfileId])
@@ -883,21 +937,21 @@ model Paper3UserStats {
 }
 
 model Paper3QuestionAttempt {
-  id             String        @id @default(cuid())
-  questionId      String        @map("question_id")
-  mockId         String?       @map("mock_id")
-  attemptId      String        @map("attempt_id")
-  userId         String        @map("user_id")
-  examProfileId  String?       @map("exam_profile_id")
-  userAnswer    String        @map("user_answer") @db.Text
-  isCorrect      Boolean       @map("is_correct")
-  marksEarned    Int          @map("marks_earned")
-  score         Float        @map("score")
-  timeAnswered   Int          @default(0) @map("time_answered")
-  createdAt     DateTime      @default(now()) @map("created_at")
+  id            String   @id @default(cuid())
+  questionId    String   @map("question_id")
+  mockId        String?  @map("mock_id")
+  attemptId     String   @map("attempt_id")
+  userId        String   @map("user_id")
+  examProfileId String?  @map("exam_profile_id")
+  userAnswer    String   @map("user_answer") @db.Text
+  isCorrect     Boolean  @map("is_correct")
+  marksEarned   Int      @map("marks_earned")
+  score         Float    @map("score")
+  timeAnswered  Int      @default(0) @map("time_answered")
+  createdAt     DateTime @default(now()) @map("created_at")
 
-  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile   ExamProfile?  @relation(fields: [examProfileId], references: [id])
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile ExamProfile? @relation(fields: [examProfileId], references: [id])
 
   @@index([questionId, score])
   @@index([questionId, userId])
@@ -906,22 +960,22 @@ model Paper3QuestionAttempt {
 }
 
 model Paper3DetailedResult {
-  id            String   @id @default(cuid())
-  attemptId     String   @map("attempt_id")
-  questionId    String   @map("question_id")
-  userAnswer    String   @map("user_answer") @db.Text
-  isCorrect     Boolean  @map("is_correct")
-  marksEarned   Int      @map("marks_earned")
-  totalMarks    Int      @map("total_marks")
-  feedback     String?  @map("feedback") @db.Text
-  feedbackMd   String?  @map("feedback_md") @db.Text
-  codeExplanation String? @map("code_explanation") @db.Text
-  breakdown    Json?    @map("breakdown")
-  partialCredit Boolean @default(false) @map("partial_credit")
-  createdAt     DateTime @default(now()) @map("created_at")
+  id              String   @id @default(cuid())
+  attemptId       String   @map("attempt_id")
+  questionId      String   @map("question_id")
+  userAnswer      String   @map("user_answer") @db.Text
+  isCorrect       Boolean  @map("is_correct")
+  marksEarned     Int      @map("marks_earned")
+  totalMarks      Int      @map("total_marks")
+  feedback        String?  @map("feedback") @db.Text
+  feedbackMd      String?  @map("feedback_md") @db.Text
+  codeExplanation String?  @map("code_explanation") @db.Text
+  breakdown       Json?    @map("breakdown")
+  partialCredit   Boolean  @default(false) @map("partial_credit")
+  createdAt       DateTime @default(now()) @map("created_at")
 
-  attempt       Paper3MockAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
-  question      Paper3Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  attempt  Paper3MockAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  question Paper3Question    @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@index([attemptId])
   @@index([questionId])
@@ -940,9 +994,9 @@ model Paper3Attempt {
   feedback      String?  @map("feedback") @db.Text
   evaluatedAt   DateTime @default(now()) @map("evaluated_at")
 
-  question   Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
-  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile ExamProfile?   @relation(fields: [examProfileId], references: [id])
+  question    Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile ExamProfile?    @relation(fields: [examProfileId], references: [id])
 
   @@index([userId])
   @@index([examProfileId])
@@ -1000,7 +1054,7 @@ enum Paper3TaskType {
   // Spreadsheet/Excel
   EXCEL_FORMULA
   EXCEL_GRID
-  // Database/Access  
+  // Database/Access
   ACCESS_TABLE
   ACCESS_RELATIONSHIP
   SQL_QUERY
@@ -1055,13 +1109,13 @@ enum ProcessingStatus {
 // ===========================================
 
 model CreditTransaction {
-  id          String   @id @default(cuid())
-  userId      String   @map("user_id")
-  amount      Int      // positive for earning, negative for spending
+  id          String     @id @default(cuid())
+  userId      String     @map("user_id")
+  amount      Int // positive for earning, negative for spending
   type        CreditType
   description String?
-  referenceId String? @map("reference_id") // e.g., quiz attempt ID, practice question ID
-  createdAt   DateTime @default(now()) @map("created_at")
+  referenceId String?    @map("reference_id") // e.g., quiz attempt ID, practice question ID
+  createdAt   DateTime   @default(now()) @map("created_at")
 
   user User @relation("UserCredits", fields: [userId], references: [id], onDelete: Cascade)
 
@@ -1071,10 +1125,10 @@ model CreditTransaction {
 }
 
 enum CreditType {
-  REFERRAL_BONUS    // 500 credits when someone signs up using your code
-  QUIZ_GENERATION   // Spending credits to generate quizzes
+  REFERRAL_BONUS // 500 credits when someone signs up using your code
+  QUIZ_GENERATION // Spending credits to generate quizzes
   PRACTICE_QUESTION // Spending credits on practice questions
-  BONUS             // Admin or promotional bonuses
+  BONUS // Admin or promotional bonuses
 }
 
 model ReferralBonus {

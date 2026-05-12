@@ -511,5 +511,31 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
         };
       },
     }),
+
+    searchKnowledge: tool({
+      description:
+        "Search the platform-wide knowledge base for explanations, summaries, and examples on any topic. Includes knowledge extracted from all users' notes and official exam questions.",
+      inputSchema: z.object({
+        query: z.string().min(2).describe("The topic or concept to search for"),
+        limit: z.number().int().min(1).max(10).default(5),
+      }),
+      execute: async ({ query, limit }) => {
+        const chunks = await prisma.knowledgeChunk.findMany({
+          where: {
+            topic: { name: { contains: query, mode: "insensitive" } },
+          },
+          take: limit,
+          orderBy: { createdAt: "desc" },
+          select: {
+            title: true,
+            content: true,
+            contentType: true,
+            sourceType: true,
+          },
+        });
+
+        return { results: chunks };
+      },
+    }),
   };
 }
