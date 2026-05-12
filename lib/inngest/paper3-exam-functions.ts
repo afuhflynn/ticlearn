@@ -18,12 +18,14 @@ type EvaluateExamEvent = {
 };
 
 const codeExplanationSchema = z.object({
-  explanations: z.array(z.object({
-    lineNumber: z.string(),
-    explanation: z.string(),
-    hasIssue: z.boolean(),
-    issueDescription: z.string().optional(),
-  })),
+  explanations: z.array(
+    z.object({
+      lineNumber: z.string(),
+      explanation: z.string(),
+      hasIssue: z.boolean(),
+      issueDescription: z.string().optional(),
+    }),
+  ),
   summary: z.string(),
 });
 
@@ -41,7 +43,8 @@ export const evaluatePaper3Exam = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { attemptId, mockId, userId, examProfileId, answers, timeTaken } = event.data as EvaluateExamEvent;
+    const { attemptId, mockId, userId, examProfileId, answers, timeTaken } =
+      event.data as EvaluateExamEvent;
 
     await step.run("update-status-to-processing", async () => {
       await prisma.paper3MockAttempt.update({
@@ -83,7 +86,11 @@ export const evaluatePaper3Exam = inngest.createFunction(
         feedback: string;
         feedbackMd: string | null;
         codeExplanation: string | null;
-        breakdown: Array<{ criteria: string; marks: number; description: string }>;
+        breakdown: Array<{
+          criteria: string;
+          marks: number;
+          description: string;
+        }>;
         partialCredit: boolean;
         taskType: string;
         questionTitle: string;
@@ -101,11 +108,13 @@ export const evaluatePaper3Exam = inngest.createFunction(
             expectedAnswer: mq.question.expectedAnswer,
             totalMarks: mq.marks,
             partialCredit: mq.question.partialCredit,
-            markingBreakdown: mq.question.markingBreakdown as Array<{
-              criteria: string;
-              marks: number;
-              description: string;
-            }> | undefined,
+            markingBreakdown: mq.question.markingBreakdown as
+              | Array<{
+                  criteria: string;
+                  marks: number;
+                  description: string;
+                }>
+              | undefined,
             language: mq.question.programmingLanguage ?? undefined,
           },
           userAnswer,
@@ -145,7 +154,12 @@ export const evaluatePaper3Exam = inngest.createFunction(
         if (result.isCorrect) {
           feedbackMd = `## Feedback\n\n${result.feedback}`;
         } else {
-          const needsCodeExplanation = ["C_PROGRAM", "PASCAL_PROGRAM", "WEB_PROGRAMMING", "ALGORITHM_PSEUDOCODE"].includes(result.taskType);
+          const needsCodeExplanation = [
+            "C_PROGRAM",
+            "PASCAL_PROGRAM",
+            "WEB_PROGRAMMING",
+            "ALGORITHM_PSEUDOCODE",
+          ].includes(result.taskType);
 
           feedbackMd = `## Feedback\n\n${result.feedback}\n\n### Expected Answer\n\n${result.taskType === "WEB_PROGRAMMING" ? "<!-- HTML Preview Below -->" : `\`\`\`\n${result.expectedAnswer}\n\`\`\``}`;
 
@@ -172,7 +186,8 @@ Provide line-by-line explanations in a code comment style.`,
               });
 
               const explanationLines = object.explanations.map(
-                (exp) => `// Line ${exp.lineNumber}: ${exp.explanation}${exp.hasIssue ? `\n// ⚠️ ${exp.issueDescription}` : ""}`,
+                (exp) =>
+                  `// Line ${exp.lineNumber}: ${exp.explanation}${exp.hasIssue ? `\n// ⚠️ ${exp.issueDescription}` : ""}`,
               );
 
               codeExplanation = `// Code Analysis for: ${result.questionTitle}\n${explanationLines.join("\n")}\n\n// Summary:\n${object.summary}`;
@@ -212,18 +227,23 @@ Provide line-by-line explanations in a code comment style.`,
             feedbackMd: result.feedbackMd,
             codeExplanation: result.codeExplanation,
             breakdown: result.breakdown as unknown as Prisma.JsonObject,
-            partialCredit: result.marksEarned > 0 && result.marksEarned < result.totalMarks,
+            partialCredit:
+              result.marksEarned > 0 && result.marksEarned < result.totalMarks,
           },
         });
       }
     });
 
-    const totalEarned = enrichedResults.reduce((sum, r) => sum + r.marksEarned, 0);
+    const totalEarned = enrichedResults.reduce(
+      (sum, r) => sum + r.marksEarned,
+      0,
+    );
     const score = (totalEarned / mock.totalMarks) * 100;
     const correctCount = enrichedResults.filter((r) => r.isCorrect).length;
     const wrongCount = enrichedResults.length - correctCount;
 
-    const basePoints = score >= 80 ? 20 : score >= 60 ? 15 : score >= 40 ? 10 : 5;
+    const basePoints =
+      score >= 80 ? 20 : score >= 60 ? 15 : score >= 40 ? 10 : 5;
     const aiBonus = correctCount * 2;
     const pointsEarned = basePoints + aiBonus;
 
@@ -276,7 +296,9 @@ Provide line-by-line explanations in a code comment style.`,
 
         if (existingStats) {
           const newExamsTaken = existingStats.mockExamsTaken + 1;
-          const newAvg = (existingStats.avgScore * existingStats.mockExamsTaken + score) / newExamsTaken;
+          const newAvg =
+            (existingStats.avgScore * existingStats.mockExamsTaken + score) /
+            newExamsTaken;
 
           await tx.paper3UserStats.update({
             where: { id: existingStats.id },
