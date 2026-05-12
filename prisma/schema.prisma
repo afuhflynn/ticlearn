@@ -156,10 +156,59 @@ model Component {
   examSessions   ExamSession[]
   paper3Sources  Paper3Source[]
   paper3Questions Paper3Question[]
+  topics         Topic[]
 
   @@unique([programId, code])
   @@index([programId])
   @@map("components")
+}
+
+model Topic {
+  id          String   @id @default(cuid())
+  componentId String   @map("component_id")
+  name        String
+  order       Int      @default(0)
+
+  component     Component         @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  userBaselines UserTopicBaseline[]
+  knowledgeChunks KnowledgeChunk[]
+
+  @@unique([componentId, name])
+  @@index([componentId])
+  @@map("topics")
+}
+
+model UserTopicBaseline {
+  id            String   @id @default(cuid())
+  examProfileId String   @map("exam_profile_id")
+  topicId       String   @map("topic_id")
+  confidence    Int      @default(3) // 1-5 scale
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
+  topic       Topic       @relation(fields: [topicId], references: [id])
+
+  @@unique([examProfileId, topicId])
+  @@index([examProfileId])
+  @@map("user_topic_baselines")
+}
+
+model KnowledgeChunk {
+  id          String   @id @default(cuid())
+  topicId     String   @map("topic_id")
+  sourceType  String   @map("source_type")
+  sourceId    String   @map("source_id")
+  title       String
+  content     String   @db.Text
+  contentType String   @map("content_type")
+  createdAt   DateTime @default(now())
+
+  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
+
+  @@index([topicId])
+  @@index([sourceType])
+  @@map("knowledge_chunks")
 }
 
 model ExamProfile {
@@ -168,6 +217,10 @@ model ExamProfile {
   programId            String   @map("program_id")
   onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
   onboardingStep       Int      @default(0)     @map("onboarding_step")
+  examYear             Int?     @map("exam_year")
+  examDate             DateTime? @map("exam_date")
+  isRetaking           Boolean  @default(false) @map("is_retaking")
+  studyHoursPerWeek    Int?     @map("study_hours_per_week")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -182,6 +235,7 @@ model ExamProfile {
   paper3QuestionAttempts Paper3QuestionAttempt[]
   userStats            UserStats[]
   paper3UserStats      Paper3UserStats[]
+  topicBaselines       UserTopicBaseline[]
 
   @@index([userId])
   @@map("exam_profiles")
