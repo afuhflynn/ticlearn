@@ -35,6 +35,7 @@ model User {
 
   // Active exam profile
   activeProfileId String? @map("active_profile_id")
+  activeProfile   ExamProfile? @relation("UserActiveProfile", fields: [activeProfileId], references: [id], onDelete: SetNull)
 
   // Relations
   examProfiles       ExamProfile[]
@@ -123,7 +124,6 @@ model ExamLevel {
   name      String
   code      String     @unique
   programs     Program[]
-  examProfiles ExamProfile[]
   createdAt    DateTime   @default(now())
 
   @@map("exam_levels")
@@ -161,7 +161,6 @@ model Component {
 model ExamProfile {
   id                   String   @id @default(cuid())
   userId               String   @map("user_id")
-  examLevelId          String   @map("exam_level_id")
   programId            String   @map("program_id")
   onboardingCompleted Boolean  @default(false) @map("onboarding_completed")
   onboardingStep       Int      @default(0)     @map("onboarding_step")
@@ -169,14 +168,16 @@ model ExamProfile {
   updatedAt            DateTime @updatedAt
 
   user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examLevel ExamLevel   @relation(fields: [examLevelId], references: [id])
   program   Program     @relation(fields: [programId], references: [id])
 
-  examSessions           ExamSession[]
-  quizAttempts           QuizAttempt[]
-  paper3Attempts         Paper3Attempt[]
-  paper3MockAttempts     Paper3MockAttempt[]
+  activeForUsers       User[]                @relation("UserActiveProfile")
+  examSessions         ExamSession[]
+  quizAttempts         QuizAttempt[]
+  paper3Attempts       Paper3Attempt[]
+  paper3MockAttempts   Paper3MockAttempt[]
   paper3QuestionAttempts Paper3QuestionAttempt[]
+  userStats            UserStats[]
+  paper3UserStats      Paper3UserStats[]
 
   @@index([userId])
   @@map("exam_profiles")
@@ -334,6 +335,7 @@ model UserStats {
   totalChats       Int       @default(0) @map("total_chats")
   avgScore         Float     @default(0) @map("avg_score")
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile      ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
   @@index([examProfileId])
   @@index([totalPoints])
@@ -865,7 +867,8 @@ model Paper3UserStats {
   strongConcepts     String[] @default([]) @map("strong_concepts")
   readinessScore     Float    @default(0) @map("readiness_score")
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  examProfile ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
   @@index([examProfileId])
   @@map("paper3_user_stats")
