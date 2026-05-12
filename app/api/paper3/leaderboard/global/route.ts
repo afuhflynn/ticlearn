@@ -53,8 +53,7 @@ export async function GET(
       };
     });
 
-    const userStats = await prisma.paper3UserStats.findUnique({
-      where: { userId: session.user.id },
+    const userStats = await prisma.paper3UserStats.findFirst({ where: { userId: session.user.id },
     });
 
     let currentUserRank: number | null = null;

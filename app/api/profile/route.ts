@@ -37,7 +37,7 @@ export async function GET() {
       where: { userId: session.user.id },
     });
 
-    const stats = await prisma.userStats.findUnique({
+    const stats = await prisma.userStats.findFirst({
       where: { userId: session.user.id },
     });
 

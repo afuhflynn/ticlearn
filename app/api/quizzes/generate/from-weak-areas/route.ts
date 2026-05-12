@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const paper3Stats = await prisma.paper3UserStats.findUnique({
+    const paper3Stats = await prisma.paper3UserStats.findFirst({
       where: { userId: session.user.id },
     });
 

@@ -333,7 +333,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
       execute: async () => {
         const [userStats, noteCount, quizCount, attemptCount, avgScore] =
           await Promise.all([
-            prisma.userStats.findUnique({
+            prisma.userStats.findFirst({
               where: { userId },
             }),
             prisma.note.count({ where: { userId } }),

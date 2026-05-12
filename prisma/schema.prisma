@@ -38,14 +38,14 @@ model User {
   activeProfile   ExamProfile? @relation("UserActiveProfile", fields: [activeProfileId], references: [id], onDelete: SetNull)
 
   // Relations
-  examProfiles       ExamProfile[]
+  examProfiles       ExamProfile[]    @relation("UserExamProfiles")
   sessions           Session[]
   accounts           Account[]
   notes              Note[]
   quizzes            Quiz[]
   quizAttempts       QuizAttempt[]
   examSessions       ExamSession[]
-  userStats          UserStats?
+  userStats          UserStats[]
   subscriptions      Subscription[]
   ratings            Rating[]
   feedbacks          Feedback[]
@@ -58,7 +58,7 @@ model User {
   chatConversations  ChatConversation[]
   chatMessages       ChatMessage[]
   adminInvites       AdminInvite[]       @relation("InvitedBy")
-  paper3UserStats    Paper3UserStats?
+  paper3UserStats    Paper3UserStats[]
   paper3Attempts     Paper3Attempt[]
   paper3MockAttempts Paper3MockAttempt[]
   paper3QuestionAttempts Paper3QuestionAttempt[]
@@ -187,7 +187,7 @@ model UserTopicBaseline {
   updatedAt     DateTime @updatedAt
 
   examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
-  topic       Topic       @relation(fields: [topicId], references: [id])
+  topic       Topic       @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@unique([examProfileId, topicId])
   @@index([examProfileId])
@@ -224,8 +224,8 @@ model ExamProfile {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  program   Program     @relation(fields: [programId], references: [id])
+  user      User        @relation("UserExamProfiles", fields: [userId], references: [id], onDelete: Cascade)
+  program   Program     @relation(fields: [programId], references: [id], onDelete: Restrict)
 
   activeForUsers       User[]                @relation("UserActiveProfile")
   examSessions         ExamSession[]
@@ -238,6 +238,7 @@ model ExamProfile {
   topicBaselines       UserTopicBaseline[]
 
   @@index([userId])
+  @@index([programId])
   @@map("exam_profiles")
 }
 
@@ -327,13 +328,13 @@ model QuizAttempt {
   correctAnswers Int                 @map("correct_answers")
   completedAt    DateTime            @default(now()) @map("completed_at")
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile    ExamProfile?        @relation(fields: [examProfileId], references: [id])
-  quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
-  answers        QuizAttemptAnswer[]
+   examProfile    ExamProfile?        @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
+   quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
+   answers        QuizAttemptAnswer[]
 
-  @@index([userId])
-  @@index([examProfileId])
-  @@index([quizId])
+   @@index([userId])
+   @@index([examProfileId])
+   @@index([quizId])
   @@index([completedAt])
   @@map("quiz_attempts")
 }
@@ -373,7 +374,7 @@ model ExamSession {
   createdAt    DateTime    @default(now())
   updatedAt    DateTime    @updatedAt
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile  ExamProfile? @relation(fields: [examProfileId], references: [id])
+  examProfile  ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
   component    Component?   @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   @@index([userId])
@@ -384,7 +385,7 @@ model ExamSession {
 
 model UserStats {
   id               String    @id @default(cuid())
-  userId           String    @unique @map("user_id")
+  userId           String    @map("user_id")
   examProfileId    String?   @map("exam_profile_id")
   totalPoints      Int       @default(0) @map("total_points")
   currentStreak    Int       @default(0) @map("current_streak")
@@ -396,6 +397,7 @@ model UserStats {
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   examProfile      ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
+  @@unique([userId, examProfileId])
   @@index([examProfileId])
   @@index([totalPoints])
   @@map("user_stats")
@@ -906,7 +908,7 @@ model Paper3MockAttempt {
   completedAt          DateTime?         @map("completed_at")
   mock                 Paper3Mock        @relation(fields: [mockId], references: [id], onDelete: Cascade)
   user                 User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile          ExamProfile?      @relation(fields: [examProfileId], references: [id])
+  examProfile          ExamProfile?      @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
   detailedResults      Paper3DetailedResult[]
 
   @@index([userId])
@@ -918,7 +920,7 @@ model Paper3MockAttempt {
 
 model Paper3UserStats {
   id                 String   @id @default(cuid())
-  userId             String   @unique @map("user_id")
+  userId             String   @map("user_id")
   examProfileId      String?  @map("exam_profile_id")
   questionsAttempted Int      @default(0) @map("questions_attempted")
   questionsCorrect   Int      @default(0) @map("questions_correct")
@@ -932,6 +934,7 @@ model Paper3UserStats {
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   examProfile ExamProfile? @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
+  @@unique([userId, examProfileId])
   @@index([examProfileId])
   @@map("paper3_user_stats")
 }
@@ -951,7 +954,7 @@ model Paper3QuestionAttempt {
   createdAt     DateTime      @default(now()) @map("created_at")
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile   ExamProfile?  @relation(fields: [examProfileId], references: [id])
+  examProfile   ExamProfile?  @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
   @@index([questionId, score])
   @@index([questionId, userId])
@@ -996,7 +999,7 @@ model Paper3Attempt {
 
   question   Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  examProfile ExamProfile?   @relation(fields: [examProfileId], references: [id])
+  examProfile ExamProfile?   @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([examProfileId])

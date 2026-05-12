@@ -57,7 +57,7 @@ export async function GET(req: Request) {
         },
         totalPoints: {
           gt: (
-            await prisma.userStats.findUnique({
+            await prisma.userStats.findFirst({
               where: { userId: session.user.id },
               select: { totalPoints: true },
             })

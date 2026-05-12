@@ -70,7 +70,7 @@ export async function GET(
         };
       });
 
-      const userStats = await prisma.paper3UserStats.findUnique({
+      const userStats = await prisma.paper3UserStats.findFirst({
         where: { userId: session.user.id },
       });
 
