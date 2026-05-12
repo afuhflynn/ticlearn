@@ -1,8 +1,8 @@
 import { prisma } from "../lib/prisma";
 
 function lookupComponent(programId: string, code: string) {
-  return prisma.component.findFirstOrThrow({
-    where: { programId, code },
+  return prisma.component.findUnique({
+    where: { programId_code: { programId, code } },
   });
 }
 
@@ -42,8 +42,8 @@ async function ensureSeedData() {
 
   // Create components for each program (skip if already exist)
   for (const program of [cs, ict]) {
-    const existing = await prisma.component.findFirst({
-      where: { programId: program.id, code: "P3" },
+    const existing = await prisma.component.findUnique({
+      where: { programId_code: { programId: program.id, code: "P3" } },
     });
     if (!existing) {
       await prisma.component.createMany({
@@ -84,10 +84,8 @@ async function migrate() {
 
   let profilesCreated = 0;
   let attemptsBackfilled = 0;
-  let sourcesMapped = 0;
 
   for (const user of users) {
-    // Skip users who already have a profile
     if (user.activeProfileId) {
       const existingProfile = await prisma.examProfile.findUnique({
         where: { id: user.activeProfileId },
@@ -98,23 +96,19 @@ async function migrate() {
       }
     }
 
-    // Step 2: Create ExamProfile
     const profile = await prisma.examProfile.create({
       data: {
         userId: user.id,
-        examLevelId: (await prisma.examLevel.findUniqueOrThrow({ where: { code: "GCE_AL" } })).id,
         programId: unknown.id,
       },
     });
     profilesCreated++;
 
-    // Step 3: Set activeProfileId
     await prisma.user.update({
       where: { id: user.id },
       data: { activeProfileId: profile.id },
     });
 
-    // Step 4: Backfill examProfileId on attempt models
     const mockBackfill = await prisma.paper3MockAttempt.updateMany({
       where: { userId: user.id, examProfileId: null },
       data: { examProfileId: profile.id },
@@ -136,7 +130,6 @@ async function migrate() {
       data: { examProfileId: profile.id },
     });
 
-    // Stats models — just set data field (no FK relation)
     if (user.userStats) {
       await prisma.userStats.update({
         where: { userId: user.id },
@@ -156,38 +149,33 @@ async function migrate() {
       qAttemptBackfill.count +
       quizBackfill.count +
       examBackfill.count;
-
-    // Step 5: Map Paper3Source to component
-    const userSources = await prisma.paper3Source.findMany({
-      where: { componentId: null },
-      select: { id: true, subject: true },
-    });
-
-    for (const source of userSources) {
-      const componentId =
-        source.subject === "COMPUTER_SCIENCE" ? csP3.id : source.subject === "ICT" ? ictP3.id : null;
-      if (!componentId) continue;
-
-      await prisma.paper3Source.update({
-        where: { id: source.id },
-        data: { componentId },
-      });
-
-      // Also backfill componentId on questions from this source
-      await prisma.paper3Question.updateMany({
-        where: { sourceId: source.id, componentId: null },
-        data: { componentId },
-      });
-
-      sourcesMapped++;
-    }
   }
 
+  // Step 5: Map Paper3Source to component (outside user loop — global content)
   console.log(`\n[2/5] Profiles created: ${profilesCreated}`);
   console.log(`[3/5] Attempt rows backfilled: ${attemptsBackfilled}`);
+
+  const csSourcesUpdated = await prisma.paper3Source.updateMany({
+    where: { componentId: null, subject: "COMPUTER_SCIENCE" },
+    data: { componentId: csP3?.id },
+  });
+  const ictSourcesUpdated = await prisma.paper3Source.updateMany({
+    where: { componentId: null, subject: "ICT" },
+    data: { componentId: ictP3?.id },
+  });
+
+  // Backfill question componentIds from their sources
+  await prisma.$executeRawUnsafe(`
+    UPDATE "paper3_questions" q
+    SET "component_id" = s."component_id"
+    FROM "paper3_sources" s
+    WHERE q."source_id" = s."id" AND q."component_id" IS NULL
+  `);
+
+  const sourcesMapped = csSourcesUpdated.count + ictSourcesUpdated.count;
   console.log(`[4/5] Sources mapped to components: ${sourcesMapped}`);
 
-  // Step 5: Verify
+  // Verification
   console.log(`\n[5/5] Verification...`);
   const profileCount = await prisma.examProfile.count();
   const userWithProfile = await prisma.user.count({ where: { activeProfileId: { not: null } } });

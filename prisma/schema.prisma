@@ -152,8 +152,12 @@ model Component {
   type      ComponentType // PAPER | COURSE
   timeLimit  Int?
 
-  program Program @relation(fields: [programId], references: [id], onDelete: Cascade)
+  program        Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
+  examSessions   ExamSession[]
+  paper3Sources  Paper3Source[]
+  paper3Questions Paper3Question[]
 
+  @@unique([programId, code])
   @@index([programId])
   @@map("components")
 }
@@ -316,6 +320,7 @@ model ExamSession {
   updatedAt    DateTime    @updatedAt
   user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
   examProfile  ExamProfile? @relation(fields: [examProfileId], references: [id])
+  component    Component?   @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([examProfileId])
@@ -743,6 +748,7 @@ model Paper3Source {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
   questions       Paper3Question[]
+  component       Component?       @relation(fields: [componentId], references: [id], onDelete: SetNull)
 
   @@index([year, subject])
   @@index([componentId])
@@ -783,11 +789,13 @@ model Paper3Question {
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
   source                Paper3Source         @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  component             Component?           @relation(fields: [componentId], references: [id], onDelete: SetNull)
   mockQuestions         Paper3MockQuestion[]
   attempts              Paper3Attempt[]
   detailedResults      Paper3DetailedResult[]
 
   @@index([sourceId])
+  @@index([componentId])
   @@index([section, taskType])
   @@index([status])
   @@map("paper3_questions")
