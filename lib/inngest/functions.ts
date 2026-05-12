@@ -128,6 +128,11 @@ export const processNote = inngest.createFunction(
       });
 
       console.log(`Note processed successfully: ${noteId}`);
+
+      await inngest
+        .send({ name: "note/harvest-knowledge", data: { noteId } })
+        .catch((err) => console.error("Failed to trigger harvest:", err));
+
       return { success: true, noteId };
     } catch (error) {
       console.error("Note processing error:", error);
