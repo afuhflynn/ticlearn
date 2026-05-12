@@ -6,7 +6,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 
-const aiModel = openai("gpt-5.4");
+const aiModel = openai("gpt-5.5");
 
 interface ChatMessage {
   role: "user" | "assistant";

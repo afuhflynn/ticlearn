@@ -6,7 +6,7 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
 
-const aiModel = openai("gpt-5.4");
+const aiModel = openai("gpt-5.5");
 
 type EvaluateExamEvent = {
   attemptId: string;

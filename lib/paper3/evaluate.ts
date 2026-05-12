@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 
-const aiModel = openai("gpt-5.4");
+const aiModel = openai("gpt-5.5");
 
 // Must match Prisma enum in lib/generated/prisma/enums.ts
 export type Paper3TaskType =
