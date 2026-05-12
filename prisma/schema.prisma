@@ -34,7 +34,7 @@ model User {
   totalCreditsEarned Int   @default(0) @map("total_credits_earned")
 
   // Active exam profile
-  activeProfileId String? @map("active_profile_id")
+  activeProfileId String? @unique @map("active_profile_id")
   activeProfile   ExamProfile? @relation("UserActiveProfile", fields: [activeProfileId], references: [id], onDelete: SetNull)
 
   // Relations
@@ -227,7 +227,7 @@ model ExamProfile {
   user      User        @relation("UserExamProfiles", fields: [userId], references: [id], onDelete: Cascade)
   program   Program     @relation(fields: [programId], references: [id], onDelete: Restrict)
 
-  activeForUsers       User[]                @relation("UserActiveProfile")
+  activeForUser       User?                 @relation("UserActiveProfile")
   examSessions         ExamSession[]
   quizAttempts         QuizAttempt[]
   paper3Attempts       Paper3Attempt[]
@@ -997,7 +997,7 @@ model Paper3Attempt {
   feedback      String?  @map("feedback") @db.Text
   evaluatedAt   DateTime @default(now()) @map("evaluated_at")
 
-  question   Paper3Question? @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  question   Paper3Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   examProfile ExamProfile?   @relation(fields: [examProfileId], references: [id], onDelete: SetNull)
 
