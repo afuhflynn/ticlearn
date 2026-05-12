@@ -45,11 +45,51 @@ export async function GET() {
       where: { userId: session.user.id },
     });
 
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    let examLevel: string | null = null;
+    let program: string | null = null;
+    let examYear: number | null = null;
+    let daysRemaining: number | null = null;
+    let isRetaking = false;
+    let studyHoursPerWeek: number | null = null;
+
+    if (user.id) {
+      const profileUser = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { activeProfileId: true },
+      });
+      if (profileUser?.activeProfileId) {
+        const ep = await prisma.examProfile.findUnique({
+          where: { id: profileUser.activeProfileId },
+          include: { program: { include: { examLevel: true } } },
+        });
+        if (ep) {
+          examLevel = ep.program.examLevel.name;
+          program = ep.program.name;
+          examYear = ep.examYear;
+          daysRemaining = ep.examDate
+            ? Math.ceil((ep.examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+            : null;
+          isRetaking = ep.isRetaking;
+          studyHoursPerWeek = ep.studyHoursPerWeek;
+        }
+      }
+    }
+
     return NextResponse.json({
       user,
       settings,
       stats,
       affiliate,
+      examLevel,
+      program,
+      examYear,
+      daysRemaining,
+      isRetaking,
+      studyHoursPerWeek,
     });
   } catch (error) {
     console.error("Profile GET error:", error);

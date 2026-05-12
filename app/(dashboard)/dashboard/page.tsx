@@ -1,8 +1,9 @@
 "use client";
 
-import { FileText, ListTodo, Plus, TrendingUp, Zap } from "lucide-react";
+import { FileText, ListTodo, Plus, TrendingUp, Zap, Clock, Target, Brain } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,8 +14,21 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { useNotes, useQuizzes, useUserStats } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+
+interface ProfileData {
+  examLevel: string;
+  program: string;
+  examYear: number | null;
+  daysRemaining: number | null;
+  isRetaking: boolean;
+  studyHoursPerWeek: number | null;
+  readiness: number;
+  weakestTopic: string | null;
+  needsAssessment: boolean;
+}
 
 export default function DashboardPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -22,9 +36,38 @@ export default function DashboardPage() {
   const { notes, isLoading: notesLoading } = useNotes();
   const { quizzes, isLoading: quizzesLoading } = useQuizzes("my");
 
-  if (sessionPending || statsLoading) {
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/onboarding/readiness")
+      .then((r) => r.json())
+      .then((data) => {
+        fetch("/api/profile")
+          .then((r) => r.json())
+          .then((p) => {
+            setProfile({
+              examLevel: p.examLevel ?? "",
+              program: p.program ?? "",
+              examYear: p.examYear ?? null,
+              daysRemaining: p.daysRemaining ?? null,
+              isRetaking: p.isRetaking ?? false,
+              studyHoursPerWeek: p.studyHoursPerWeek ?? null,
+              readiness: data.readiness ?? 50,
+              weakestTopic: data.weakestTopic ?? null,
+              needsAssessment: data.needsAssessment ?? true,
+            });
+            setProfileLoading(false);
+          })
+          .catch(() => setProfileLoading(false));
+      })
+      .catch(() => setProfileLoading(false));
+  }, []);
+
+  if (sessionPending || statsLoading || profileLoading) {
     return (
       <div className="space-y-6">
+        <Skeleton className="h-32" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32" />
@@ -37,6 +80,75 @@ export default function DashboardPage() {
   if (!session) {
     redirect("/sign-in");
   }
+
+  const profileCard = profile ? (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-xl">{profile.program}</CardTitle>
+            <CardDescription>{profile.examLevel}</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <div
+              className={`flex h-14 w-14 items-center justify-center rounded-full border-4 text-lg font-bold ${
+                profile.readiness >= 70
+                  ? "border-green-500 text-green-600"
+                  : profile.readiness >= 40
+                    ? "border-yellow-500 text-yellow-600"
+                    : "border-red-500 text-red-600"
+              }`}
+            >
+              {profile.readiness}%
+            </div>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-wrap gap-4">
+          {profile.daysRemaining !== null && (
+            <div className="flex items-center gap-2 text-sm">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span>
+                <strong>{profile.daysRemaining}</strong> days until exam
+              </span>
+            </div>
+          )}
+          {profile.examYear && (
+            <div className="flex items-center gap-2 text-sm">
+              <Target className="h-4 w-4 text-muted-foreground" />
+              <span>Year: {profile.examYear}</span>
+            </div>
+          )}
+          {profile.isRetaking && (
+            <Badge variant="secondary">Retaking</Badge>
+          )}
+          {profile.studyHoursPerWeek && (
+            <span className="text-sm text-muted-foreground">
+              {profile.studyHoursPerWeek}h/week study
+            </span>
+          )}
+        </div>
+        {profile.weakestTopic && (
+          <div className="mt-3 flex items-center gap-2 text-sm">
+            <Brain className="h-4 w-4 text-orange-500" />
+            <span>
+              Focus: <strong>{profile.weakestTopic}</strong>
+            </span>
+          </div>
+        )}
+        {profile.needsAssessment && (
+          <div className="mt-3">
+            <Link href="/onboarding">
+              <Button variant="outline" size="sm">
+                Complete assessment to improve accuracy
+              </Button>
+            </Link>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  ) : null;
 
   const statsData = [
     {
@@ -55,7 +167,7 @@ export default function DashboardPage() {
     },
     {
       title: "Avg Score",
-      value: `${Math.round(stats?.avgScore || 0)}%`,
+      value: stats?.avgScore ? `${Math.round(stats.avgScore)}%` : "0%",
       icon: TrendingUp,
       color: "text-green-500",
       bg: "bg-green-500/10",
@@ -69,217 +181,135 @@ export default function DashboardPage() {
     },
   ];
 
-  const recentNotes = notes
-    .slice(0, 4)
-    .map((note: { id: string; title: string; subject: string }) => ({
-      id: note.id,
-      title: note.title,
-      subject: note.subject,
-    }));
-
-  const recentQuizzes = quizzes
-    .slice(0, 4)
-    .map((quiz: { id: string; title: string; questionCount: number }) => ({
-      id: quiz.id,
-      title: quiz.title,
-      questionCount: quiz.questionCount,
-    }));
-
-  const hasNotes = recentNotes.length > 0;
-  const hasQuizzes = recentQuizzes.length > 0;
-
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {session.user?.name?.split(" ")[0] || "Student"}!
-          </h1>
-          <p className="text-muted-foreground">
-            Ready to continue your learning journey?
-          </p>
+          <h1 className="text-2xl font-bold">Welcome back, {session.user.name?.split(" ")[0] || "Student"}!</h1>
+          {profile && <p className="text-muted-foreground">{profile.program} · {profile.examLevel}</p>}
         </div>
         <div className="flex gap-2">
-          <Button asChild>
-            <Link href="/upload">
-              <Plus className="mr-2 h-4 w-4" />
-              Upload Notes
-            </Link>
-          </Button>
+          <Link href="/upload">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Upload Notes
+            </Button>
+          </Link>
         </div>
       </div>
 
+      {profileCard}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {statsData.map((stat) => (
-          <Card key={stat.title}>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
+        {statsData.map((stat) => {
+          const Icon = stat.icon;
+          return (
+            <Card key={stat.title}>
+              <CardContent className="flex items-center gap-4 p-6">
+                <div className={`rounded-lg p-3 ${stat.bg}`}>
+                  <Icon className={`h-6 w-6 ${stat.color}`} />
+                </div>
                 <div>
                   <p className="text-sm text-muted-foreground">{stat.title}</p>
                   <p className="text-2xl font-bold">{stat.value}</p>
                 </div>
-                <div className={`rounded-full p-3 ${stat.bg}`}>
-                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Recent Notes</CardTitle>
-              <CardDescription>Your latest uploaded notes</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/upload">View All</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {notesLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16" />
-                ))}
-              </div>
-            ) : hasNotes ? (
-              <div className="space-y-4">
-                {recentNotes.map(
-                  (note: { id: string; title: string; subject: string }) => (
-                    <div
-                      key={note.id}
-                      className="flex items-center gap-4 rounded-lg border p-3"
-                    >
-                      <FileText className="h-8 w-8 text-muted-foreground" />
-                      <div className="flex-1">
-                        <p className="font-medium">{note.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {note.subject}
-                        </p>
-                      </div>
-                    </div>
-                  ),
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <div className="rounded-full bg-muted p-4">
-                  <FileText className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium">No notes yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Upload your first note to get started
-                  </p>
-                </div>
-                <Button asChild>
-                  <Link href="/upload">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Upload Notes
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Recent Quizzes</CardTitle>
-              <CardDescription>Your latest quizzes</CardDescription>
-            </div>
-            <Button variant="ghost" size="sm" asChild>
-              <Link href="/quizzes">View All</Link>
-            </Button>
-          </CardHeader>
-          <CardContent>
-            {quizzesLoading ? (
-              <div className="space-y-2">
-                {[1, 2, 3].map((i) => (
-                  <Skeleton key={i} className="h-16" />
-                ))}
-              </div>
-            ) : hasQuizzes ? (
-              <div className="space-y-4">
-                {recentQuizzes.map(
-                  (quiz: {
-                    id: string;
-                    title: string;
-                    questionCount: number;
-                  }) => (
-                    <div
-                      key={quiz.id}
-                      className="flex items-center gap-4 rounded-lg border p-3"
-                    >
-                      <ListTodo className="h-8 w-8 text-muted-foreground" />
-                      <div className="flex-1">
-                        <p className="font-medium">{quiz.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {quiz.questionCount} questions
-                        </p>
-                      </div>
-                      <Button size="sm" asChild>
-                        <Link href={`/quiz/${quiz.id}`}>Start</Link>
-                      </Button>
-                    </div>
-                  ),
-                )}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <div className="rounded-full bg-muted p-4">
-                  <ListTodo className="h-8 w-8 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="font-medium">No quizzes yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Generate a quiz from your notes
-                  </p>
-                </div>
-                <Button asChild>
-                  <Link href="/upload">
-                    <Plus className="mr-2 h-4 w-4" />
-                    Generate Quiz
-                  </Link>
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
+      {/* Recent Notes */}
       <Card>
-        <CardHeader>
-          <CardTitle>Weekly Progress</CardTitle>
-          <CardDescription>Your learning activity this week</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent Notes</CardTitle>
+            <CardDescription>Your latest uploaded study materials.</CardDescription>
+          </div>
+          <Link href="/upload">
+            <Button variant="outline" size="sm">
+              <Plus className="mr-2 h-4 w-4" /> Add Note
+            </Button>
+          </Link>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Study Time</span>
-              <span className="text-sm font-medium">
-                {stats?.totalNotes || 0} notes / 10 goal
-              </span>
+          {notesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
             </div>
-            <Progress
-              value={((stats?.totalNotes || 0) / 10) * 100}
-              className="h-2"
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Quizzes Completed</span>
-              <span className="text-sm font-medium">
-                {stats?.quizzesTaken || 0} / 5
-              </span>
+          ) : notes && notes.length > 0 ? (
+            <div className="space-y-3">
+              {notes.slice(0, 4).map((note) => (
+                <div key={note.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div className="flex items-center gap-3">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <p className="font-medium">{note.title}</p>
+                      <p className="text-sm text-muted-foreground">{note.subject}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={note.status === "READY" ? "default" : "secondary"}>
+                      {note.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
             </div>
-            <Progress
-              value={((stats?.quizzesTaken || 0) / 5) * 100}
-              className="h-2"
-            />
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">No notes yet.</p>
+              <Link href="/upload">
+                <Button variant="link">Upload your first note</Button>
+              </Link>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Quizzes */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Recent Quizzes</CardTitle>
+            <CardDescription>Your latest quiz attempts.</CardDescription>
           </div>
+          <Link href="/quizzes">
+            <Button variant="outline" size="sm">
+              View All
+            </Button>
+          </Link>
+        </CardHeader>
+        <CardContent>
+          {quizzesLoading ? (
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <Skeleton key={i} className="h-16" />
+              ))}
+            </div>
+          ) : quizzes && quizzes.length > 0 ? (
+            <div className="space-y-3">
+              {quizzes.slice(0, 4).map((quiz) => (
+                <div key={quiz.id} className="flex items-center justify-between rounded-lg border p-3">
+                  <div>
+                    <p className="font-medium">{quiz.title}</p>
+                    <p className="text-sm text-muted-foreground">{quiz.questionCount} questions</p>
+                  </div>
+                  <Link href={`/quizzes/${quiz.id}`}>
+                    <Button size="sm" variant="outline">Start</Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center">
+              <p className="text-muted-foreground">No quizzes yet.</p>
+              <Link href="/upload">
+                <Button variant="link">Upload a note to generate quizzes</Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
