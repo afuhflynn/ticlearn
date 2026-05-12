@@ -187,7 +187,7 @@ model UserTopicBaseline {
   updatedAt     DateTime @updatedAt
 
   examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
-  topic       Topic       @relation(fields: [topicId], references: [id])
+  topic       Topic       @relation(fields: [topicId], references: [id], onDelete: Cascade)
 
   @@unique([examProfileId, topicId])
   @@index([examProfileId])
