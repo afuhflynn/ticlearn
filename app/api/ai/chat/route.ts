@@ -16,10 +16,12 @@ import {
 } from "@/lib/chat-messages";
 import { getChatResetWindow } from "@/lib/chat-usage";
 import { prisma } from "@/lib/prisma";
+import { getActiveProfileId } from "@/lib/exam-profile";
+import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
-const model = openai("gpt-5.2-chat-latest");
+const model = openai("gpt-5.5");
 
 async function generateTitle(userMessage: string): Promise<string> {
   const result = await generateText({
@@ -205,10 +207,49 @@ export async function POST(req: Request) {
       });
     }
 
+    const profileId = await getActiveProfileId(userId);
+    let profileContext = "";
+
+    if (profileId) {
+      try {
+        const readiness = await computeReadiness(profileId);
+
+        const programsList = readiness.programReadiness
+          .map((p) => `${p.program}: ${p.readiness}%`)
+          .join(", ");
+
+        const weakestThree = readiness.topicReadiness
+          .sort((a, b) => a.score - b.score)
+          .slice(0, 3)
+          .map((t) => `${t.topic} (${t.score}%)`)
+          .join(", ");
+
+        const recommendations = readiness.weakestTopic
+          ? `Focus area: ${readiness.weakestTopic.name} (${readiness.weakestTopic.score}%)`
+          : "";
+
+        profileContext = `\n
+STUDENT PROFILE:
+- Programs: ${programsList || "Not set"}
+- Overall Readiness: ${readiness.readiness}%
+${readiness.weakestTopic ? `- Weakest Topics: ${weakestThree}` : ""}
+${readiness.strongestTopic ? `- Strongest Topic: ${readiness.strongestTopic.name} (${readiness.strongestTopic.score}%)` : ""}
+${readiness.daysUntilExam !== null ? `- Days Until Exam: ${readiness.daysUntilExam}` : ""}
+${readiness.highRisk ? "- ⚠️ HIGH RISK: Exam is approaching and readiness is low" : ""}
+${recommendations ? `- ${recommendations}` : ""}
+
+Use this profile to personalize study recommendations, focus on weakest topics, and align advice with the student's current readiness level.
+`;
+      } catch (e) {
+        console.error("Failed to compute readiness for chat context:", e);
+      }
+    }
+
     const systemPrompt = `You are TiCLearn AI and your name is TiC, an intelligent study assistant specialized in helping Cameroon GCE A-Level students.
     NOTE:
     1. Here is the users name use it to make the conversation more personal: ${session.user.name}.
     2. Avoid using too many emojis. Be friendly and use emojis only when necessary but be clean and serious.
+    ${profileContext}
 
 Your expertise:
 - Computer Science and ICT (GCE A-Level syllabus)
