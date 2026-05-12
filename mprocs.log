@@ -638,3 +638,12 @@ WARN [lib::vt100::screen] CSI not implemented: ESC [ 22;0;0  t
 ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
 ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
 ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+WARN [lib::vt100::screen] CSI not implemented: ESC [ 22;0;0  t
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+WARN [lib::vt100::screen] CSI not implemented: ESC [ 22;0;0  t
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)
+ERROR [lib::proc::proc] Process read() error: I/O error (os error 5)

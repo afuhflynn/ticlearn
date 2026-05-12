@@ -50,7 +50,12 @@ export async function POST(req: Request) {
           return NextResponse.json({ error: "UNKNOWN program not found" }, { status: 500 });
         }
         const profile = await prisma.examProfile.create({
-          data: { userId: user.id, programId: unknownProgram.id },
+          data: {
+            userId: user.id,
+            programs: {
+              create: { programId: unknownProgram.id },
+            },
+          },
         });
         await prisma.user.update({
           where: { id: user.id },
@@ -67,9 +72,20 @@ export async function POST(req: Request) {
     switch (step) {
       case 1:
         break;
-      case 2:
-        updateData.programId = (data as Record<string, unknown>).programId;
+      case 2: {
+        const programIds = (data as Record<string, unknown>).programIds as string[];
+        if (!Array.isArray(programIds) || programIds.length === 0) {
+          return NextResponse.json({ error: "programIds must be a non-empty array" }, { status: 400 });
+        }
+        for (const pid of programIds) {
+          await prisma.examProfileProgram.upsert({
+            where: { examProfileId_programId: { examProfileId: activeProfileId, programId: pid } },
+            update: {},
+            create: { examProfileId: activeProfileId, programId: pid },
+          });
+        }
         break;
+      }
       case 3:
         if ((data as Record<string, unknown>).examYear) {
           updateData.examYear = (data as Record<string, unknown>).examYear;

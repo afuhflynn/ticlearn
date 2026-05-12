@@ -135,7 +135,7 @@ model Program {
   name         String
   code         String        @unique
   components   Component[]
-  examProfiles ExamProfile[]
+  examProfilePrograms ExamProfileProgram[]
   createdAt    DateTime      @default(now())
 
   examLevel ExamLevel @relation(fields: [examLevelId], references: [id], onDelete: Cascade)
@@ -211,10 +211,24 @@ model KnowledgeChunk {
   @@map("knowledge_chunks")
 }
 
+model ExamProfileProgram {
+  id            String      @id @default(cuid())
+  examProfileId String      @map("exam_profile_id")
+  programId     String      @map("program_id")
+  confidence    Int?        @default(3)
+  createdAt     DateTime    @default(now())
+
+  examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
+  program     Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([examProfileId, programId])
+  @@index([examProfileId])
+  @@map("exam_profile_programs")
+}
+
 model ExamProfile {
   id                  String    @id @default(cuid())
   userId              String    @map("user_id")
-  programId           String    @map("program_id")
   onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
   onboardingStep      Int       @default(0) @map("onboarding_step")
   examYear            Int?      @map("exam_year")
@@ -225,7 +239,6 @@ model ExamProfile {
   updatedAt           DateTime  @updatedAt
 
   user    User    @relation("UserExamProfiles", fields: [userId], references: [id], onDelete: Cascade)
-  program Program @relation(fields: [programId], references: [id])
 
   activeForUser          User?                   @relation("UserActiveProfile")
   examSessions           ExamSession[]
@@ -236,9 +249,9 @@ model ExamProfile {
   userStats              UserStats[]
   paper3UserStats        Paper3UserStats[]
   topicBaselines         UserTopicBaseline[]
+  programs               ExamProfileProgram[]
 
   @@index([userId])
-  @@index([programId])
   @@map("exam_profiles")
 }
 

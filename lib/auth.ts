@@ -76,12 +76,14 @@ export const auth = betterAuth({
             const unknownProgram = await prisma.program.findUnique({
               where: { code: "UNKNOWN" },
             });
-            if (unknownProgram) {
-          const profile = await prisma.examProfile.create({
-            data: {
-              userId: user.id,
-              programId: unknownProgram.id,
-            },
+          if (unknownProgram) {
+            const profile = await prisma.examProfile.create({
+              data: {
+                userId: user.id,
+                programs: {
+                  create: { programId: unknownProgram.id },
+                },
+              },
               });
               await prisma.user.update({
                 where: { id: user.id },

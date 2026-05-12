@@ -53,7 +53,12 @@ export async function POST(req: Request) {
       });
       if (unknownProgram) {
         const profile = await prisma.examProfile.create({
-          data: { userId: user.id, programId: unknownProgram.id },
+          data: {
+            userId: user.id,
+            programs: {
+              create: { programId: unknownProgram.id },
+            },
+          },
         });
         await prisma.user.update({
           where: { id: user.id },

@@ -213,7 +213,11 @@ export async function POST(req: Request) {
     if (profileId) {
       const profile = await prisma.examProfile.findUnique({
         where: { id: profileId },
-        include: { program: { include: { examLevel: true } } },
+        include: {
+          programs: {
+            include: { program: { include: { examLevel: true } } },
+          },
+        },
       });
 
       if (profile) {
@@ -222,10 +226,16 @@ export async function POST(req: Request) {
           ? Math.ceil((profile.examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
           : null;
 
+        const programsList = profile.programs
+          .map((p) => `- ${p.program.name} (confidence ${p.confidence ?? 3}/5)`)
+          .join("\n");
+        const firstProgram = profile.programs[0];
+
         profileContext = `\n
 ACTIVE EXAM PROFILE:
-- Level: ${profile.program.examLevel.name}
-- Program: ${profile.program.name}
+- Level: ${firstProgram?.program.examLevel.name ?? "Not set"}
+Programs:
+${programsList || "- None selected"}
 - Exam Year: ${profile.examYear ?? "Not set"}
 ${profile.examDate ? `- Days Remaining: ${daysRemaining}` : ""}
 - Baseline Readiness: ${readiness}%
@@ -233,7 +243,7 @@ ${weakestTopic ? `- Weakest Topic: ${weakestTopic}` : ""}
 - Study Hours/Week: ${profile.studyHoursPerWeek ?? "Not set"}
 - Retaking: ${profile.isRetaking ? "Yes" : "No"}
 
-Use this profile to personalize study recommendations, focus on the weakest topic, and align advice with the student's exam level and program.
+Use this profile to personalize study recommendations, focus on the weakest topic, and align advice with the student's exam level and programs.
 `;
       }
     }
