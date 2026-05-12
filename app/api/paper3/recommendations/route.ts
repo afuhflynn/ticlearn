@@ -14,10 +14,9 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const profileId = await getActiveProfileId(session.user.id);
-    const userStats = profileId
-      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
-      : await prisma.paper3UserStats.findUnique({ where: { userId: session.user.id } });
+    const userStats = await prisma.paper3UserStats.findFirst({
+      where: { userId: session.user.id },
+    });
 
     if (!userStats || userStats.weakConcepts.length === 0) {
       const randomQuestions = await prisma.paper3Question.findMany({

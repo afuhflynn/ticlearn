@@ -56,9 +56,7 @@ export async function GET(req: Request) {
     );
 
     // Count total unique non-admin users with stats
-    const countResult = await prisma.$queryRawUnsafe<
-      Array<{ count: string }>
-    >(
+    const countResult = await prisma.$queryRawUnsafe<Array<{ count: string }>>(
       `SELECT COUNT(*) AS count FROM (
         SELECT DISTINCT ON (p.user_id) p.user_id
         FROM paper3_user_stats p
@@ -69,7 +67,8 @@ export async function GET(req: Request) {
     const total = Number(countResult[0]?.count ?? 0);
 
     const mapped = leaderboard.map((row, index) => {
-      const recencyBonus = row.mock_exams_taken > 0 ? 0.1 * Math.min(row.mock_exams_taken, 5) : 0;
+      const recencyBonus =
+        row.mock_exams_taken > 0 ? 0.1 * Math.min(row.mock_exams_taken, 5) : 0;
       const adjustedScore = Math.min(row.avg_score + recencyBonus, 100);
 
       return {
@@ -84,10 +83,9 @@ export async function GET(req: Request) {
       };
     });
 
-    const profileId = await getActiveProfileId(session.user.id);
-    const userStats = profileId
-      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
-      : await prisma.paper3UserStats.findUnique({ where: { userId: session.user.id } });
+    const userStats = await prisma.paper3UserStats.findFirst({
+      where: { userId: session.user.id },
+    });
 
     let currentUserRank: number | null = null;
     if (userStats) {

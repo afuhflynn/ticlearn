@@ -14,13 +14,9 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    const profileId = await getActiveProfileId(userId);
-    const attemptWhere = profileId ? { examProfileId: profileId } : { userId };
-
-    let stats = profileId
-      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
-      : await prisma.paper3UserStats.findUnique({ where: { userId } });
+    let stats = await prisma.paper3UserStats.findFirst({
+      where: { userId: session.user.id },
+    });
 
     if (!stats) {
       stats = await prisma.paper3UserStats.create({
@@ -55,13 +51,23 @@ export async function GET(_req: Request) {
         const question = questions.find((q) => q.id === cs.questionId);
         if (question) {
           for (const concept of question.concepts) {
-            conceptTotalMap.set(concept, (conceptTotalMap.get(concept) || 0) + 1);
+            conceptTotalMap.set(
+              concept,
+              (conceptTotalMap.get(concept) || 0) + 1,
+            );
             if (cs.questionId) {
               const attempt = await prisma.paper3Attempt.findFirst({
-                where: { questionId: cs.questionId, ...attemptWhere, isCorrect: true },
+                where: {
+                  questionId: cs.questionId,
+                  ...attemptWhere,
+                  isCorrect: true,
+                },
               });
               if (attempt) {
-                conceptCorrectMap.set(concept, (conceptCorrectMap.get(concept) || 0) + 1);
+                conceptCorrectMap.set(
+                  concept,
+                  (conceptCorrectMap.get(concept) || 0) + 1,
+                );
               }
             }
           }
@@ -78,13 +84,18 @@ export async function GET(_req: Request) {
         else if (rate >= 80) strongConcepts.push(concept);
       }
 
-      const readinessScore = attemptedQuestions > 0
-        ? (stats.questionsCorrect / attemptedQuestions) * 100
-        : 0;
+      const readinessScore =
+        attemptedQuestions > 0
+          ? (stats.questionsCorrect / attemptedQuestions) * 100
+          : 0;
 
-      await prisma.paper3UserStats.update({
-        where: { id: stats.id },
-        data: { weakConcepts, strongConcepts, readinessScore },
+      await prisma.paper3UserStats.updateMany({
+        where: { userId: session.user.id },
+        data: {
+          weakConcepts,
+          strongConcepts,
+          readinessScore,
+        },
       });
 
       return NextResponse.json({

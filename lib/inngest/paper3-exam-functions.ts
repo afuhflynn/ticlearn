@@ -270,9 +270,9 @@ Provide line-by-line explanations in a code comment style.`,
           });
         }
 
-        const existingStats = examProfileId
-          ? await tx.paper3UserStats.findFirst({ where: { examProfileId } })
-          : await tx.paper3UserStats.findUnique({ where: { userId } });
+        const existingStats = await tx.paper3UserStats.findFirst({
+          where: { userId },
+        });
 
         if (existingStats) {
           const newExamsTaken = existingStats.mockExamsTaken + 1;
@@ -300,13 +300,13 @@ Provide line-by-line explanations in a code comment style.`,
           });
         }
 
-        const existingUserStats = await tx.userStats.findUnique({
+        const existingUserStats = await tx.userStats.findFirst({
           where: { userId },
         });
 
         if (existingUserStats) {
           await tx.userStats.update({
-            where: { userId },
+            where: { id: existingUserStats.id },
             data: {
               totalPoints: existingUserStats.totalPoints + pointsEarned,
               quizzesTaken: existingUserStats.quizzesTaken + 1,

@@ -50,7 +50,7 @@ export async function GET(req: Request) {
         user: { role: { not: "ADMIN" } },
         totalPoints: {
           gt: (
-            await prisma.userStats.findUnique({
+            await prisma.userStats.findFirst({
               where: { userId: session.user.id },
               select: { totalPoints: true },
             })

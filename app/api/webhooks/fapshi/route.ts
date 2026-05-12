@@ -68,6 +68,23 @@ export async function POST(req: Request) {
       const planPrice = PLAN_PRICES[sub.plan] || sub.amount;
       const commission = Math.round(planPrice * COMMISSION_RATE);
 
+      const existingStats = await prisma.userStats.findFirst({
+        where: { userId: sub.userId },
+      });
+      if (!existingStats) {
+        const profileId = await prisma.user.findUnique({
+          where: { id: sub.userId },
+          select: { activeProfileId: true },
+        }).then(u => u?.activeProfileId);
+
+        await prisma.userStats.create({
+          data: {
+            userId: sub.userId,
+            ...(profileId ? { examProfileId: profileId } : {}),
+          },
+        });
+      }
+
       await prisma.$transaction([
         prisma.subscription.update({
           where: { id: sub.id },
@@ -76,11 +93,6 @@ export async function POST(req: Request) {
             activatedAt: new Date(),
             fapshiTransId: transId,
           },
-        }),
-        prisma.userStats.upsert({
-          where: { userId: sub.userId },
-          update: {},
-          create: { userId: sub.userId },
         }),
       ]);
 

@@ -99,11 +99,13 @@ export async function POST(
         expectedAnswer: question.expectedAnswer,
         totalMarks: question.marks,
         partialCredit: question.partialCredit,
-        markingBreakdown: question.markingBreakdown as Array<{
-          criteria: string;
-          marks: number;
-          description: string;
-        }> | undefined,
+        markingBreakdown: question.markingBreakdown as
+          | Array<{
+              criteria: string;
+              marks: number;
+              description: string;
+            }>
+          | undefined,
         language: question.programmingLanguage ?? undefined,
       },
       userAnswer,
@@ -122,9 +124,9 @@ export async function POST(
       },
     });
 
-    const userStats = profileId
-      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
-      : await prisma.paper3UserStats.findUnique({ where: { userId: session.user.id } });
+    const userStats = await prisma.paper3UserStats.findFirst({
+      where: { userId: session.user.id },
+    });
 
     if (userStats) {
       const newAttempted = userStats.questionsAttempted + 1;
@@ -135,8 +137,8 @@ export async function POST(
           (result.marksEarned / result.totalMarks) * 100) /
         newAttempted;
 
-      await prisma.paper3UserStats.update({
-        where: { id: userStats.id },
+      await prisma.paper3UserStats.updateMany({
+        where: { userId: session.user.id },
         data: {
           questionsAttempted: newAttempted,
           questionsCorrect: newCorrect,

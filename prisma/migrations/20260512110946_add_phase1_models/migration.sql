@@ -4,6 +4,10 @@ ADD COLUMN "exam_date" TIMESTAMP(3),
 ADD COLUMN "is_retaking" BOOLEAN NOT NULL DEFAULT false,
 ADD COLUMN "study_hours_per_week" INTEGER;
 
+-- Add CHECK constraints on onboarding fields
+ALTER TABLE "exam_profiles" ADD CONSTRAINT "chk_exam_profiles_study_hours_per_week"
+  CHECK ("study_hours_per_week" >= 0 AND "study_hours_per_week" <= 168);
+
 -- CreateTable: topics
 CREATE TABLE "topics" (
     "id" TEXT NOT NULL,
@@ -21,7 +25,8 @@ CREATE TABLE "user_topic_baselines" (
     "confidence" INTEGER NOT NULL DEFAULT 3,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-    CONSTRAINT "user_topic_baselines_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "user_topic_baselines_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "chk_confidence" CHECK ("confidence" BETWEEN 1 AND 5)
 );
 
 -- CreateTable: knowledge_chunks
@@ -48,5 +53,5 @@ CREATE INDEX "knowledge_chunks_source_type_idx" ON "knowledge_chunks"("source_ty
 -- AddForeignKeys
 ALTER TABLE "topics" ADD CONSTRAINT "topics_component_id_fkey" FOREIGN KEY ("component_id") REFERENCES "components"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "user_topic_baselines" ADD CONSTRAINT "user_topic_baselines_exam_profile_id_fkey" FOREIGN KEY ("exam_profile_id") REFERENCES "exam_profiles"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-ALTER TABLE "user_topic_baselines" ADD CONSTRAINT "user_topic_baselines_topic_id_fkey" FOREIGN KEY ("topic_id") REFERENCES "topics"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "user_topic_baselines" ADD CONSTRAINT "user_topic_baselines_topic_id_fkey" FOREIGN KEY ("topic_id") REFERENCES "topics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 ALTER TABLE "knowledge_chunks" ADD CONSTRAINT "knowledge_chunks_topic_id_fkey" FOREIGN KEY ("topic_id") REFERENCES "topics"("id") ON DELETE CASCADE ON UPDATE CASCADE;
