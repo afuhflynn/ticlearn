@@ -67,13 +67,96 @@ async function main() {
   });
 
   console.log("Components seeded.");
+
+  // Seed Topics for each Component
+  console.log("Seeding topics...");
+
+  const allComponents = await prisma.component.findMany({
+    include: { program: true },
+  });
+
+  const topicMap: Record<string, Array<{ name: string; order: number }>> = {
+    "CS:P1": [
+      { name: "Data Representation", order: 1 },
+      { name: "Computer Architecture & Hardware", order: 2 },
+      { name: "Operating Systems", order: 3 },
+      { name: "Networking & Communication", order: 4 },
+      { name: "Data Structures", order: 5 },
+      { name: "Software Engineering", order: 6 },
+      { name: "Programming Paradigms", order: 7 },
+      { name: "Database Concepts", order: 8 },
+      { name: "Number Systems & Boolean Algebra", order: 9 },
+    ],
+    "CS:P2": [
+      { name: "Algorithm Design", order: 1 },
+      { name: "System Development Life Cycle", order: 2 },
+      { name: "Database Design & Normalization", order: 3 },
+      { name: "Network Design & Security", order: 4 },
+      { name: "Software Testing & Maintenance", order: 5 },
+      { name: "File Organization & Access Methods", order: 6 },
+    ],
+    "CS:P3": [
+      { name: "Spreadsheet Modelling", order: 1 },
+      { name: "Database Design & SQL", order: 2 },
+      { name: "C Programming", order: 3 },
+      { name: "Pascal Programming", order: 4 },
+      { name: "Web Development (HTML/CSS)", order: 5 },
+      { name: "Algorithm Design & Pseudocode", order: 6 },
+      { name: "System Development Life Cycle", order: 7 },
+    ],
+    "ICT:P1": [
+      { name: "Data Representation", order: 1 },
+      { name: "Hardware & Software", order: 2 },
+      { name: "Networking & Internet", order: 3 },
+      { name: "ICT Applications", order: 4 },
+      { name: "Security & Ethics", order: 5 },
+    ],
+    "ICT:P2": [
+      { name: "System Analysis & Design", order: 1 },
+      { name: "Database Management", order: 2 },
+      { name: "Network Management", order: 3 },
+      { name: "Web Technologies", order: 4 },
+      { name: "ICT Project Management", order: 5 },
+    ],
+    "ICT:P3": [
+      { name: "Spreadsheet Modelling", order: 1 },
+      { name: "Database Design & SQL", order: 2 },
+      { name: "C Programming", order: 3 },
+      { name: "Pascal Programming", order: 4 },
+      { name: "Web Development (HTML/CSS)", order: 5 },
+      { name: "Algorithm Design & Pseudocode", order: 6 },
+      { name: "System Development Life Cycle", order: 7 },
+    ],
+  };
+
+  for (const comp of allComponents) {
+    const key = `${comp.program.code}:${comp.code}`;
+    const topics = topicMap[key];
+    if (topics) {
+      for (const topic of topics) {
+        await prisma.topic.upsert({
+          where: {
+            componentId_name: { componentId: comp.id, name: topic.name },
+          },
+          update: { order: topic.order },
+          create: {
+            componentId: comp.id,
+            name: topic.name,
+            order: topic.order,
+          },
+        });
+      }
+    }
+  }
+
+  console.log("Topics seeded.");
   console.log("Seed complete.");
 }
 
 main()
   .catch((e) => {
     console.error("Seed failed:", e);
-    process.exit(1);
+    process.exitCode = 1;
   })
   .finally(async () => {
     await prisma.$disconnect();

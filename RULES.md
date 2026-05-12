@@ -267,3 +267,14 @@ If you introduce a new abstraction, it must replace an existing one for a clear 
   - [`lib/inngest/paper3-functions.ts`](./lib/inngest/paper3-functions.ts) - document processing
 - Do NOT use `gpt-4o`, `gpt-4-turbo`, or any other model.
 - Override this only if gpt-5.4 is unavailable in your OpenAI organization.
+
+## 21. VERY IMPORTANT: Never do `pnpm db:push` before `pnpm db:migrate`
+
+- This is a very important rule that must be followed.
+- Do not run `pnpm db:push` before `pnpm db:migrate`.
+- Trying to migrate aftr pushing will require resetting the database which is very bad.
+- The flow after modifying the schema.prisma:
+  - run `pnpm db:migrate`
+  - run `pnpm db:generate`
+  - run `pnpm db:push`
+- Then you can continue with what you are doing.
