@@ -16,7 +16,7 @@ export const processNote = inngest.createFunction(
     },
   },
 
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { noteId } = event.data;
     console.log(`Processing note: ${noteId}`);
 
@@ -128,6 +128,12 @@ export const processNote = inngest.createFunction(
       });
 
       console.log(`Note processed successfully: ${noteId}`);
+
+      await step.sendEvent("fire-note-harvest", {
+        name: "note/harvest-knowledge",
+        data: { noteId },
+      });
+
       return { success: true, noteId };
     } catch (error) {
       console.error("Note processing error:", error);

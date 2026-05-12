@@ -18,6 +18,7 @@ import {
 } from "@/lib/inngest/functions";
 import { processPaper3Source, generatePaper3Mock } from "@/lib/inngest";
 import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
+import { harvestNoteKnowledge, harvestPaper3Knowledge } from "@/lib/inngest/knowledge-harvest";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -39,5 +40,7 @@ export const { GET, POST, PUT } = serve({
     processPaper3Source,
     generatePaper3Mock,
     evaluatePaper3Exam,
+    harvestNoteKnowledge,
+    harvestPaper3Knowledge,
   ],
 });

@@ -809,6 +809,11 @@ export const processPaper3Source = inngest.createFunction(
         });
       });
 
+      await step.sendEvent("fire-paper3-harvest", {
+        name: "paper3/harvest-knowledge",
+        data: { sourceId: source.sourceId },
+      });
+
       return {
         success: true,
         sourceId: source.sourceId,
