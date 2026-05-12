@@ -65,14 +65,17 @@ export const processNote = inngest.createFunction(
       };
 
       console.log(
-        `[Inngest] Starting extraction for fileType: ${note.fileType}`,
+        `[Inngest] Starting extraction for fileType: ${note.fileType}, uploadthingKey: ${note.uploadthingKey ? note.uploadthingKey.substring(0, 30) + "..." : "MISSING"}`,
       );
 
       switch (note.fileType) {
         case "PDF":
           console.log("[Inngest] Extracting PDF text...");
+          if (!note.uploadthingKey) {
+            throw new Error("Cannot process PDF: uploadthingKey is missing");
+          }
           extractedText = await extractWithTimeout(
-            () => extractTextFromPDF(note.uploadthingKey as string, language),
+            () => extractTextFromPDF(note.uploadthingKey!, language),
             timeoutMs,
           );
           break;
