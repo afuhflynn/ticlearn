@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { UserButton } from "../user/user-button";
+import { PlanBadge } from "../plan-badge";
 
 export function DashboardHeader() {
   const { data: session } = useSession();
@@ -26,6 +27,7 @@ export function DashboardHeader() {
       </div> */}
 
       <div className="flex items-center gap-2">
+        <PlanBadge />
         <Button variant="ghost" size="icon" className="hidden md:flex">
           <Bell className="h-5 w-5" />
         </Button>

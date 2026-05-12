@@ -9,6 +9,18 @@ function getStartOfMonth() {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
+function getStartOfWeek() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+  return new Date(now.getFullYear(), now.getMonth(), diff);
+}
+
+function getStartOfDay() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 export async function GET() {
   try {
     const session = await auth.api.getSession({
@@ -71,6 +83,27 @@ export async function GET() {
     const paper3ExamsTotal = await prisma.paper3MockAttempt.count({
       where: { userId: session.user.id },
     });
+
+    // Track blueprint-based mock attempts
+    const profileId = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { activeProfileId: true },
+    }).then(u => u?.activeProfileId);
+
+    const mocksThisWeek = profileId ? await prisma.mockAttempt.count({
+      where: {
+        examProfileId: profileId,
+        startedAt: { gte: getStartOfWeek() },
+      },
+    }) : 0;
+
+    // AI solves (questions processed via chat vision)
+    const aiSolvesToday = profileId ? await prisma.question.count({
+      where: {
+        sourceType: "USER_UPLOADED",
+        createdAt: { gte: getStartOfDay() },
+      },
+    }) : 0;
 
     const paper3Usage = getPaper3Usage(
       plan,

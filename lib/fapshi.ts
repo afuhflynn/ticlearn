@@ -65,6 +65,7 @@ export interface PaymentPlanConfig {
   STARTER: { amount: number; fcfa: string };
   STANDARD: { amount: number; fcfa: string };
   PREMIUM: { amount: number; fcfa: string };
+  PRO: { amount: number; fcfa: string };
 }
 
 export const PLAN_PRICES: PaymentPlanConfig = {
