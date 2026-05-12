@@ -13,8 +13,7 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    let stats = await prisma.paper3UserStats.findUnique({
-      where: { userId: session.user.id },
+    let stats = await prisma.paper3UserStats.findFirst({ where: { userId: session.user.id },
     });
 
     if (!stats) {
@@ -88,8 +87,7 @@ export async function GET(_req: Request) {
           ? (stats.questionsCorrect / attemptedQuestions) * 100
           : 0;
 
-      await prisma.paper3UserStats.update({
-        where: { userId: session.user.id },
+      await prisma.paper3UserStats.updateMany({ where: { userId: session.user.id },
         data: {
           weakConcepts,
           strongConcepts,

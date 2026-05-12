@@ -268,7 +268,7 @@ Provide line-by-line explanations in a code comment style.`,
           });
         }
 
-        const existingStats = await tx.paper3UserStats.findUnique({
+        const existingStats = await tx.paper3UserStats.findFirst({
           where: { userId },
         });
 
@@ -277,7 +277,7 @@ Provide line-by-line explanations in a code comment style.`,
           const newAvg = (existingStats.avgScore * existingStats.mockExamsTaken + score) / newExamsTaken;
 
           await tx.paper3UserStats.update({
-            where: { userId },
+            where: { id: existingStats.id },
             data: {
               mockExamsTaken: newExamsTaken,
               avgScore: Math.round(newAvg),
@@ -297,13 +297,13 @@ Provide line-by-line explanations in a code comment style.`,
           });
         }
 
-        const existingUserStats = await tx.userStats.findUnique({
+        const existingUserStats = await tx.userStats.findFirst({
           where: { userId },
         });
 
         if (existingUserStats) {
           await tx.userStats.update({
-            where: { userId },
+            where: { id: existingUserStats.id },
             data: {
               totalPoints: existingUserStats.totalPoints + pointsEarned,
               quizzesTaken: existingUserStats.quizzesTaken + 1,

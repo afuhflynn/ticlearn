@@ -119,8 +119,7 @@ export async function POST(
       },
     });
 
-    const userStats = await prisma.paper3UserStats.findUnique({
-      where: { userId: session.user.id },
+    const userStats = await prisma.paper3UserStats.findFirst({ where: { userId: session.user.id },
     });
 
     if (userStats) {
@@ -132,8 +131,7 @@ export async function POST(
           (result.marksEarned / result.totalMarks) * 100) /
         newAttempted;
 
-      await prisma.paper3UserStats.update({
-        where: { userId: session.user.id },
+      await prisma.paper3UserStats.updateMany({ where: { userId: session.user.id },
         data: {
           questionsAttempted: newAttempted,
           questionsCorrect: newCorrect,

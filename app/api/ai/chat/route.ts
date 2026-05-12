@@ -182,7 +182,7 @@ export async function POST(req: Request) {
       }
     }
 
-    const userStats = await prisma.userStats.findUnique({
+    const userStats = await prisma.userStats.findFirst({
       where: { userId },
     });
 
@@ -197,7 +197,7 @@ export async function POST(req: Request) {
         },
       });
     } else {
-      await prisma.userStats.update({
+      await prisma.userStats.updateMany({
         where: { userId },
         data: {
           totalChats: { increment: 1 },

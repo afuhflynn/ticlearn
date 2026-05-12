@@ -104,7 +104,7 @@ export async function POST(req: Request) {
       },
     });
 
-    const userStats = await prisma.userStats.findUnique({
+    const userStats = await prisma.userStats.findFirst({
       where: { userId: session.user.id },
     });
 
@@ -126,7 +126,7 @@ export async function POST(req: Request) {
     }
 
     if (userStats) {
-      await prisma.userStats.update({
+      await prisma.userStats.updateMany({
         where: { userId: session.user.id },
         data: {
           totalPoints: userStats.totalPoints + pointsEarned,
