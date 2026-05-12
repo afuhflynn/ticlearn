@@ -111,7 +111,7 @@ async function processImageQuestion(imageUrl: string, userId: string, conversati
           topicId: matchedTopic?.id ?? null,
           text,
           type: "STRUCTURED",
-          sourceType: "RECONSTRUCTED",
+          sourceType: "USER_UPLOADED",
         },
       });
     }
