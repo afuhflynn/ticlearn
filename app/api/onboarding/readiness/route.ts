@@ -10,10 +10,14 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = await prisma.user.findUniqueOrThrow({
+    const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { activeProfileId: true },
     });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    }
 
     if (!user.activeProfileId) {
       return NextResponse.json({ readiness: 50, weakestTopic: null, needsAssessment: true });
@@ -28,8 +32,8 @@ export async function GET() {
       return NextResponse.json({ readiness: 50, weakestTopic: null, needsAssessment: true });
     }
 
-    const avg = baselines.reduce((s, b) => s + b.confidence, 0) / baselines.length;
-    const readiness = Math.round((avg / 5) * 100);
+    const avg = baselines.reduce((s, b) => s + Math.min(Math.max(b.confidence, 0), 5), 0) / baselines.length;
+    const readiness = Math.min(100, Math.max(0, Math.round((avg / 5) * 100)));
 
     const weakest = baselines.reduce((min, b) => (b.confidence < min.confidence ? b : min));
     const weakestTopic = weakest.topic.name;

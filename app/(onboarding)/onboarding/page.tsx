@@ -16,6 +16,15 @@ type Program = { id: string; name: string; code: string };
 type Topic = { id: string; name: string; order: number };
 type Component = { id: string; code: string; name: string; topics: Topic[] };
 
+async function apiFetch(url: string, options?: RequestInit) {
+  const res = await fetch(url, options);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Request failed" }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
 export default function OnboardingPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -23,8 +32,8 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Step data
   const [levels, setLevels] = useState<ExamLevel[]>([]);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -35,8 +44,6 @@ export default function OnboardingPage() {
   const [baselines, setBaselines] = useState<Record<string, number>>({});
   const [isRetaking, setIsRetaking] = useState(false);
   const [studyHours, setStudyHours] = useState(5);
-
-  // Readiness
   const [readiness, setReadiness] = useState<{
     readiness: number;
     weakestTopic: string | null;
@@ -44,20 +51,21 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!session) return;
-    fetch("/api/exam-levels")
-      .then((r) => r.json())
-      .then((d) => setLevels(d.levels));
+    apiFetch("/api/exam-levels")
+      .then((d) => { if (Array.isArray(d.levels)) setLevels(d.levels); })
+      .catch((e) => console.error("Failed to load exam levels:", e));
   }, [session]);
 
   const handleNext = async () => {
     setSaving(true);
+    setError(null);
     try {
       switch (step) {
         case 1:
           setStep(2);
           break;
         case 2:
-          await fetch("/api/onboarding/step", {
+          await apiFetch("/api/onboarding/step", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ step: 2, data: { programId: selectedProgram } }),
@@ -65,7 +73,7 @@ export default function OnboardingPage() {
           setStep(3);
           break;
         case 3:
-          await fetch("/api/onboarding/step", {
+          await apiFetch("/api/onboarding/step", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -76,7 +84,7 @@ export default function OnboardingPage() {
           setStep(4);
           break;
         case 4:
-          await fetch("/api/onboarding/baseline", {
+          await apiFetch("/api/onboarding/baseline", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -89,51 +97,55 @@ export default function OnboardingPage() {
           setStep(5);
           break;
         case 5:
-          await fetch("/api/onboarding/step", {
+          await apiFetch("/api/onboarding/step", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              step: 5,
-              data: { isRetaking, studyHoursPerWeek: studyHours },
-            }),
+            body: JSON.stringify({ step: 5, data: { isRetaking, studyHoursPerWeek: studyHours } }),
           });
-          await fetch("/api/onboarding/step", {
+          await apiFetch("/api/onboarding/step", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ step: 6, data: {} }),
           });
-          const res = await fetch("/api/onboarding/readiness");
-          const rd = await res.json();
+          const rd = await apiFetch("/api/onboarding/readiness");
           setReadiness(rd);
           setStep(6);
           break;
       }
     } catch (e) {
-      console.error("Step save error:", e);
+      setError(e instanceof Error ? e.message : "Failed to save");
     }
     setSaving(false);
   };
 
   const loadPrograms = async (levelId: string) => {
     setLoading(true);
-    const res = await fetch(`/api/programs?examLevelId=${levelId}`);
-    const d = await res.json();
-    setPrograms(d.programs);
+    try {
+      const d = await apiFetch(`/api/programs?examLevelId=${levelId}`);
+      if (Array.isArray(d.programs)) setPrograms(d.programs);
+    } catch (e) {
+      console.error("Failed to load programs:", e);
+    }
     setLoading(false);
   };
 
   const loadTopics = async (programId: string) => {
     setLoading(true);
-    const res = await fetch(`/api/onboarding/topics?programId=${programId}`);
-    const d = await res.json();
-    setComponents(d.components);
-    const defaults: Record<string, number> = {};
-    for (const comp of d.components) {
-      for (const topic of comp.topics) {
-        defaults[topic.id] = 3;
+    try {
+      const d = await apiFetch(`/api/onboarding/topics?programId=${programId}`);
+      if (d.components) {
+        setComponents(d.components);
+        const defaults: Record<string, number> = {};
+        for (const comp of d.components) {
+          for (const topic of comp.topics || []) {
+            defaults[topic.id] = 3;
+          }
+        }
+        setBaselines(defaults);
       }
+    } catch (e) {
+      console.error("Failed to load topics:", e);
     }
-    setBaselines(defaults);
     setLoading(false);
   };
 
@@ -143,7 +155,12 @@ export default function OnboardingPage() {
 
   return (
     <div className="space-y-6">
-      {/* Progress bar */}
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600 dark:border-red-800 dark:bg-red-950">
+          {error}
+        </div>
+      )}
+
       <div className="flex items-center gap-2">
         {Array.from({ length: totalSteps - 1 }, (_, i) => (
           <div key={i} className="flex items-center gap-2 flex-1">
@@ -176,6 +193,10 @@ export default function OnboardingPage() {
                 type="button"
                 onClick={() => {
                   setSelectedLevel(level.id);
+                  setSelectedProgram(null);
+                  setPrograms([]);
+                  setComponents([]);
+                  setBaselines({});
                   loadPrograms(level.id);
                 }}
                 className={`w-full rounded-lg border p-4 text-left transition-colors ${
@@ -356,7 +377,6 @@ export default function OnboardingPage() {
         </Card>
       )}
 
-      {/* Navigation buttons */}
       {step < 6 && (
         <div className="flex justify-between">
           <Button variant="outline" disabled={step === 1} onClick={() => setStep((s) => s - 1)}>

@@ -10,13 +10,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
-    const { step, data } = body;
+    let body: Record<string, unknown>;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+    }
 
-    const user = await prisma.user.findUniqueOrThrow({
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Request body is required" }, { status: 400 });
+    }
+
+    const { step, data } = body as { step?: unknown; data?: unknown };
+
+    if (typeof step !== "number" || step < 1 || step > 6) {
+      return NextResponse.json({ error: "step must be a number between 1 and 6" }, { status: 400 });
+    }
+    if (!data || typeof data !== "object") {
+      return NextResponse.json({ error: "data must be an object" }, { status: 400 });
+    }
+
+    const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: { activeProfileId: true },
     });
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 401 });
+    }
 
     if (!user.activeProfileId) {
       return NextResponse.json({ error: "No active profile" }, { status: 400 });
@@ -28,21 +49,28 @@ export async function POST(req: Request) {
       case 1:
         break;
       case 2:
-        updateData.programId = data.programId;
-        break;
-      case 2:
-        updateData.programId = data.programId;
+        updateData.programId = (data as Record<string, unknown>).programId;
         break;
       case 3:
-        if (data.examYear) updateData.examYear = data.examYear;
-        if (data.examDate) updateData.examDate = new Date(data.examDate);
+        if ((data as Record<string, unknown>).examYear) {
+          updateData.examYear = (data as Record<string, unknown>).examYear;
+        }
+        if ((data as Record<string, unknown>).examDate) {
+          const d = new Date((data as Record<string, unknown>).examDate as string);
+          if (d.toString() === "Invalid Date") {
+            return NextResponse.json({ error: "Invalid examDate" }, { status: 400 });
+          }
+          updateData.examDate = d;
+        }
         break;
       case 4:
         break;
-      case 5:
-        if (typeof data.isRetaking === "boolean") updateData.isRetaking = data.isRetaking;
-        if (data.studyHoursPerWeek) updateData.studyHoursPerWeek = data.studyHoursPerWeek;
+      case 5: {
+        const d = data as Record<string, unknown>;
+        if (typeof d.isRetaking === "boolean") updateData.isRetaking = d.isRetaking;
+        if (typeof d.studyHoursPerWeek === "number") updateData.studyHoursPerWeek = d.studyHoursPerWeek;
         break;
+      }
       case 6:
         updateData.onboardingCompleted = true;
         updateData.onboardingStep = 6;
