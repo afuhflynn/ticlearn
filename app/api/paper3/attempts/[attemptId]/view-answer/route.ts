@@ -23,6 +23,18 @@ export async function POST(
       ? { id: attemptId, examProfileId: profileId }
       : { id: attemptId, userId: session.user.id };
 
+    const sub = await prisma.subscription.findFirst({
+      where: { userId: session.user.id, status: "ACTIVE" },
+      select: { plan: true },
+    });
+    const canView = sub?.plan === "STANDARD" || sub?.plan === "PREMIUM";
+    if (!canView) {
+      return NextResponse.json(
+        { error: "Upgrade to STANDARD or higher to view correct answers" },
+        { status: 403 },
+      );
+    }
+
     const attempt = await prisma.paper3MockAttempt.findUnique({
       where: ownershipWhere,
       include: {

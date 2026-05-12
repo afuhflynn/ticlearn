@@ -76,16 +76,12 @@ export const auth = betterAuth({
             const unknownProgram = await prisma.program.findUnique({
               where: { code: "UNKNOWN" },
             });
-            const defaultLevel = await prisma.examLevel.findFirst({
-              orderBy: { createdAt: "asc" },
-            });
-            if (unknownProgram && defaultLevel) {
-              const profile = await prisma.examProfile.create({
-                data: {
-                  userId: user.id,
-                  examLevelId: defaultLevel.id,
-                  programId: unknownProgram.id,
-                },
+            if (unknownProgram) {
+          const profile = await prisma.examProfile.create({
+            data: {
+              userId: user.id,
+              programId: unknownProgram.id,
+            },
               });
               await prisma.user.update({
                 where: { id: user.id },

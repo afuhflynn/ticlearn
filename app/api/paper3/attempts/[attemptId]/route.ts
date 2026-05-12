@@ -23,6 +23,12 @@ export async function GET(
       ? { id: attemptId, examProfileId: profileId }
       : { id: attemptId, userId: session.user.id };
 
+    const sub = await prisma.subscription.findFirst({
+      where: { userId: session.user.id, status: "ACTIVE" },
+      select: { plan: true },
+    });
+    const isPremium = sub?.plan === "PREMIUM";
+
     const attempt = await prisma.paper3MockAttempt.findUnique({
       where: ownershipWhere,
       include: {
@@ -128,7 +134,10 @@ export async function GET(
       partialCount: detailedResults.filter(r => r.partialCredit).length,
     };
 
-    return NextResponse.json({ attempt, analytics });
+    return NextResponse.json({
+      attempt,
+      ...(isPremium ? { analytics } : {}),
+    });
   } catch (error) {
     console.error("Paper3 attempt GET error:", error);
     return NextResponse.json(

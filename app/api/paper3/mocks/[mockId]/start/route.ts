@@ -59,8 +59,8 @@ export async function POST(
 
     if (!retake) {
       const existingWhere = profileId
-        ? { userId: session.user.id, mockId: mock.id, status: "IN_PROGRESS" as const }
-        : { userId: session.user.id, mockId: mock.id, status: "IN_PROGRESS" as const };
+        ? { userId: session.user.id, mockId: mock.id, status: "IN_PROGRESS" as const, examProfileId: profileId }
+        : { userId: session.user.id, mockId: mock.id, status: "IN_PROGRESS" as const, examProfileId: null };
 
       const existingAttempt = await prisma.paper3MockAttempt.findFirst({
         where: existingWhere,
