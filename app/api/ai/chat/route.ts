@@ -17,9 +17,7 @@ import {
 import { getChatResetWindow } from "@/lib/chat-usage";
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/exam-profile";
-import crypto from "crypto";
-import { generateObject } from "ai";
-import { z } from "zod";
+import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
@@ -42,21 +40,40 @@ Respond with only the title, nothing else.`,
 
 function messageHasImage(parts: UIMessage["parts"]): string | null {
   for (const part of parts) {
-    if (part.type === "file" && "mimeType" in part && typeof (part as { mimeType?: string }).mimeType === "string" && (part as { mimeType: string }).mimeType.startsWith("image/")) {
-      return (part as { data?: string }).data || (part as { url?: string }).url || null;
+    if (
+      part.type === "file" &&
+      "mimeType" in part &&
+      typeof (part as { mimeType?: string }).mimeType === "string" &&
+      (part as { mimeType: string }).mimeType.startsWith("image/")
+    ) {
+      return (
+        (part as { data?: string }).data ||
+        (part as { url?: string }).url ||
+        null
+      );
     }
   }
   return null;
 }
 
-async function processImageQuestion(imageUrl: string, userId: string, conversationId: string) {
+async function processImageQuestion(
+  imageUrl: string,
+  userId: string,
+  conversationId: string,
+) {
   try {
     const profileId = await getActiveProfileId(userId);
     if (!profileId) return;
 
     const profile = await prisma.examProfile.findUnique({
       where: { id: profileId },
-      include: { programs: { include: { program: { include: { components: { include: { topics: true } } } } } } },
+      include: {
+        programs: {
+          include: {
+            program: { include: { components: { include: { topics: true } } } },
+          },
+        },
+      },
     });
     if (!profile) return;
 
@@ -67,29 +84,39 @@ async function processImageQuestion(imageUrl: string, userId: string, conversati
         questionText: z.string(),
         isQuestion: z.boolean(),
       }),
-      system: "Extract the exam question text from this image. If it's not a question, mark isQuestion as false.",
+      system:
+        "Extract the exam question text from this image. If it's not a question, mark isQuestion as false.",
       messages: [
         {
           role: "user",
           content: [
             { type: "image_url" as const, image_url: { url: imageUrl } },
-            { type: "text" as const, text: "Extract the question from this image." },
+            {
+              type: "text" as const,
+              text: "Extract the question from this image.",
+            },
           ],
         } as never,
       ],
     });
 
-    if (!extraction.object.isQuestion || !extraction.object.questionText) return;
+    if (!extraction.object.isQuestion || !extraction.object.questionText)
+      return;
 
     const text = extraction.object.questionText.substring(0, 2000);
 
     // Step 2: Detect topic
-    const allTopics = profile.programs.flatMap(p => p.program.components.flatMap(c => c.topics));
-    const topicNames = allTopics.map(t => t.name);
+    const allTopics = profile.programs.flatMap((p) =>
+      p.program.components.flatMap((c) => c.topics),
+    );
+    const topicNames = allTopics.map((t) => t.name);
 
     const classification = await generateObject({
       model: model,
-      schema: z.object({ topicIdx: z.number().optional(), isClassified: z.boolean() }),
+      schema: z.object({
+        topicIdx: z.number().optional(),
+        isClassified: z.boolean(),
+      }),
       system: `Classify this question into one of these topics: ${topicNames.join(", ")}. Return the index (0-based) of the best matching topic.`,
       prompt: `Question: ${text.substring(0, 500)}`,
     });
@@ -99,14 +126,22 @@ async function processImageQuestion(imageUrl: string, userId: string, conversati
       : null;
 
     // Step 3: Save to Question table
-    const hash = crypto.createHash("sha256").update(text.toLowerCase().trim()).digest("hex");
+    const hash = crypto
+      .createHash("sha256")
+      .update(text.toLowerCase().trim())
+      .digest("hex");
 
-    const existing = await prisma.question.findFirst({ where: { text: { startsWith: text.substring(0, 100) } } });
+    const existing = await prisma.question.findFirst({
+      where: { text: { startsWith: text.substring(0, 100) } },
+    });
 
     if (!existing) {
       await prisma.question.create({
         data: {
-          componentId: matchedTopic?.componentId ?? profile.programs[0]?.program.components[0]?.id ?? "",
+          componentId:
+            matchedTopic?.componentId ??
+            profile.programs[0]?.program.components[0]?.id ??
+            "",
           topicId: matchedTopic?.id ?? null,
           text,
           type: "STRUCTURED",
@@ -268,7 +303,9 @@ export async function POST(req: Request) {
     // If user message contains an image, process and store it
     const imageUrl = messageHasImage(latestUserMessage.parts || []);
     if (imageUrl) {
-      processImageQuestion(imageUrl, userId, conversationId).catch(console.error);
+      processImageQuestion(imageUrl, userId, conversationId).catch(
+        console.error,
+      );
     }
 
     const userStats = await prisma.userStats.findUnique({
@@ -298,40 +335,37 @@ export async function POST(req: Request) {
     let profileContext = "";
 
     if (profileId) {
-      const profile = await prisma.examProfile.findUnique({
-        where: { id: profileId },
-        include: {
-          programs: {
-            include: { program: { include: { examLevel: true } } },
-          },
-        },
-      });
+      try {
+        const readiness = await computeReadiness(profileId);
 
-      if (profile) {
-        const { readiness, weakestTopic } = await computeReadiness(profileId);
-        const daysRemaining = profile.examDate
-          ? Math.ceil((profile.examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-          : null;
+        const programsList = readiness.programReadiness
+          .map((p) => `${p.program}: ${p.readiness}%`)
+          .join(", ");
 
-        const programsList = profile.programs
-          .map((p) => `- ${p.program.name} (confidence ${p.confidence ?? 3}/5)`)
-          .join("\n");
-        const firstProgram = profile.programs[0];
+        const weakestThree = readiness.topicReadiness
+          .sort((a, b) => a.score - b.score)
+          .slice(0, 3)
+          .map((t) => `${t.topic} (${t.score}%)`)
+          .join(", ");
+
+        const recommendations = readiness.weakestTopic
+          ? `Focus area: ${readiness.weakestTopic.name} (${readiness.weakestTopic.score}%)`
+          : "";
 
         profileContext = `\n
-ACTIVE EXAM PROFILE:
-- Level: ${firstProgram?.program.examLevel.name ?? "Not set"}
-Programs:
-${programsList || "- None selected"}
-- Exam Year: ${profile.examYear ?? "Not set"}
-${profile.examDate ? `- Days Remaining: ${daysRemaining}` : ""}
-- Baseline Readiness: ${readiness}%
-${weakestTopic ? `- Weakest Topic: ${weakestTopic}` : ""}
-- Study Hours/Week: ${profile.studyHoursPerWeek ?? "Not set"}
-- Retaking: ${profile.isRetaking ? "Yes" : "No"}
+STUDENT PROFILE:
+- Programs: ${programsList || "Not set"}
+- Overall Readiness: ${readiness.readiness}%
+${readiness.weakestTopic ? `- Weakest Topics: ${weakestThree}` : ""}
+${readiness.strongestTopic ? `- Strongest Topic: ${readiness.strongestTopic.name} (${readiness.strongestTopic.score}%)` : ""}
+${readiness.daysUntilExam !== null ? `- Days Until Exam: ${readiness.daysUntilExam}` : ""}
+${readiness.highRisk ? "- ⚠️ HIGH RISK: Exam is approaching and readiness is low" : ""}
+${recommendations ? `- ${recommendations}` : ""}
 
-Use this profile to personalize study recommendations, focus on the weakest topic, and align advice with the student's exam level and programs.
+Use this profile to personalize study recommendations, focus on weakest topics, and align advice with the student's current readiness level.
 `;
+      } catch (e) {
+        console.error("Failed to compute readiness for chat context:", e);
       }
     }
 
