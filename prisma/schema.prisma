@@ -761,6 +761,35 @@ model AdminInvite {
   @@map("admin_invites")
 }
 
+model KpiEvent {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  event     String
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([event])
+  @@index([createdAt])
+  @@map("kpi_events")
+}
+
+model DailyMetric {
+  id          String   @id @default(cuid())
+  date        DateTime
+  metric      String
+  autoValue   Float?
+  manualValue Float?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([date, metric])
+  @@index([date])
+  @@map("daily_metrics")
+}
+
 enum InviteStatus {
   PENDING
   ACCEPTED
