@@ -64,6 +64,7 @@ model User {
   paper3QuestionAttempts Paper3QuestionAttempt[]
   creditTransactions     CreditTransaction[]     @relation("UserCredits")
   referralBonuses        ReferralBonus[]         @relation("ReferrerCredits")
+  kpiEvents              KpiEvent[]
 
   @@map("users")
 }
