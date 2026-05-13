@@ -176,6 +176,7 @@ model Topic {
   userBaselines   UserTopicBaseline[]
   knowledgeChunks KnowledgeChunk[]
   questions       Question[]
+  performances    TopicPerformance[]
 
   @@unique([componentId, name])
   @@index([componentId])
@@ -196,6 +197,22 @@ model UserTopicBaseline {
   @@unique([examProfileId, topicId])
   @@index([examProfileId])
   @@map("user_topic_baselines")
+}
+
+model TopicPerformance {
+  id            String   @id @default(cuid())
+  examProfileId String   @map("exam_profile_id")
+  topicId       String   @map("topic_id")
+  masteryScore  Float    @default(50) @map("mastery_score")
+  attempts      Int      @default(0)
+  lastUpdated   DateTime @default(now()) @updatedAt @map("last_updated")
+
+  examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
+  topic       Topic       @relation(fields: [topicId], references: [id])
+
+  @@unique([examProfileId, topicId])
+  @@index([examProfileId])
+  @@map("topic_performances")
 }
 
 model KnowledgeChunk {
@@ -350,6 +367,7 @@ model ExamProfile {
   userStats              UserStats[]
   paper3UserStats        Paper3UserStats[]
   topicBaselines         UserTopicBaseline[]
+  topicPerformances      TopicPerformance[]
   programs               ExamProfileProgram[]
 
   @@index([userId])

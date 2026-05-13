@@ -27,7 +27,7 @@ CREATE TABLE "blueprint_sections" (
     "question_count" INTEGER NOT NULL,
     "marks_per_question" INTEGER,
     "total_marks" INTEGER NOT NULL,
-    "questionType" "QuestionType" NOT NULL,
+    "question_type" "QuestionType" NOT NULL,
     "answer_rule" TEXT,
     "order" INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT "blueprint_sections_pkey" PRIMARY KEY ("id")
