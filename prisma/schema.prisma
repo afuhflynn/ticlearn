@@ -59,6 +59,7 @@ model User {
   paper3QuestionAttempts Paper3QuestionAttempt[]
   creditTransactions CreditTransaction[] @relation("UserCredits")
   referralBonuses    ReferralBonus[]    @relation("ReferrerCredits")
+  kpiEvents          KpiEvent[]
 
   @@map("users")
 }
@@ -568,6 +569,7 @@ enum Plan {
   STARTER
   STANDARD
   PREMIUM
+  PRO
 }
 
 enum SubscriptionStatus {

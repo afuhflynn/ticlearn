@@ -5,7 +5,7 @@ export async function trackEvent(userId: string, event: string, metadata?: Recor
     data: {
       userId,
       event,
-      metadata: metadata ?? {},
+      metadata: (metadata ?? {}) as never,
     },
   });
 }
