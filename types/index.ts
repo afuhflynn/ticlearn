@@ -232,7 +232,7 @@ export const PLAN_LIMITS: Record<Exclude<Plan, "PREMIUM">, PlanLimits> = {
   STARTER: {
     pdfUploads: 10,
     quizGenerations: 20,
-    aiTutorMessages: -1, // Unlimited
+    aiTutorMessages: -1,
     canAccessCommunity: true,
     canAccessLeaderboard: true,
     canAccessGCE: true,
@@ -240,7 +240,15 @@ export const PLAN_LIMITS: Record<Exclude<Plan, "PREMIUM">, PlanLimits> = {
   STANDARD: {
     pdfUploads: 30,
     quizGenerations: 60,
-    aiTutorMessages: -1, // Unlimited
+    aiTutorMessages: -1,
+    canAccessCommunity: true,
+    canAccessLeaderboard: true,
+    canAccessGCE: true,
+  },
+  PRO: {
+    pdfUploads: -1,
+    quizGenerations: -1,
+    aiTutorMessages: -1,
     canAccessCommunity: true,
     canAccessLeaderboard: true,
     canAccessGCE: true,

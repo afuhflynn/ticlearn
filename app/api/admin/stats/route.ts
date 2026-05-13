@@ -29,6 +29,11 @@ export async function GET() {
       avgRating,
       recentFeedback,
       pendingAffiliates,
+      paidUsers,
+      freeUsers,
+      proSubscriptions,
+      recentRegistrations,
+      mocksCompleted,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.note.count(),
@@ -40,7 +45,14 @@ export async function GET() {
       prisma.rating.aggregate({ _avg: { score: true } }),
       prisma.feedback.count({ where: { status: "OPEN" } }),
       prisma.affiliate.count({ where: { status: "PENDING" } }),
+      prisma.subscription.count({ where: { status: "ACTIVE", plan: "PRO" } }),
+      prisma.user.count({ where: { subscriptions: { none: { status: "ACTIVE" } } } }),
+      prisma.subscription.count({ where: { plan: "PRO" } }),
+      prisma.user.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+      prisma.mockAttempt.count(),
     ]);
+
+    const conversionRate = totalUsers > 0 ? ((paidUsers / totalUsers) * 100).toFixed(1) : "0";
 
     return NextResponse.json({
       stats: {
@@ -54,6 +66,14 @@ export async function GET() {
         avgRating: avgRating._avg.score || 0,
         recentFeedback,
         pendingAffiliates,
+        // Monetization metrics
+        paidUsers,
+        freeUsers,
+        proSubscriptions,
+        conversionRate: `${conversionRate}%`,
+        recentRegistrations,
+        mocksCompleted,
+        revenueThisMonth: totalRevenue._sum.amount || 0,
       },
     });
   } catch (error) {
