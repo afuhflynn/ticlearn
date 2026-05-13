@@ -128,7 +128,8 @@ type ProcessSourceEvent = {
 
 type GenerateMockInput = {
   title: string;
-  subject: Paper3Subject;
+  subject?: Paper3Subject;
+  componentId?: string;
   section?: Paper3Section;
   focusCategory?:
     | "MIXED"
@@ -869,11 +870,13 @@ export const generatePaper3Mock = inngest.createFunction(
         "create-paper3-mock-and-questions",
         async () => {
           return prisma.$transaction(async (tx) => {
+            const theSubject = data.subject ?? "COMPUTER_SCIENCE" as Paper3Subject;
+
             const generatedSource = await tx.paper3Source.create({
               data: {
                 title: `${data.title} Source`,
                 year: new Date().getFullYear(),
-                subject: data.subject,
+                subject: theSubject,
                 section: data.section ?? "A",
                 category: inferCategoryFromTaskType(dominantTaskType),
                 paperType: "QUESTION_PAPER",
@@ -892,7 +895,7 @@ export const generatePaper3Mock = inngest.createFunction(
               data: {
                 title: data.title,
                 description: data.description,
-                subject: data.subject,
+                subject: theSubject,
                 focusCategory: data.focusCategory ?? "MIXED",
                 timeLimit: data.timeLimit ?? 120,
                 totalMarks,

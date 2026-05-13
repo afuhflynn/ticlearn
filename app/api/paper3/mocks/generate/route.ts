@@ -12,7 +12,8 @@ interface Paper3Subject {
 }
 
 const generateMockSchema = z.object({
-  subject: z.enum(["ICT", "COMPUTER_SCIENCE"]),
+  subject: z.enum(["ICT", "COMPUTER_SCIENCE"]).optional(),
+  componentId: z.string().optional(),
   section: z.enum(["A", "B"]).optional(),
   focusCategory: z
     .enum([
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
       name: "paper3/generate-mock",
       data: {
         subject: data.subject,
+        componentId: data.componentId,
         section: data.section,
         focusCategory: data.focusCategory,
         title: data.title,
