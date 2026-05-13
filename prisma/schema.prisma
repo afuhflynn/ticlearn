@@ -158,6 +158,7 @@ model Component {
   paper3Sources   Paper3Source[]
   paper3Questions Paper3Question[]
   questions       Question[]
+  blueprints      ExamBlueprint[]
   topics          Topic[]
 
   @@unique([programId, code])
@@ -250,6 +251,65 @@ model Question {
   @@index([examSourceId])
   @@index([topicId])
   @@map("questions")
+}
+
+model ExamBlueprint {
+  id          String   @id @default(cuid())
+  componentId String   @map("component_id")
+  name        String
+  description String?
+  totalMarks  Int      @map("total_marks")
+  durationMin Int      @map("duration_min")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  component Component          @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  sections  BlueprintSection[]
+  attempts  MockAttempt[]
+
+  @@unique([componentId, name])
+  @@index([componentId])
+  @@map("exam_blueprints")
+}
+
+model BlueprintSection {
+  id               String       @id @default(cuid())
+  blueprintId      String       @map("blueprint_id")
+  name             String
+  questionCount    Int          @map("question_count")
+  marksPerQuestion Int?         @map("marks_per_question")
+  totalMarks       Int          @map("total_marks")
+  questionType     QuestionType
+  answerRule       String?      @map("answer_rule")
+  order            Int          @default(0)
+
+  blueprint ExamBlueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+
+  @@index([blueprintId])
+  @@map("blueprint_sections")
+}
+
+model MockAttempt {
+  id            String         @id @default(cuid())
+  examProfileId String         @map("exam_profile_id")
+  componentId   String         @map("component_id")
+  blueprintId   String?        @map("blueprint_id")
+  score         Float?
+  totalMarks    Int            @map("total_marks")
+  sourceMode    MockSourceMode @map("source_mode")
+  timeTaken     Int?           @map("time_taken")
+  answers       Json?
+  results       Json?
+  startedAt     DateTime       @default(now()) @map("started_at")
+  completedAt   DateTime?      @map("completed_at")
+  createdAt     DateTime       @default(now())
+
+  blueprint ExamBlueprint? @relation(fields: [blueprintId], references: [id])
+
+  @@index([examProfileId])
+  @@index([componentId])
+  @@index([blueprintId])
+  @@map("mock_attempts")
 }
 
 model ExamProfileProgram {
@@ -727,6 +787,12 @@ enum QuestionSource {
   UPLOADED
   AI_GENERATED
   RECONSTRUCTED
+}
+
+enum MockSourceMode {
+  DATABASE
+  HYBRID
+  RESEARCH
 }
 
 enum ExamSubject {
