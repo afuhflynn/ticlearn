@@ -200,12 +200,14 @@ model UserTopicBaseline {
 }
 
 model TopicPerformance {
-  id            String   @id @default(cuid())
-  examProfileId String   @map("exam_profile_id")
-  topicId       String   @map("topic_id")
-  masteryScore  Float    @default(50) @map("mastery_score")
-  attempts      Int      @default(0)
-  lastUpdated   DateTime @default(now()) @updatedAt @map("last_updated")
+  id              String    @id @default(cuid())
+  examProfileId   String    @map("exam_profile_id")
+  topicId         String    @map("topic_id")
+  masteryScore    Float     @default(50) @map("mastery_score")
+  totalAttempts   Int       @default(0) @map("total_attempts")
+  correctAttempts Int       @default(0) @map("correct_attempts")
+  lastPracticedAt DateTime? @map("last_practiced_at")
+  lastUpdated     DateTime  @default(now()) @updatedAt @map("last_updated")
 
   examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
   topic       Topic       @relation(fields: [topicId], references: [id])
@@ -307,19 +309,20 @@ model BlueprintSection {
 }
 
 model MockAttempt {
-  id            String         @id @default(cuid())
-  examProfileId String         @map("exam_profile_id")
-  componentId   String         @map("component_id")
-  blueprintId   String?        @map("blueprint_id")
-  score         Float?
-  totalMarks    Int            @map("total_marks")
-  sourceMode    MockSourceMode @map("source_mode")
-  timeTaken     Int?           @map("time_taken")
-  answers       Json?
-  results       Json?
-  startedAt     DateTime       @default(now()) @map("started_at")
-  completedAt   DateTime?      @map("completed_at")
-  createdAt     DateTime       @default(now())
+  id             String         @id @default(cuid())
+  examProfileId  String         @map("exam_profile_id")
+  componentId    String         @map("component_id")
+  blueprintId    String?        @map("blueprint_id")
+  score          Float?
+  totalMarks     Int            @map("total_marks")
+  sourceMode     MockSourceMode @map("source_mode")
+  timeTaken      Int?           @map("time_taken")
+  answers        Json?
+  results        Json?
+  topicBreakdown Json?          @map("topic_breakdown")
+  startedAt      DateTime       @default(now()) @map("started_at")
+  completedAt    DateTime?      @map("completed_at")
+  createdAt      DateTime       @default(now())
 
   blueprint ExamBlueprint? @relation(fields: [blueprintId], references: [id])
 
