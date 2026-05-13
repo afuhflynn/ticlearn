@@ -9,6 +9,7 @@ import {
   sendSignInEmail,
   sendPasswordResetEmail,
 } from "./email/send";
+import { trackEvent } from "./kpi";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -70,6 +71,9 @@ export const auth = betterAuth({
 
           // Generate default quizzes for new users (after user is created)
           await triggerDefaultQuiz(user.id).catch(console.error);
+
+          // Track user signup
+          trackEvent(user.id, "user_signed_up").catch(() => {});
         },
       },
     },

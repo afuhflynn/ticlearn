@@ -4,6 +4,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
+import { trackEvent } from "@/lib/kpi";
 
 const createNoteSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -134,6 +135,13 @@ export async function POST(req: Request) {
         where: { id: note.id },
         data: { status: "PROCESSING" },
       });
+
+      trackEvent(session.user.id, "note_uploaded", {
+        noteId: note.id,
+        title: note.title,
+        subject: note.subject,
+        fileType: note.fileType,
+      }).catch(() => {});
 
       return NextResponse.json({ note: queuedNote });
     } catch (processError) {
