@@ -16,78 +16,65 @@ interface UsePlanResult {
   canAccessGCE: boolean;
   aiTutorLimit: number;
   quizLimit: number;
-  paper3ExamLimit: number;
-  paper3RetakeLimit: number;
-  paper3AIExamMessages: number;
+  mockLimitPerWeek: number;
+  aiSolvesPerDay: number;
   canViewCorrectAnswers: boolean;
-  canAccessPaper3AI: boolean;
-  canShareResults: boolean;
+  canAccessAdvancedReadiness: boolean;
 }
 
 const FREE_LIMITS = {
   pdfUploads: 2,
   quizGenerations: 4,
   aiTutorMessages: 8,
-  canAccessCommunity: false,
-  canAccessLeaderboard: false,
-  canAccessGCE: false,
-  paper3ExamLimit: 1,
-  paper3RetakeLimit: 0,
-  paper3AIExamMessages: 4,
+  canAccessCommunity: true,
+  canAccessLeaderboard: true,
+  canAccessGCE: true,
+  mockLimitPerWeek: 1,
+  aiSolvesPerDay: 10,
   canViewCorrectAnswers: false,
-  canAccessPaper3AI: false,
-  canShareResults: false,
+  canAccessAdvancedReadiness: false,
 };
 
-const PREMIUM_LIMITS = {
+const PRO_LIMITS = {
   pdfUploads: -1,
   quizGenerations: -1,
   aiTutorMessages: -1,
   canAccessCommunity: true,
   canAccessLeaderboard: true,
   canAccessGCE: true,
-  paper3ExamLimit: -1,
-  paper3RetakeLimit: -1,
-  paper3AIExamMessages: -1,
+  mockLimitPerWeek: -1,
+  aiSolvesPerDay: -1,
   canViewCorrectAnswers: true,
-  canAccessPaper3AI: true,
-  canShareResults: true,
+  canAccessAdvancedReadiness: true,
 };
 
-const STARTER_LIMITS = {
-  pdfUploads: 10,
-  quizGenerations: 20,
-  aiTutorMessages: -1,
-  canAccessCommunity: true,
-  canAccessLeaderboard: true,
-  canAccessGCE: true,
-  paper3ExamLimit: 3,
-  paper3RetakeLimit: 0,
-  paper3AIExamMessages: 4,
-  canViewCorrectAnswers: false,
-  canAccessPaper3AI: false,
-  canShareResults: false,
-};
-
-const STANDARD_LIMITS = {
-  pdfUploads: 30,
-  quizGenerations: 60,
-  aiTutorMessages: -1,
-  canAccessCommunity: true,
-  canAccessLeaderboard: true,
-  canAccessGCE: true,
-  paper3ExamLimit: 5,
-  paper3RetakeLimit: 0,
-  paper3AIExamMessages: -1,
-  canViewCorrectAnswers: true,
-  canAccessPaper3AI: false,
-  canShareResults: true,
-};
-
-const PLAN_MAP: Record<string, typeof PREMIUM_LIMITS> = {
-  PREMIUM: PREMIUM_LIMITS,
-  STARTER: STARTER_LIMITS,
-  STANDARD: STANDARD_LIMITS,
+const PLAN_MAP: Record<string, typeof PRO_LIMITS> = {
+  PRO: PRO_LIMITS,
+  PREMIUM: PRO_LIMITS,
+  STANDARD: {
+    pdfUploads: 30,
+    quizGenerations: 60,
+    aiTutorMessages: -1,
+    canAccessCommunity: true,
+    canAccessLeaderboard: true,
+    canAccessGCE: true,
+    mockLimitPerWeek: 3,
+    aiSolvesPerDay: 30,
+    canViewCorrectAnswers: true,
+    canAccessAdvancedReadiness: false,
+  },
+  STARTER: {
+    pdfUploads: 10,
+    quizGenerations: 20,
+    aiTutorMessages: -1,
+    canAccessCommunity: true,
+    canAccessLeaderboard: true,
+    canAccessGCE: true,
+    mockLimitPerWeek: 2,
+    aiSolvesPerDay: 15,
+    canViewCorrectAnswers: false,
+    canAccessAdvancedReadiness: false,
+  },
 };
 
 export function usePlan(): UsePlanResult {
@@ -125,11 +112,9 @@ export function usePlan(): UsePlanResult {
     canAccessGCE: limits.canAccessGCE,
     aiTutorLimit: limits.aiTutorMessages,
     quizLimit: limits.quizGenerations,
-    paper3ExamLimit: limits.paper3ExamLimit,
-    paper3RetakeLimit: limits.paper3RetakeLimit,
-    paper3AIExamMessages: limits.paper3AIExamMessages,
+    mockLimitPerWeek: limits.mockLimitPerWeek,
+    aiSolvesPerDay: limits.aiSolvesPerDay,
     canViewCorrectAnswers: limits.canViewCorrectAnswers,
-    canAccessPaper3AI: limits.canAccessPaper3AI,
-    canShareResults: limits.canShareResults,
+    canAccessAdvancedReadiness: limits.canAccessAdvancedReadiness,
   };
 }

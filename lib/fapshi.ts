@@ -71,6 +71,7 @@ export const PLAN_PRICES: PaymentPlanConfig = {
   STARTER: { amount: 3000, fcfa: "3,000" },
   STANDARD: { amount: 5000, fcfa: "5,000" },
   PREMIUM: { amount: 10000, fcfa: "10,000" },
+  PRO: { amount: 3500, fcfa: "3,500" },
 };
 
 export function getPlanPrice(plan: keyof PaymentPlanConfig) {

@@ -30,175 +30,100 @@ const plans = [
     priceKey: "FREE",
     description: "Perfect for getting started",
     features: [
-      "2 PDF uploads",
-      "4 quiz generations",
-      "A maximum of 20 quiz questions",
+      "1 full mock exam per week",
+      "10 AI question solves per day",
+      "Basic readiness score",
       "8 TiC messages/day",
-      "Basic progress tracking",
+      "Notes & quizzes",
     ],
     cta: "Get Started",
     popular: false,
+    href: "/sign-up",
   },
   {
-    name: "Starter",
-    price: "3,000",
-    priceKey: "STARTER",
-    description: "Great for regular students",
+    name: "Pro",
+    price: "3,500",
+    period: "/month",
+    priceKey: "PRO",
+    description: "For serious exam preparation",
     features: [
-      "10 PDF uploads",
-      "20 quiz generations",
-      "A maximum of 50 quiz questions",
-      "Unlimited TiC Chats",
-      "GCE Exams access",
-      "Community quizzes",
-      "Leaderboard access",
+      "Unlimited mock exams",
+      "Unlimited AI question solving",
+      "Adaptive mock targeting weak areas",
+      "Advanced readiness analytics & trends",
+      "Unlimited TiC messages",
+      "View correct answers & explanations",
     ],
-    cta: "Upgrade Now",
-    popular: false,
-  },
-  {
-    name: "Standard",
-    price: "5,000",
-    priceKey: "STANDARD",
-    description: "Best for serious learners",
-    features: [
-      "30 PDF uploads",
-      "60 quiz generations",
-      "A maximum of 80 quiz questions",
-      "Unlimited TiC Chats",
-      "GCE Exams access",
-      "Community quizzes",
-      "Leaderboard access",
-      "Priority support",
-    ],
-    cta: "Upgrade Now",
+    cta: "Start Free Trial",
     popular: true,
-  },
-  {
-    name: "Premium",
-    price: "10,000",
-    priceKey: "PREMIUM",
-    description: "Ultimate learning experience",
-    features: [
-      "Unlimited uploads",
-      "Unlimited quiz generations",
-      "A maximum of 100 quiz questions",
-      "Unlimited TiC Chats",
-      "All features included",
-      "Priority support",
-      "Early access to new features",
-    ],
-    cta: "Go Premium",
-    popular: false,
+    href: "/api/payment/initiate",
   },
 ];
 
 export default function PricingPage() {
-  const { data: session, isPending: sessionLoading } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [isLoadingSub, setIsLoadingSub] = useState(false);
-  const [isSubscribing, setIsSubscribing] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    async function fetchSubscription() {
-      if (session?.user) {
-        try {
-          const data = await api.queries.usage();
-          setSubscription({
-            plan: data.plan || "FREE",
-            status: data.status || "NONE",
-            previousPlan: data.previousPlan,
-          });
-        } catch (error) {
-          console.error("Failed to fetch subscription:", error);
-        }
-      }
+    if (session) {
+      api.queries.subscription().then((data) => {
+        setSubscription(data.subscription ?? null);
+      }).catch(() => {});
     }
-    fetchSubscription();
   }, [session]);
 
   const handleSubscribe = async (planKey: string) => {
     if (!session) {
-      router.push("/sign-up");
+      router.push("/sign-in?callbackUrl=/pricing");
       return;
     }
 
-    setIsSubscribing(planKey);
+    setLoading(true);
     try {
-      const response = await fetch("/api/payment/initiate", {
+      const res = await fetch("/api/payment/initiate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: planKey }),
+        body: JSON.stringify({ plan: planKey, redirectUrl: "/dashboard" }),
       });
-      const data = await response.json();
-
+      const data = await res.json();
       if (data.link) {
         window.location.href = data.link;
       } else {
-        toast.error(data.error || "Failed to initiate payment");
+        toast.error("Payment initiation failed. Please try again.");
       }
     } catch {
       toast.error("Failed to initiate payment");
-    } finally {
-      setIsSubscribing(null);
     }
+    setLoading(false);
   };
 
-  const currentPlanStatus = subscription?.status || "NONE";
-  const isPending = currentPlanStatus === "PENDING";
-  const displayPlan =
-    isPending && subscription?.previousPlan
-      ? subscription.previousPlan
-      : subscription?.plan || "FREE";
-
-  if (sessionLoading || isLoadingSub) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
-
-  const isAuthenTiCted = !!session;
+  const currentPlan = subscription?.plan || "FREE";
+  const isActive = subscription?.status === "ACTIVE";
 
   return (
-    <div className="container py-12 md:py-20">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold tracking-tight mb-4">
-          Simple, Transparent Pricing
-        </h1>
+    <div className="mx-auto max-w-5xl space-y-8 py-12 px-4">
+      <div className="text-center space-y-4">
+        <h1 className="text-4xl font-bold tracking-tight">Simple, Transparent Pricing</h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Choose the plan that fits your learning needs. All plans include a
-          7-day money-back guarantee.
+          Start free. Upgrade when you're ready to take your preparation seriously.
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 max-w-6xl mx-auto">
+      <div className="grid gap-6 md:grid-cols-2 lg:gap-8 max-w-3xl mx-auto">
         {plans.map((plan) => {
-          const isCurrentPlan =
-            displayPlan === plan.priceKey && currentPlanStatus === "ACTIVE";
-          const isUpgrade =
-            plan.priceKey === "FREE"
-              ? false
-              : plan.priceKey === "STARTER"
-                ? ["FREE"].includes(displayPlan)
-                : plan.priceKey === "STANDARD"
-                  ? ["FREE", "STARTER"].includes(displayPlan)
-                  : plan.priceKey === "PREMIUM"
-                    ? ["FREE", "STARTER", "STANDARD"].includes(displayPlan)
-                    : false;
-
+          const isCurrentPlan = currentPlan === plan.priceKey && isActive;
           return (
             <Card
               key={plan.name}
-              className={`relative ${
-                plan.popular ? "border-primary shadow-lg" : ""
+              className={`flex flex-col ${
+                plan.popular ? "border-primary shadow-lg relative" : ""
               }`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <span className="bg-primary text-primary-foreground text-xs font-medium px-3 py-1 rounded-full">
+                  <span className="rounded-full bg-primary px-4 py-1 text-xs font-medium text-primary-foreground">
                     Most Popular
                   </span>
                 </div>
@@ -206,75 +131,41 @@ export default function PricingPage() {
               <CardHeader>
                 <CardTitle className="text-2xl">{plan.name}</CardTitle>
                 <CardDescription>{plan.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="h-auto! flex-1">
-                <div className="mb-6">
-                  <span className="text-4xl font-bold">XFA {plan.price}</span>
-                  {plan.price !== "0" && (
-                    <span className="text-muted-foreground">/month</span>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold">{plan.price}</span>
+                  {plan.period && (
+                    <span className="text-muted-foreground">{plan.period}</span>
                   )}
+                  <span className="ml-2 text-sm text-muted-foreground">FCFA</span>
                 </div>
+              </CardHeader>
+              <CardContent className="flex-1">
                 <ul className="space-y-3">
                   {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center gap-2">
-                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <li key={feature} className="flex items-start gap-3">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
                       <span className="text-sm">{feature}</span>
                     </li>
                   ))}
                 </ul>
               </CardContent>
               <CardFooter>
-                {isAuthenTiCted ? (
-                  isCurrentPlan ? (
-                    <Button className="w-full" variant="secondary" disabled>
-                      Current Plan
-                    </Button>
-                  ) : isPending ? (
-                    <Button
-                      className="w-full"
-                      variant={plan.popular ? "default" : "outline"}
-                      onClick={() => handleSubscribe(plan.priceKey)}
-                      disabled={isSubscribing === plan.priceKey}
-                    >
-                      {isSubscribing === plan.priceKey ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          {plan.cta}
-                        </>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      variant={plan.popular ? "default" : "outline"}
-                      onClick={() => handleSubscribe(plan.priceKey)}
-                      disabled={isSubscribing === plan.priceKey}
-                    >
-                      {isSubscribing === plan.priceKey ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <CreditCard className="mr-2 h-4 w-4" />
-                          {isUpgrade ? plan.cta : "Subscribe"}
-                        </>
-                      )}
-                    </Button>
-                  )
+                {isCurrentPlan ? (
+                  <Button className="w-full" disabled>
+                    Current Plan
+                  </Button>
+                ) : plan.priceKey === "FREE" ? (
+                  <Button className="w-full" variant="outline" asChild>
+                    <Link href={plan.href}>{plan.cta}</Link>
+                  </Button>
                 ) : (
                   <Button
                     className="w-full"
-                    variant={plan.popular ? "default" : "outline"}
-                    asChild
+                    onClick={() => handleSubscribe(plan.priceKey)}
+                    disabled={loading}
                   >
-                    <Link href="/sign-up">{plan.cta}</Link>
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                    {plan.cta}
                   </Button>
                 )}
               </CardFooter>
@@ -283,13 +174,9 @@ export default function PricingPage() {
         })}
       </div>
 
-      <div className="mt-16 text-center">
-        <p className="text-muted-foreground">
-          Need a custom plan?{" "}
-          <Link href="/contact" className="text-primary hover:underline">
-            Contact us
-          </Link>
-        </p>
+      <div className="text-center text-sm text-muted-foreground max-w-lg mx-auto">
+        <p>Pay with MTN Mobile Money or Orange Money via Fapshi. All prices in FCFA.</p>
+        <p className="mt-1">Cancel anytime. No long-term contracts.</p>
       </div>
     </div>
   );
