@@ -4,6 +4,7 @@ import { gradeOpenAnswer, explainMCQAnswer } from "@/lib/ai";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/exam-profile";
+import { trackEvent } from "@/lib/kpi";
 
 export async function POST(req: Request) {
   try {
@@ -157,6 +158,13 @@ export async function POST(req: Request) {
         },
       });
     }
+
+    trackEvent(session.user.id, "quiz_taken", {
+      quizId,
+      score,
+      correctCount,
+      totalQuestions: quiz.questions.length,
+    }).catch(() => {});
 
     return NextResponse.json({
       attempt,

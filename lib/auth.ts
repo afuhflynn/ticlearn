@@ -9,6 +9,7 @@ import {
   sendSignInEmail,
   sendPasswordResetEmail,
 } from "./email/send";
+import { trackEvent } from "./kpi";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -71,28 +72,8 @@ export const auth = betterAuth({
           // Generate default quizzes for new users (after user is created)
           await triggerDefaultQuiz(user.id).catch(console.error);
 
-          // Create ExamProfile for new user
-          try {
-            const unknownProgram = await prisma.program.findUnique({
-              where: { code: "UNKNOWN" },
-            });
-          if (unknownProgram) {
-            const profile = await prisma.examProfile.create({
-              data: {
-                userId: user.id,
-                programs: {
-                  create: { programId: unknownProgram.id },
-                },
-              },
-              });
-              await prisma.user.update({
-                where: { id: user.id },
-                data: { activeProfileId: profile.id },
-              });
-            }
-          } catch {
-            console.error("Failed to create ExamProfile for user", user.id);
-          }
+          // Track user signup
+          trackEvent(user.id, "user_signed_up").catch(() => {});
         },
       },
     },
