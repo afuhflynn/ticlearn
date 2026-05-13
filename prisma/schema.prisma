@@ -130,13 +130,13 @@ model ExamLevel {
 }
 
 model Program {
-  id           String        @id @default(cuid())
-  examLevelId  String        @map("exam_level_id")
-  name         String
-  code         String        @unique
-  components   Component[]
+  id                  String               @id @default(cuid())
+  examLevelId         String               @map("exam_level_id")
+  name                String
+  code                String               @unique
+  components          Component[]
   examProfilePrograms ExamProfileProgram[]
-  createdAt    DateTime      @default(now())
+  createdAt           DateTime             @default(now())
 
   examLevel ExamLevel @relation(fields: [examLevelId], references: [id], onDelete: Cascade)
 
@@ -154,8 +154,10 @@ model Component {
 
   program         Program          @relation(fields: [programId], references: [id], onDelete: Cascade)
   examSessions    ExamSession[]
+  examSources     ExamSource[]
   paper3Sources   Paper3Source[]
   paper3Questions Paper3Question[]
+  questions       Question[]
   topics          Topic[]
 
   @@unique([programId, code])
@@ -172,6 +174,7 @@ model Topic {
   component       Component           @relation(fields: [componentId], references: [id], onDelete: Cascade)
   userBaselines   UserTopicBaseline[]
   knowledgeChunks KnowledgeChunk[]
+  questions       Question[]
 
   @@unique([componentId, name])
   @@index([componentId])
@@ -211,12 +214,50 @@ model KnowledgeChunk {
   @@map("knowledge_chunks")
 }
 
+model ExamSource {
+  id          String   @id @default(cuid())
+  componentId String   @map("component_id")
+  year        Int
+  sessionName String   @map("session_name")
+  createdAt   DateTime @default(now())
+
+  component Component  @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  questions Question[]
+
+  @@unique([componentId, year])
+  @@index([componentId])
+  @@map("exam_sources")
+}
+
+model Question {
+  id           String         @id @default(cuid())
+  componentId  String         @map("component_id")
+  examSourceId String?        @map("exam_source_id")
+  topicId      String?        @map("topic_id")
+  text         String         @db.Text
+  type         QuestionType
+  difficulty   Int?           @default(3)
+  marks        Int?           @default(1)
+  section      String?
+  sourceType   QuestionSource
+  createdAt    DateTime       @default(now())
+
+  component  Component   @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  topic      Topic?      @relation(fields: [topicId], references: [id])
+  examSource ExamSource? @relation(fields: [examSourceId], references: [id])
+
+  @@index([componentId])
+  @@index([examSourceId])
+  @@index([topicId])
+  @@map("questions")
+}
+
 model ExamProfileProgram {
-  id            String      @id @default(cuid())
-  examProfileId String      @map("exam_profile_id")
-  programId     String      @map("program_id")
-  confidence    Int?        @default(3)
-  createdAt     DateTime    @default(now())
+  id            String   @id @default(cuid())
+  examProfileId String   @map("exam_profile_id")
+  programId     String   @map("program_id")
+  confidence    Int?     @default(3)
+  createdAt     DateTime @default(now())
 
   examProfile ExamProfile @relation(fields: [examProfileId], references: [id], onDelete: Cascade)
   program     Program     @relation(fields: [programId], references: [id], onDelete: Cascade)
@@ -238,7 +279,7 @@ model ExamProfile {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  user    User    @relation("UserExamProfiles", fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("UserExamProfiles", fields: [userId], references: [id], onDelete: Cascade)
 
   activeForUser          User?                   @relation("UserActiveProfile")
   examSessions           ExamSession[]
@@ -257,7 +298,6 @@ model ExamProfile {
 
 enum ComponentType {
   PAPER
-  COURSE
 }
 
 // ===========================================
@@ -678,6 +718,15 @@ enum QuizStatus {
 enum QuestionType {
   MCQ
   OPEN
+  STRUCTURED
+  PRACTICAL
+  ESSAY
+}
+
+enum QuestionSource {
+  UPLOADED
+  AI_GENERATED
+  RECONSTRUCTED
 }
 
 enum ExamSubject {
