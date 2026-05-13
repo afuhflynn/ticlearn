@@ -23,6 +23,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { AlertTriangle, Eye, EyeOff, RefreshCw } from "lucide-react";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
 
 export default function TakeExamPage() {

@@ -6,6 +6,9 @@ import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useQuizAttempt } from "@/hooks";
 import { Loader2, ArrowLeft } from "lucide-react";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
 import { Button } from "@/components/ui/button";
 import {
@@ -191,7 +194,7 @@ export default function AttemptDetailPage() {
               <div>
                 <p className="text-sm font-medium mb-1">Explanation</p>
                 <div className="p-3 rounded-lg bg-muted text-sm text-muted-foreground space-y-1">
-                  <ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                     {answer.explanation || "No explanation available."}
                   </ReactMarkdown>
                 </div>

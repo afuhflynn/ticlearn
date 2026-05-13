@@ -19,6 +19,11 @@ import {
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
+import { createMathPlugin } from "@streamdown/math";
+import "katex/dist/katex.min.css";
+import { normalizeMathNotation } from "@/lib/math-format";
+
+const mathPlugin = createMathPlugin({ singleDollarTextMath: false });
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -304,14 +309,17 @@ export const MessageBranchPage = ({
 export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 
 export const MessageResponse = memo(
-  ({ className, ...props }: MessageResponseProps) => (
+  ({ className, children, ...props }: MessageResponseProps) => (
     <Streamdown
+      plugins={{ math: mathPlugin }}
       className={cn(
         "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         className,
       )}
       {...props}
-    />
+    >
+      {typeof children === "string" ? normalizeMathNotation(children) : children}
+    </Streamdown>
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children,
 );

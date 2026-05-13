@@ -31,6 +31,9 @@ import {
   Sparkles,
 } from "lucide-react";
 import { PerQuestionChat } from "@/components/paper3/PerQuestionChat";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
 import { HtmlPreview } from "@/components/paper3/HtmlPreview";
 import { isHtmlQuestion } from "@/lib/paper3/evaluate";
@@ -878,13 +881,13 @@ export default function ExamResultPage() {
                             </p>
                             {detailedResult?.feedbackMd ? (
                               <div className="prose prose-sm max-w-full wrap-break-word">
-                                <ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                                   {detailedResult.feedbackMd}
                                 </ReactMarkdown>
                               </div>
                             ) : result.feedbackMd ? (
                               <div className="prose prose-sm max-w-full wrap-break-word">
-                                <ReactMarkdown>
+                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                                   {result.feedbackMd}
                                 </ReactMarkdown>
                               </div>
