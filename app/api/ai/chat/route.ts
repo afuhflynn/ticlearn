@@ -1,6 +1,7 @@
 import { openai } from "@ai-sdk/openai";
 import {
   convertToModelMessages,
+  generateObject,
   generateText,
   stepCountIs,
   streamText,
@@ -18,6 +19,8 @@ import { getChatResetWindow } from "@/lib/chat-usage";
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/exam-profile";
 import { computeReadiness } from "@/lib/readiness";
+import crypto from "crypto";
+import { z } from "zod";
 
 export const runtime = "nodejs";
 
