@@ -16,9 +16,18 @@ import {
   sendPlatformUpdateEmail,
   handleSubscriptionAction,
 } from "@/lib/inngest/functions";
-import { processPaper3Source, generatePaper3Mock } from "@/lib/inngest";
+import {
+  processPaper3Source,
+  generatePaper3Mock,
+  harvestNoteKnowledge,
+  harvestPaper3Knowledge,
+  ingestQuestions,
+} from "@/lib/inngest";
 import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
-import { harvestNoteKnowledge, harvestPaper3Knowledge } from "@/lib/inngest/knowledge-harvest";
+import {
+  harvestNoteKnowledge,
+  harvestPaper3Knowledge,
+} from "@/lib/inngest/knowledge-harvest";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -42,5 +51,6 @@ export const { GET, POST, PUT } = serve({
     evaluatePaper3Exam,
     harvestNoteKnowledge,
     harvestPaper3Knowledge,
+    ingestQuestions,
   ],
 });
