@@ -19,7 +19,7 @@ import {
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 
-const aiModel = openai("gpt-5.4");
+const aiModel = openai("gpt-5.5");
 const SOURCE_TEXT_MIN_LENGTH = 100;
 
 type StepTools = {

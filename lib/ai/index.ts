@@ -17,7 +17,7 @@ GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).href;
 
-export const aiModel = openai("gpt-5.4");
+export const aiModel = openai("gpt-5.5");
 
 const generatedQuestionSchema = z.object({
   type: z.enum(["MCQ", "OPEN"]),
@@ -537,7 +537,7 @@ export async function generateQuizFromNote(
   });
 
   try {
-    console.log("[AI] Calling OpenAI with model: gpt-5.4");
+    console.log("[AI] Calling OpenAI with model: gpt-5.5");
     const { object } = await generateObject({
       model: aiModel,
       schema,
@@ -634,7 +634,7 @@ Rules:
   });
 
   try {
-    console.log("[AI] Calling OpenAI with model: gpt-5.4 for weak areas quiz");
+    console.log("[AI] Calling OpenAI with model: gpt-5.5 for weak areas quiz");
     const { object } = await generateObject({
       model: aiModel,
       schema,
@@ -732,7 +732,7 @@ export async function generateQuizFromTopic(
   });
 
   try {
-    console.log("[AI] Calling OpenAI for default quiz with model: gpt-5.4");
+    console.log("[AI] Calling OpenAI for default quiz with model: gpt-5.5");
     const { object } = await generateObject({
       model: aiModel,
       schema,

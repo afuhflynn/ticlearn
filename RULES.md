@@ -258,23 +258,10 @@ If you introduce a new abstraction, it must replace an existing one for a clear 
 - When changing Prisma schema, always create a migration: `pnpm db:migrate --name <migration-name>`
 - Review migrations before applying to ensure they are correct.
 
-## 20. AI Models: Use gpt-5.4 for All AI Operations
+## 20. AI Models: Use gpt-5.5 for All AI Operations
 
-- All AI-powered features MUST use `gpt-5.4` model.
-- This applies to:
-  - [`lib/ai/index.ts`](./lib/ai/index.ts) - main AI model export
-  - [`lib/paper3/evaluate.ts`](./lib/paper3/evaluate.ts) - answer evaluation
-  - [`lib/inngest/paper3-functions.ts`](./lib/inngest/paper3-functions.ts) - document processing
-- Do NOT use `gpt-4o`, `gpt-4-turbo`, or any other model.
-- Override this only if gpt-5.4 is unavailable in your OpenAI organization.
-
-## 21. VERY IMPORTANT: Never do `pnpm db:push` before `pnpm db:migrate`
-
-- This is a very important rule that must be followed.
-- Do not run `pnpm db:push` before `pnpm db:migrate`.
-- Trying to migrate aftr pushing will require resetting the database which is very bad.
-- The flow after modifying the schema.prisma:
-  - run `pnpm db:migrate`
-  - run `pnpm db:generate`
-  - run `pnpm db:push`
-- Then you can continue with what you are doing.
+- All AI-powered features MUST use `gpt-5.5` model.
+- GPT-5.5 handles text and vision natively — no separate vision model needed.
+- This applies to ALL AI operations: chat, evaluation, processing, generation.
+- Do NOT use `gpt-4o`, `gpt-5.4`, `gpt-5.2-chat-latest`, or any earlier model.
+- Override only if gpt-5.5 is unavailable in your OpenAI organization.

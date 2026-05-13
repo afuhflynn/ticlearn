@@ -805,6 +805,7 @@ enum QuestionSource {
   UPLOADED
   AI_GENERATED
   RECONSTRUCTED
+  USER_UPLOADED
 }
 
 enum MockSourceMode {

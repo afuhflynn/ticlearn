@@ -23,12 +23,11 @@ import { z } from "zod";
 
 export const runtime = "nodejs";
 
-const visionModel = openai("gpt-4o");
-const textModel = openai("gpt-5.4");
+const model = openai("gpt-5.5");
 
 async function generateTitle(userMessage: string): Promise<string> {
   const result = await generateText({
-    model: textModel,
+    model: model,
     prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
 The title should be concise and capture the main topic.
 Do not use quotes or special characters in the title.
@@ -63,7 +62,7 @@ async function processImageQuestion(imageUrl: string, userId: string, conversati
 
     // Step 1: Extract question text from image
     const extraction = await generateObject({
-      model: visionModel,
+      model: model,
       schema: z.object({
         questionText: z.string(),
         isQuestion: z.boolean(),
@@ -89,7 +88,7 @@ async function processImageQuestion(imageUrl: string, userId: string, conversati
     const topicNames = allTopics.map(t => t.name);
 
     const classification = await generateObject({
-      model: textModel,
+      model: model,
       schema: z.object({ topicIdx: z.number().optional(), isClassified: z.boolean() }),
       system: `Classify this question into one of these topics: ${topicNames.join(", ")}. Return the index (0-based) of the best matching topic.`,
       prompt: `Question: ${text.substring(0, 500)}`,
@@ -111,7 +110,7 @@ async function processImageQuestion(imageUrl: string, userId: string, conversati
           topicId: matchedTopic?.id ?? null,
           text,
           type: "STRUCTURED",
-          sourceType: "RECONSTRUCTED",
+          sourceType: "USER_UPLOADED",
         },
       });
     }
@@ -375,9 +374,6 @@ Guidelines:
 - If asked about non-educational topics, politely redirect
 - Keep responses concise but informative
 `;
-
-    const hasImage = messageHasImage(latestUserMessage.parts || []);
-    const model = hasImage ? visionModel : textModel;
 
     const modelMessages = await convertToModelMessages(messages);
 
