@@ -28,10 +28,6 @@ CREATE TABLE "questions" (
 ALTER TABLE "questions" ADD CONSTRAINT "chk_question_type" CHECK ("type" IN ('MCQ', 'STRUCTURED', 'PRACTICAL', 'ESSAY'));
 ALTER TABLE "questions" ADD CONSTRAINT "chk_question_source" CHECK ("source_type" IN ('UPLOADED', 'AI_GENERATED', 'RECONSTRUCTED'));
 
--- Add enum values to existing QuestionType
-ALTER TABLE "quiz_questions" DROP CONSTRAINT IF EXISTS "quiz_questions_type_check";
-ALTER TABLE "quiz_questions" ADD CONSTRAINT "quiz_questions_type_check" CHECK ("type" IN ('MCQ', 'OPEN', 'STRUCTURED', 'PRACTICAL', 'ESSAY'));
-
 -- Indexes
 CREATE UNIQUE INDEX "exam_sources_component_id_year_key" ON "exam_sources"("component_id", "year");
 CREATE INDEX "exam_sources_component_id_idx" ON "exam_sources"("component_id");
