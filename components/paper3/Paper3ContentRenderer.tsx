@@ -1,6 +1,9 @@
 "use client";
 
 import React, { ReactNode } from "react";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import ReactMarkdown, { Components } from "react-markdown";
 import { cn } from "@/lib/utils";
 import { ExcelGrid } from "./ExcelGrid";

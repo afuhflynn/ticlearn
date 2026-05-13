@@ -10,6 +10,9 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
+import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -490,7 +493,7 @@ export default function QuizPlayerPage() {
                       <p className="mb-1 text-sm font-medium">Explanation</p>
                       <div className="overflow-x-auto rounded-lg bg-muted p-3 text-sm text-muted-foreground">
                         <div className="max-w-full break-words [&_*]:break-words">
-                          <ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
                             {answer?.explanation || "No explanation available."}
                           </ReactMarkdown>
                         </div>
