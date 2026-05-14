@@ -84,8 +84,9 @@ export default function OnboardingPage() {
           await apiFetch("/api/onboarding/step", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ step: 2, data: { programId: selectedProgram } }),
+            body: JSON.stringify({ step: 2, data: { programIds: [selectedProgram] } }),
           });
+          await loadTopics(selectedProgram!);
           setStep(3);
           break;
         case 3:
@@ -257,10 +258,7 @@ export default function OnboardingPage() {
                   <button
                     key={program.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedProgram(program.id);
-                      loadTopics(program.id);
-                    }}
+                    onClick={() => setSelectedProgram(program.id)}
                     className={`w-full rounded-lg border p-4 text-left transition-colors ${
                       selectedProgram === program.id ? "border-primary bg-primary/5" : "hover:bg-muted/50"
                     }`}
