@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateQuizFromNote } from "@/lib/ai";
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),
@@ -99,7 +100,6 @@ export async function POST(req: Request) {
       `[API] Created quiz: ${quiz.id}, attempting synchronous generation...`,
     );
 
-    const { generateQuizFromNote } = await import("@/lib/ai");
     console.log(`[API] Calling quiz generation AI...`);
 
     const generatedQuestions = await generateQuizFromNote(note.extractedText, {

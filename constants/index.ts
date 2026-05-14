@@ -118,3 +118,5 @@ export const FAQ_ITEMS: FAQItem[] = [
       "If your payment fails, you'll be notified immediately. You can try again or contact our support team for assistance. Your account will remain active until the current subscription period ends.",
   },
 ];
+
+export const MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT = 32_000;

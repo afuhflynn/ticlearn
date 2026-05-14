@@ -21,7 +21,7 @@ export default async function DashboardLayout({
       where: { id: session.user.id },
       include: {
         examProfiles: {
-          select: { id: true, onboardingCompleted: true },
+          select: { id: true, onboardingCompleted: true, onboardingSkipped: true },
         },
       },
     });
@@ -30,7 +30,7 @@ export default async function DashboardLayout({
       const activeProfile = user.examProfiles.find(
         (p) => p.id === user.activeProfileId,
       );
-      if (activeProfile && !activeProfile.onboardingCompleted) {
+      if (activeProfile && !activeProfile.onboardingCompleted && !activeProfile.onboardingSkipped) {
         redirect("/onboarding");
       }
     } else {

@@ -129,6 +129,20 @@ export default function OnboardingPage() {
     setSaving(false);
   };
 
+  const handleSkip = async () => {
+    try {
+      await fetch("/api/onboarding/step", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step: 6, data: { skipped: true } }),
+      });
+      router.push("/dashboard");
+    } catch (e) {
+      // If profile creation fails, still redirect (edge case)
+      router.push("/dashboard");
+    }
+  };
+
   const loadPrograms = async (levelId: string) => {
     setLoading(true);
     try {
@@ -393,10 +407,15 @@ export default function OnboardingPage() {
           <Button variant="outline" disabled={step === 1} onClick={() => setStep((s) => s - 1)}>
             <ChevronLeft className="mr-2 h-4 w-4" /> Back
           </Button>
-          <Button onClick={handleNext} disabled={saving || !canProceed(step, { selectedLevel, selectedProgram, examYear, baselines })}>
-            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {step === 5 ? "Finish" : "Continue"} <ChevronRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <button onClick={handleSkip} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
+              Skip onboarding
+            </button>
+            <Button onClick={handleNext} disabled={saving || !canProceed(step, { selectedLevel, selectedProgram, examYear, baselines })}>
+              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              {step === 5 ? "Finish" : "Continue"} <ChevronRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

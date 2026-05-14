@@ -1,3 +1,4 @@
+import { MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT } from "@/constants";
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText, streamText } from "ai";
 import mammoth from "mammoth";
@@ -530,7 +531,7 @@ export async function generateQuizFromNote(
   - Stay faithful to the note content
 
   Study Notes:
-  ${noteContent.slice(0, 8000)} ${noteContent.length > 8000 ? "... (content truncated)" : ""}`;
+  ${noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT)} ${noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT ? "... (content truncated)" : ""}`;
 
   const schema = z.object({
     questions: z.array(generatedQuestionSchema),
@@ -538,6 +539,7 @@ export async function generateQuizFromNote(
 
   try {
     console.log("[AI] Calling OpenAI with model: gpt-5.5");
+
     const { object } = await generateObject({
       model: aiModel,
       schema,
@@ -584,14 +586,18 @@ export async function generateQuizFromWeakAreas(
   console.log(`[AI] Using ${notes.length} notes`);
 
   const noteContext = notes
-    .map((n) => `Subject: ${n.subject}\nTitle: ${n.title}\nContent: ${n.extractedText?.slice(0, 3000) || "No content"}\n---\n`)
+    .map(
+      (n) =>
+        `Subject: ${n.subject}\nTitle: ${n.title}\nContent: ${n.extractedText?.slice(0, 3000) || "No content"}\n---\n`,
+    )
     .join("\n");
 
-  const difficultyLevel = options.readinessScore < 30 
-    ? "basic foundational questions" 
-    : options.readinessScore < 60 
-      ? "medium difficulty questions that bridge basic and advanced concepts"
-      : "challenging advanced questions";
+  const difficultyLevel =
+    options.readinessScore < 30
+      ? "basic foundational questions"
+      : options.readinessScore < 60
+        ? "medium difficulty questions that bridge basic and advanced concepts"
+        : "challenging advanced questions";
 
   const prompt = `You are an educational quiz generator specialized in helping students improve on their weak areas.
 
@@ -643,7 +649,9 @@ Rules:
 
     const questions = normalizeGeneratedQuestions(object.questions);
 
-    console.log(`[AI] OpenAI returned ${questions.length} questions for weak areas`);
+    console.log(
+      `[AI] OpenAI returned ${questions.length} questions for weak areas`,
+    );
     console.log(
       `[AI] Sample:`,
       JSON.stringify(questions[0], null, 2).slice(0, 500),

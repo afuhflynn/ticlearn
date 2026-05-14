@@ -353,6 +353,7 @@ model ExamProfile {
   userId              String    @map("user_id")
   onboardingCompleted Boolean   @default(false) @map("onboarding_completed")
   onboardingStep      Int       @default(0) @map("onboarding_step")
+  onboardingSkipped   Boolean   @default(false) @map("onboarding_skipped")
   examYear            Int?      @map("exam_year")
   examDate            DateTime? @map("exam_date")
   isRetaking          Boolean   @default(false) @map("is_retaking")

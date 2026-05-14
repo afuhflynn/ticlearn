@@ -8,9 +8,11 @@ import {
   TrendingUp,
   Zap,
   Brain,
+  AlertCircle,
   AlertTriangle,
   Target,
   Clock,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -163,6 +165,26 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {!loading && !readiness && (
+        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950">
+          <div className="flex items-start justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
+              <div>
+                <p className="font-medium text-yellow-800 dark:text-yellow-200">Your profile is incomplete</p>
+                <p className="text-sm text-yellow-700 dark:text-yellow-300">
+                  Complete onboarding to unlock personalized study recommendations, readiness tracking, and adaptive mock exams.
+                </p>
+              </div>
+            </div>
+            <Link href="/onboarding">
+              <Button size="sm" variant="outline" className="shrink-0">
+                Complete Profile
+              </Button>
+            </Link>
+          </div>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">
           Welcome back, {session.user.name?.split(" ")[0] || "Student"}!
