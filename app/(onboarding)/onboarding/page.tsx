@@ -73,6 +73,11 @@ export default function OnboardingPage() {
     try {
       switch (step) {
         case 1:
+          await apiFetch("/api/onboarding/step", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ step: 1, data: {} }),
+          });
           setStep(2);
           break;
         case 2:
