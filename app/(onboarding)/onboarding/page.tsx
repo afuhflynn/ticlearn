@@ -314,6 +314,11 @@ export default function OnboardingPage() {
           <CardContent className="space-y-6">
             {loading ? (
               <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin" /></div>
+            ) : components.length === 0 ? (
+              <div className="py-8 text-center space-y-3">
+                <p className="text-muted-foreground">Topics are not yet available for this subject.</p>
+                <p className="text-xs text-muted-foreground">You can skip this step and set up topic baselines later from your dashboard.</p>
+              </div>
             ) : (
               components.map((comp) => (
                 <div key={comp.id}>
@@ -414,7 +419,7 @@ export default function OnboardingPage() {
             <button onClick={handleSkip} className="text-sm text-muted-foreground underline-offset-4 hover:underline">
               Skip onboarding
             </button>
-            <Button onClick={handleNext} disabled={saving || !canProceed(step, { selectedLevel, selectedProgram, examYear, baselines })}>
+            <Button onClick={handleNext} disabled={saving || !canProceed(step, { selectedLevel, selectedProgram, examYear, baselines }, components.length)}>
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               {step === 5 ? "Finish" : "Continue"} <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
@@ -425,12 +430,12 @@ export default function OnboardingPage() {
   );
 }
 
-function canProceed(step: number, state: { selectedLevel: string | null; selectedProgram: string | null; examYear: string; baselines: Record<string, number> }) {
+function canProceed(step: number, state: { selectedLevel: string | null; selectedProgram: string | null; examYear: string; baselines: Record<string, number> }, componentsLength: number = 0) {
   switch (step) {
     case 1: return !!state.selectedLevel;
     case 2: return !!state.selectedProgram;
     case 3: return true;
-    case 4: return Object.keys(state.baselines).length > 0;
+    case 4: return componentsLength === 0 || Object.keys(state.baselines).length > 0;
     case 5: return true;
     default: return false;
   }
