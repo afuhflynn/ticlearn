@@ -381,6 +381,7 @@ model ExamProfile {
 
 enum ComponentType {
   PAPER
+  COURSE
 }
 
 // ===========================================

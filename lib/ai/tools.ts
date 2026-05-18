@@ -382,7 +382,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
     }),
     createQuiz: tool({
       description:
-        "Create a quiz for the authenticated user. Can be linked to one of their notes (noteId) or standalone with no note link. Generates the full quiz with all questions in one shot. Use this when the user asks to generate, create, or make a quiz — either from a specific note or on a topic from the conversation.",
+        "Create a quiz for the authenticated user. Can be linked to one of their notes (noteId) or standalone with no note link. Generates the full quiz with all questions in one shot. Use this when the user asks to generate, create, or make a quiz - either from a specific note or on a topic from the conversation.",
       inputSchema: z.object({
         title: z.string().min(3).max(120).describe("Quiz title."),
         noteId: z
@@ -472,7 +472,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
           const created = await tx.quiz.create({
             data: {
               userId,
-              noteId: noteId ?? "__standalone__", // use a sentinel or adjust schema to make noteId optional
+              noteId: noteId || null,
               noteTitle,
               title,
               questionCount: questions.length,

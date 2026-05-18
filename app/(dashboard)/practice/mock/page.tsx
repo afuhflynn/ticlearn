@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Play } from "lucide-react";
 import { toast } from "sonner";
@@ -14,7 +20,12 @@ interface Blueprint {
   description: string | null;
   totalMarks: number;
   durationMin: number;
-  sections: Array<{ name: string; questionCount: number; totalMarks: number; questionType: string }>;
+  sections: Array<{
+    name: string;
+    questionCount: number;
+    totalMarks: number;
+    questionType: string;
+  }>;
 }
 
 export default function MockListPage() {
@@ -25,8 +36,8 @@ export default function MockListPage() {
 
   useEffect(() => {
     fetch("/api/blueprints")
-      .then(r => r.json())
-      .then(d => setBlueprints(d.blueprints || []))
+      .then((r) => r.json())
+      .then((d) => setBlueprints(d.blueprints || []))
       .catch(() => toast.error("Failed to load blueprints"))
       .finally(() => setLoading(false));
   }, []);
@@ -48,24 +59,33 @@ export default function MockListPage() {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin" />
+      </div>
+    );
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Mock Exams</h1>
-        <p className="text-muted-foreground">Blueprint-based mock exams for your subjects.</p>
+        <p className="text-muted-foreground">
+          Blueprint-based mock exams for your subjects.
+        </p>
       </div>
 
       {blueprints.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">No blueprints available for your subjects yet.</p>
+            <p className="text-muted-foreground">
+              No blueprints available for your subjects yet.
+            </p>
           </CardContent>
         </Card>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {blueprints.map(bp => (
+          {blueprints.map((bp) => (
             <Card key={bp.id}>
               <CardHeader>
                 <CardTitle>{bp.name}</CardTitle>
@@ -80,7 +100,10 @@ export default function MockListPage() {
                   {bp.sections.map((sec, i) => (
                     <div key={i} className="flex justify-between text-sm">
                       <span className="text-muted-foreground">{sec.name}</span>
-                      <span>{sec.questionCount} × {sec.questionType} — {sec.totalMarks}m</span>
+                      <span>
+                        {sec.questionCount} × {sec.questionType} -{" "}
+                        {sec.totalMarks}m
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -89,7 +112,11 @@ export default function MockListPage() {
                   onClick={() => startMock(bp.id)}
                   disabled={generating === bp.id}
                 >
-                  {generating === bp.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+                  {generating === bp.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Play className="mr-2 h-4 w-4" />
+                  )}
                   Start Mock
                 </Button>
               </CardContent>

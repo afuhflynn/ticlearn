@@ -24,7 +24,9 @@ async function extractText(fileUrl: string, fileName: string): Promise<string> {
   const ext = fileName.toLowerCase().split(".").pop();
   const uploadthingKey = fileUrl.includes("ufs.sh/f/")
     ? fileUrl.split("ufs.sh/f/").pop()!.split("?")[0]
-    : null;
+    : fileUrl.includes("utfs.io/f/")
+      ? fileUrl.split("utfs.io/f/").pop()!.split("?")[0]
+      : null;
 
   try {
     if (ext === "pdf") {

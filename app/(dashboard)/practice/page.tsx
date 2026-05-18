@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { HtmlPreview, Paper3ContentRenderer } from "@/components/paper3";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -68,7 +68,7 @@ interface PracticeMock {
   totalMarks: number;
 }
 
-const categories: Array<{ value: PracticeCategory; label: string }> = [
+const ALL_CATEGORIES: Array<{ value: PracticeCategory; label: string }> = [
   { value: "MIXED", label: "Mixed" },
   { value: "DATABASE", label: "Database" },
   { value: "SPREADSHEET", label: "Spreadsheet" },
@@ -97,6 +97,26 @@ export default function PracticePage() {
     useState<PracticeQuestion | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [result, setResult] = useState<EvaluationResult | null>(null);
+  const [allowedCategories, setAllowedCategories] =
+    useState<PracticeCategory[]>(ALL_CATEGORIES.map((c) => c.value));
+
+  useEffect(() => {
+    fetch("/api/paper3/user-subject")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.allowedCategories) {
+          setAllowedCategories(data.allowedCategories);
+          if (!data.allowedCategories.includes(category)) {
+            setCategory("MIXED");
+          }
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const categories = ALL_CATEGORIES.filter((c) =>
+    allowedCategories.includes(c.value),
+  );
 
   const practiceQuery = usePaper3PracticeQuestions({
     category: category === "MIXED" ? undefined : category,

@@ -15,7 +15,14 @@ export const harvestNoteKnowledge = inngest.createFunction(
     const note = await step.run("load-note", async () => {
       return prisma.note.findUnique({
         where: { id: noteId },
-        select: { id: true, title: true, summary: true, topics: true, keyPoints: true, subject: true },
+        select: {
+          id: true,
+          title: true,
+          summary: true,
+          topics: true,
+          keyPoints: true,
+          subject: true,
+        },
       });
     });
 
@@ -32,7 +39,14 @@ export const harvestNoteKnowledge = inngest.createFunction(
         where: {
           OR: topicNames.map((name) => ({
             name: { contains: name, mode: "insensitive" as const },
-            component: { program: { name: { contains: note.subject ?? "", mode: "insensitive" as const } } },
+            component: {
+              program: {
+                name: {
+                  contains: note.subject ?? "",
+                  mode: "insensitive" as const,
+                },
+              },
+            },
           })),
         },
         take: topicNames.length,
@@ -63,7 +77,7 @@ export const harvestNoteKnowledge = inngest.createFunction(
           topicId,
           sourceType: "NOTE",
           sourceId: note.id,
-          title: `${note.title} — Summary`,
+          title: `${note.title} - Summary`,
           content: note.summary ?? "",
           contentType: "SUMMARY",
         });
@@ -74,7 +88,7 @@ export const harvestNoteKnowledge = inngest.createFunction(
             topicId,
             sourceType: "NOTE",
             sourceId: note.id,
-            title: `${note.title} — Key Point ${i + 1}`,
+            title: `${note.title} - Key Point ${i + 1}`,
             content: note.keyPoints[i],
             contentType: "TOPIC_EXPLANATION",
           });
@@ -96,7 +110,9 @@ export const harvestNoteKnowledge = inngest.createFunction(
       return { chunksCreated: chunks.length };
     });
 
-    console.log(`[Harvest] Created ${result.chunksCreated} knowledge chunks from note ${noteId}`);
+    console.log(
+      `[Harvest] Created ${result.chunksCreated} knowledge chunks from note ${noteId}`,
+    );
     return { success: true, ...result };
   },
 );
@@ -178,7 +194,9 @@ export const harvestPaper3Knowledge = inngest.createFunction(
       return { chunksCreated: chunks.length };
     });
 
-    console.log(`[Harvest] Created ${result.chunksCreated} knowledge chunks from Paper3 source ${sourceId}`);
+    console.log(
+      `[Harvest] Created ${result.chunksCreated} knowledge chunks from Paper3 source ${sourceId}`,
+    );
     return { success: true, ...result };
   },
 );

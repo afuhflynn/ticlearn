@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { ReferralProcessor } from "@/components/referral-processor";
 
@@ -44,7 +45,10 @@ export default async function DashboardLayout({
         <AppSidebar />
         <div className="flex flex-1 flex-col h-full w-full">
           <DashboardHeader />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 w-full">{children}</main>
+          <main className="flex-1 p-4 md:p-6 lg:p-8 w-full">
+            <OnboardingBanner />
+            {children}
+          </main>
         </div>
       </div>
       <ReferralProcessor />

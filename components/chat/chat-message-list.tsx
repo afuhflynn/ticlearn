@@ -39,7 +39,7 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, FileIcon, FileTextIcon, ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useState } from "react";
 
@@ -142,6 +142,56 @@ function ToolParts({ parts }: { parts: UIMessage["parts"] }) {
   );
 }
 
+function FileParts({ parts }: { parts: UIMessage["parts"] }) {
+  const fileParts = parts.filter(
+    (p): p is { type: "file"; mediaType: string; filename?: string; url: string } =>
+      p.type === "file" && "url" in p,
+  );
+
+  if (fileParts.length === 0) return null;
+
+  return (
+    <div className="mb-3 flex flex-wrap gap-2">
+      {fileParts.map((part, i) => {
+        const isImage = part.mediaType?.startsWith("image/");
+
+        if (isImage) {
+          return (
+            <a
+              key={i}
+              href={part.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group relative overflow-hidden rounded-lg border"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                alt={part.filename || "Attached image"}
+                src={part.url}
+                className="h-24 w-24 object-cover transition-opacity group-hover:opacity-80"
+              />
+            </a>
+          );
+        }
+
+        const Icon = part.mediaType === "application/pdf" ? FileTextIcon : FileIcon;
+        return (
+          <a
+            key={i}
+            href={part.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs hover:bg-muted/50"
+          >
+            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <span className="max-w-32 truncate">{part.filename || "File"}</span>
+          </a>
+        );
+      })}
+    </div>
+  );
+}
+
 function MessageBody({ message }: { message: UIMessage }) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const text = message.parts
@@ -172,6 +222,8 @@ function MessageBody({ message }: { message: UIMessage }) {
 
   return (
     <>
+      <FileParts parts={message.parts} />
+
       {sourceParts.length > 0 ? (
         <Sources>
           <SourcesTrigger count={sourceParts.length} />

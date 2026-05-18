@@ -171,9 +171,12 @@ export default function DashboardPage() {
             <div className="flex items-start gap-3">
               <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
               <div>
-                <p className="font-medium text-yellow-800 dark:text-yellow-200">Your profile is incomplete</p>
+                <p className="font-medium text-yellow-800 dark:text-yellow-200">
+                  Your profile is incomplete
+                </p>
                 <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  Complete onboarding to unlock personalized study recommendations, readiness tracking, and adaptive mock exams.
+                  Complete onboarding to unlock personalized study
+                  recommendations, readiness tracking, and adaptive mock exams.
                 </p>
               </div>
             </div>
@@ -216,7 +219,7 @@ export default function DashboardPage() {
                 {readiness.highRisk && (
                   <div className="flex items-center gap-2 text-red-600 font-medium">
                     <AlertTriangle className="h-4 w-4" />
-                    High Risk Zone — {readiness.daysUntilExam} days until exam
+                    High Risk Zone - {readiness.daysUntilExam} days until exam
                   </div>
                 )}
 

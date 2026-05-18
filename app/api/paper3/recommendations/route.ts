@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getActiveProfileId } from "@/lib/exam-profile";
+import { getUserPaper3Subjects, getSubjectAllowedTaskTypes } from "@/lib/paper3/subject-tasks";
 
 export async function GET(_req: Request) {
   try {
@@ -14,13 +14,21 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userSubjects = await getUserPaper3Subjects(session.user.id);
+    const allowedTaskTypes = getSubjectAllowedTaskTypes(userSubjects);
+
+    const baseWhere: Record<string, unknown> = { status: "APPROVED" };
+    if (allowedTaskTypes) {
+      baseWhere.taskType = { in: allowedTaskTypes };
+    }
+
     const userStats = await prisma.paper3UserStats.findFirst({
       where: { userId: session.user.id },
     });
 
     if (!userStats || userStats.weakConcepts.length === 0) {
       const randomQuestions = await prisma.paper3Question.findMany({
-        where: { status: "APPROVED" },
+        where: baseWhere,
         take: 10,
         orderBy: { createdAt: "desc" },
       });
@@ -32,7 +40,7 @@ export async function GET(_req: Request) {
 
     const questions = await prisma.paper3Question.findMany({
       where: {
-        status: "APPROVED",
+        ...baseWhere,
         concepts: {
           hasSome: userStats.weakConcepts,
         },
@@ -43,7 +51,7 @@ export async function GET(_req: Request) {
     if (questions.length < 10) {
       const additional = await prisma.paper3Question.findMany({
         where: {
-          status: "APPROVED",
+          ...baseWhere,
           NOT: {
             id: { in: questions.map((q) => q.id) },
           },

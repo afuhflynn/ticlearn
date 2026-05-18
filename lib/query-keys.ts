@@ -74,6 +74,9 @@ export const queryKeys = {
   paymentSettings: ["payment", "settings"],
   savePaymentSettings: ["update-payment", "settings"],
 
+  // General Questions
+  practiceQuestions: ["practice-questions"] as const,
+
   // GCE Paper 3
   paper3Sources: ["paper3", "sources"],
   paper3Source: (id: string) => ["paper3", "sources", id],

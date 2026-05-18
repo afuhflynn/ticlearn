@@ -27,16 +27,15 @@ export default function Paper3MocksPage() {
       ) : (
         <div className="grid gap-4">
           {data?.mocks?.map((mock: { id: string; title: string; subject: string; timeLimit: number; questionCount: number; status: string; totalMarks: number }) => (
-            <Link
+            <div
               key={mock.id}
-              href={`/practice/exam/${mock.id}`}
-              className="block bg-white border rounded-lg p-4 hover:shadow-md transition-shadow"
+              className="bg-white border rounded-lg p-4"
             >
               <div className="flex justify-between items-start">
                 <div>
                   <h3 className="font-medium">{mock.title}</h3>
                   <p className="text-sm text-gray-500 mt-1">
-                    {mock.subject} | {mock.timeLimit} minutes
+                    {mock.subject} | {mock.timeLimit} minutes | {mock.status}
                   </p>
                 </div>
                 <div className="text-right">
@@ -44,7 +43,21 @@ export default function Paper3MocksPage() {
                   <p className="text-xs text-gray-500">marks</p>
                 </div>
               </div>
-            </Link>
+              <div className="mt-3 flex gap-2">
+                <Link
+                  href={`/admin/paper3/mocks/${mock.id}`}
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                >
+                  Edit
+                </Link>
+                <Link
+                  href={`/practice/exam/${mock.id}`}
+                  className="text-sm text-gray-600 hover:text-gray-800"
+                >
+                  Preview
+                </Link>
+              </div>
+            </div>
           ))}
         </div>
       )}

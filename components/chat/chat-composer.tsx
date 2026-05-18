@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
+import type { FileUIPart } from "ai";
 import {
   Attachment,
   type AttachmentData,
@@ -23,6 +24,7 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from "@/components/ai-elements/prompt-input";
+import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
 function AttachmentItem({
@@ -59,6 +61,13 @@ export function ChatComposer({
 }) {
   const [text, setText] = useState("");
   const [attachments, setAttachments] = useState<AttachmentData[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  const { startUpload } = useUploadThing("chatUploader", {
+    onUploadError: (err) => {
+      toast.error(`Upload failed: ${err.message}`);
+    },
+  });
 
   const handleTextChange = useCallback(
     (event: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -72,30 +81,70 @@ export function ChatComposer({
   }, []);
 
   const isSubmitDisabled = useMemo(() => {
-    if (disabled) {
-      return true;
-    }
-
+    if (disabled || uploading) return true;
     return !(text.trim() || attachments.length > 0) || status === "streaming";
-  }, [attachments.length, disabled, status, text]);
+  }, [attachments.length, disabled, status, text, uploading]);
 
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
-      if (!(message.text?.trim() || message.files?.length)) {
-        return;
+      if (!(message.text?.trim() || message.files?.length)) return;
+
+      let files = message.files;
+
+      if (files?.length) {
+        const rawFiles: File[] = [];
+
+        for (const f of files) {
+          if (f.url.startsWith("blob:")) {
+            const resp = await fetch(f.url);
+            const blob = await resp.blob();
+            const fileExt = f.filename?.split(".").pop() || "bin";
+            const mimeType = f.mediaType || blob.type || "application/octet-stream";
+            rawFiles.push(
+              new File([blob], f.filename || `file.${fileExt}`, {
+                type: mimeType,
+              }),
+            );
+          }
+        }
+
+        if (rawFiles.length > 0) {
+          setUploading(true);
+          try {
+            const uploaded = await startUpload(rawFiles);
+            if (!uploaded || uploaded.length === 0) {
+              toast.error("No files were uploaded");
+              setUploading(false);
+              return;
+            }
+
+            const utFiles: FileUIPart[] = uploaded.map((u) => ({
+              type: "file",
+              mediaType:
+                rawFiles.find(
+                  (rf) =>
+                    u.name === rf.name || u.url.includes(encodeURIComponent(rf.name)),
+                )?.type || "application/octet-stream",
+              filename: u.name,
+              url: u.url,
+            }));
+
+            const nonBlobFiles = files.filter((f) => !f.url.startsWith("blob:"));
+            files = [...nonBlobFiles, ...utFiles];
+          } catch {
+            toast.error("Failed to upload files");
+            setUploading(false);
+            return;
+          }
+          setUploading(false);
+        }
       }
 
-      if (message.files?.length) {
-        toast.success("Files attached", {
-          description: `${message.files.length} file(s) attached to message`,
-        });
-      }
-
-      await onSubmit(message);
+      await onSubmit({ text: message.text || "", files });
       setText("");
       setAttachments([]);
     },
-    [onSubmit],
+    [onSubmit, startUpload],
   );
 
   return (
@@ -116,9 +165,13 @@ export function ChatComposer({
         </PromptInputHeader>
         <PromptInputBody>
           <PromptInputTextarea
-            disabled={disabled}
+            disabled={disabled || uploading}
             onChange={handleTextChange}
-            placeholder="Ask TiC about your notes, quizzes, or studies..."
+            placeholder={
+              uploading
+                ? "Uploading files..."
+                : "Ask TiC about your notes, quizzes, or studies..."
+            }
             value={text}
           />
         </PromptInputBody>
@@ -131,10 +184,12 @@ export function ChatComposer({
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
           </PromptInputTools>
-          <PromptInputSubmit disabled={isSubmitDisabled} status={status} />
+          <PromptInputSubmit disabled={isSubmitDisabled} status={uploading ? "submitted" : status} />
         </PromptInputFooter>
       </PromptInput>
-      {disabledReason ? (
+      {uploading ? (
+        <p className="text-sm text-muted-foreground">Uploading files...</p>
+      ) : disabledReason ? (
         <p className="text-sm text-muted-foreground">{disabledReason}</p>
       ) : null}
     </div>

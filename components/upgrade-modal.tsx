@@ -18,11 +18,11 @@ interface UpgradeModalProps {
   onOpenChange: (open: boolean) => void;
   title?: string;
   description?: string;
-  feature: string;  // e.g., "mock", "ai-solve", "readiness"
+  feature: string; // e.g., "mock", "ai-solve", "readiness"
 }
 
 const featureDescriptions: Record<string, { title: string; desc: string }> = {
-  "mock": {
+  mock: {
     title: "Free Mock Limit Reached",
     desc: "You've used your free mock exam for this week. Upgrade to Pro for unlimited full-length mock exams with adaptive targeting.",
   },
@@ -30,13 +30,19 @@ const featureDescriptions: Record<string, { title: string; desc: string }> = {
     title: "AI Question Limit Reached",
     desc: "You've used your daily AI solves. Upgrade to Pro for unlimited AI-powered question solving and explanations.",
   },
-  "readiness": {
+  readiness: {
     title: "Advanced Readiness Analytics",
     desc: "Unlock advanced readiness breakdown, weakness trends, and adaptive recommendations with Pro.",
   },
 };
 
-export function UpgradeModal({ open, onOpenChange, title, description, feature }: UpgradeModalProps) {
+export function UpgradeModal({
+  open,
+  onOpenChange,
+  title,
+  description,
+  feature,
+}: UpgradeModalProps) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
@@ -71,9 +77,7 @@ export function UpgradeModal({ open, onOpenChange, title, description, feature }
             <Sparkles className="h-5 w-5 text-yellow-500" />
             {title || defaults.title}
           </DialogTitle>
-          <DialogDescription>
-            {description || defaults.desc}
-          </DialogDescription>
+          <DialogDescription>{description || defaults.desc}</DialogDescription>
         </DialogHeader>
         <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-2">
           <p className="font-medium">Pro includes:</p>
@@ -91,7 +95,7 @@ export function UpgradeModal({ open, onOpenChange, title, description, feature }
           </Button>
           <Button onClick={handleUpgrade} disabled={loading}>
             <CreditCard className="mr-2 h-4 w-4" />
-            Upgrade to Pro — 3,500 FCFA/month
+            Upgrade to Pro - 3,500 FCFA/month
           </Button>
         </DialogFooter>
       </DialogContent>

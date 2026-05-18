@@ -1,4 +1,7 @@
-import { MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT } from "@/constants";
+import {
+  MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
+  MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
+} from "@/constants";
 import { openai } from "@ai-sdk/openai";
 import { generateObject, generateText, streamText } from "ai";
 import mammoth from "mammoth";
@@ -71,94 +74,86 @@ export async function extractTextFromPDF(
   uploadthingKey: string,
   language: string = "eng",
 ): Promise<string> {
+  const candidateUrls = await getFileFetchCandidates(undefined, uploadthingKey);
+  if (candidateUrls.length === 0) {
+    throw new Error("No fetchable URL available for PDF extraction");
+  }
+
+  console.log("[PDF] Candidate URLs:", candidateUrls);
+
   const maxRetries = 3;
   const baseDelay = 1000;
 
-  // uploadthingKey may be a full URL or just the key — extract just the key
-  const fileKey = uploadthingKey.includes("ufs.sh/f/")
-    ? uploadthingKey.split("ufs.sh/f/").pop()!.split("?")[0]
-    : uploadthingKey;
-
-  console.log("[PDF] Resolved file key:", fileKey);
-
-  const { ufsUrl } = await utapi.generateSignedURL(fileKey, {
-    expiresIn: 60 * 30,
-  });
-
-  console.log("[PDF] Generated signed URL:", ufsUrl);
-
-  if (!ufsUrl) {
-    throw new Error("Failed to generate signed URL — got empty value");
-  }
-
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    try {
-      console.log(`[PDF] Attempt ${attempt + 1} — fetching:`, ufsUrl);
-
-      const response = await fetch(ufsUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-        signal: AbortSignal.timeout(30000),
-      });
-
-      console.log(
-        `[PDF] Response status: ${response.status} ${response.statusText}`,
-      );
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch PDF: ${response.status}`);
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
-      console.log("[PDF] Array buffer size:", arrayBuffer.byteLength, "bytes");
-
-      const pdfData = new Uint8Array(arrayBuffer);
-
-      const loadingTask = getDocument({
-        data: pdfData,
-        useWorkerFetch: false,
-        isEvalSupported: false,
-        verbosity: VerbosityLevel.ERRORS,
-      });
-
+    for (const pdfUrl of candidateUrls) {
       try {
-        const pdfDocument = await loadingTask.promise;
-        const pages: string[] = [];
+        console.log(`[PDF] Attempt ${attempt + 1} - fetching:`, pdfUrl);
 
-        for (
-          let pageNumber = 1;
-          pageNumber <= pdfDocument.numPages;
-          pageNumber++
-        ) {
-          const page = await pdfDocument.getPage(pageNumber);
-          const textContent = await page.getTextContent();
-          const pageText = textContent.items
-            .map((item) => ("str" in item ? item.str : ""))
-            .join(" ");
+        const response = await fetch(pdfUrl, {
+          method: "GET",
+          headers: {
+            Accept: "application/pdf",
+          },
+          signal: AbortSignal.timeout(30000),
+        });
 
-          pages.push(normalizeExtractedText(pageText));
-          page.cleanup();
-        }
-
-        await pdfDocument.destroy();
-
-        const extractedText = normalizeExtractedText(
-          pages.filter((page) => page.length > 0).join("\n\n"),
+        console.log(
+          `[PDF] Response status: ${response.status} ${response.statusText}`,
         );
 
-        if (extractedText.length < 100) {
-          console.log("[PDF] Text too short, falling back to OCR");
-          return await extractTextFromPDFWithOCR([ufsUrl], language);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch PDF: ${response.status}`);
         }
 
-        return extractedText;
-      } finally {
-        await loadingTask.destroy();
+        const arrayBuffer = await response.arrayBuffer();
+        console.log("[PDF] Array buffer size:", arrayBuffer.byteLength, "bytes");
+
+        const pdfData = new Uint8Array(arrayBuffer);
+
+        const loadingTask = getDocument({
+          data: pdfData,
+          useWorkerFetch: false,
+          isEvalSupported: false,
+          verbosity: VerbosityLevel.ERRORS,
+        });
+
+        try {
+          const pdfDocument = await loadingTask.promise;
+          const pages: string[] = [];
+
+          for (
+            let pageNumber = 1;
+            pageNumber <= pdfDocument.numPages;
+            pageNumber++
+          ) {
+            const page = await pdfDocument.getPage(pageNumber);
+            const textContent = await page.getTextContent();
+            const pageText = textContent.items
+              .map((item) => ("str" in item ? item.str : ""))
+              .join(" ");
+
+            pages.push(normalizeExtractedText(pageText));
+            page.cleanup();
+          }
+
+          await pdfDocument.destroy();
+
+          const extractedText = normalizeExtractedText(
+            pages.filter((page) => page.length > 0).join("\n\n"),
+          );
+
+          if (extractedText.length < 100) {
+            console.log("[PDF] Text too short, falling back to OCR");
+            return await extractTextFromPDFWithOCR(candidateUrls, language);
+          }
+
+          return extractedText;
+        } finally {
+          await loadingTask.destroy();
+        }
+      } catch (error) {
+        console.warn(`[PDF Extraction] Attempt ${attempt + 1} failed for URL ${pdfUrl}:`, error);
       }
-    } catch (error) {
-      console.warn(`[PDF Extraction] Attempt ${attempt + 1} failed:`, error);
     }
 
     if (attempt < maxRetries - 1) {
@@ -432,10 +427,11 @@ async function getFileFetchCandidates(
   }
 
   if (uploadthingKey) {
-    // Normalize: extract just the key if a full URL was passed
     const fileKey = uploadthingKey.includes("ufs.sh/f/")
       ? uploadthingKey.split("ufs.sh/f/").pop()!.split("?")[0]
-      : uploadthingKey;
+      : uploadthingKey.includes("utfs.io/f/")
+        ? uploadthingKey.split("utfs.io/f/").pop()!.split("?")[0]
+        : uploadthingKey;
 
     try {
       const { ufsUrl } = await utapi.generateSignedURL(fileKey);
@@ -464,7 +460,7 @@ export async function summarizeText(
     keyPoints: z.array(z.string().min(1)).min(3).max(6),
   });
 
-  const excerpt = content.slice(0, 24_000);
+  const excerpt = content.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT);
 
   const prompt = `Analyze the following study notes and return a concise study brief.
 
@@ -588,7 +584,7 @@ export async function generateQuizFromWeakAreas(
   const noteContext = notes
     .map(
       (n) =>
-        `Subject: ${n.subject}\nTitle: ${n.title}\nContent: ${n.extractedText?.slice(0, 3000) || "No content"}\n---\n`,
+        `Subject: ${n.subject}\nTitle: ${n.title}\nContent: ${n.extractedText?.slice(0, MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS) || "No content"}\n---\n`,
     )
     .join("\n");
 

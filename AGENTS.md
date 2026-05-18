@@ -1,7 +1,7 @@
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+This version has breaking changes - APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
 <!-- BEGIN:implementation-summary -->
@@ -87,3 +87,57 @@ Implement comprehensive Paper 3 exam system with subscription-based monetization
 - `app/result/[shareId]/page.tsx`: NEW - Public shareable result page
 - `prisma/schema.prisma`: Added shareId and sharedAt to Paper3MockAttempt
 <!-- END:implementation-summary -->
+
+<!-- BEGIN:onboarding-rework -->
+# Onboarding & Seed Data - Implementation Summary
+
+## Goal
+Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15 subjects) and HND (8 specialties) exam data, fix AI tool bugs and math rendering.
+
+## Constraints & Preferences
+- Onboarding: 60–90 seconds max, one decision per screen, auto-save, 480–520px centered, slide transitions (250–300ms)
+- GCE = multi-select subjects (soft cap 4), HND = single-select specialty
+- Mobile-first: large tap targets, no hover-only interactions
+- Post-onboarding: AI context includes level, programs, exam date, baselines, weakest program
+- Use `gpt-5.5`, Prisma migrations, pnpm
+
+## Progress
+### Done
+- Fixed `lib/ai/tools.ts:475`: `__standalone__` → `null` for `noteId` in `createQuiz` (foreign key violation fix)
+- Fixed `lib/math-format.ts`: added `\[...\]` → `$$...$$` and `\(...\)` → `$...$` to `normalizeMathNotation` (KaTeX rendering fix)
+- Added `COURSE` to `ComponentType` in `prisma/schema.prisma`
+- Created+applied migration `20260516110019_add_course_component_type`
+- Rewrote `prisma/seed.ts`: 15 O-Level subjects (P1/P2) + 8 HND specialties (Y1/Y2)
+- Ran seed successfully
+- Updated `app/api/onboarding/step/route.ts`: removed UNKNOWN fallback, creates empty profile
+- Updated `app/api/onboarding/baseline/route.ts`: removed UNKNOWN fallback, creates empty profile
+- Updated `app/api/onboarding/readiness/route.ts`: uses full `computeReadiness()` engine instead of simple avg
+- Rewrote `app/(onboarding)/onboarding/page.tsx`: 5-step wizard with slide transitions, progress bar, level→programs→exam date→confidence→study plan, final readiness snapshot
+
+## Completed (verified)
+- Dashboard guard correctly redirects incomplete profiles (checks `onboardingCompleted`/`onboardingSkipped`)
+- AI chat context already surfaces onboarding data via `computeReadiness()` (programs, baselines, exam date)
+- Full Next.js build passes with zero errors
+
+## Key Decisions
+- Removed UNKNOWN program entirely - profiles created empty, programs added in step 2
+- O-Level = P1 + P2 components; HND = Y1 + Y2 COURSE components (not PAPER)
+- ComponentType extended with COURSE for non-paper exam structures (HND semester/module system)
+- Readiness uses 3-pillar: 35% baseline + 45% performance + 20% recency
+- Level card click = auto-advance (no extra Continue click); Continue button at step 0 is inert (dead code)
+
+## Relevant Files
+- `lib/ai/tools.ts:475`: createQuiz noteId sentinel fix
+- `lib/math-format.ts`: KaTeX delimiter conversion
+- `prisma/schema.prisma`: COURSE enum value
+- `prisma/migrations/20260516110019_add_course_component_type/`: migration
+- `prisma/seed.ts`: comprehensive O-Level + HND seed
+- `app/(onboarding)/onboarding/page.tsx`: 5-step wizard
+- `app/api/onboarding/step/route.ts`: step save API
+- `app/api/onboarding/baseline/route.ts`: baseline save API
+- `app/api/onboarding/readiness/route.ts`: readiness compute API
+- `app/api/onboarding/topics/route.ts`: topic fetch API
+- `app/api/exam-levels/route.ts`: exam levels API
+- `app/api/programs/route.ts`: programs API
+- `lib/readiness.ts`: 3-pillar readiness engine
+<!-- END:onboarding-rework -->

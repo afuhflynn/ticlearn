@@ -1,10 +1,10 @@
-# TiCLearn — All PRs
+# TiCLearn - All PRs
 
 Total: **37 PRs** across 5 phases + features
 
 ---
 
-## Phase 0 — Foundational Architecture Refactor
+## Phase 0 - Foundational Architecture Refactor
 
 | # | Branch | Description |
 |---|--------|-------------|
@@ -12,7 +12,7 @@ Total: **37 PRs** across 5 phases + features
 | 2 | `feature/phase0-migration` | Seed exam structure + migration script for existing users |
 | 3 | `feature/phase0-refactor-api` | Refactor 15 API routes to use profile-scoped queries with userId fallback |
 
-## Phase 1 — Structured Onboarding + Profile Context
+## Phase 1 - Structured Onboarding + Profile Context
 
 | # | Branch | Description |
 |---|--------|-------------|
@@ -24,13 +24,13 @@ Total: **37 PRs** across 5 phases + features
 | 9 | `feature/phase1-ai-context` | Profile-aware AI system prompt + searchKnowledge tool |
 | 10 | `feature/phase1-middleware` | Dashboard layout guard → redirects to onboarding |
 
-## Phase 1 Rework — Multi-Program Support
+## Phase 1 Rework - Multi-Program Support
 
 | # | Branch | Description |
 |---|--------|-------------|
 | 11 | `feature/phase1-rework` | ExamProfileProgram join table, removed single programId, multi-program readiness |
 
-## Phase 2 — Generalized Content Ingestion Engine
+## Phase 2 - Generalized Content Ingestion Engine
 
 | # | Branch | Description |
 |---|--------|-------------|
@@ -39,7 +39,7 @@ Total: **37 PRs** across 5 phases + features
 | 14 | `feature/phase2-admin-upload` | Admin upload page: Level→Program→Component→Session → file → review |
 | 15 | `feature/phase2-mock-engine` | componentId-based question selection for mock generation |
 
-## Phase 3 — Blueprint-Driven Mock Engine
+## Phase 3 - Blueprint-Driven Mock Engine
 
 | # | Branch | Description |
 |---|--------|-------------|
@@ -49,7 +49,7 @@ Total: **37 PRs** across 5 phases + features
 | 19 | `feature/phase3-mock-generator` | DATABASE/HYBRID/RESEARCH mock generation engine + scoring |
 | 20 | `feature/phase3-student-ui` | Student mock UI: listing, timer, sections, submit, results |
 
-## Phase 4 — Image Upload + Persistent Memory Engine
+## Phase 4 - Image Upload + Persistent Memory Engine
 
 | # | Branch | Description |
 |---|--------|-------------|
@@ -59,7 +59,7 @@ Total: **37 PRs** across 5 phases + features
 | 24 | `feature/phase4-dashboard` | Topic mastery progress bars on dashboard |
 | 25 | `feature/phase4-mock-feed` | USER_UPLOADED source type, auto-included in mock gen + gpt-5.5 upgrade |
 
-## Phase 5 — Readiness Engine V2
+## Phase 5 - Readiness Engine V2
 
 | # | Branch | Description |
 |---|--------|-------------|
@@ -69,7 +69,7 @@ Total: **37 PRs** across 5 phases + features
 | 29 | `feature/phase5-dashboard-v2` | Readiness circle, subject progress bars, risk warning, recommendations |
 | 30 | `feature/phase5-ai-context` | Enriched AI system prompt with strongest/weakest topics, risk warning |
 
-## Phase 6 — Monetization & Validation
+## Phase 6 - Monetization & Validation
 
 | # | Branch | Description |
 |---|--------|-------------|

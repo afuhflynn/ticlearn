@@ -4,6 +4,7 @@ import { PENDING_CHAT_MESSAGE_PREFIX } from "./constants";
 
 type PendingChatMessage = {
   text: string;
+  files?: Array<{ type: string; mediaType: string; filename?: string; url: string }>;
 };
 
 function getStorageKey(conversationId: string) {

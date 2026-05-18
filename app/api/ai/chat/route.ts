@@ -43,17 +43,12 @@ Respond with only the title, nothing else.`,
 
 function messageHasImage(parts: UIMessage["parts"]): string | null {
   for (const part of parts) {
-    if (
-      part.type === "file" &&
-      "mimeType" in part &&
-      typeof (part as { mimeType?: string }).mimeType === "string" &&
-      (part as { mimeType: string }).mimeType.startsWith("image/")
-    ) {
-      return (
-        (part as { data?: string }).data ||
-        (part as { url?: string }).url ||
-        null
-      );
+    if (part.type === "file") {
+      const filePart = part as { mediaType?: string; mimeType?: string; url?: string; data?: string };
+      const contentType = filePart.mediaType || filePart.mimeType || "";
+      if (contentType.startsWith("image/")) {
+        return filePart.data || filePart.url || null;
+      }
     }
   }
   return null;

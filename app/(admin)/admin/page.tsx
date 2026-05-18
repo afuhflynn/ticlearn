@@ -9,7 +9,11 @@ import {
   MessageCircle,
   CreditCard,
   Link2,
+  ListChecks,
   Loader2,
+  GraduationCap,
+  FileText,
+  Upload,
 } from "lucide-react";
 import {
   Card,
@@ -44,6 +48,36 @@ const navItems = [
     icon: Link2,
     href: "/admin/affiliates",
     description: "Manage affiliate program",
+  },
+  {
+    title: "Questions",
+    icon: ListChecks,
+    href: "/admin/questions",
+    description: "Browse and manage all questions",
+  },
+  {
+    title: "Paper3 Upload",
+    icon: Upload,
+    href: "/admin/paper3/upload",
+    description: "Upload Paper3 source documents",
+  },
+  {
+    title: "Paper3 Sources",
+    icon: FileText,
+    href: "/admin/paper3/sources",
+    description: "Manage Paper3 question sources",
+  },
+  {
+    title: "Paper3 Questions",
+    icon: ListChecks,
+    href: "/admin/paper3/questions",
+    description: "Review and approve Paper3 questions",
+  },
+  {
+    title: "Paper3 Mocks",
+    icon: GraduationCap,
+    href: "/admin/paper3/mocks",
+    description: "Create and manage mock exams",
   },
 ];
 

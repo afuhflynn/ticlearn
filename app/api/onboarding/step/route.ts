@@ -55,21 +55,9 @@ export async function POST(req: Request) {
 
     if (!activeProfileId) {
       if (step === 1) {
-        const unknownProgram = await prisma.program.findUnique({
-          where: { code: "UNKNOWN" },
-        });
-        if (!unknownProgram) {
-          return NextResponse.json(
-            { error: "UNKNOWN program not found" },
-            { status: 500 },
-          );
-        }
         const profile = await prisma.examProfile.create({
           data: {
             userId: user.id,
-            programs: {
-              create: { programId: unknownProgram.id },
-            },
           },
         });
         await prisma.user.update({
@@ -93,6 +81,7 @@ export async function POST(req: Request) {
       case 2: {
         const programIds = (data as Record<string, unknown>)
           .programIds as string[];
+        console.log({ data });
         if (!Array.isArray(programIds) || programIds.length === 0) {
           return NextResponse.json(
             { error: "programIds must be a non-empty array" },

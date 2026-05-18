@@ -459,7 +459,7 @@ export async function sendPaymentSuccessEmail({
   amount: number;
   transId: string;
 }) {
-  const subject = `✅ Payment Confirmed — ${planLabel}`;
+  const subject = `✅ Payment Confirmed - ${planLabel}`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -562,7 +562,7 @@ export async function sendAdminPaymentAlert({
   planLabel: string;
   amount: number;
 }) {
-  const subject = `💰 New Sale: ${planLabel} — ${userName}`;
+  const subject = `💰 New Sale: ${planLabel} - ${userName}`;
   const html = `
     <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
       <h2 style="color: #10b981;">New Payment Received!</h2>
@@ -667,7 +667,7 @@ export async function sendSubscriptionActivatedEmail({
   const safeName = escapeHtml(name || "there");
   const safePlanLabel = escapeHtml(planLabel);
   const safeTransactionId = escapeHtml(transactionId || "N/A");
-  const subject = `✅ Payment Approved — ${safePlanLabel} Plan Activated`;
+  const subject = `✅ Payment Approved - ${safePlanLabel} Plan Activated`;
   const html = `
 <!DOCTYPE html>
 <html>
@@ -730,7 +730,7 @@ export async function sendSubscriptionRejectedEmail({
   const safeName = escapeHtml(name || "there");
   const safePlanLabel = escapeHtml(planLabel);
   const safeReason = escapeHtml(reason || "Transaction could not be verified");
-  const subject = `⚠️ Payment Not Approved — ${safePlanLabel}`;
+  const subject = `⚠️ Payment Not Approved - ${safePlanLabel}`;
   const html = `
 <!DOCTYPE html>
 <html>

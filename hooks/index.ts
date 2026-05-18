@@ -49,10 +49,12 @@ export {
   useRejectPaper3Question,
   useStartPaper3MockExam,
   useSubmitPaper3MockExam,
+  useUpdatePaper3Mock,
   useUpdatePaper3Question,
   useUploadPaper3Source,
   useGlobalPaper3Leaderboard,
 } from "./usePaper3";
+export { usePracticeQuestions } from "./useQuestions";
 export { usePlan } from "./usePlan";
 export {
   useProfile,

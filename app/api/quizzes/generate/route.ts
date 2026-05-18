@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     const quiz = await prisma.quiz.create({
       data: {
         userId: session.user.id,
-        noteId,
+        noteId: noteId || null,
         noteTitle: note.title,
         title: `Quiz - ${note.title}`,
         questionCount: 0,

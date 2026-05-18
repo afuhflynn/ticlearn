@@ -52,6 +52,23 @@ type MockCreatePayload = {
   questionIds: string[];
 };
 
+type MockUpdatePayload = {
+  id: string;
+  title?: string;
+  description?: string;
+  subject?: "ICT" | "COMPUTER_SCIENCE";
+  focusCategory?:
+    | "MIXED"
+    | "DATABASE"
+    | "SPREADSHEET"
+    | "PROGRAMMING"
+    | "WEB_PROGRAMMING";
+  timeLimit?: number;
+  status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
+  totalMarks?: number;
+  questionIds?: string[];
+};
+
 type MockGeneratePayload = {
   subject: "ICT" | "COMPUTER_SCIENCE";
   section?: "A" | "B";
@@ -283,6 +300,19 @@ function deletePaper3Mock(id: string) {
     credentials: "include",
   }).then((res) => {
     if (!res.ok) throw new Error("Failed to delete mock");
+    return res.json();
+  });
+}
+
+function updatePaper3Mock(data: MockUpdatePayload) {
+  const { id, ...body } = data;
+  return fetch(`/api/paper3/mocks/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  }).then((res) => {
+    if (!res.ok) throw new Error("Failed to update mock");
     return res.json();
   });
 }
@@ -626,6 +656,24 @@ export function useDeletePaper3Mock() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.paper3Mocks });
       toast.success("Mock exam deleted");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
+    },
+  });
+}
+
+export function useUpdatePaper3Mock() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updatePaper3Mock,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.paper3Mocks });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.paper3Mock(variables.id),
+      });
+      toast.success("Mock exam updated");
     },
     onError: (error: Error) => {
       toast.error(error.message);

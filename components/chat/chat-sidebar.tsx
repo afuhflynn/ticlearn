@@ -1,8 +1,9 @@
 "use client";
 
-import { Loader2, MessageSquareText, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -27,12 +28,33 @@ import {
 import { ChatUsageCard } from "./chat-usage-card";
 import Image from "next/image";
 
+function formatGroupLabel(date: Date): string {
+  const now = new Date();
+  const diffDays = Math.floor(
+    (now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
+  );
+
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  if (diffDays <= 7) return "This Week";
+  if (diffDays <= 30) return "This Month";
+  return "Older";
+}
+
+type Conversation = {
+  id: string;
+  title: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export function ChatSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { conversations, isLoading } = useChatConversations();
   const createConversation = useCreateConversation();
   const deleteConversation = useDeleteConversation();
+  const [searchQuery, setSearchQuery] = useState("");
 
   const handleCreateConversation = async () => {
     try {
@@ -54,6 +76,27 @@ export function ChatSidebar() {
       toast.error("Failed to delete conversation");
     }
   };
+
+  const filteredAndGrouped = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    const filtered: Conversation[] = q
+      ? conversations.filter((c: Conversation) =>
+          c.title.toLowerCase().includes(q),
+        )
+      : conversations;
+
+    const groups: Record<string, Conversation[]> = {};
+    for (const conv of filtered) {
+      const label = formatGroupLabel(new Date(conv.updatedAt || conv.createdAt));
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(conv);
+    }
+
+    const order = ["Today", "Yesterday", "This Week", "This Month", "Older"];
+    return order
+      .filter((l) => groups[l])
+      .map((l) => ({ label: l, conversations: groups[l] }));
+  }, [conversations, searchQuery]);
 
   return (
     <Sidebar collapsible="offcanvas" variant="sidebar">
@@ -81,56 +124,79 @@ export function ChatSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-            Conversations
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <ScrollArea className="h-[calc(100vh-20rem)]">
-              <SidebarMenu className="px-2">
-                {isLoading ? (
-                  <div className="flex items-center gap-2 px-2 py-3 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading chats…</span>
-                  </div>
-                ) : conversations.length === 0 ? (
-                  <p className="px-2 py-3 text-sm text-muted-foreground">
-                    No conversations yet.
-                  </p>
-                ) : (
-                  conversations.map((conversation) => (
-                    <SidebarMenuItem key={conversation.id}>
-                      <div className="group flex items-center gap-2">
-                        <SidebarMenuButton
-                          asChild
-                          className="flex-1"
-                          isActive={pathname === `/chat/${conversation.id}`}
-                        >
-                          <Link href={`/chat/${conversation.id}`}>
-                            <span className="truncate">
-                              {conversation.title}
-                            </span>
-                          </Link>
-                        </SidebarMenuButton>
-                        <Button
-                          className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                          disabled={deleteConversation.isPending}
-                          onClick={() =>
-                            handleDeleteConversation(conversation.id)
-                          }
-                          size="icon"
-                          variant="ghost"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </SidebarMenuItem>
-                  ))
-                )}
-              </SidebarMenu>
-            </ScrollArea>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <div className="px-3 pb-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search conversations..."
+              className="w-full rounded-lg border bg-background py-1.5 pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+          </div>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center gap-2 px-5 py-3 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Loading chats...</span>
+          </div>
+        ) : conversations.length === 0 ? (
+          <p className="px-5 py-3 text-sm text-muted-foreground">
+            No conversations yet.
+          </p>
+        ) : (
+          <ScrollArea className="flex-1">
+            {filteredAndGrouped.length === 0 && searchQuery ? (
+              <p className="px-5 py-3 text-sm text-muted-foreground">
+                No conversations matching "{searchQuery}"
+              </p>
+            ) : (
+              filteredAndGrouped.map((group) => (
+                <SidebarGroup key={group.label}>
+                  <SidebarGroupLabel className="px-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                    {group.label}
+                  </SidebarGroupLabel>
+                  <SidebarGroupContent>
+                    <SidebarMenu className="px-2">
+                      {group.conversations.map((conv) => (
+                        <SidebarMenuItem key={conv.id}>
+                          <div className="group flex items-center gap-2">
+                            <SidebarMenuButton
+                              asChild
+                              className="flex-1"
+                              isActive={
+                                pathname === `/chat/${conv.id}`
+                              }
+                            >
+                              <Link href={`/chat/${conv.id}`}>
+                                <span className="truncate">
+                                  {conv.title}
+                                </span>
+                              </Link>
+                            </SidebarMenuButton>
+                            <Button
+                              className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
+                              disabled={deleteConversation.isPending}
+                              onClick={() =>
+                                handleDeleteConversation(conv.id)
+                              }
+                              size="icon"
+                              variant="ghost"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </SidebarMenuItem>
+                      ))}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                </SidebarGroup>
+              ))
+            )}
+          </ScrollArea>
+        )}
       </SidebarContent>
 
       <SidebarFooter className="border-t p-3">

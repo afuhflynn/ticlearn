@@ -6,28 +6,45 @@ import { prisma } from "@/lib/prisma";
 export async function POST(req: Request) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { attemptId, answers, timeTaken } = await req.json();
-    if (!attemptId || !answers) return NextResponse.json({ error: "attemptId and answers required" }, { status: 400 });
+    if (!attemptId || !answers)
+      return NextResponse.json(
+        { error: "attemptId and answers required" },
+        { status: 400 },
+      );
 
-    const attempt = await prisma.mockAttempt.findUnique({ where: { id: attemptId } });
-    if (!attempt) return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    const attempt = await prisma.mockAttempt.findUnique({
+      where: { id: attemptId },
+    });
+    if (!attempt)
+      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
 
     const blueprint = await prisma.examBlueprint.findUnique({
       where: { id: attempt.blueprintId ?? undefined },
       include: { sections: true },
     });
 
-    if (!blueprint) return NextResponse.json({ error: "Blueprint not found" }, { status: 404 });
+    if (!blueprint)
+      return NextResponse.json(
+        { error: "Blueprint not found" },
+        { status: 404 },
+      );
 
-    // Score calculation — each answer gets marks for providing any response
+    // Score calculation - each answer gets marks for providing any response
     // For Phase 3, this is a basic scoring model. Full AI evaluation comes later.
-    const totalQuestions = blueprint.sections.reduce((s, sec) => s + sec.questionCount, 0);
+    const totalQuestions = blueprint.sections.reduce(
+      (s, sec) => s + sec.questionCount,
+      0,
+    );
     const answeredCount = Object.keys(answers as Record<string, string>).length;
-    const score = Math.round((answeredCount / totalQuestions) * attempt.totalMarks);
+    const score = Math.round(
+      (answeredCount / totalQuestions) * attempt.totalMarks,
+    );
 
-    const results = blueprint.sections.map(sec => ({
+    const results = blueprint.sections.map((sec) => ({
       sectionName: sec.name,
       totalMarks: sec.totalMarks,
       earned: Math.round((answeredCount / totalQuestions) * sec.totalMarks),
@@ -54,6 +71,9 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Mock submit error:", error);
-    return NextResponse.json({ error: "Failed to submit mock" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to submit mock" },
+      { status: 500 },
+    );
   }
 }

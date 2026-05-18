@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getUserPaper3Subjects } from "@/lib/paper3/subject-tasks";
 
 export async function GET(_req: Request) {
   try {
@@ -13,8 +14,15 @@ export async function GET(_req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userSubjects = await getUserPaper3Subjects(session.user.id);
+
+    const where: Record<string, unknown> = { status: "PUBLISHED" };
+    if (userSubjects.length > 0) {
+      where.subject = { in: userSubjects };
+    }
+
     const mocks = await prisma.paper3Mock.findMany({
-      where: { status: "PUBLISHED" },
+      where,
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

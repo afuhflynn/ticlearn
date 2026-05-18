@@ -2,7 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DefaultChatTransport, type UIMessage } from "ai";
+import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
@@ -98,11 +98,14 @@ function ConversationSession({
   useEffect(() => {
     const pending = consumePendingChatMessage(conversationId);
 
-    if (!pending?.text) {
+    if (!pending?.text && !pending?.files?.length) {
       return;
     }
 
-    void sendMessage({ text: pending.text });
+    void sendMessage({
+      text: pending.text || "",
+      files: pending.files as FileUIPart[],
+    });
   }, [conversationId, sendMessage]);
 
   useEffect(() => {
@@ -147,11 +150,14 @@ function ConversationSession({
           disabled={!canChat}
           disabledReason={disabledReason}
           onSubmit={async (message) => {
-            if (!message.text?.trim()) {
+            if (!message.text?.trim() && !message.files?.length) {
               return;
             }
 
-            await sendMessage({ text: message.text });
+            await sendMessage({
+              text: message.text,
+              files: message.files as FileUIPart[],
+            });
           }}
           status={status}
         />

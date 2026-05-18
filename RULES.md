@@ -261,7 +261,7 @@ If you introduce a new abstraction, it must replace an existing one for a clear 
 ## 20. AI Models: Use gpt-5.5 for All AI Operations
 
 - All AI-powered features MUST use `gpt-5.5` model.
-- GPT-5.5 handles text and vision natively — no separate vision model needed.
+- GPT-5.5 handles text and vision natively - no separate vision model needed.
 - This applies to ALL AI operations: chat, evaluation, processing, generation.
 - Do NOT use `gpt-4o`, `gpt-5.4`, `gpt-5.2-chat-latest`, or any earlier model.
 - Override only if gpt-5.5 is unavailable in your OpenAI organization.

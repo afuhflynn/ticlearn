@@ -24,7 +24,10 @@ type SelectedQuestion = {
   source: "DATABASE" | "HYBRID" | "RESEARCH";
 };
 
-export async function generateMockFromBlueprint(blueprintId: string, examProfileId: string) {
+export async function generateMockFromBlueprint(
+  blueprintId: string,
+  examProfileId: string,
+) {
   const blueprint = await prisma.examBlueprint.findUnique({
     where: { id: blueprintId },
     include: { sections: { orderBy: { order: "asc" } } },
@@ -36,10 +39,14 @@ export async function generateMockFromBlueprint(blueprintId: string, examProfile
   let overallMode: "DATABASE" | "HYBRID" | "RESEARCH" = "DATABASE";
 
   for (const section of blueprint.sections) {
-    const { questions, mode } = await generateSectionQuestions(blueprint.componentId, section);
+    const { questions, mode } = await generateSectionQuestions(
+      blueprint.componentId,
+      section,
+    );
     allSectionQuestions.push(...questions);
     if (mode === "RESEARCH") overallMode = "RESEARCH";
-    else if (mode === "HYBRID" && overallMode === "DATABASE") overallMode = "HYBRID";
+    else if (mode === "HYBRID" && overallMode === "DATABASE")
+      overallMode = "HYBRID";
   }
 
   const mockAttempt = await prisma.mockAttempt.create({
@@ -57,24 +64,37 @@ export async function generateMockFromBlueprint(blueprintId: string, examProfile
 
   return {
     attemptId: mockAttempt.id,
-    blueprint: { name: blueprint.name, totalMarks: blueprint.totalMarks, durationMin: blueprint.durationMin },
-    sections: blueprint.sections.map(s => ({
+    blueprint: {
+      name: blueprint.name,
+      totalMarks: blueprint.totalMarks,
+      durationMin: blueprint.durationMin,
+    },
+    sections: blueprint.sections.map((s) => ({
       name: s.name,
       questionCount: s.questionCount,
       totalMarks: s.totalMarks,
       questionType: s.questionType,
       answerRule: s.answerRule,
-      questions: allSectionQuestions.filter(q => q.marks === s.marksPerQuestion || s.marksPerQuestion === null),
+      questions: allSectionQuestions.filter(
+        (q) => q.marks === s.marksPerQuestion || s.marksPerQuestion === null,
+      ),
     })),
     sourceMode: overallMode,
   };
 }
 
-async function generateSectionQuestions(componentId: string, section: SectionConfig) {
+async function generateSectionQuestions(
+  componentId: string,
+  section: SectionConfig,
+) {
   const storedQuestions = await prisma.question.findMany({
     where: {
       componentId,
-      type: section.questionType as "MCQ" | "STRUCTURED" | "PRACTICAL" | "ESSAY",
+      type: section.questionType as
+        | "MCQ"
+        | "STRUCTURED"
+        | "PRACTICAL"
+        | "ESSAY",
     },
     orderBy: { createdAt: "desc" },
   });
@@ -83,14 +103,15 @@ async function generateSectionQuestions(componentId: string, section: SectionCon
   const available = storedQuestions.length;
 
   if (available >= needed * 1.2) {
-    // DATABASE mode — use stored questions with balanced selection
+    // DATABASE mode - use stored questions with balanced selection
     const selected = selectWithDifficultyBalance(storedQuestions, needed);
     return {
-      questions: selected.map(q => ({
+      questions: selected.map((q) => ({
         questionId: q.id,
         text: q.text,
         type: q.type,
-        marks: section.marksPerQuestion ?? Math.ceil(section.totalMarks / needed),
+        marks:
+          section.marksPerQuestion ?? Math.ceil(section.totalMarks / needed),
         source: "DATABASE" as const,
       })),
       mode: "DATABASE" as const,
@@ -98,20 +119,25 @@ async function generateSectionQuestions(componentId: string, section: SectionCon
   }
 
   if (available > 0) {
-    // HYBRID mode — use stored + AI fill
+    // HYBRID mode - use stored + AI fill
     const takeStored = Math.min(available, Math.floor(needed * 0.6));
     const stored = selectWithDifficultyBalance(storedQuestions, takeStored);
     const aiNeeded = needed - takeStored;
 
-    const aiQuestions = await generateAIQuestions(componentId, section, aiNeeded);
+    const aiQuestions = await generateAIQuestions(
+      componentId,
+      section,
+      aiNeeded,
+    );
 
     return {
       questions: [
-        ...stored.map(q => ({
+        ...stored.map((q) => ({
           questionId: q.id,
           text: q.text,
           type: q.type,
-          marks: section.marksPerQuestion ?? Math.ceil(section.totalMarks / needed),
+          marks:
+            section.marksPerQuestion ?? Math.ceil(section.totalMarks / needed),
           source: "DATABASE" as const,
         })),
         ...aiQuestions,
@@ -120,18 +146,29 @@ async function generateSectionQuestions(componentId: string, section: SectionCon
     };
   }
 
-  // RESEARCH mode — AI generates all
+  // RESEARCH mode - AI generates all
   const aiQuestions = await generateAIQuestions(componentId, section, needed);
   return { questions: aiQuestions, mode: "RESEARCH" as const };
 }
 
-function selectWithDifficultyBalance(questions: Array<{ id: string; text: string; type: string; difficulty: number | null; marks: number | null }>, count: number) {
+function selectWithDifficultyBalance(
+  questions: Array<{
+    id: string;
+    text: string;
+    type: string;
+    difficulty: number | null;
+    marks: number | null;
+  }>,
+  count: number,
+) {
   const shuffled = [...questions].sort(() => Math.random() - 0.5);
 
-  const sorted = shuffled.sort((a, b) => (a.difficulty ?? 3) - (b.difficulty ?? 3));
-  const easy = sorted.filter(q => (q.difficulty ?? 3) <= 2);
-  const medium = sorted.filter(q => (q.difficulty ?? 3) === 3);
-  const hard = sorted.filter(q => (q.difficulty ?? 3) >= 4);
+  const sorted = shuffled.sort(
+    (a, b) => (a.difficulty ?? 3) - (b.difficulty ?? 3),
+  );
+  const easy = sorted.filter((q) => (q.difficulty ?? 3) <= 2);
+  const medium = sorted.filter((q) => (q.difficulty ?? 3) === 3);
+  const hard = sorted.filter((q) => (q.difficulty ?? 3) >= 4);
 
   const result = [
     ...pickNRandom(easy, Math.ceil(count * 0.3)),
@@ -146,7 +183,11 @@ function pickNRandom<T>(arr: T[], n: number): T[] {
   return arr.sort(() => Math.random() - 0.5).slice(0, Math.min(n, arr.length));
 }
 
-async function generateAIQuestions(componentId: string, section: SectionConfig, count: number) {
+async function generateAIQuestions(
+  componentId: string,
+  section: SectionConfig,
+  count: number,
+) {
   const component = await prisma.component.findUnique({
     where: { id: componentId },
     include: { program: true },
@@ -155,11 +196,13 @@ async function generateAIQuestions(componentId: string, section: SectionConfig, 
   const result = await generateObject({
     model: aiModel,
     schema: z.object({
-      questions: z.array(z.object({
-        text: z.string(),
-        type: z.enum(["MCQ", "STRUCTURED", "PRACTICAL", "ESSAY"]),
-        difficulty: z.number().min(1).max(5),
-      })),
+      questions: z.array(
+        z.object({
+          text: z.string(),
+          type: z.enum(["MCQ", "STRUCTURED", "PRACTICAL", "ESSAY"]),
+          difficulty: z.number().min(1).max(5),
+        }),
+      ),
     }),
     system: `You are an exam question generator for Cameroon GCE A-Level ${component?.program.name ?? "Computer Science"}.
 Generate ${count} ${section.questionType} questions for a section named "${section.name}".

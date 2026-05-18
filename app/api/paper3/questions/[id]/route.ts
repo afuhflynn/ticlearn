@@ -16,6 +16,9 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userRole = (session.user as { role?: string })?.role;
+    const isAdmin = userRole === "ADMIN";
+
     const { id } = await params;
 
     const question = await prisma.paper3Question.findUnique({
@@ -28,6 +31,13 @@ export async function GET(
     });
 
     if (!question) {
+      return NextResponse.json(
+        { error: "Question not found" },
+        { status: 404 },
+      );
+    }
+
+    if (!isAdmin && question.status !== "APPROVED") {
       return NextResponse.json(
         { error: "Question not found" },
         { status: 404 },
