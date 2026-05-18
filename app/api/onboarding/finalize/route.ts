@@ -37,7 +37,7 @@ export async function POST(req: Request) {
     } = {};
 
     if (examYear) data.examYear = examYear;
-    if (examDate) data.examDate = examDate;
+    if (examDate) data.examDate = new Date(examDate).toISOString();
     if (typeof isRetaking === "boolean") data.isRetaking = isRetaking;
     if (studyHoursPerWeek) data.studyHoursPerWeek = studyHoursPerWeek;
 
