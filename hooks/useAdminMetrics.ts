@@ -22,7 +22,16 @@ export function useAdminMetrics(params: MetricsParams = {}) {
   const result = data as Record<string, unknown> | undefined;
 
   return {
-    summary: (result?.summary ?? {}) as {
+    summary: (result?.summary ?? {
+      totalUsers: 0,
+      paidUsers: 0,
+      daus: 0,
+      mau: 0,
+      conversionRate: 0,
+      mrr: 0,
+      totalSubscribers: 0,
+      todayEvents: 0,
+    }) as {
       totalUsers: number;
       paidUsers: number;
       daus: number;
@@ -45,7 +54,12 @@ export function useAdminMetrics(params: MetricsParams = {}) {
       subject: string;
       activeUsers: number;
     }>,
-    mastery: (result?.mastery ?? {}) as {
+    mastery: (result?.mastery ?? {
+      avgMastery: 0,
+      previousAvgMastery: 0,
+      improvementRate: 0,
+      recoveryDrillsCompleted: 0,
+    }) as {
       avgMastery: number;
       previousAvgMastery: number;
       improvementRate: number;
@@ -60,7 +74,13 @@ export function useAdminMetrics(params: MetricsParams = {}) {
       week4: number;
       week8: number;
     }>,
-    activationFunnel: (result?.activationFunnel ?? {}) as {
+    activationFunnel: (result?.activationFunnel ?? {
+      signedUp: 0,
+      onboardingStarted: 0,
+      onboardingCompleted: 0,
+      firstQuizTaken: 0,
+      returnedAfterOnboarding: 0,
+    }) as {
       signedUp: number;
       onboardingStarted: number;
       onboardingCompleted: number;
