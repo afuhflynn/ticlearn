@@ -179,7 +179,10 @@ function MetricChart({
             border: "1px solid hsl(var(--border))",
             borderRadius: "8px",
           }}
-          labelFormatter={(v: string) => v?.split("T")[0] ?? v}
+          labelFormatter={(v) => {
+            const s = String(v ?? "");
+            return s.split("T")[0] || s;
+          }}
         />
         <Legend />
         {ChartComponent === LineChart && (
@@ -550,8 +553,8 @@ export default function AnalyticsPage() {
                             cx="50%"
                             cy="50%"
                             outerRadius={80}
-                            label={({ subject, percent }) =>
-                              `${subject} ${(percent * 100).toFixed(0)}%`
+                            label={({ payload, percent }) =>
+                              `${(payload as { subject: string }).subject} ${((percent ?? 0) * 100).toFixed(0)}%`
                             }
                           >
                             {subjectDistribution.map((_, idx) => (
@@ -822,8 +825,8 @@ export default function AnalyticsPage() {
                             cx="50%"
                             cy="50%"
                             outerRadius={80}
-                            label={({ plan, percent }) =>
-                              `${plan} ${(percent * 100).toFixed(0)}%`
+                            label={({ payload, percent }) =>
+                              `${(payload as { plan: string }).plan} ${((percent ?? 0) * 100).toFixed(0)}%`
                             }
                           >
                             {Object.keys(mrrByPlan).map((_, idx) => (

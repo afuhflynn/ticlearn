@@ -15,7 +15,7 @@ interface MetricsParams {
 
 export function useAdminMetrics(params: MetricsParams = {}) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: queryKeys.adminMetrics(params),
+    queryKey: queryKeys.adminMetrics(params as Record<string, unknown>),
     queryFn: () => api.mutations.admin.metrics.getAll(params),
   });
 
