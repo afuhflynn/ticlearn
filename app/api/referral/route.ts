@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { trackEvent, EVENTS } from "@/lib/kpi";
 
 export async function GET(req: Request) {
   try {
@@ -35,6 +36,8 @@ export async function GET(req: Request) {
       where: { code },
       data: { totalClicks: { increment: 1 } },
     });
+
+    trackEvent(affiliate.userId, EVENTS.REFERRAL_CLICK, { code }).catch(() => {});
 
     return NextResponse.json({
       success: true,

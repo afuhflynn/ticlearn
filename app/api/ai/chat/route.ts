@@ -11,6 +11,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
+import { trackEvent, EVENTS } from "@/lib/kpi";
 import {
   extractTextFromParts,
   normalizeStoredParts,
@@ -282,6 +283,8 @@ export async function POST(req: Request) {
       userContent,
       normalizedUserParts,
     );
+
+    trackEvent(userId, EVENTS.CHAT_MESSAGE, { conversationId }).catch(() => {});
 
     if (
       conversation._count.messages === 0 &&

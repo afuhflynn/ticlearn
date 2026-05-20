@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { trackEvent, EVENTS } from "@/lib/kpi";
 
 export async function GET() {
   try {
@@ -60,6 +61,8 @@ export async function POST(req: Request) {
         status: "OPEN",
       },
     });
+
+    trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, { type, subject }).catch(() => {});
 
     return NextResponse.json({ feedback, success: true });
   } catch (error) {

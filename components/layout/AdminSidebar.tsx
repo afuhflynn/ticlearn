@@ -9,6 +9,7 @@ import {
   ListChecks,
   MessageCircle,
   Shield,
+  TrendingUp,
   Upload,
   Users,
 } from "lucide-react";
@@ -30,7 +31,8 @@ import {
 import Image from "next/image";
 
 const adminNavItems = [
-  { href: "/admin", icon: BarChart3, label: "Analytics" },
+  { href: "/admin", icon: BarChart3, label: "Dashboard" },
+  { href: "/admin/metrics", icon: TrendingUp, label: "Analytics" },
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },

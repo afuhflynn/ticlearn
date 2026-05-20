@@ -91,6 +91,9 @@ export const queryKeys = {
   paper3Leaderboard: (mockId: string) => ["paper3", "leaderboard", mockId],
   paper3MyAttempts: ["paper3", "my-attempts"],
   paper3MockAttempt: (id: string) => ["paper3", "attempts", id],
+  adminMetrics: (params?: Record<string, unknown>) =>
+    ["admin", "metrics", params] as const,
+  adminRetention: ["admin", "metrics", "retention"] as const,
 } as const;
 
 export type QueryKey = typeof queryKeys;

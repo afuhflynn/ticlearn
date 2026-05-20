@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { trackEvent, EVENTS } from "@/lib/kpi";
 
 export async function GET(
   req: Request,
@@ -98,6 +99,8 @@ export async function PUT(
         answers: gradedAnswers as unknown as any,
       },
     });
+
+    trackEvent(session.user.id, EVENTS.EXAM_COMPLETED, { subject: exam.subject, score }).catch(() => {});
 
     return NextResponse.json({ exam: updatedExam, success: true });
   } catch (error) {
