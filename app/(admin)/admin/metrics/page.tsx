@@ -83,7 +83,7 @@ const COLORS = [
 ];
 
 const METRIC_CATEGORIES = [
-  { value: "", label: "All Metrics" },
+  { value: "all", label: "All Metrics" },
   ...Object.entries(METRIC_LABELS).map(([value, label]) => ({
     value,
     label,
@@ -226,7 +226,7 @@ export default function AnalyticsPage() {
   const [sort, setSort] = useState("date");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
   const [search, setSearch] = useState("");
-  const [metricFilter, setMetricFilter] = useState("");
+  const [metricFilter, setMetricFilter] = useState("all");
 
   const {
     summary,
@@ -283,7 +283,7 @@ export default function AnalyticsPage() {
   };
 
   const chartData = metrics
-    .filter((m) => !metricFilter || m.metric === metricFilter)
+    .filter((m) => metricFilter === "all" || m.metric === metricFilter)
     .reduce<Array<Record<string, unknown>>>((acc, m) => {
       const day = m.date?.split("T")[0] ?? "";
       const existing = acc.find((r) => r.date === day);
@@ -422,7 +422,7 @@ export default function AnalyticsPage() {
                           variant={metricFilter === m ? "default" : "outline"}
                           className="cursor-pointer"
                           onClick={() =>
-                            setMetricFilter(metricFilter === m ? "" : m)
+                            setMetricFilter(metricFilter === m ? "all" : m)
                           }
                         >
                           {METRIC_LABELS[m] || m}
@@ -432,8 +432,8 @@ export default function AnalyticsPage() {
                   </div>
                   <MetricChart
                     data={chartData}
-                    dataKey={metricFilter || "active_users"}
-                    name={METRIC_LABELS[metricFilter] || metricFilter || "Active Users"}
+                    dataKey={metricFilter !== "all" ? metricFilter : "active_users"}
+                    name={metricFilter !== "all" ? (METRIC_LABELS[metricFilter] || metricFilter) : "Active Users"}
                     chartType="area"
                   />
                 </CardContent>
@@ -1100,7 +1100,7 @@ export default function AnalyticsPage() {
                       {metrics
                         .filter(
                           (m) =>
-                            !metricFilter || m.metric === metricFilter,
+                            metricFilter === "all" || m.metric === metricFilter,
                         )
                         .map((entry) => (
                           <TableRow key={entry.id}>
@@ -1133,7 +1133,8 @@ export default function AnalyticsPage() {
                     <p className="text-sm text-muted-foreground">
                       Showing{" "}
                       {metrics.filter(
-                        (m) => !metricFilter || m.metric === metricFilter,
+                        (m) =>
+                          metricFilter === "all" || m.metric === metricFilter,
                       ).length}{" "}
                       of {total} entries
                     </p>
