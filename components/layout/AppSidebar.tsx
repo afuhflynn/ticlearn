@@ -14,6 +14,7 @@ import {
   ListTodo,
   LucideLayoutDashboard,
   MessageCircle,
+  NotebookPen,
   Settings,
   Trophy,
   Upload,
@@ -58,6 +59,7 @@ interface NavItem {
 
 const mainNavItems: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LucideLayoutDashboard },
+  { href: "/practice/mock", label: "GCE mocks", icon: NotebookPen },
   { href: "/upload", label: "Upload Notes", icon: Upload },
   { href: "/quizzes", label: "My Quizzes", icon: ListTodo },
   { href: "/progress", label: "Progress", icon: BarChart3 },
@@ -192,7 +194,10 @@ export function AppSidebar() {
                       const isActive =
                         section.id === "admin"
                           ? pathname.startsWith(item.href)
-                          : pathname === item.href;
+                          : item.href === "/practice/mock"
+                            ? pathname === "/practice/mock" ||
+                              pathname.startsWith("/practice/mock/")
+                            : pathname === item.href;
 
                       return (
                         <SidebarMenuItem key={item.href}>

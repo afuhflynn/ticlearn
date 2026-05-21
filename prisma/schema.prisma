@@ -63,7 +63,9 @@ model User {
   paper3MockAttempts     Paper3MockAttempt[]
   paper3QuestionAttempts Paper3QuestionAttempt[]
   creditTransactions     CreditTransaction[]     @relation("UserCredits")
+  creditPurchaseOrders   CreditPurchaseOrder[]
   referralBonuses        ReferralBonus[]         @relation("ReferrerCredits")
+  revisionGuides         RevisionGuide[]         @relation("RevisionGuideAuthor")
   kpiEvents              KpiEvent[]
 
   @@map("users")
@@ -280,6 +282,10 @@ model ExamBlueprint {
   description String?
   totalMarks  Int      @map("total_marks")
   durationMin Int      @map("duration_min")
+  /// Shown under Practice → GCE mocks for students whose profile includes this component’s program.
+  visibleForStudents   Boolean @default(true) @map("visible_for_students")
+  /// Shown on the Community page for curated “official” mocks (any logged-in user with community access).
+  visibleInCommunity   Boolean @default(false) @map("visible_in_community")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -289,6 +295,8 @@ model ExamBlueprint {
 
   @@unique([componentId, name])
   @@index([componentId])
+  @@index([visibleForStudents])
+  @@index([visibleInCommunity])
   @@map("exam_blueprints")
 }
 
@@ -321,6 +329,7 @@ model MockAttempt {
   answers        Json?
   results        Json?
   topicBreakdown Json?          @map("topic_breakdown")
+  sessionPayload Json?          @map("session_payload")
   startedAt      DateTime       @default(now()) @map("started_at")
   completedAt    DateTime?      @map("completed_at")
   createdAt      DateTime       @default(now())
@@ -963,6 +972,70 @@ model PaymentSettings {
   @@map("payment_settings")
 }
 
+model PlatformSettings {
+  id  String @id @default(cuid())
+  key String @unique @default("global")
+
+  creditCostQuizGeneration    Int @default(50) @map("credit_cost_quiz_generation")
+  creditCostMockQuestion      Int @default(10) @map("credit_cost_mock_question")
+  creditCostPracticeQuestion  Int @default(5) @map("credit_cost_practice_question")
+  creditCostRevisionGuideView Int @default(0) @map("credit_cost_revision_guide_view")
+  creditCostRevisionGuideGen  Int @default(0) @map("credit_cost_revision_guide_gen")
+  creditCostAiTutorMessage    Int @default(0) @map("credit_cost_ai_tutor_message")
+
+  mockMinQuestions Int @default(5) @map("mock_min_questions")
+  mockMaxQuestions Int @default(50) @map("mock_max_questions")
+
+  /// When false (default), existing mock/practice flows work without credit checks.
+  enforceCreditsForMocks          Boolean @default(false) @map("enforce_credits_for_mocks")
+  enforceCreditsForPractice       Boolean @default(false) @map("enforce_credits_for_practice")
+  enforceCreditsForRevisionGuides Boolean @default(false) @map("enforce_credits_for_revision_guides")
+  enforceCreditsForAiTutor        Boolean @default(false) @map("enforce_credits_for_ai_tutor")
+
+  /// When true, all four per-area enforce flags below behave as if they were on (OR).
+  enforceCreditsAll Boolean @default(false) @map("enforce_credits_all")
+
+  /// Pay-as-you-go: credits granted per 1,000 XAF paid (floor).
+  creditsPer1000Xaf Int @default(50) @map("credits_per_1000_xaf")
+  minCreditPurchaseXaf Int @default(500) @map("min_credit_purchase_xaf")
+  maxCreditPurchaseXaf Int @default(500000) @map("max_credit_purchase_xaf")
+
+  /// Prefer ace-3 style AI short-answer marking for text-heavy Paper 3 items.
+  useAceShortAnswerGrading Boolean @default(true) @map("use_ace_short_answer_grading")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("platform_settings")
+}
+
+enum RevisionGuideFocus {
+  DATABASE
+  C_PROGRAMMING
+  MIXED
+  SPREADSHEET
+  PROGRAMMING
+  WEB_PROGRAMMING
+}
+
+model RevisionGuide {
+  id          String             @id @default(cuid())
+  title       String
+  markdown    String             @db.Text
+  focus       RevisionGuideFocus @default(MIXED)
+  published   Boolean            @default(false)
+  pdfUrl      String?            @map("pdf_url")
+  pdfFileName String?            @map("pdf_file_name")
+  createdById String             @map("created_by_id")
+  createdBy   User               @relation("RevisionGuideAuthor", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now()) @map("created_at")
+  updatedAt   DateTime           @updatedAt @map("updated_at")
+
+  @@index([published])
+  @@index([createdById])
+  @@map("revision_guides")
+}
+
 // ===========================================
 // GCE Paper 3 Models
 // ===========================================
@@ -1312,7 +1385,34 @@ enum CreditType {
   REFERRAL_BONUS // 500 credits when someone signs up using your code
   QUIZ_GENERATION // Spending credits to generate quizzes
   PRACTICE_QUESTION // Spending credits on practice questions
+  MOCK_EXAM // Spending credits on mock exam questions
+  REVISION_GUIDE // Spending credits on revision guide access/generation
+  AI_TUTOR_MESSAGE // Spending credits on TiC tutor messages
   BONUS // Admin or promotional bonuses
+  CREDIT_PURCHASE // Credits purchased via Mobile Money (pay-as-you-go)
+}
+
+enum CreditPurchaseStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model CreditPurchaseOrder {
+  id               String               @id @default(cuid())
+  userId           String               @map("user_id")
+  amountXaf        Int                  @map("amount_xaf")
+  creditsPromised  Int                  @map("credits_promised")
+  status           CreditPurchaseStatus @default(PENDING)
+  fapshiTransId    String?              @unique @map("fapshi_trans_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("credit_purchase_orders")
 }
 
 model ReferralBonus {

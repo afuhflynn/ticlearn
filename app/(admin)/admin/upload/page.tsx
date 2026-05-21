@@ -145,8 +145,11 @@ export default function AdminUploadPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Upload Exam Content</CardTitle>
-          <CardDescription>Select metadata, upload a file, and parse questions.</CardDescription>
+          <CardTitle>Past papers → question bank</CardTitle>
+          <CardDescription>
+            Paper 1 &amp; 2 (non–Paper 3). Pick level, program, component, optional
+            exam session (year). Upload parses into questions for mock exams.
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">

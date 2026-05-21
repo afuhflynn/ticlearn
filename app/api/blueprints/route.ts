@@ -20,7 +20,10 @@ export async function GET() {
           include: {
             components: {
               include: {
-                blueprints: { include: { sections: true } },
+                blueprints: {
+                  where: { visibleForStudents: true },
+                  include: { sections: true },
+                },
               },
             },
           },

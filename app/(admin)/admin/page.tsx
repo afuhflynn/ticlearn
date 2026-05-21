@@ -14,6 +14,7 @@ import {
   GraduationCap,
   FileText,
   Upload,
+  ClipboardList,
 } from "lucide-react";
 import {
   Card,
@@ -50,16 +51,30 @@ const navItems = [
     description: "Manage affiliate program",
   },
   {
+    title: "GCE Papers 1–2 upload",
+    icon: Upload,
+    href: "/admin/upload",
+    description:
+      "Upload past papers; questions are extracted into the syllabus bank for mock generation.",
+  },
+  {
+    title: "Exam blueprints",
+    icon: ClipboardList,
+    href: "/admin/blueprints",
+    description:
+      "Paper 1 & 2 mock structure—who sees each blueprint on Practice vs Community.",
+  },
+  {
     title: "Questions",
     icon: ListChecks,
     href: "/admin/questions",
-    description: "Browse and manage all questions",
+    description: "Browse and manage ingested syllabus questions.",
   },
   {
-    title: "Paper3 Upload",
+    title: "Paper 3 uploads",
     icon: Upload,
     href: "/admin/paper3/upload",
-    description: "Upload Paper3 source documents",
+    description: "Upload Paper 3 practical source PDFs.",
   },
   {
     title: "Paper3 Sources",

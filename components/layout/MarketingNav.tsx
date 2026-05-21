@@ -18,7 +18,7 @@ import { UserButton } from "../user/user-button";
 import Image from "next/image";
 
 const navLinks = [
-  { href: "/#features", label: "Features" },
+  { href: "/#sample-mocks", label: "Mocks" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
@@ -64,12 +64,28 @@ export function MarketingNav() {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
-          <Button variant="ghost" asChild>
-            <Link href="/sign-in">Sign In</Link>
-          </Button>
-          <Button asChild>
-            <Link href="/sign-up">Get Started</Link>
-          </Button>
+          {isPending ? (
+            <>
+              <Skeleton className="h-9 w-20" />
+              <Skeleton className="h-9 w-28" />
+            </>
+          ) : session?.user ? (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/dashboard">Dashboard</Link>
+              </Button>
+              <UserButton user={session.user} />
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" asChild>
+                <Link href="/sign-in">Sign In</Link>
+              </Button>
+              <Button asChild>
+                <Link href="/sign-up">Get Started</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         {/* Mobile Menu */}

@@ -34,7 +34,16 @@ export async function POST(req: Request) {
     const userRole = (session.user as { role?: string })?.role;
     if (userRole !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-    const { componentId, name, description, totalMarks, durationMin, sections } = await req.json();
+    const {
+      componentId,
+      name,
+      description,
+      totalMarks,
+      durationMin,
+      sections,
+      visibleForStudents,
+      visibleInCommunity,
+    } = await req.json();
 
     if (!componentId || !name || !totalMarks || !durationMin || !sections?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -54,6 +63,8 @@ export async function POST(req: Request) {
         description,
         totalMarks,
         durationMin,
+        visibleForStudents: visibleForStudents !== false,
+        visibleInCommunity: visibleInCommunity === true,
         sections: {
           create: sections.map((sec: { name: string; questionCount: number; marksPerQuestion?: number; totalMarks: number; questionType: string; answerRule?: string; order: number }) => ({
             name: sec.name,

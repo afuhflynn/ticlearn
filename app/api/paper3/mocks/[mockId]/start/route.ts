@@ -1,6 +1,12 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { InsufficientCreditsError, spendCredits } from "@/lib/credits";
+import {
+  getPlatformSettings,
+  maxAffordableMockQuestions,
+  mockCreditCost,
+} from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/exam-profile";
 
@@ -54,6 +60,46 @@ export async function POST(
       );
     }
 
+    const settings = await getPlatformSettings();
+    const questionCount = mock.questions.length;
+
+    if (settings.enforceCreditsForMocks) {
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { credits: true },
+      });
+      const balance = user?.credits ?? 0;
+      const requiredCredits = mockCreditCost(questionCount, settings);
+      const maxAffordable = maxAffordableMockQuestions(balance, settings);
+
+      if (maxAffordable < settings.mockMinQuestions) {
+        return NextResponse.json(
+          {
+            error: `Insufficient credits. You need at least ${mockCreditCost(settings.mockMinQuestions, settings)} credits for a mock exam.`,
+            balance,
+            requiredCredits,
+            maxAffordableQuestions: maxAffordable,
+            questionCount,
+          },
+          { status: 402 },
+        );
+      }
+
+      if (balance < requiredCredits) {
+        return NextResponse.json(
+          {
+            error: `Insufficient credits for this mock (${questionCount} questions).`,
+            balance,
+            requiredCredits,
+            maxAffordableQuestions: maxAffordable,
+            questionCount,
+            partialAllowed: maxAffordable >= settings.mockMinQuestions,
+          },
+          { status: 402 },
+        );
+      }
+    }
+
     const { searchParams } = new URL(_req.url);
     const retake = searchParams.get("retake") === "true";
 
@@ -87,6 +133,33 @@ export async function POST(
         status: "IN_PROGRESS",
       },
     });
+
+    if (settings.enforceCreditsForMocks && questionCount > 0) {
+      try {
+        await spendCredits({
+          userId: session.user.id,
+          amount: mockCreditCost(questionCount, settings),
+          type: "MOCK_EXAM",
+          description: `Mock exam: ${mock.title} (${questionCount} questions)`,
+          referenceId: attempt.id,
+        });
+      } catch (error) {
+        await prisma.paper3MockAttempt.delete({ where: { id: attempt.id } });
+
+        if (error instanceof InsufficientCreditsError) {
+          return NextResponse.json(
+            {
+              error: error.message,
+              balance: error.balance,
+              requiredCredits: error.required,
+            },
+            { status: 402 },
+          );
+        }
+
+        throw error;
+      }
+    }
 
     return NextResponse.json({ attempt, mock, resumed: false });
   } catch (error) {

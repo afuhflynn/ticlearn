@@ -16,6 +16,48 @@ export async function POST(req: Request) {
     const profileId = await getActiveProfileId(session.user.id);
     if (!profileId) return NextResponse.json({ error: "No active profile" }, { status: 400 });
 
+    const blueprint = await prisma.examBlueprint.findUnique({
+      where: { id: blueprintId },
+      select: {
+        componentId: true,
+        visibleForStudents: true,
+        visibleInCommunity: true,
+      },
+    });
+
+    if (!blueprint) {
+      return NextResponse.json({ error: "Blueprint not found" }, { status: 404 });
+    }
+
+    if (!blueprint.visibleForStudents && !blueprint.visibleInCommunity) {
+      return NextResponse.json({ error: "This mock blueprint is inactive" }, { status: 403 });
+    }
+
+    const profilePrograms = await prisma.examProfileProgram.findMany({
+      where: { examProfileId: profileId },
+      include: {
+        program: {
+          select: { components: { select: { id: true } } },
+        },
+      },
+    });
+
+    const programComponentIds = new Set(
+      profilePrograms.flatMap((pp) => pp.program.components.map((c) => c.id)),
+    );
+
+    const matchesStudentSubjects =
+      blueprint.visibleForStudents && programComponentIds.has(blueprint.componentId);
+
+    const allowedViaCommunity = blueprint.visibleInCommunity === true;
+
+    if (!matchesStudentSubjects && !allowedViaCommunity) {
+      return NextResponse.json(
+        { error: "This mock is not available for your program" },
+        { status: 403 },
+      );
+    }
+
     const mock = await generateMockFromBlueprint(blueprintId, profileId);
     return NextResponse.json({ mock });
   } catch (error) {
