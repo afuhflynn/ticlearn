@@ -6,6 +6,7 @@ import {
   sendPaymentFailedEmail,
   sendPaymentSuccessEmail,
 } from "@/lib/email/send";
+import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 
 const PLAN_LABELS: Record<string, string> = {
   STARTER: "Starter Plan",
@@ -23,7 +24,6 @@ const COMMISSION_RATE = 0.2;
 
 export async function POST(req: Request) {
   try {
-    // 1. Security Check
     const headersList = await headers();
     const authHeader = headersList.get("Authorization");
 
@@ -36,14 +36,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const {
-      transId,
-      status,
-      externalId,
-      amount,
-      dateConfirmed,
-      financialTransId,
-    } = body;
+    const { transId, status, externalId, amount } = body;
 
     if (!externalId || !status) {
       return NextResponse.json(
@@ -52,7 +45,91 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Find Subscription
+    // --- Credit top-up (pay-as-you-go): externalId is prefixed ---
+    if (externalId.startsWith(CREDIT_PURCHASE_EXTERNAL_ID_PREFIX)) {
+      const orderId = externalId.slice(CREDIT_PURCHASE_EXTERNAL_ID_PREFIX.length);
+
+      const order = await prisma.creditPurchaseOrder.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order) {
+        console.error(`Credit purchase order ${orderId} not found`);
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      if (status === "SUCCESSFUL") {
+        await prisma.$transaction(async (tx) => {
+          const fresh = await tx.creditPurchaseOrder.findUnique({
+            where: { id: orderId },
+          });
+          if (!fresh || fresh.status !== "PENDING") {
+            return;
+          }
+
+          const dup = await tx.creditTransaction.findFirst({
+            where: {
+              userId: fresh.userId,
+              type: "CREDIT_PURCHASE",
+              referenceId: orderId,
+            },
+          });
+
+          if (dup) {
+            await tx.creditPurchaseOrder.update({
+              where: { id: orderId },
+              data: {
+                status: "COMPLETED",
+                fapshiTransId: transId ?? fresh.fapshiTransId,
+              },
+            });
+            return;
+          }
+
+          await tx.user.update({
+            where: { id: fresh.userId },
+            data: {
+              credits: { increment: fresh.creditsPromised },
+              totalCreditsEarned: { increment: fresh.creditsPromised },
+            },
+          });
+
+          await tx.creditTransaction.create({
+            data: {
+              userId: fresh.userId,
+              amount: fresh.creditsPromised,
+              type: "CREDIT_PURCHASE",
+              description: `Purchased ${fresh.creditsPromised} credits (${fresh.amountXaf} XAF)`,
+              referenceId: orderId,
+            },
+          });
+
+          await tx.creditPurchaseOrder.update({
+            where: { id: orderId },
+            data: {
+              status: "COMPLETED",
+              fapshiTransId: transId ?? undefined,
+            },
+          });
+        });
+
+        const user = await prisma.user.findUnique({
+          where: { id: order.userId },
+        });
+        if (user?.email) {
+          console.log(`Credit purchase success for ${user.email}`);
+        }
+      } else if (status === "FAILED" || status === "EXPIRED") {
+        await prisma.creditPurchaseOrder.updateMany({
+          where: { id: orderId, status: "PENDING" },
+          data: { status: "FAILED", fapshiTransId: transId ?? undefined },
+        });
+      }
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    // --- Subscription payment (legacy externalId = Subscription.id) ---
     const sub = await prisma.subscription.findUnique({
       where: { id: externalId },
       include: { user: true },
@@ -63,7 +140,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // 3. Handle SUCCESSFUL Status
     if (status === "SUCCESSFUL") {
       const planPrice = PLAN_PRICES[sub.plan] || sub.amount;
       const commission = Math.round(planPrice * COMMISSION_RATE);
@@ -72,10 +148,12 @@ export async function POST(req: Request) {
         where: { userId: sub.userId },
       });
       if (!existingStats) {
-        const profileId = await prisma.user.findUnique({
-          where: { id: sub.userId },
-          select: { activeProfileId: true },
-        }).then(u => u?.activeProfileId);
+        const profileId = await prisma.user
+          .findUnique({
+            where: { id: sub.userId },
+            select: { activeProfileId: true },
+          })
+          .then((u) => u?.activeProfileId);
 
         await prisma.userStats.create({
           data: {
@@ -129,9 +207,6 @@ export async function POST(req: Request) {
         }
       }
 
-      const planLabel = PLAN_LABELS[sub.plan] || sub.plan;
-
-      // --- EMAIL TO USER ---
       console.log(`Sending success email to ${sub.userEmail}`);
       await sendPaymentSuccessEmail({
         email: sub.userEmail,
@@ -141,7 +216,6 @@ export async function POST(req: Request) {
         transId: transId,
       });
 
-      // --- EMAIL TO ADMIN ---
       await sendAdminPaymentAlert({
         adminEmail: process.env.ADMIN_EMAIL!,
         userName: sub.userName || "User",
@@ -149,15 +223,12 @@ export async function POST(req: Request) {
         planLabel: PLAN_LABELS[sub.plan],
         amount: amount || sub.amount,
       });
-    }
-    // 4. Handle FAILURE / EXPIRED
-    else if (status === "FAILED" || status === "EXPIRED") {
+    } else if (status === "FAILED" || status === "EXPIRED") {
       await prisma.subscription.update({
         where: { id: sub.id },
         data: { status: "FAILED", fapshiTransId: transId },
       });
 
-      // --- EMAIL TO USER (FAILURE) ---
       await sendPaymentFailedEmail({
         email: sub.userEmail,
         name: sub.userName || "Student",

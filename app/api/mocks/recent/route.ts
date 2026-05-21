@@ -27,7 +27,10 @@ export async function GET() {
       return NextResponse.json({ error: "No active profile" }, { status: 400 });
 
     const rows = await prisma.mockAttempt.findMany({
-      where: { examProfileId: profileId },
+      where: {
+        examProfileId: profileId,
+        creationContext: "STUDENT",
+      },
       orderBy: { startedAt: "desc" },
       take: 30,
       include: {

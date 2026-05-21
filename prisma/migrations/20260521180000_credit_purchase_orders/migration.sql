@@ -7,7 +7,7 @@ ALTER TYPE "CreditType" ADD VALUE 'CREDIT_PURCHASE';
 -- AlterTable
 ALTER TABLE "platform_settings" ADD COLUMN     "enforce_credits_all" BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE "platform_settings" ADD COLUMN     "credits_per_1000_xaf" INTEGER NOT NULL DEFAULT 50;
-ALTER TABLE "platform_settings" ADD COLUMN     "min_credit_purchase_xaf" INTEGER NOT NULL DEFAULT 500;
+ALTER TABLE "platform_settings" ADD COLUMN     "min_credit_purchase_xaf" INTEGER NOT NULL DEFAULT 100;
 ALTER TABLE "platform_settings" ADD COLUMN     "max_credit_purchase_xaf" INTEGER NOT NULL DEFAULT 500000;
 
 -- CreateTable

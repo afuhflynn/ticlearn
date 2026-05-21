@@ -29,10 +29,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Blueprint not found" }, { status: 404 });
     }
 
-    if (!blueprint.visibleForStudents && !blueprint.visibleInCommunity) {
-      return NextResponse.json({ error: "This mock blueprint is inactive" }, { status: 403 });
-    }
-
     const profilePrograms = await prisma.examProfileProgram.findMany({
       where: { examProfileId: profileId },
       include: {
@@ -46,12 +42,35 @@ export async function POST(req: Request) {
       profilePrograms.flatMap((pp) => pp.program.components.map((c) => c.id)),
     );
 
+    const hasProgramMatch = programComponentIds.has(blueprint.componentId);
+
+    const inVisibleModule = await prisma.paper12MockModuleItem.findFirst({
+      where: {
+        blueprintId,
+        module: { visibleToStudents: true },
+      },
+      select: { id: true },
+    });
+
+    if (
+      !blueprint.visibleForStudents &&
+      !blueprint.visibleInCommunity &&
+      !inVisibleModule
+    ) {
+      return NextResponse.json(
+        { error: "This mock blueprint is inactive" },
+        { status: 403 },
+      );
+    }
+
     const matchesStudentSubjects =
-      blueprint.visibleForStudents && programComponentIds.has(blueprint.componentId);
+      blueprint.visibleForStudents && hasProgramMatch;
 
     const allowedViaCommunity = blueprint.visibleInCommunity === true;
 
-    if (!matchesStudentSubjects && !allowedViaCommunity) {
+    const allowedViaModule = !!inVisibleModule && hasProgramMatch;
+
+    if (!matchesStudentSubjects && !allowedViaCommunity && !allowedViaModule) {
       return NextResponse.json(
         { error: "This mock is not available for your program" },
         { status: 403 },

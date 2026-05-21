@@ -205,6 +205,7 @@ export async function generateMockFromBlueprint(
       answers: {},
       results: [],
       sessionPayload: sessionPayload as object,
+      creationContext: "STUDENT",
     },
   });
 
@@ -440,14 +441,18 @@ Each question is worth ${marksEach} mark(s). Difficulty should vary slightly acr
   }));
 }
 
-export async function generateStudentPracticeMock(input: {
-  examProfileId: string;
-  componentId: string;
-  paper: StudentPaperMode;
-  scope: StudentMockScope;
-  topicIds?: string[];
-}) {
+export async function generateStudentPracticeMock(
+  input: {
+    examProfileId: string;
+    componentId: string;
+    paper: StudentPaperMode;
+    scope: StudentMockScope;
+    topicIds?: string[];
+  },
+  opts?: { creationContext?: "STUDENT" | "ADMIN_PREVIEW" },
+) {
   const { examProfileId, componentId, paper, scope, topicIds } = input;
+  const creationContext = opts?.creationContext ?? "STUDENT";
 
   const preset =
     paper === "PAPER_1"
@@ -532,6 +537,7 @@ export async function generateStudentPracticeMock(input: {
       answers: {},
       results: [],
       sessionPayload: sessionPayload as object,
+      creationContext,
     },
   });
 

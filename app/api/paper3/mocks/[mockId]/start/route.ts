@@ -3,12 +3,15 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { InsufficientCreditsError, spendCredits } from "@/lib/credits";
 import {
+  creditEnforcementEffective,
   getPlatformSettings,
   maxAffordableMockQuestions,
   mockCreditCost,
 } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/exam-profile";
+import { canStudentAccessPublishedMock } from "@/lib/paper3/mock-access";
+import { getUserPaper3Subjects } from "@/lib/paper3/subject-tasks";
 
 export async function POST(
   _req: Request,
@@ -27,8 +30,15 @@ export async function POST(
     const profileId = await getActiveProfileId(session.user.id);
 
     const mock = await prisma.paper3Mock.findUnique({
-      where: { id: mockId, status: "PUBLISHED" },
+      where: { id: mockId },
       include: {
+        module: {
+          select: {
+            id: true,
+            status: true,
+            visibleToAllStudents: true,
+          },
+        },
         questions: {
           include: {
             question: {
@@ -53,17 +63,26 @@ export async function POST(
       },
     });
 
-    if (!mock) {
+    if (!mock || mock.status !== "PUBLISHED") {
       return NextResponse.json(
         { error: "Mock exam not found" },
         { status: 404 },
       );
     }
 
+    const subjects = await getUserPaper3Subjects(session.user.id);
+    if (!canStudentAccessPublishedMock(mock, subjects)) {
+      return NextResponse.json(
+        { error: "You do not have access to this mock." },
+        { status: 403 },
+      );
+    }
+
     const settings = await getPlatformSettings();
+    const enforcement = creditEnforcementEffective(settings);
     const questionCount = mock.questions.length;
 
-    if (settings.enforceCreditsForMocks) {
+    if (enforcement.mocks) {
       const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { credits: true },
@@ -134,7 +153,7 @@ export async function POST(
       },
     });
 
-    if (settings.enforceCreditsForMocks && questionCount > 0) {
+    if (enforcement.mocks && questionCount > 0) {
       try {
         await spendCredits({
           userId: session.user.id,

@@ -71,26 +71,3 @@ export const SAMPLE_MOCKS: SampleMock[] = [
   },
 ];
 
-export const QUICK_ACTIONS = [
-  {
-    id: "today-mock",
-    label: "Today's mock",
-    href: "/practice/mock",
-    featured: true,
-  },
-  {
-    id: "physics",
-    label: "Physics",
-    href: "/practice/mock",
-  },
-  {
-    id: "chemistry",
-    label: "Chemistry",
-    href: "/practice/mock",
-  },
-] satisfies ReadonlyArray<{
-  id: string;
-  label: string;
-  href: string;
-  featured?: boolean;
-}>;

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import {
+  creditEnforcementEffective,
   getPlatformSettings,
   maxAffordableMockQuestions,
 } from "@/lib/platform-settings";
@@ -20,6 +21,7 @@ export async function GET() {
       getUserCreditBalance(session.user.id),
     ]);
 
+    const enforcement = creditEnforcementEffective(settings);
     const maxQuestions = maxAffordableMockQuestions(balance, settings);
 
     return NextResponse.json({
@@ -31,10 +33,14 @@ export async function GET() {
         creditCostAiTutorMessage: settings.creditCostAiTutorMessage,
         mockMinQuestions: settings.mockMinQuestions,
         mockMaxQuestions: settings.mockMaxQuestions,
-        enforceCreditsForMocks: settings.enforceCreditsForMocks,
-        enforceCreditsForPractice: settings.enforceCreditsForPractice,
-        enforceCreditsForRevisionGuides: settings.enforceCreditsForRevisionGuides,
-        enforceCreditsForAiTutor: settings.enforceCreditsForAiTutor,
+        enforceCreditsAll: settings.enforceCreditsAll,
+        enforceCreditsForMocks: enforcement.mocks,
+        enforceCreditsForPractice: enforcement.practice,
+        enforceCreditsForRevisionGuides: enforcement.revisionGuides,
+        enforceCreditsForAiTutor: enforcement.aiTutor,
+        creditsPer1000Xaf: settings.creditsPer1000Xaf,
+        minCreditPurchaseXaf: settings.minCreditPurchaseXaf,
+        maxCreditPurchaseXaf: settings.maxCreditPurchaseXaf,
       },
       mock: {
         maxAffordableQuestions: maxQuestions,

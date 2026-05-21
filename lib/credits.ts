@@ -69,3 +69,55 @@ export async function spendCredits(params: {
     return { balance: updated.credits };
   });
 }
+
+/** Grant positive credits (bonuses, purchases). Idempotent when `referenceId` + `type` already exist. */
+export async function grantCredits(params: {
+  userId: string;
+  amount: number;
+  type: CreditType;
+  description?: string;
+  referenceId?: string;
+}): Promise<{ balance: number; duplicate: boolean }> {
+  const { userId, amount, type, description, referenceId } = params;
+
+  if (amount <= 0) {
+    const balance = await getUserCreditBalance(userId);
+    return { balance, duplicate: false };
+  }
+
+  return prisma.$transaction(async (tx) => {
+    if (referenceId) {
+      const existing = await tx.creditTransaction.findFirst({
+        where: { userId, type, referenceId },
+      });
+      if (existing) {
+        const u = await tx.user.findUnique({
+          where: { id: userId },
+          select: { credits: true },
+        });
+        return { balance: u?.credits ?? 0, duplicate: true };
+      }
+    }
+
+    const updated = await tx.user.update({
+      where: { id: userId },
+      data: {
+        credits: { increment: amount },
+        totalCreditsEarned: { increment: amount },
+      },
+      select: { credits: true },
+    });
+
+    await tx.creditTransaction.create({
+      data: {
+        userId,
+        amount,
+        type,
+        description,
+        referenceId,
+      },
+    });
+
+    return { balance: updated.credits, duplicate: false };
+  });
+}

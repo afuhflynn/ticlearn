@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 
 export const PLATFORM_SETTINGS_KEY = "global";
 
+/** Fapshi `externalId` prefix for credit top-up orders (avoids collision with subscription ids). */
+export const CREDIT_PURCHASE_EXTERNAL_ID_PREFIX = "cpo_";
+
 export type PlatformSettingsSnapshot = Pick<
   PlatformSettings,
   | "creditCostQuizGeneration"
@@ -17,6 +20,10 @@ export type PlatformSettingsSnapshot = Pick<
   | "enforceCreditsForPractice"
   | "enforceCreditsForRevisionGuides"
   | "enforceCreditsForAiTutor"
+  | "enforceCreditsAll"
+  | "creditsPer1000Xaf"
+  | "minCreditPurchaseXaf"
+  | "maxCreditPurchaseXaf"
   | "useAceShortAnswerGrading"
 >;
 
@@ -33,8 +40,40 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   enforceCreditsForPractice: false,
   enforceCreditsForRevisionGuides: false,
   enforceCreditsForAiTutor: false,
+  enforceCreditsAll: false,
+  creditsPer1000Xaf: 50,
+  minCreditPurchaseXaf: 100,
+  maxCreditPurchaseXaf: 500_000,
   useAceShortAnswerGrading: true,
 };
+
+export type CreditEnforcementEffective = {
+  mocks: boolean;
+  practice: boolean;
+  revisionGuides: boolean;
+  aiTutor: boolean;
+};
+
+export function creditEnforcementEffective(
+  settings: PlatformSettingsSnapshot,
+): CreditEnforcementEffective {
+  const all = settings.enforceCreditsAll;
+  return {
+    mocks: all || settings.enforceCreditsForMocks,
+    practice: all || settings.enforceCreditsForPractice,
+    revisionGuides: all || settings.enforceCreditsForRevisionGuides,
+    aiTutor: all || settings.enforceCreditsForAiTutor,
+  };
+}
+
+/** Credits from XAF using floor (same as pay-as-you-go purchase calculation). */
+export function creditsFromXaf(
+  amountXaf: number,
+  creditsPer1000Xaf: number,
+): number {
+  if (amountXaf <= 0 || creditsPer1000Xaf <= 0) return 0;
+  return Math.floor((amountXaf * creditsPer1000Xaf) / 1000);
+}
 
 export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
   const settings = await prisma.platformSettings.findUnique({
@@ -58,6 +97,10 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
     enforceCreditsForPractice: settings.enforceCreditsForPractice,
     enforceCreditsForRevisionGuides: settings.enforceCreditsForRevisionGuides,
     enforceCreditsForAiTutor: settings.enforceCreditsForAiTutor,
+    enforceCreditsAll: settings.enforceCreditsAll,
+    creditsPer1000Xaf: settings.creditsPer1000Xaf,
+    minCreditPurchaseXaf: settings.minCreditPurchaseXaf,
+    maxCreditPurchaseXaf: settings.maxCreditPurchaseXaf,
     useAceShortAnswerGrading: settings.useAceShortAnswerGrading,
   };
 }

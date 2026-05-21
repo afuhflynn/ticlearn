@@ -1,17 +1,21 @@
 const FAPSHI_API_USER = process.env.FAPSHI_API_USER || "";
 const FAPSHI_API_KEY = process.env.FAPSHI_API_KEY || "";
 const FAPSHI_BASE =
-  process.env.FAPSHI_SANDBOX === "true"
+  process.env.FAPSHI_BASE_URL?.trim() ||
+  (process.env.FAPSHI_SANDBOX === "true"
     ? "https://sandbox.fapshi.com"
-    : "https://live.fapshi.com";
+    : "https://live.fapshi.com");
 
 export interface FapshiPaymentRequest {
   amount: number;
   email: string;
   name: string;
   phone?: string;
+  userId: string;
   redirectUrl?: string;
   externalId?: string;
+  /** Shown on the MoMo payment UI where supported */
+  message?: string;
 }
 
 export interface FapshiPaymentResponse {
@@ -29,11 +33,10 @@ export async function initiatePayment(
   }
 
   try {
-    // FIX 1: Change /direct-pay to /initiate-pay to get a link
     const response = await fetch(`${FAPSHI_BASE}/initiate-pay`, {
       method: "POST",
       headers: {
-        apiuser: FAPSHI_API_USER, // FIX 2: String keys
+        apiuser: FAPSHI_API_USER,
         apikey: FAPSHI_API_KEY,
         "Content-Type": "application/json",
       },
@@ -41,12 +44,18 @@ export async function initiatePayment(
         amount: request.amount,
         email: request.email,
         name: request.name,
+        userId: request.userId,
         externalId: request.externalId,
         redirectUrl: request.redirectUrl,
+        message: request.message,
       }),
     });
 
-    const data = await response.json();
+    const data = (await response.json()) as {
+      link?: string;
+      transId?: string;
+      message?: string;
+    };
 
     if (response.ok && data.link) {
       return { success: true, transId: data.transId, link: data.link };
@@ -56,8 +65,32 @@ export async function initiatePayment(
       success: false,
       message: data.message || "Fapshi initiation failed",
     };
-  } catch (error) {
+  } catch {
     return { success: false, message: "Gateway connection error" };
+  }
+}
+
+/** Optional status check (e.g. return page) — matches ticportal `/payment-status/:transId`. */
+export async function getPaymentStatus(transId: string): Promise<unknown | null> {
+  if (!FAPSHI_API_USER || !FAPSHI_API_KEY || !transId) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(
+      `${FAPSHI_BASE}/payment-status/${encodeURIComponent(transId)}`,
+      {
+        method: "GET",
+        headers: {
+          apiuser: FAPSHI_API_USER,
+          apikey: FAPSHI_API_KEY,
+        },
+      },
+    );
+    if (!response.ok) return null;
+    return response.json();
+  } catch {
+    return null;
   }
 }
 

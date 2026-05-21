@@ -48,6 +48,8 @@ export async function POST(request: Request) {
       amount: price.amount,
       email: session.user.email,
       name: session.user.name || "User",
+      userId: session.user.id,
+      message: `TiCLearn ${plan} subscription`,
       redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
       externalId: subscription.id, // Passing your DB ID as externalId
     });

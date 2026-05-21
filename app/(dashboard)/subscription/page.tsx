@@ -16,6 +16,7 @@ import {
   History,
   AlertCircle,
   Smartphone,
+  Coins,
 } from "lucide-react";
 import {
   Card,
@@ -117,6 +118,16 @@ export default function SubscriptionPage() {
   const [transactionId, setTransactionId] = useState("");
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [purchaseConfig, setPurchaseConfig] = useState<{
+    creditsPer1000Xaf: number;
+    minCreditPurchaseXaf: number;
+    maxCreditPurchaseXaf: number;
+    minXafEffective: number;
+  } | null>(null);
+  const [creditAmountXaf, setCreditAmountXaf] = useState(5_000);
+  const [isPurchasingCredits, setIsPurchasingCredits] = useState(false);
+
   useEffect(() => {
     async function fetchPaymentSettings() {
       try {
@@ -131,6 +142,112 @@ export default function SubscriptionPage() {
     }
     fetchPaymentSettings();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const [cRes, pRes] = await Promise.all([
+          fetch("/api/credits"),
+          fetch("/api/credits/purchase/config"),
+        ]);
+        const creditsData = await cRes.json();
+        const purchaseData = await pRes.json();
+        if (!cancelled && cRes.ok) {
+          setCreditBalance(creditsData.balance ?? 0);
+        }
+        if (!cancelled && pRes.ok) {
+          setPurchaseConfig({
+            creditsPer1000Xaf: purchaseData.creditsPer1000Xaf,
+            minCreditPurchaseXaf: purchaseData.minCreditPurchaseXaf,
+            maxCreditPurchaseXaf: purchaseData.maxCreditPurchaseXaf,
+            minXafEffective: purchaseData.minXafEffective,
+          });
+          const def = Math.max(
+            100,
+            purchaseData.minXafEffective ?? purchaseData.minCreditPurchaseXaf,
+          );
+          setCreditAmountXaf(def);
+        }
+      } catch {
+        /* non-fatal */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("creditPurchase") === "return") {
+      toast.message(
+        "Payment complete?",
+        {
+          description:
+            "If you finished Mobile Money checkout, your credits usually appear within a minute after confirmation.",
+        },
+      );
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + window.location.hash,
+      );
+    }
+  }, []);
+
+  const estimatedCredits =
+    purchaseConfig && creditAmountXaf > 0
+      ? Math.floor(
+          (creditAmountXaf * purchaseConfig.creditsPer1000Xaf) / 1000,
+        )
+      : 0;
+
+  const handleBuyCredits = async () => {
+    if (!purchaseConfig) {
+      toast.error("Pricing not loaded yet");
+      return;
+    }
+    const minXaf = purchaseConfig.minXafEffective;
+    const maxXaf = purchaseConfig.maxCreditPurchaseXaf;
+    if (creditAmountXaf < minXaf) {
+      toast.error(`Minimum top-up is ${minXaf.toLocaleString()} XAF`);
+      return;
+    }
+    if (creditAmountXaf > maxXaf) {
+      toast.error(`Maximum top-up is ${maxXaf.toLocaleString()} XAF`);
+      return;
+    }
+    if (estimatedCredits < 1) {
+      toast.error("Amount too low for at least 1 credit at the current rate.");
+      return;
+    }
+
+    setIsPurchasingCredits(true);
+    try {
+      const res = await fetch("/api/credits/purchase/initiate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amountXaf: creditAmountXaf }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Could not start payment");
+      }
+      if (data.link) {
+        window.location.href = data.link as string;
+      } else {
+        toast.error("No payment link returned");
+      }
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : "Could not start credit purchase",
+      );
+    } finally {
+      setIsPurchasingCredits(false);
+    }
+  };
 
   const handleUpgrade = async (selectedPlan: string) => {
     setIsProcessing(true);
@@ -223,7 +340,7 @@ export default function SubscriptionPage() {
             Subscription & Usage
           </h1>
           <p className="text-muted-foreground">
-            Manage your plan, track your usage, and upgrade for more features
+            Manage your plan and credits, track usage, and upgrade for more features
           </p>
         </div>
         <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
@@ -308,10 +425,80 @@ export default function SubscriptionPage() {
         </Dialog>
       </div>
 
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Coins className="h-5 w-5 text-primary" />
+            Pay-as-you-go credits
+          </CardTitle>
+          <CardDescription>
+            Buy credits with MTN or Orange Money (Fapshi). Credits are used for mocks,
+            practice, and other features when your school enables enforcement.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-end gap-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Current balance</p>
+              <p className="text-2xl font-bold">
+                {creditBalance === null ? "—" : creditBalance.toLocaleString()}{" "}
+                <span className="text-base font-normal text-muted-foreground">
+                  credits
+                </span>
+              </p>
+            </div>
+            {purchaseConfig && (
+              <p className="text-sm text-muted-foreground pb-1">
+                Rate: {purchaseConfig.creditsPer1000Xaf} credits per 1,000 XAF ·
+                min {purchaseConfig.minXafEffective.toLocaleString()} XAF · max{" "}
+                {purchaseConfig.maxCreditPurchaseXaf.toLocaleString()} XAF
+              </p>
+            )}
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Amount (XAF)</Label>
+              <Input
+                type="number"
+                min={purchaseConfig?.minXafEffective ?? 100}
+                max={purchaseConfig?.maxCreditPurchaseXaf}
+                step={100}
+                value={creditAmountXaf || ""}
+                onChange={(e) =>
+                  setCreditAmountXaf(Number(e.target.value) || 0)
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Estimated credits</Label>
+              <div className="h-10 flex items-center rounded-md border bg-muted/40 px-3 text-sm font-medium">
+                ≈ {estimatedCredits.toLocaleString()}
+              </div>
+            </div>
+            <div className="flex items-end">
+              <Button
+                className="w-full"
+                onClick={handleBuyCredits}
+                disabled={
+                  isPurchasingCredits ||
+                  !purchaseConfig ||
+                  estimatedCredits < 1
+                }
+              >
+                {isPurchasingCredits ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Pay with Mobile Money"
+                )}
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Tabs defaultValue="manual" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
-          {/* Disabled for the moment while working on fix fapshi issues */}
-          <TabsTrigger value="auto" className="gap-2" disabled>
+          <TabsTrigger value="auto" className="gap-2">
             <CreditCard className="h-4 w-4" />
             Auto Payment
           </TabsTrigger>

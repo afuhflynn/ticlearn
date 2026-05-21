@@ -61,6 +61,8 @@ model User {
   paper3UserStats        Paper3UserStats[]
   paper3Attempts         Paper3Attempt[]
   paper3MockAttempts     Paper3MockAttempt[]
+  paper3MockModulesCreated Paper3MockModule[] @relation("Paper3MockModuleCreator")
+  paper12MockModulesCreated Paper12MockModule[] @relation("Paper12MockModuleCreator")
   paper3QuestionAttempts Paper3QuestionAttempt[]
   creditTransactions     CreditTransaction[]     @relation("UserCredits")
   creditPurchaseOrders   CreditPurchaseOrder[]
@@ -292,6 +294,7 @@ model ExamBlueprint {
   component Component          @relation(fields: [componentId], references: [id], onDelete: Cascade)
   sections  BlueprintSection[]
   attempts  MockAttempt[]
+  paper12ModuleItems Paper12MockModuleItem[]
 
   @@unique([componentId, name])
   @@index([componentId])
@@ -333,13 +336,47 @@ model MockAttempt {
   startedAt      DateTime       @default(now()) @map("started_at")
   completedAt    DateTime?      @map("completed_at")
   createdAt      DateTime       @default(now())
+  creationContext MockCreationContext @default(STUDENT) @map("creation_context")
 
   blueprint ExamBlueprint? @relation(fields: [blueprintId], references: [id])
 
   @@index([examProfileId])
   @@index([componentId])
   @@index([blueprintId])
+  @@index([creationContext])
   @@map("mock_attempts")
+}
+
+/// Admin-defined bundle of Paper 1 & 2 blueprint mocks (e.g. "Term 1 set").
+model Paper12MockModule {
+  id                   String       @id @default(cuid())
+  title                String
+  description          String?      @db.Text
+  sortOrder            Int          @default(0) @map("sort_order")
+  /// When true, eligible students see this group on Practice → Mock exams.
+  visibleToStudents    Boolean      @default(false) @map("visible_to_students")
+  createdBy            String       @map("created_by")
+  creator              User         @relation("Paper12MockModuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+  items                Paper12MockModuleItem[]
+
+  @@index([visibleToStudents])
+  @@map("paper12_mock_modules")
+}
+
+model Paper12MockModuleItem {
+  id            String          @id @default(cuid())
+  moduleId      String          @map("module_id")
+  blueprintId   String          @map("blueprint_id")
+  sortOrder     Int             @default(0) @map("sort_order")
+  module        Paper12MockModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  blueprint     ExamBlueprint   @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+
+  @@unique([moduleId, blueprintId])
+  @@index([moduleId])
+  @@index([blueprintId])
+  @@map("paper12_mock_module_items")
 }
 
 model ExamProfileProgram {
@@ -858,6 +895,12 @@ enum MockSourceMode {
   RESEARCH
 }
 
+/// Distinguishes student practice sessions vs admin-only preview sessions on Mock exams (Paper 1 & 2).
+enum MockCreationContext {
+  STUDENT
+  ADMIN_PREVIEW
+}
+
 enum ExamSubject {
   CS
   ICT
@@ -997,7 +1040,7 @@ model PlatformSettings {
 
   /// Pay-as-you-go: credits granted per 1,000 XAF paid (floor).
   creditsPer1000Xaf Int @default(50) @map("credits_per_1000_xaf")
-  minCreditPurchaseXaf Int @default(500) @map("min_credit_purchase_xaf")
+  minCreditPurchaseXaf Int @default(100) @map("min_credit_purchase_xaf")
   maxCreditPurchaseXaf Int @default(500000) @map("max_credit_purchase_xaf")
 
   /// Prefer ace-3 style AI short-answer marking for text-heavy Paper 3 items.
@@ -1122,13 +1165,37 @@ model Paper3Mock {
   totalMarks    Int                  @map("total_marks")
   createdBy     String               @map("created_by")
   status        MockStatus           @default(DRAFT)
+  /// When true, published mocks appear in the student catalog (for their subject). Backwards compatible default.
+  visibleToAllStudents Boolean       @default(true) @map("visible_to_all_students")
+  moduleId      String?              @map("module_id")
+  module        Paper3MockModule?    @relation(fields: [moduleId], references: [id], onDelete: SetNull)
   createdAt     DateTime             @default(now())
   updatedAt     DateTime             @updatedAt
   questions     Paper3MockQuestion[]
   attempts      Paper3MockAttempt[]
 
   @@index([subject, status])
+  @@index([moduleId])
   @@map("paper3_mocks")
+}
+
+/// Admin-defined bundle of Paper 3 mocks (e.g. "Term 1 CS mocks").
+model Paper3MockModule {
+  id                   String       @id @default(cuid())
+  title                String
+  description          String?      @db.Text
+  sortOrder            Int          @default(0) @map("sort_order")
+  status               MockStatus   @default(DRAFT)
+  /// When true and status is PUBLISHED, students with the right subject see mocks in this module.
+  visibleToAllStudents Boolean      @default(false) @map("visible_to_all_students")
+  createdBy            String       @map("created_by")
+  creator              User         @relation("Paper3MockModuleCreator", fields: [createdBy], references: [id], onDelete: Cascade)
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+  mocks                Paper3Mock[]
+
+  @@index([status])
+  @@map("paper3_mock_modules")
 }
 
 model Paper3MockQuestion {

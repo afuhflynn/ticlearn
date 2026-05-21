@@ -22,6 +22,10 @@ const updateSchema = z.object({
   enforceCreditsForPractice: z.boolean().optional(),
   enforceCreditsForRevisionGuides: z.boolean().optional(),
   enforceCreditsForAiTutor: z.boolean().optional(),
+  enforceCreditsAll: z.boolean().optional(),
+  creditsPer1000Xaf: z.number().int().min(1).max(100_000).optional(),
+  minCreditPurchaseXaf: z.number().int().min(100).max(1_000_000).optional(),
+  maxCreditPurchaseXaf: z.number().int().min(100).max(10_000_000).optional(),
   useAceShortAnswerGrading: z.boolean().optional(),
 });
 
@@ -68,6 +72,17 @@ export async function PUT(req: Request) {
     ) {
       return NextResponse.json(
         { error: "mockMinQuestions cannot exceed mockMaxQuestions" },
+        { status: 400 },
+      );
+    }
+
+    if (
+      body.minCreditPurchaseXaf !== undefined &&
+      body.maxCreditPurchaseXaf !== undefined &&
+      body.minCreditPurchaseXaf > body.maxCreditPurchaseXaf
+    ) {
+      return NextResponse.json(
+        { error: "minCreditPurchaseXaf cannot exceed maxCreditPurchaseXaf" },
         { status: 400 },
       );
     }

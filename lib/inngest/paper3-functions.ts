@@ -610,6 +610,38 @@ async function extractSourceText(source: ProcessSourceEvent) {
   );
 }
 
+async function loadApprovedQuestionBankBlock(params: {
+  subject: Paper3Subject;
+  limit?: number;
+}): Promise<string> {
+  const take = params.limit ?? 15;
+  const rows = await prisma.paper3Question.findMany({
+    where: {
+      status: "APPROVED",
+      source: { subject: params.subject },
+    },
+    select: {
+      title: true,
+      contentMd: true,
+      taskType: true,
+      marks: true,
+      section: true,
+      concepts: true,
+    },
+    orderBy: { updatedAt: "desc" },
+    take,
+  });
+  if (rows.length === 0) {
+    return "";
+  }
+  return rows
+    .map((q, i) => {
+      const body = (q.contentMd || "").slice(0, 2200);
+      return `### Approved bank item ${i + 1} [${q.taskType}] (${q.marks} marks, section ${q.section})\n**${q.title}**\nConcepts: ${(q.concepts || []).join(", ")}\n${body}`;
+    })
+    .join("\n\n---\n\n");
+}
+
 async function generateNewQuestions(
   input: GenerateMockInput,
   step: Paper3StepTools,
@@ -627,11 +659,23 @@ async function generateNewQuestions(
       }),
   );
 
+  const bankBlock = await step.run(
+    "load-approved-question-bank",
+    async () =>
+      loadApprovedQuestionBankBlock({
+        subject: (input.subject ?? "COMPUTER_SCIENCE") as Paper3Subject,
+      }),
+  );
+
+  const combinedGrounding = [pastPaperContext.trim(), bankBlock.trim()]
+    .filter(Boolean)
+    .join("\n\n---\n\n");
+
   const groundedPrompt = groundedQuestionBatchPrompt({
     focusCategory: input.focusCategory ?? "MIXED",
     count: input.questionCount,
     difficulty: input.difficulty ?? "standard",
-    pastPaperContext,
+    pastPaperContext: combinedGrounding || pastPaperContext,
     notes: input.authorNotes,
     mockTitle: input.title,
   });
@@ -925,7 +969,8 @@ export const generatePaper3Mock = inngest.createFunction(
                 timeLimit: data.timeLimit ?? 120,
                 totalMarks,
                 createdBy: data.createdBy,
-                status: "PUBLISHED", // @todo: Make this better later
+                status: "DRAFT",
+                visibleToAllStudents: true,
               },
             });
 

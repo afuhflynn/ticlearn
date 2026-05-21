@@ -4,7 +4,7 @@ import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
 import { ArrowLeft, GripVertical, Loader2, Plus, Save, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   useDeletePaper3Mock,
   usePaper3Mock,
@@ -40,6 +40,9 @@ function EditMockInner() {
   >("MIXED");
   const [timeLimit, setTimeLimit] = useState(60);
   const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("DRAFT");
+  const [moduleId, setModuleId] = useState<string>("");
+  const [visibleToAllStudents, setVisibleToAllStudents] = useState(true);
+  const [modules, setModules] = useState<{ id: string; title: string }[]>([]);
   const [questionIds, setQuestionIds] = useState<string[]>([]);
   const [showBank, setShowBank] = useState(false);
   const [initialized, setInitialized] = useState(false);
@@ -48,6 +51,15 @@ function EditMockInner() {
     status: "APPROVED",
     category: focusCategory === "MIXED" ? "" : focusCategory,
   });
+
+  useEffect(() => {
+    fetch("/api/admin/paper3/modules")
+      .then((res) => res.json())
+      .then((data: { modules?: { id: string; title: string }[] }) => {
+        setModules(data.modules?.map((m) => ({ id: m.id, title: m.title })) ?? []);
+      })
+      .catch(() => {});
+  }, []);
 
   const approvedQuestions = useMemo(() => {
     return (
@@ -81,6 +93,15 @@ function EditMockInner() {
     setTimeLimit(mock.timeLimit);
     setStatus(mock.status);
     setQuestionIds(mock.questions.map((q: { questionId: string }) => q.questionId));
+    setModuleId(
+      (mock as { moduleId?: string | null }).moduleId ||
+        (mock as { module?: { id: string } | null }).module?.id ||
+        "",
+    );
+    setVisibleToAllStudents(
+      (mock as { visibleToAllStudents?: boolean }).visibleToAllStudents ??
+        true,
+    );
     setInitialized(true);
     return null;
   }
@@ -109,6 +130,8 @@ function EditMockInner() {
       status,
       totalMarks,
       questionIds,
+      moduleId: moduleId || null,
+      visibleToAllStudents,
     });
   };
 
@@ -224,6 +247,40 @@ function EditMockInner() {
               <option value="DRAFT">Draft</option>
               <option value="PUBLISHED">Published</option>
               <option value="ARCHIVED">Archived</option>
+            </select>
+            <p className="text-xs text-muted-foreground">
+              Draft = visible only in admin until you publish. AI-generated mocks
+              start as draft.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 text-sm font-medium">
+              <input
+                type="checkbox"
+                checked={visibleToAllStudents}
+                onChange={(e) => setVisibleToAllStudents(e.target.checked)}
+                className="rounded border"
+              />
+              Visible to students (catalog)
+            </label>
+            <p className="text-xs text-muted-foreground">
+              Off hides the mock unless it belongs to a published module marked
+              visible to all.
+            </p>
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium">Module (optional)</label>
+            <select
+              value={moduleId}
+              onChange={(e) => setModuleId(e.target.value)}
+              className="w-full rounded-lg border px-3 py-2 text-sm"
+            >
+              <option value="">None</option>
+              {modules.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.title}
+                </option>
+              ))}
             </select>
           </div>
         </div>

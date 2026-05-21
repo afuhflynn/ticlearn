@@ -18,7 +18,7 @@ import { UserButton } from "../user/user-button";
 import Image from "next/image";
 
 const navLinks = [
-  { href: "/#sample-mocks", label: "Mocks" },
+  { href: "/#ready-mocks", label: "Mocks" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },
