@@ -253,7 +253,7 @@ function MessageBody({ message }: { message: UIMessage }) {
       ) : null}
 
       {message.role === "assistant" && (
-        <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <MessageActions className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <MessageAction
             tooltip="Copy response"
             onClick={() => handleCopy(text.trim(), message.id)}
