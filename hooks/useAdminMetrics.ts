@@ -6,6 +6,7 @@ interface MetricsParams {
   from?: string;
   to?: string;
   tab?: string;
+  granularity?: string;
   page?: number;
   limit?: number;
   sort?: string;

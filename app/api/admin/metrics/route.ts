@@ -28,6 +28,7 @@ export async function GET(req: Request) {
     const to =
       searchParams.get("to") || new Date().toISOString().split("T")[0];
     const tab = searchParams.get("tab") || "overview";
+    const granularity = searchParams.get("granularity") || "daily";
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "50");
     const sort = searchParams.get("sort") || "date";
@@ -40,10 +41,11 @@ export async function GET(req: Request) {
     // Summary cards - always returned
     const [totalUsers, activeSubsAgg, todayEvents, dausAgg, mrrData] =
       await Promise.all([
-        prisma.user.count(),
-        prisma.subscription.count({ where: { status: "ACTIVE" } }),
+        prisma.user.count({ where: { role: "USER" } }),
+        prisma.subscription.count({ where: { status: "ACTIVE", user: { role: "USER" } } }),
         prisma.kpiEvent.count({
           where: {
+            user: { role: "USER" },
             createdAt: {
               gte: new Date(new Date().setHours(0, 0, 0, 0)),
               lte: new Date(),
@@ -53,6 +55,7 @@ export async function GET(req: Request) {
         prisma.kpiEvent.groupBy({
           by: ["userId"],
           where: {
+            user: { role: "USER" },
             createdAt: {
               gte: new Date(new Date().setHours(0, 0, 0, 0)),
               lte: new Date(),
@@ -87,52 +90,106 @@ export async function GET(req: Request) {
       metricFilter.metric = { contains: search };
     }
 
-    // Get daily metrics
-    let metricsQuery = prisma.dailyMetric.findMany({
-      where: metricFilter,
-      orderBy: [{ date: sort === "date" ? order : "asc" }, sort !== "date" && sort !== "metric"
-        ? { metric: "asc" }
-        : ({} as any)],
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    // If sort is on a metric value, we need to handle differently
-    if (sort === "value") {
-      metricsQuery = prisma.dailyMetric.findMany({
-        where: metricFilter,
-        orderBy: [{ autoValue: order === "asc" ? "asc" : "desc" }],
-        skip: (page - 1) * limit,
-        take: limit,
-      });
-    } else if (sort === "metric") {
-      metricsQuery = prisma.dailyMetric.findMany({
-        where: metricFilter,
-        orderBy: [{ metric: order === "asc" ? "asc" : "desc" }, { date: "desc" }],
-        skip: (page - 1) * limit,
-        take: limit,
-      });
-    }
-
-    const [metrics, total] = await Promise.all([
-      metricsQuery,
-      prisma.dailyMetric.count({ where: metricFilter }),
-    ]);
-
     // Compute MAU: unique users in last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const mauAgg = await prisma.kpiEvent.groupBy({
       by: ["userId"],
-      where: { createdAt: { gte: thirtyDaysAgo } },
+      where: { createdAt: { gte: thirtyDaysAgo }, user: { role: "USER" } },
     });
     const mau = mauAgg.length;
+
+    let metrics: Array<Record<string, unknown>>;
+    let total: number;
+
+    if (granularity === "monthly" || granularity === "yearly") {
+      // Fetch all matching daily metrics, aggregate by period
+      const allRows = await prisma.dailyMetric.findMany({
+        where: metricFilter,
+        orderBy: { date: "asc" },
+      });
+
+      const grouped = new Map<string, Map<string, number>>();
+      for (const row of allRows) {
+        const d = new Date(row.date);
+        const key = granularity === "monthly"
+          ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+          : `${d.getFullYear()}`;
+        const dateKey = granularity === "monthly"
+          ? `${key}-01`
+          : `${key}-01-01`;
+        if (!grouped.has(dateKey)) grouped.set(dateKey, new Map());
+        const metricMap = grouped.get(dateKey)!;
+        metricMap.set(row.metric, (metricMap.get(row.metric) ?? 0) + (row.autoValue ?? 0));
+      }
+
+      const aggregated: Array<Record<string, unknown>> = [];
+      for (const [dateKey, metricMap] of grouped) {
+        for (const [metric, value] of metricMap) {
+          aggregated.push({ id: `${dateKey}-${metric}`, date: dateKey, metric, autoValue: value });
+        }
+      }
+
+      // Sort aggregated results
+      aggregated.sort((a, b) => {
+        if (sort === "metric") {
+          const cmp = String(a.metric).localeCompare(String(b.metric));
+          return order === "asc" ? cmp : -cmp;
+        }
+        if (sort === "value") {
+          const va = Number(a.autoValue ?? 0);
+          const vb = Number(b.autoValue ?? 0);
+          return order === "asc" ? va - vb : vb - va;
+        }
+        // sort by date
+        const cmp = String(a.date).localeCompare(String(b.date));
+        return order === "asc" ? cmp : -cmp;
+      });
+
+      total = aggregated.length;
+      const start = (page - 1) * limit;
+      metrics = aggregated.slice(start, start + limit);
+    } else {
+      // Daily granularity — existing behavior
+      let metricsQuery = prisma.dailyMetric.findMany({
+        where: metricFilter,
+        orderBy: [{ date: sort === "date" ? order : "asc" }, sort !== "date" && sort !== "metric"
+          ? { metric: "asc" }
+          : ({} as any)],
+        skip: (page - 1) * limit,
+        take: limit,
+      });
+
+      if (sort === "value") {
+        metricsQuery = prisma.dailyMetric.findMany({
+          where: metricFilter,
+          orderBy: [{ autoValue: order === "asc" ? "asc" : "desc" }],
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+      } else if (sort === "metric") {
+        metricsQuery = prisma.dailyMetric.findMany({
+          where: metricFilter,
+          orderBy: [{ metric: order === "asc" ? "asc" : "desc" }, { date: "desc" }],
+          skip: (page - 1) * limit,
+          take: limit,
+        });
+      }
+
+      const [fetchedMetrics, fetchedTotal] = await Promise.all([
+        metricsQuery,
+        prisma.dailyMetric.count({ where: metricFilter }),
+      ]);
+      metrics = fetchedMetrics as unknown as Array<Record<string, unknown>>;
+      total = fetchedTotal;
+    }
 
     const result: Record<string, unknown> = {
       summary: { ...summary, mau },
       metrics,
       total,
       page,
+      granularity,
       totalPages: Math.ceil(total / limit),
     };
 
@@ -153,7 +210,7 @@ export async function GET(req: Request) {
         const thirtyDaysAgoGrowth = new Date();
         thirtyDaysAgoGrowth.setDate(thirtyDaysAgoGrowth.getDate() - 30);
         const newUsers = await prisma.user.count({
-          where: { createdAt: { gte: thirtyDaysAgoGrowth } },
+          where: { role: "USER", createdAt: { gte: thirtyDaysAgoGrowth } },
         });
         const activationFunnel = await computeActivationFunnel();
         result.newUsersLast30Days = newUsers;

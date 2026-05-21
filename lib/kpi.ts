@@ -42,6 +42,7 @@ async function countEventsByType(
     where: {
       event,
       createdAt: { gte: startOfDay, lte: endOfDay },
+      user: { role: "USER" },
     },
   });
 }
@@ -61,20 +62,21 @@ export async function computeDailyMetrics(date: Date) {
     await Promise.all([
       prisma.kpiEvent.groupBy({
         by: ["userId"],
-        where: { createdAt: { gte: start, lte: end } },
+        where: { createdAt: { gte: start, lte: end }, user: { role: "USER" } },
       }),
       prisma.feedback.count({
-        where: { createdAt: { gte: start, lte: end } },
+        where: { createdAt: { gte: start, lte: end }, user: { role: "USER" } },
       }),
-      prisma.subscription.count({ where: { status: "ACTIVE" } }),
-      prisma.user.count(),
+      prisma.subscription.count({ where: { status: "ACTIVE", user: { role: "USER" } } }),
+      prisma.user.count({ where: { role: "USER" } }),
       prisma.user.count({
-        where: { createdAt: { gte: start, lte: end } },
+        where: { role: "USER", createdAt: { gte: start, lte: end } },
       }),
       prisma.subscription.count({
         where: {
           status: "ACTIVE",
           activatedAt: { gte: start, lte: end },
+          user: { role: "USER" },
         },
       }),
     ]);
@@ -84,6 +86,7 @@ export async function computeDailyMetrics(date: Date) {
     where: {
       status: "ACTIVE",
       activatedAt: { gte: start, lte: end },
+      user: { role: "USER" },
     },
   });
 
@@ -109,6 +112,7 @@ export async function computeDailyMetrics(date: Date) {
   const [silentChurn7d, silentChurn30d] = await Promise.all([
     prisma.user.count({
       where: {
+        role: "USER",
         kpiEvents: {
           some: { createdAt: { lt: sevenDaysAgo } },
           none: { createdAt: { gte: sevenDaysAgo, lte: end } },
@@ -117,6 +121,7 @@ export async function computeDailyMetrics(date: Date) {
     }),
     prisma.user.count({
       where: {
+        role: "USER",
         kpiEvents: {
           some: { createdAt: { lt: thirtyDaysAgo } },
           none: { createdAt: { gte: thirtyDaysAgo, lte: end } },
@@ -166,6 +171,7 @@ export interface CohortRetentionRow {
 export async function computeCohortRetention(): Promise<CohortRetentionRow[]> {
   const now = new Date();
   const users = await prisma.user.findMany({
+    where: { role: "USER" },
     select: { id: true, createdAt: true },
     orderBy: { createdAt: "desc" },
     take: 5000,
@@ -298,7 +304,7 @@ export async function computeSubjectDistribution(
 
   const activeUserIds = await prisma.kpiEvent.groupBy({
     by: ["userId"],
-    where: { createdAt: { gte: start, lte: end } },
+    where: { createdAt: { gte: start, lte: end }, user: { role: "USER" } },
   });
 
   if (activeUserIds.length === 0) return [];
@@ -323,7 +329,7 @@ export async function computeSubjectDistribution(
 
 export async function computeMRR() {
   const activeSubs = await prisma.subscription.findMany({
-    where: { status: "ACTIVE" },
+    where: { status: "ACTIVE", user: { role: "USER" } },
     select: { amount: true, plan: true },
   });
 
@@ -338,20 +344,21 @@ export async function computeMRR() {
 }
 
 export async function computeActivationFunnel() {
-  const signedUp = await prisma.user.count();
+  const signedUp = await prisma.user.count({ where: { role: "USER" } });
   const onboardingSkipped = await prisma.user.count({
-    where: { examProfiles: { some: { onboardingSkipped: true } } },
+    where: { role: "USER", examProfiles: { some: { onboardingSkipped: true } } },
   });
   const onboardingCompleted = await prisma.user.count({
-    where: { examProfiles: { some: { onboardingCompleted: true } } },
+    where: { role: "USER", examProfiles: { some: { onboardingCompleted: true } } },
   });
   const firstQuiz = await prisma.quiz.groupBy({
     by: ["userId"],
+    where: { user: { role: "USER" } },
     _count: true,
   });
   const cameBack = await prisma.kpiEvent.groupBy({
     by: ["userId"],
-    where: { event: EVENTS.SIGNED_IN },
+    where: { event: EVENTS.SIGNED_IN, user: { role: "USER" } },
     _count: true,
   });
 

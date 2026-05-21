@@ -55,7 +55,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar className="hidden md:flex" collapsible="icon">
+    <Sidebar className="hidden md:flex max-h-screen" collapsible="icon">
       <SidebarHeader className="border-b px-4 py-3">
         <div className="flex items-center gap-2 py-2">
           <Image

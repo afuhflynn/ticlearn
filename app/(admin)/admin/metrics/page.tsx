@@ -222,6 +222,7 @@ export default function AnalyticsPage() {
   const [tab, setTab] = useState("overview");
   const [fromDate, setFromDate] = useState(thirtyDaysAgo);
   const [toDate, setToDate] = useState(today);
+  const [granularity, setGranularity] = useState("daily");
   const [page, setPage] = useState(1);
   const [sort, setSort] = useState("date");
   const [order, setOrder] = useState<"asc" | "desc">("desc");
@@ -245,6 +246,7 @@ export default function AnalyticsPage() {
     from: fromDate,
     to: toDate,
     tab,
+    granularity,
     page,
     sort,
     order,
@@ -355,7 +357,7 @@ export default function AnalyticsPage() {
         />
       </div>
 
-      {/* Date Range */}
+      {/* Date Range & Granularity */}
       <div className="flex items-end gap-3 flex-wrap">
         <div className="space-y-1">
           <Label>From</Label>
@@ -374,6 +376,19 @@ export default function AnalyticsPage() {
             onChange={(e) => setToDate(e.target.value)}
             className="w-40"
           />
+        </div>
+        <div className="space-y-1">
+          <Label>Granularity</Label>
+          <Select value={granularity} onValueChange={(v) => { setGranularity(v); setPage(1); }}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <Button
           variant="default"
