@@ -7,6 +7,7 @@ import {
   sendPaymentSuccessEmail,
 } from "@/lib/email/send";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
+import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
 
 const PLAN_LABELS: Record<string, string> = {
   STARTER: "Starter Plan",
@@ -58,72 +59,21 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Not found" }, { status: 404 });
       }
 
-      if (status === "SUCCESSFUL") {
-        await prisma.$transaction(async (tx) => {
-          const fresh = await tx.creditPurchaseOrder.findUnique({
-            where: { id: orderId },
-          });
-          if (!fresh || fresh.status !== "PENDING") {
-            return;
-          }
+      const result = await fulfillCreditPurchaseFromFapshi({
+        externalId,
+        transId,
+        status,
+      });
 
-          const dup = await tx.creditTransaction.findFirst({
-            where: {
-              userId: fresh.userId,
-              type: "CREDIT_PURCHASE",
-              referenceId: orderId,
-            },
-          });
+      if (!result.ok && result.reason !== "status_" + status) {
+        console.error(`Credit fulfillment issue ${orderId}: ${result.reason}`);
+      }
 
-          if (dup) {
-            await tx.creditPurchaseOrder.update({
-              where: { id: orderId },
-              data: {
-                status: "COMPLETED",
-                fapshiTransId: transId ?? fresh.fapshiTransId,
-              },
-            });
-            return;
-          }
-
-          await tx.user.update({
-            where: { id: fresh.userId },
-            data: {
-              credits: { increment: fresh.creditsPromised },
-              totalCreditsEarned: { increment: fresh.creditsPromised },
-            },
-          });
-
-          await tx.creditTransaction.create({
-            data: {
-              userId: fresh.userId,
-              amount: fresh.creditsPromised,
-              type: "CREDIT_PURCHASE",
-              description: `Purchased ${fresh.creditsPromised} credits (${fresh.amountXaf} XAF)`,
-              referenceId: orderId,
-            },
-          });
-
-          await tx.creditPurchaseOrder.update({
-            where: { id: orderId },
-            data: {
-              status: "COMPLETED",
-              fapshiTransId: transId ?? undefined,
-            },
-          });
-        });
-
-        const user = await prisma.user.findUnique({
-          where: { id: order.userId },
-        });
-        if (user?.email) {
-          console.log(`Credit purchase success for ${user.email}`);
-        }
-      } else if (status === "FAILED" || status === "EXPIRED") {
-        await prisma.creditPurchaseOrder.updateMany({
-          where: { id: orderId, status: "PENDING" },
-          data: { status: "FAILED", fapshiTransId: transId ?? undefined },
-        });
+      const user = await prisma.user.findUnique({
+        where: { id: order.userId },
+      });
+      if (user?.email && status === "SUCCESSFUL") {
+        console.log(`Credit purchase webhook ${result.credited ? "credited" : "processed"} for ${user.email}`);
       }
 
       return NextResponse.json({ success: true }, { status: 200 });

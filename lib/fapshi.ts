@@ -87,11 +87,79 @@ export async function getPaymentStatus(transId: string): Promise<unknown | null>
         },
       },
     );
-    if (!response.ok) return null;
-    return response.json();
+    const text = await response.text();
+    try {
+      return JSON.parse(text) as unknown;
+    } catch {
+      return null;
+    }
   } catch {
     return null;
   }
+}
+
+function pickString(obj: Record<string, unknown>, keys: string[]): string {
+  for (const k of keys) {
+    const v = obj[k];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
+/** Normalize Fapshi payment-status payloads (nested wrappers vary). */
+export function parseFapshiPaymentStatusPayload(raw: unknown): {
+  externalId: string;
+  status: string;
+  transId: string;
+} | null {
+  if (!raw || typeof raw !== "object") return null;
+
+  const unwrap = (o: Record<string, unknown>): Record<string, unknown> => {
+    if (typeof o.data === "object" && o.data !== null) {
+      return unwrap(o.data as Record<string, unknown>);
+    }
+    if (typeof o.transaction === "object" && o.transaction !== null) {
+      return unwrap(o.transaction as Record<string, unknown>);
+    }
+    return o;
+  };
+
+  const obj = unwrap(raw as Record<string, unknown>);
+  const externalId = pickString(obj, ["externalId", "external_id"]);
+  const status = pickString(obj, ["status", "paymentStatus", "payment_status"]);
+  const transId = pickString(obj, ["transId", "trans_id"]);
+
+  if (!externalId || !status) return null;
+  return { externalId, status, transId };
+}
+
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
+/**
+ * After redirect, Fapshi often needs a short delay before payment-status returns
+ * full fields (`externalId`, `status`). Poll with backoff for reconcile flows.
+ */
+export async function pollPaymentStatusUntilReady(
+  transId: string,
+  opts?: { maxAttempts?: number },
+): Promise<{ externalId: string; status: string; transId: string } | null> {
+  const maxAttempts = opts?.maxAttempts ?? 10;
+  /** ms — grows gently so total window ~25–35s */
+  const delays = [300, 500, 700, 1000, 1200, 1500, 2000, 2500, 3000, 3500];
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const raw = await getPaymentStatus(transId);
+    const parsed = parseFapshiPaymentStatusPayload(raw);
+    if (parsed) return parsed;
+
+    if (attempt < maxAttempts - 1) {
+      await sleep(delays[Math.min(attempt, delays.length - 1)] ?? 1500);
+    }
+  }
+
+  return null;
 }
 
 export interface PaymentPlanConfig {

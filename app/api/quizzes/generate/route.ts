@@ -4,6 +4,11 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateQuizFromNote } from "@/lib/ai";
+import {
+  getPlatformSettings,
+  quizCreditsRequired,
+} from "@/lib/platform-settings";
+import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),
@@ -79,6 +84,24 @@ export async function POST(req: Request) {
       );
     }
 
+    const settings = await getPlatformSettings();
+    const wantsDebit = quizCreditsRequired(settings);
+    const quizCost = settings.creditCostQuizGeneration;
+
+    if (wantsDebit) {
+      const balance = await getUserCreditBalance(session.user.id);
+      if (balance < quizCost) {
+        return NextResponse.json(
+          {
+            error: `Insufficient credits. Need ${quizCost} credits to generate a quiz.`,
+            balance,
+            requiredCredits: quizCost,
+          },
+          { status: 402 },
+        );
+      }
+    }
+
     const resolvedQuestionCount = questionCount || 10;
     const resolvedQuestionTypes = questionTypes || "MIXED";
 
@@ -130,6 +153,20 @@ export async function POST(req: Request) {
       console.log(
         `[API] Quiz saved successfully with ${generatedQuestions.length} questions`,
       );
+
+      if (wantsDebit) {
+        try {
+          await spendCredits({
+            userId: session.user.id,
+            amount: quizCost,
+            type: "QUIZ_GENERATION",
+            description: `Quiz from note: ${note.title}`,
+            referenceId: quiz.id,
+          });
+        } catch (err) {
+          console.error("[API] Quiz credit debit failed:", err);
+        }
+      }
     } else {
       console.error("[API] AI returned 0 valid questions", {
         quizId: quiz.id,

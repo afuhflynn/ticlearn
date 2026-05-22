@@ -10,6 +10,7 @@ export type PlatformSettingsSnapshot = Pick<
   PlatformSettings,
   | "creditCostQuizGeneration"
   | "creditCostMockQuestion"
+  | "creditCostMockGeneration"
   | "creditCostPracticeQuestion"
   | "creditCostRevisionGuideView"
   | "creditCostRevisionGuideGen"
@@ -30,16 +31,17 @@ export type PlatformSettingsSnapshot = Pick<
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostQuizGeneration: 50,
   creditCostMockQuestion: 10,
+  creditCostMockGeneration: 40,
   creditCostPracticeQuestion: 5,
   creditCostRevisionGuideView: 0,
   creditCostRevisionGuideGen: 0,
-  creditCostAiTutorMessage: 0,
+  creditCostAiTutorMessage: 5,
   mockMinQuestions: 5,
   mockMaxQuestions: 50,
-  enforceCreditsForMocks: false,
-  enforceCreditsForPractice: false,
+  enforceCreditsForMocks: true,
+  enforceCreditsForPractice: true,
   enforceCreditsForRevisionGuides: false,
-  enforceCreditsForAiTutor: false,
+  enforceCreditsForAiTutor: true,
   enforceCreditsAll: false,
   creditsPer1000Xaf: 50,
   minCreditPurchaseXaf: 100,
@@ -66,6 +68,20 @@ export function creditEnforcementEffective(
   };
 }
 
+/** Quiz generation debits when practice enforcement is on and quiz cost is positive. */
+export function quizCreditsRequired(settings: PlatformSettingsSnapshot): boolean {
+  const e = creditEnforcementEffective(settings);
+  return e.practice && settings.creditCostQuizGeneration > 0;
+}
+
+/** Paper 1/2 mock assembly debits when practice enforcement is on and generation cost is positive. */
+export function practiceMockGenerationCreditsRequired(
+  settings: PlatformSettingsSnapshot,
+): boolean {
+  const e = creditEnforcementEffective(settings);
+  return e.practice && settings.creditCostMockGeneration > 0;
+}
+
 /** Credits from XAF using floor (same as pay-as-you-go purchase calculation). */
 export function creditsFromXaf(
   amountXaf: number,
@@ -87,6 +103,7 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
   return {
     creditCostQuizGeneration: settings.creditCostQuizGeneration,
     creditCostMockQuestion: settings.creditCostMockQuestion,
+    creditCostMockGeneration: settings.creditCostMockGeneration,
     creditCostPracticeQuestion: settings.creditCostPracticeQuestion,
     creditCostRevisionGuideView: settings.creditCostRevisionGuideView,
     creditCostRevisionGuideGen: settings.creditCostRevisionGuideGen,

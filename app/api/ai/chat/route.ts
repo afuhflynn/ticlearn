@@ -21,6 +21,14 @@ import { getActiveProfileId } from "@/lib/exam-profile";
 import { computeReadiness } from "@/lib/readiness";
 import crypto from "crypto";
 import { z } from "zod";
+import {
+  creditEnforcementEffective,
+  getPlatformSettings,
+} from "@/lib/platform-settings";
+import {
+  getUserCreditBalance,
+  spendCredits,
+} from "@/lib/credits";
 
 export const runtime = "nodejs";
 
@@ -159,7 +167,7 @@ async function saveMessage(
   content: string,
   parts: unknown,
 ) {
-  await prisma.chatMessage.create({
+  const msg = await prisma.chatMessage.create({
     data: {
       conversationId,
       userId,
@@ -173,6 +181,8 @@ async function saveMessage(
     where: { id: conversationId },
     data: { updatedAt: new Date() },
   });
+
+  return msg;
 }
 
 export async function POST(req: Request) {
@@ -230,7 +240,7 @@ export async function POST(req: Request) {
       );
     }
 
-    // Get user's subscription and check limits
+    // Get user's subscription and check limits / credits
     const subscription = await prisma.subscription.findFirst({
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
@@ -238,6 +248,12 @@ export async function POST(req: Request) {
 
     const plan = subscription?.plan || "FREE";
     const isPaid = plan !== "FREE" && subscription?.status === "ACTIVE";
+
+    const settings = await getPlatformSettings();
+    const enforcement = creditEnforcementEffective(settings);
+    const tutorCost = settings.creditCostAiTutorMessage;
+    const tutorCreditsGate =
+      enforcement.aiTutor && tutorCost > 0 && !isPaid;
 
     // Define limits per plan
     const limits: Record<string, number> = {
@@ -261,21 +277,34 @@ export async function POST(req: Request) {
       },
     });
 
-    // Check if user has reached their limit (only for non-paid plans)
-    if (!isPaid && chatLimit !== -1 && chatsToday >= chatLimit) {
-      return NextResponse.json(
-        {
-          error:
-            "Your daily AI chat allowance is exhausted. You can still read previous conversations until the next reset.",
-        },
-        { status: 403 },
-      );
+    if (!isPaid) {
+      if (tutorCreditsGate) {
+        const balance = await getUserCreditBalance(userId);
+        if (balance < tutorCost) {
+          return NextResponse.json(
+            {
+              error: `Insufficient credits. Need ${tutorCost} credits per tutor message.`,
+              balance,
+              requiredCredits: tutorCost,
+            },
+            { status: 402 },
+          );
+        }
+      } else if (chatLimit !== -1 && chatsToday >= chatLimit) {
+        return NextResponse.json(
+          {
+            error:
+              "Your daily AI chat allowance is exhausted. You can still read previous conversations until the next reset.",
+          },
+          { status: 403 },
+        );
+      }
     }
 
     const normalizedUserParts = normalizeStoredParts(latestUserMessage.parts);
     const userContent = extractTextFromParts(normalizedUserParts);
 
-    await saveMessage(
+    const userMsgRecord = await saveMessage(
       conversationId,
       userId,
       "user",
@@ -433,6 +462,20 @@ Guidelines:
           assistantContent,
           assistantParts,
         );
+
+        if (tutorCreditsGate) {
+          try {
+            await spendCredits({
+              userId,
+              amount: tutorCost,
+              type: "AI_TUTOR_MESSAGE",
+              description: "TiC AI tutor message",
+              referenceId: userMsgRecord.id,
+            });
+          } catch (err) {
+            console.error("[CHAT] Tutor credit debit failed:", err);
+          }
+        }
       },
       originalMessages: messages,
       sendReasoning: true,

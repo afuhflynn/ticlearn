@@ -19,6 +19,7 @@ import { toast } from "sonner";
 type PlatformSettings = {
   creditCostQuizGeneration: number;
   creditCostMockQuestion: number;
+  creditCostMockGeneration: number;
   creditCostPracticeQuestion: number;
   creditCostRevisionGuideView: number;
   creditCostRevisionGuideGen: number;
@@ -118,8 +119,9 @@ export default function AdminPlatformSettingsPage() {
         </h1>
         <p className="text-muted-foreground mt-2">
           Configure pay-as-you-go credit pricing, per-feature costs, and when
-          users must spend credits. Defaults are backward-compatible (enforcement
-          off until you turn it on).
+          users must spend credits. Enforcement defaults are on for mocks,
+          practice (quizzes + Paper 1/2 mock builds), and AI tutor messages;
+          revision guides stay optional until you enable them.
         </p>
       </div>
 
@@ -185,8 +187,8 @@ export default function AdminPlatformSettingsPage() {
             <div>
               <p className="font-medium">Enforce all credit gates</p>
               <p className="text-sm text-muted-foreground">
-                Same as enabling mocks, practice, revision guides, and AI tutor
-                enforcement at once.
+                Same as enabling mocks, practice (quizzes + Paper 1/2 mock builds),
+                revision guides, and AI tutor enforcement at once.
               </p>
             </div>
             <Switch
@@ -239,6 +241,7 @@ export default function AdminPlatformSettingsPage() {
           {(
             [
               ["creditCostQuizGeneration", "Quiz generation"],
+              ["creditCostMockGeneration", "Paper 1/2 — mock build"],
               ["creditCostMockQuestion", "Paper 3 — per question"],
               ["creditCostPracticeQuestion", "Practice — per question"],
               ["creditCostRevisionGuideView", "Revision guide — view"],

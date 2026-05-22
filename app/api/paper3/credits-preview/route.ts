@@ -27,6 +27,8 @@ export async function GET() {
     return NextResponse.json({
       balance,
       settings: {
+        creditCostQuizGeneration: settings.creditCostQuizGeneration,
+        creditCostMockGeneration: settings.creditCostMockGeneration,
         creditCostMockQuestion: settings.creditCostMockQuestion,
         creditCostPracticeQuestion: settings.creditCostPracticeQuestion,
         creditCostRevisionGuideView: settings.creditCostRevisionGuideView,

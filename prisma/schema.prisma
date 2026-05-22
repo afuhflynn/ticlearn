@@ -1024,16 +1024,19 @@ model PlatformSettings {
   creditCostPracticeQuestion  Int @default(5) @map("credit_cost_practice_question")
   creditCostRevisionGuideView Int @default(0) @map("credit_cost_revision_guide_view")
   creditCostRevisionGuideGen  Int @default(0) @map("credit_cost_revision_guide_gen")
-  creditCostAiTutorMessage    Int @default(0) @map("credit_cost_ai_tutor_message")
+  creditCostAiTutorMessage    Int @default(5) @map("credit_cost_ai_tutor_message")
+  /// Paper 1 / Paper 2 student mock assembly (blueprint or custom generator).
+  creditCostMockGeneration Int @default(40) @map("credit_cost_mock_generation")
 
   mockMinQuestions Int @default(5) @map("mock_min_questions")
   mockMaxQuestions Int @default(50) @map("mock_max_questions")
 
-  /// When false (default), existing mock/practice flows work without credit checks.
-  enforceCreditsForMocks          Boolean @default(false) @map("enforce_credits_for_mocks")
-  enforceCreditsForPractice       Boolean @default(false) @map("enforce_credits_for_practice")
+  /// When false, Paper 3 mock attempts skip credit checks (unless enforceCreditsAll).
+  enforceCreditsForMocks          Boolean @default(true) @map("enforce_credits_for_mocks")
+  /// Practice includes quiz generation + Paper 1/2 mock creation when costs are above zero.
+  enforceCreditsForPractice       Boolean @default(true) @map("enforce_credits_for_practice")
   enforceCreditsForRevisionGuides Boolean @default(false) @map("enforce_credits_for_revision_guides")
-  enforceCreditsForAiTutor        Boolean @default(false) @map("enforce_credits_for_ai_tutor")
+  enforceCreditsForAiTutor        Boolean @default(true) @map("enforce_credits_for_ai_tutor")
 
   /// When true, all four per-area enforce flags below behave as if they were on (OR).
   enforceCreditsAll Boolean @default(false) @map("enforce_credits_all")
@@ -1453,6 +1456,7 @@ enum CreditType {
   QUIZ_GENERATION // Spending credits to generate quizzes
   PRACTICE_QUESTION // Spending credits on practice questions
   MOCK_EXAM // Spending credits on mock exam questions
+  MOCK_GENERATION // Spending credits to assemble Paper 1/2 practice mocks
   REVISION_GUIDE // Spending credits on revision guide access/generation
   AI_TUTOR_MESSAGE // Spending credits on TiC tutor messages
   BONUS // Admin or promotional bonuses

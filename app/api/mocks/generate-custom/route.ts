@@ -7,6 +7,15 @@ import {
   type StudentMockScope,
   type StudentPaperMode,
 } from "@/lib/mock-generator";
+import {
+  getPlatformSettings,
+  practiceMockGenerationCreditsRequired,
+} from "@/lib/platform-settings";
+import {
+  getUserCreditBalance,
+  InsufficientCreditsError,
+  spendCredits,
+} from "@/lib/credits";
 import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(req: Request) {
@@ -87,6 +96,24 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: "Invalid topic selection" }, { status: 400 });
     }
 
+    const settings = await getPlatformSettings();
+    const wantsDebit = practiceMockGenerationCreditsRequired(settings);
+    const genCost = settings.creditCostMockGeneration;
+
+    if (wantsDebit) {
+      const balance = await getUserCreditBalance(session.user.id);
+      if (balance < genCost) {
+        return NextResponse.json(
+          {
+            error: `Insufficient credits. Need ${genCost} credits to generate this mock.`,
+            balance,
+            requiredCredits: genCost,
+          },
+          { status: 402 },
+        );
+      }
+    }
+
     const mock = await generateStudentPracticeMock({
       examProfileId: profileId,
       componentId,
@@ -95,6 +122,33 @@ export async function POST(req: Request) {
       topicIds:
         scope === "TOPICS" && body.topicIds?.length ? body.topicIds : undefined,
     });
+
+    if (wantsDebit) {
+      try {
+        await spendCredits({
+          userId: session.user.id,
+          amount: genCost,
+          type: "MOCK_GENERATION",
+          description: `Practice mock: ${mock.blueprint.name}`,
+          referenceId: mock.attemptId,
+        });
+      } catch (error) {
+        await prisma.mockAttempt.delete({ where: { id: mock.attemptId } }).catch(
+          () => {},
+        );
+        if (error instanceof InsufficientCreditsError) {
+          return NextResponse.json(
+            {
+              error: error.message,
+              balance: error.balance,
+              requiredCredits: error.required,
+            },
+            { status: 402 },
+          );
+        }
+        throw error;
+      }
+    }
 
     return NextResponse.json({
       mock: {

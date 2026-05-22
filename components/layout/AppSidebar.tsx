@@ -19,6 +19,7 @@ import {
   Trophy,
   Upload,
   Users,
+  Coins,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -40,7 +41,7 @@ import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
-import { usePlan } from "@/hooks";
+import { useCredits, usePlan } from "@/hooks";
 import Image from "next/image";
 
 interface NavSection {
@@ -141,6 +142,10 @@ export function AppSidebar() {
   const isAdmin = userRole === "ADMIN";
 
   const { isLoading, plan } = usePlan();
+  const { data: creditsData, isPending: creditsPending } = useCredits();
+  const creditBalance = creditsData?.balance ?? 0;
+  const showCreditsTopUp =
+    !creditsPending && typeof creditsData?.balance === "number" && creditBalance > 0;
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) => ({
@@ -236,24 +241,50 @@ export function AppSidebar() {
       {!isPending && !isLoading && !isAdmin && (
         <SidebarFooter className="border-t p-4">
           {plan && plan !== "STANDARD" && plan !== "PREMIUM" && (
-            <Card className="border-primary/20 bg-primary/5 max-w-full!">
-              <CardContent className="space-y-3">
-                <CardTitle className="font-bold text-left">
-                  Upgrade to Premium
-                </CardTitle>
-                <p className="text-sm text-muted-foreground">
-                  Unlock unlimited notes, quizzes, and access to GCE exams
-                </p>
-              </CardContent>
-              <CardFooter>
-                <Button asChild className="w-full">
-                  <Link href="/subscription">
-                    View Plans
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-              </CardFooter>
-            </Card>
+            showCreditsTopUp ?
+              <Card className="border-primary/20 bg-primary/5 max-w-full!">
+                <CardContent className="space-y-3">
+                  <CardTitle className="flex items-center gap-2 font-bold text-left text-base">
+                    <Coins className="text-primary size-5 shrink-0" aria-hidden />
+                    Buy more credits
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    You have{" "}
+                    <span className="text-foreground font-semibold tabular-nums">
+                      {creditBalance.toLocaleString()}
+                    </span>{" "}
+                    credits—top up anytime for mocks and paid practice.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className="w-full">
+                    <Link href="/subscription#credits-top-up">
+                      Top up credits
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            : (
+              <Card className="border-primary/20 bg-primary/5 max-w-full!">
+                <CardContent className="space-y-3">
+                  <CardTitle className="font-bold text-left">
+                    Upgrade to Premium
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">
+                    Unlock unlimited notes, quizzes, and access to GCE exams
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className="w-full">
+                    <Link href="/subscription">
+                      View Plans
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardFooter>
+              </Card>
+            )
           )}
         </SidebarFooter>
       )}

@@ -37,6 +37,19 @@ export async function spendCredits(params: {
   }
 
   return prisma.$transaction(async (tx) => {
+    if (referenceId) {
+      const existing = await tx.creditTransaction.findFirst({
+        where: { userId, referenceId, type },
+      });
+      if (existing && existing.amount < 0) {
+        const latest = await tx.user.findUnique({
+          where: { id: userId },
+          select: { credits: true },
+        });
+        return { balance: latest?.credits ?? 0 };
+      }
+    }
+
     const user = await tx.user.findUnique({
       where: { id: userId },
       select: { credits: true },

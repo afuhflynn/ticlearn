@@ -95,6 +95,17 @@ interface PaymentSettings {
   orangeHolderName: string | null;
 }
 
+/** Subscription page: reconcile toast branches */
+function creditReconcileLooksSynced(result?: {
+  ok?: boolean;
+  credited?: boolean;
+  reason?: string;
+}) {
+  if (!result?.ok || result.credited) return false;
+  const bad = ["order_still_pending", "transaction_failed"];
+  return !bad.includes(result.reason ?? "");
+}
+
 export default function SubscriptionPage() {
   const {
     usage,
@@ -181,20 +192,116 @@ export default function SubscriptionPage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
-    if (params.get("creditPurchase") === "return") {
-      toast.message(
-        "Payment complete?",
-        {
+    if (params.get("creditPurchase") !== "return") return;
+
+    const transId = params.get("transId")?.trim() ?? "";
+    const redirectStatus = params.get("status")?.trim().toUpperCase() ?? "";
+
+    window.history.replaceState(
+      {},
+      "",
+      window.location.pathname + window.location.hash,
+    );
+
+    void (async () => {
+      const refreshBalance = async () => {
+        try {
+          const cRes = await fetch("/api/credits");
+          const creditsData = await cRes.json();
+          if (cRes.ok) setCreditBalance(creditsData.balance ?? 0);
+        } catch {
+          /* ignore */
+        }
+      };
+
+      if (transId) {
+        try {
+          const res = await fetch("/api/credits/purchase/reconcile", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              transId,
+              redirectHint:
+                redirectStatus === "SUCCESSFUL"
+                  ? "SUCCESSFUL"
+                  : redirectStatus === "FAILED"
+                    ? "FAILED"
+                    : undefined,
+            }),
+          });
+          const data = (await res.json().catch(() => ({}))) as {
+            pendingReason?: string;
+            softPending?: boolean;
+            message?: string;
+            result?: {
+              ok?: boolean;
+              credited?: boolean;
+              reason?: string;
+            };
+            balance?: number;
+            error?: string;
+          };
+
+          if (res.ok && data.pendingReason === "gateway_stale") {
+            toast.message("Still confirming payment…", {
+              description:
+                data.message ||
+                "The gateway is catching up—your credits usually appear within a minute. Balance refreshes below.",
+            });
+            await refreshBalance();
+          } else if (res.ok && data.result?.credited) {
+            toast.success("Credits added", {
+              description: `Balance: ${Number(data.balance ?? 0).toLocaleString()} credits.`,
+            });
+            if (typeof data.balance === "number") setCreditBalance(data.balance);
+          } else if (
+            res.ok &&
+            data.result?.ok &&
+            creditReconcileLooksSynced(data.result)
+          ) {
+            toast.success("You're all set", {
+              description: `Balance: ${Number(data.balance ?? 0).toLocaleString()} credits.`,
+            });
+            if (typeof data.balance === "number") setCreditBalance(data.balance);
+          } else if (res.ok && data.softPending === true && data.result?.reason === "order_still_pending") {
+            toast.message("Almost there…", {
+              description:
+                "Payment succeeded—finalizing credits. Refresh in a few seconds if the balance looks unchanged.",
+            });
+            await refreshBalance();
+          } else if (res.ok && redirectStatus === "SUCCESSFUL" && !data.result?.ok) {
+            toast.message("Confirming payment…", {
+              description:
+                "Gateway responded but fulfillment is still pending—refresh in a moment or contact support if credits don't appear.",
+            });
+            await refreshBalance();
+          } else if (!res.ok) {
+            toast.message("Couldn't reach payment verifier", {
+              description:
+                redirectStatus === "SUCCESSFUL"
+                  ? data.error ||
+                    "Try refreshing this page in a minute. If credits still don't show, contact support with your transaction ID."
+                  : "Finish checkout on your phone, or try again.",
+            });
+            await refreshBalance();
+          } else {
+            await refreshBalance();
+          }
+        } catch {
+          toast.message("Payment complete?", {
+            description:
+              "If checkout finished on your phone, credits usually appear shortly—refresh if needed.",
+          });
+          await refreshBalance();
+        }
+      } else {
+        toast.message("Payment complete?", {
           description:
-            "If you finished Mobile Money checkout, your credits usually appear within a minute after confirmation.",
-        },
-      );
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname + window.location.hash,
-      );
-    }
+            "If you finished Mobile Money checkout, your credits usually appear within a minute.",
+        });
+        await refreshBalance();
+      }
+    })();
   }, []);
 
   const estimatedCredits =
@@ -425,7 +532,7 @@ export default function SubscriptionPage() {
         </Dialog>
       </div>
 
-      <Card className="border-primary/20 bg-primary/5">
+      <Card id="credits-top-up" className="border-primary/20 bg-primary/5 scroll-mt-24">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Coins className="h-5 w-5 text-primary" />

@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 const updateSchema = z.object({
   creditCostQuizGeneration: z.number().int().min(0).max(10_000).optional(),
   creditCostMockQuestion: z.number().int().min(0).max(1_000).optional(),
+  creditCostMockGeneration: z.number().int().min(0).max(10_000).optional(),
   creditCostPracticeQuestion: z.number().int().min(0).max(1_000).optional(),
   creditCostRevisionGuideView: z.number().int().min(0).max(10_000).optional(),
   creditCostRevisionGuideGen: z.number().int().min(0).max(10_000).optional(),
