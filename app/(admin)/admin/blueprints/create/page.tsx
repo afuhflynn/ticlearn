@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +36,8 @@ export default function CreateBlueprintPage() {
   const [totalMarks, setTotalMarks] = useState(100);
   const [durationMin, setDurationMin] = useState(120);
   const [sections, setSections] = useState<Section[]>([{ name: "Section A", questionCount: 5, marksPerQuestion: 10, totalMarks: 50, questionType: "STRUCTURED", answerRule: "", order: 1 }]);
+  const [visibleForStudents, setVisibleForStudents] = useState(true);
+  const [visibleInCommunity, setVisibleInCommunity] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetch("/api/exam-levels").then(r => r.json()).then(d => setLevels(d.levels)); }, []);
@@ -75,7 +78,16 @@ export default function CreateBlueprintPage() {
       const res = await fetch("/api/admin/blueprints", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ componentId: selectedComponent, name, description, totalMarks, durationMin, sections }),
+        body: JSON.stringify({
+          componentId: selectedComponent,
+          name,
+          description,
+          totalMarks,
+          durationMin,
+          sections,
+          visibleForStudents,
+          visibleInCommunity,
+        }),
       });
       if (!res.ok) { const err = await res.json(); throw new Error(err.error); }
       toast.success("Blueprint created");
@@ -131,6 +143,23 @@ export default function CreateBlueprintPage() {
           <div className="space-y-2">
             <Label>Description</Label>
             <Input value={description} onChange={e => setDescription(e.target.value)} placeholder="Optional description" />
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Student Practice mocks list</p>
+                <p className="text-xs text-muted-foreground">Matched to onboarding programs.</p>
+              </div>
+              <Switch checked={visibleForStudents} onCheckedChange={setVisibleForStudents} />
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Community featured mocks</p>
+                <p className="text-xs text-muted-foreground">Visible to subscribers with Community access.</p>
+              </div>
+              <Switch checked={visibleInCommunity} onCheckedChange={setVisibleInCommunity} />
+            </div>
           </div>
         </CardContent>
       </Card>

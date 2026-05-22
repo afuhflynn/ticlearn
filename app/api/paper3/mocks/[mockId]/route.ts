@@ -2,7 +2,9 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { canStudentAccessPublishedMock } from "@/lib/paper3/mock-access";
 import { prisma } from "@/lib/prisma";
+import { getUserPaper3Subjects } from "@/lib/paper3/subject-tasks";
 
 const updateMockSchema = z.object({
   title: z.string().min(1).optional(),
@@ -21,6 +23,8 @@ const updateMockSchema = z.object({
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   totalMarks: z.number().int().min(1).optional(),
   questionIds: z.array(z.string()).min(1, "At least one question required").optional(),
+  moduleId: z.union([z.string().min(1), z.null()]).optional(),
+  visibleToAllStudents: z.boolean().optional(),
 });
 
 export async function GET(
@@ -36,11 +40,21 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userRole = (session.user as { role?: string })?.role;
+
     const { mockId } = await params;
 
     const mock = await prisma.paper3Mock.findUnique({
       where: { id: mockId },
       include: {
+        module: {
+          select: {
+            id: true,
+            title: true,
+            status: true,
+            visibleToAllStudents: true,
+          },
+        },
         questions: {
           include: {
             question: true,
@@ -55,6 +69,17 @@ export async function GET(
 
     if (!mock) {
       return NextResponse.json({ error: "Mock not found" }, { status: 404 });
+    }
+
+    const isAdmin = userRole === "ADMIN";
+    if (!isAdmin) {
+      if (mock.status !== "PUBLISHED") {
+        return NextResponse.json({ error: "Mock not found" }, { status: 404 });
+      }
+      const subjects = await getUserPaper3Subjects(session.user.id);
+      if (!canStudentAccessPublishedMock(mock, subjects)) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     return NextResponse.json({ mock });
@@ -104,6 +129,26 @@ export async function PUT(
     if (data.timeLimit !== undefined) updateData.timeLimit = data.timeLimit;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.totalMarks !== undefined) updateData.totalMarks = data.totalMarks;
+    if (data.visibleToAllStudents !== undefined) {
+      updateData.visibleToAllStudents = data.visibleToAllStudents;
+    }
+
+    if (data.moduleId !== undefined) {
+      if (data.moduleId === null) {
+        updateData.moduleId = null;
+      } else {
+        const mod = await prisma.paper3MockModule.findUnique({
+          where: { id: data.moduleId },
+        });
+        if (!mod) {
+          return NextResponse.json(
+            { error: "Module not found" },
+            { status: 400 },
+          );
+        }
+        updateData.moduleId = data.moduleId;
+      }
+    }
 
     if (data.questionIds) {
       const questions = await prisma.paper3Question.findMany({

@@ -1,9 +1,11 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getUserPaper3Subjects } from "@/lib/paper3/subject-tasks";
 
+/** @deprecated Use GET /api/paper3/mocks (same catalog rules). Kept for older clients. */
 export async function GET(_req: Request) {
   try {
     const session = await auth.api.getSession({
@@ -16,7 +18,19 @@ export async function GET(_req: Request) {
 
     const userSubjects = await getUserPaper3Subjects(session.user.id);
 
-    const where: Record<string, unknown> = { status: "PUBLISHED" };
+    const where: Prisma.Paper3MockWhereInput = {
+      status: "PUBLISHED",
+      OR: [
+        { visibleToAllStudents: true },
+        {
+          module: {
+            status: "PUBLISHED",
+            visibleToAllStudents: true,
+          },
+        },
+      ],
+    };
+
     if (userSubjects.length > 0) {
       where.subject = { in: userSubjects };
     }
@@ -31,6 +45,7 @@ export async function GET(_req: Request) {
         timeLimit: true,
         totalMarks: true,
         createdAt: true,
+        module: { select: { id: true, title: true } },
       },
     });
 

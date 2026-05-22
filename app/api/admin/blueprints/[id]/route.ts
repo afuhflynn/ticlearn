@@ -29,7 +29,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     if ((session.user as { role?: string })?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
     const { id } = await params;
-    const { name, description, totalMarks, durationMin, sections } = await req.json();
+    const {
+      name,
+      description,
+      totalMarks,
+      durationMin,
+      sections,
+      visibleForStudents,
+      visibleInCommunity,
+    } = await req.json();
 
     if (sections) {
       const sectionsTotal = sections.reduce((s: number, sec: { totalMarks: number }) => s + sec.totalMarks, 0);
@@ -48,6 +56,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
           description,
           totalMarks,
           durationMin,
+          ...(typeof visibleForStudents === "boolean" ? { visibleForStudents } : {}),
+          ...(typeof visibleInCommunity === "boolean" ? { visibleInCommunity } : {}),
           ...(sections ? {
             sections: {
               create: sections.map((sec: { name: string; questionCount: number; marksPerQuestion?: number; totalMarks: number; questionType: string; answerRule?: string; order: number }) => ({
@@ -69,6 +79,47 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json({ blueprint });
   } catch (error) {
     console.error("Blueprint PUT error:", error);
+    return NextResponse.json({ error: "Failed to update blueprint" }, { status: 500 });
+  }
+}
+
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await auth.api.getSession({ headers: await headers() });
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if ((session.user as { role?: string })?.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const { id } = await params;
+    const body = (await req.json()) as Record<string, unknown>;
+    const data: {
+      visibleForStudents?: boolean;
+      visibleInCommunity?: boolean;
+    } = {};
+    if (typeof body.visibleForStudents === "boolean") {
+      data.visibleForStudents = body.visibleForStudents;
+    }
+    if (typeof body.visibleInCommunity === "boolean") {
+      data.visibleInCommunity = body.visibleInCommunity;
+    }
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json(
+        { error: "Provide visibleForStudents or visibleInCommunity as booleans" },
+        { status: 400 },
+      );
+    }
+
+    const blueprint = await prisma.examBlueprint.update({
+      where: { id },
+      data,
+      include: {
+        sections: { orderBy: { order: "asc" } },
+        component: { include: { program: { include: { examLevel: true } } } },
+      },
+    });
+
+    return NextResponse.json({ blueprint });
+  } catch (error) {
+    console.error("Blueprint PATCH error:", error);
     return NextResponse.json({ error: "Failed to update blueprint" }, { status: 500 });
   }
 }

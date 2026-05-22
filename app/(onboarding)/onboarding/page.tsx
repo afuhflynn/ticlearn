@@ -30,6 +30,19 @@ function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   });
 }
 
+function levelSubtitle(code: string): string {
+  switch (code) {
+    case "GCE_AL":
+      return "Upper Sixth - Advanced Level general certificate";
+    case "GCE_OL":
+      return "Form 5 - Ordinary Level general certificate";
+    case "HND":
+      return "Higher National Diploma - specialised programme";
+    default:
+      return "TiCLearn exam programme";
+  }
+}
+
 export default function OnboardingPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -52,7 +65,8 @@ export default function OnboardingPage() {
   const [showAnalyzing, setShowAnalyzing] = useState(false);
   const [animateIn, setAnimateIn] = useState(true);
   const [step, setStepInner] = useState(store.step > 0 ? store.step : 0);
-  const [initialized, setInitialized] = useState(false);
+  const [levelsLoading, setLevelsLoading] = useState(true);
+  const [levelsError, setLevelsError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isGCEAlevel = store.examLevelId
@@ -68,7 +82,6 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!session) return;
-    if (initialized) return;
 
     apiFetch<{ readiness: number; needsAssessment: boolean }>(
       "/api/onboarding/readiness",
@@ -76,36 +89,39 @@ export default function OnboardingPage() {
       .then((d) => {
         if (d.needsAssessment === false && d.readiness > 0) {
           router.push("/dashboard");
-          return;
         }
       })
       .catch(() => {});
 
+    setLevelsLoading(true);
+    setLevelsError(null);
     apiFetch<{ levels: ExamLevel[] }>("/api/exam-levels")
       .then((d) => {
-        if (Array.isArray(d.levels)) {
-          setLevels(d.levels);
-          if (store.examLevelId) {
-            const level = d.levels.find((l) => l.id === store.examLevelId);
-            if (level) {
-              apiFetch<{ programs: Program[] }>(
-                `/api/programs?examLevelId=${level.id}`,
-              ).then((pd) => {
-                const filtered = pd.programs.filter(
-                  (p) => p.code !== "UNKNOWN",
-                );
-                setPrograms(filtered);
-              });
-            }
-          }
-          if (store.programIds.length > 0) {
-            loadTopics(store.programIds[0]);
+        const list = Array.isArray(d.levels) ? d.levels : [];
+        setLevels(list);
+        if (store.examLevelId && list.length > 0) {
+          const level = list.find((l) => l.id === store.examLevelId);
+          if (level) {
+            apiFetch<{ programs: Program[] }>(
+              `/api/programs?examLevelId=${level.id}`,
+            ).then((pd) => {
+              const filtered = pd.programs.filter(
+                (p) => p.code !== "UNKNOWN",
+              );
+              setPrograms(filtered);
+            });
           }
         }
+        if (store.programIds.length > 0 && list.length > 0) {
+          loadTopics(store.programIds[0]);
+        }
       })
-      .catch(() => {});
-
-    setInitialized(true);
+      .catch((e) => {
+        setLevelsError(
+          e instanceof Error ? e.message : "Could not load exam levels.",
+        );
+      })
+      .finally(() => setLevelsLoading(false));
   }, [session]);
 
   useEffect(() => {
