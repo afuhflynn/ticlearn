@@ -153,10 +153,6 @@ This starts:
 3. Run linting and formatting
 4. Submit a pull request
 
-## License
-
-MIT License - see LICENSE for details.
-
 ---
 
 <div align="center">
