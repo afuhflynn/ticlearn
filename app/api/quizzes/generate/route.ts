@@ -9,6 +9,8 @@ import {
   quizCreditsRequired,
 } from "@/lib/platform-settings";
 import { getUserCreditBalance, spendCredits } from "@/lib/credits";
+import { trackEvent, EVENTS } from "@/lib/kpi";
+
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),
@@ -186,6 +188,8 @@ export async function POST(req: Request) {
         { status: 500 },
       );
     }
+
+    trackEvent(session.user.id, EVENTS.QUIZ_GENERATED, { noteId, questionCount: generatedQuestions.length }).catch(() => {});
 
     return NextResponse.json({ quiz, success: true });
   } catch (error) {

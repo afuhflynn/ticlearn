@@ -3,6 +3,7 @@ import { getPlanPrice, initiatePayment, PaymentPlanConfig } from "@/lib/fapshi";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { trackEvent, EVENTS } from "@/lib/kpi";
 
 export async function POST(request: Request) {
   try {
@@ -63,6 +64,8 @@ export async function POST(request: Request) {
       where: { id: subscription.id },
       data: { fapshiTransId: result.transId },
     });
+
+    trackEvent(session.user.id, EVENTS.PAYMENT_INITIATED, { plan, amount: price.amount }).catch(() => {});
 
     return NextResponse.json({ link: result.link, transId: result.transId });
   } catch (error) {

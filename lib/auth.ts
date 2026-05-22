@@ -54,6 +54,13 @@ export const auth = betterAuth({
   },
   trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL! || "http://localhost:3000"],
   databaseHooks: {
+    session: {
+      create: {
+        after: async (session) => {
+          trackEvent(session.userId, "user_signed_in").catch(() => {});
+        },
+      },
+    },
     user: {
       create: {
         after: async (user) => {
@@ -72,7 +79,6 @@ export const auth = betterAuth({
           // Generate default quizzes for new users (after user is created)
           await triggerDefaultQuiz(user.id).catch(console.error);
 
-          // Track user signup
           trackEvent(user.id, "user_signed_up").catch(() => {});
         },
       },

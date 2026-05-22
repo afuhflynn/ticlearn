@@ -24,6 +24,7 @@ import {
   ingestQuestions,
 } from "@/lib/inngest";
 import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
+import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -48,5 +49,6 @@ export const { GET, POST, PUT } = serve({
     harvestNoteKnowledge,
     harvestPaper3Knowledge,
     ingestQuestions,
+    computeDailyMetricsJob,
   ],
 });

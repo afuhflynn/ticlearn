@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
+import { trackEvent, EVENTS } from "@/lib/kpi";
 import {
   sendAdminPaymentAlert,
   sendPaymentFailedEmail,
@@ -123,6 +124,8 @@ export async function POST(req: Request) {
           },
         }),
       ]);
+
+      trackEvent(sub.userId, EVENTS.SUBSCRIPTION_ACTIVATED, { plan: sub.plan, amount: planPrice }).catch(() => {});
 
       if (sub.user.referredBy) {
         const affiliate = await prisma.affiliate.findUnique({

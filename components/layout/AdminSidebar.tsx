@@ -9,6 +9,7 @@ import {
   ListChecks,
   MessageCircle,
   Shield,
+  TrendingUp,
   Upload,
   Users,
 } from "lucide-react";
@@ -30,7 +31,8 @@ import {
 import Image from "next/image";
 
 const adminNavItems = [
-  { href: "/admin", icon: BarChart3, label: "Analytics" },
+  { href: "/admin", icon: BarChart3, label: "Dashboard" },
+  { href: "/admin/metrics", icon: TrendingUp, label: "Analytics" },
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
@@ -53,7 +55,7 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <Sidebar className="hidden md:flex" collapsible="icon">
+    <Sidebar className="hidden md:flex max-h-screen" collapsible="icon">
       <SidebarHeader className="border-b px-4 py-3">
         <div className="flex items-center gap-2 py-2">
           <Image

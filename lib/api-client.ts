@@ -679,6 +679,56 @@ export const api = {
             method: "DELETE",
           }),
       },
+      // Metrics / Analytics
+      metrics: {
+        getAll: (params?: {
+          from?: string;
+          to?: string;
+          tab?: string;
+          page?: number;
+          limit?: number;
+          sort?: string;
+          order?: string;
+          search?: string;
+        }) => {
+          const sp = new URLSearchParams();
+          if (params?.from) sp.set("from", params.from);
+          if (params?.to) sp.set("to", params.to);
+          if (params?.tab) sp.set("tab", params.tab);
+          if (params?.page) sp.set("page", String(params.page));
+          if (params?.limit) sp.set("limit", String(params.limit));
+          if (params?.sort) sp.set("sort", params.sort);
+          if (params?.order) sp.set("order", params.order);
+          if (params?.search) sp.set("search", params.search);
+          return apiRequest<Record<string, unknown>>(
+            `/admin/metrics?${sp.toString()}`,
+            { method: "GET" },
+          );
+        },
+        recalculate: (date?: string) =>
+          apiRequest<{ computed: { metric: string; value: number }[] }>(
+            "/admin/metrics",
+            { method: "PUT", body: { date: date || new Date().toISOString() } },
+          ),
+        export: (params?: { from?: string; to?: string; metrics?: string }) => {
+          const sp = new URLSearchParams();
+          if (params?.from) sp.set("from", params.from);
+          if (params?.to) sp.set("to", params.to);
+          if (params?.metrics) sp.set("metrics", params.metrics);
+          return apiRequest<Blob>(`/admin/metrics/export?${sp.toString()}`, {
+            method: "GET",
+            responseType: "blob",
+          });
+        },
+        retention: (granularity?: string) => {
+          const sp = new URLSearchParams();
+          if (granularity) sp.set("granularity", granularity);
+          return apiRequest<{ retention: unknown[]; granularity: string }>(
+            `/admin/metrics/retention?${sp.toString()}`,
+            { method: "GET" },
+          );
+        },
+      },
       // Stats
       stats: () =>
         apiRequest<{ stats: AdminStats }>("/admin/stats", { method: "GET" }),

@@ -18,6 +18,13 @@ import {
   UserX,
 } from "lucide-react";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Card,
   CardContent,
   CardDescription,
@@ -60,6 +67,7 @@ import { format } from "date-fns";
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState("USER");
   const [page, setPage] = useState(1);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -69,6 +77,7 @@ export default function AdminUsersPage() {
 
   const { users, total, totalPages, isLoading, refetch } = useAdminUsers({
     search,
+    role: roleFilter,
     limit: 20,
     page,
   });
@@ -193,18 +202,30 @@ export default function AdminUsersPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle>Platform Users</CardTitle>
-              <div className="relative w-64">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search users..."
-                  className="pl-8"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <CardTitle>Platform Users</CardTitle>
+                <div className="flex items-center gap-2">
+                  <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="USER">Users</SelectItem>
+                      <SelectItem value="ADMIN">Admins</SelectItem>
+                      <SelectItem value="all">All</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="relative w-64">
+                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search users..."
+                      className="pl-8"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
           </CardHeader>
           <CardContent>
             <div className="mb-6 flex gap-6">

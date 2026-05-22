@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const search = searchParams.get("search") || "";
-    const role = searchParams.get("role") || "";
+    const role = searchParams.get("role") || "USER";
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
           { email: { contains: search, mode: "insensitive" as const } },
         ],
       }),
-      ...(role && { role: role as any }),
+      ...(role !== "all" && { role: role as any }),
     };
 
     const [users, total] = await Promise.all([
