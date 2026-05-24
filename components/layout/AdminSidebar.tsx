@@ -42,6 +42,7 @@ const adminNavItems = [
     label: "Payment Settings",
   },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
+  { href: "/admin/mocks", icon: Link2, label: "Manage Mocks" },
 ];
 
 const paper3NavItems = [
