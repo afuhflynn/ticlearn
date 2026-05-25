@@ -14,6 +14,9 @@ import {
   GraduationCap,
   FileText,
   Upload,
+  ClipboardList,
+  BarChart3,
+  Sparkles,
 } from "lucide-react";
 import {
   Card,
@@ -44,22 +47,50 @@ const navItems = [
     description: "View and manage subscriptions",
   },
   {
+    title: "Platform & credits",
+    icon: Shield,
+    href: "/admin/platform-settings",
+    description:
+      "Credit costs, pay-as-you-go rates (XAF → credits), and enforcement toggles.",
+  },
+  {
     title: "Affiliates",
     icon: Link2,
     href: "/admin/affiliates",
     description: "Manage affiliate program",
   },
   {
+    title: "GCE Papers 1–2 upload",
+    icon: Upload,
+    href: "/admin/upload",
+    description:
+      "Upload past papers; questions are extracted into the syllabus bank for mock generation.",
+  },
+  {
+    title: "Exam blueprints",
+    icon: ClipboardList,
+    href: "/admin/blueprints",
+    description:
+      "Paper 1 & 2 mock structure—who sees each blueprint on Practice vs Community.",
+  },
+  {
+    title: "Paper 1 & 2 — generate mocks",
+    icon: Sparkles,
+    href: "/admin/mocks/p1-p2",
+    description:
+      "Run the same timed mock generation as learners, then publish a standard blueprint with visibility.",
+  },
+  {
     title: "Questions",
     icon: ListChecks,
     href: "/admin/questions",
-    description: "Browse and manage all questions",
+    description: "Browse and manage ingested syllabus questions.",
   },
   {
-    title: "Paper3 Upload",
+    title: "Paper 3 uploads",
     icon: Upload,
     href: "/admin/paper3/upload",
-    description: "Upload Paper3 source documents",
+    description: "Upload Paper 3 practical source PDFs.",
   },
   {
     title: "Paper3 Sources",
@@ -78,6 +109,18 @@ const navItems = [
     icon: GraduationCap,
     href: "/admin/paper3/mocks",
     description: "Create and manage mock exams",
+  },
+  {
+    title: "Paper3 Modules",
+    icon: ClipboardList,
+    href: "/admin/paper3/modules",
+    description: "Group mocks into bundles and control visibility for students.",
+  },
+  {
+    title: "Paper3 Analytics",
+    icon: BarChart3,
+    href: "/admin/paper3/analytics",
+    description: "Mock starts, completions, and scores.",
   },
 ];
 

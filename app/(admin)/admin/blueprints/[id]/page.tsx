@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -26,6 +27,8 @@ export default function EditBlueprintPage() {
   const [totalMarks, setTotalMarks] = useState(100);
   const [durationMin, setDurationMin] = useState(120);
   const [sections, setSections] = useState<Section[]>([]);
+  const [visibleForStudents, setVisibleForStudents] = useState(true);
+  const [visibleInCommunity, setVisibleInCommunity] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -38,6 +41,8 @@ export default function EditBlueprintPage() {
         setDescription(bp.description || "");
         setTotalMarks(bp.totalMarks);
         setDurationMin(bp.durationMin);
+        setVisibleForStudents(bp.visibleForStudents !== false);
+        setVisibleInCommunity(bp.visibleInCommunity === true);
         setSections(bp.sections.map((s: Section) => ({ ...s })));
       })
       .catch(() => toast.error("Failed to load blueprint"))
@@ -65,7 +70,15 @@ export default function EditBlueprintPage() {
       await fetch(`/api/admin/blueprints/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, totalMarks, durationMin, sections }),
+        body: JSON.stringify({
+          name,
+          description,
+          totalMarks,
+          durationMin,
+          sections,
+          visibleForStudents,
+          visibleInCommunity,
+        }),
       });
       toast.success("Blueprint updated");
       router.push("/admin/blueprints");
@@ -99,6 +112,35 @@ export default function EditBlueprintPage() {
           <div className="space-y-2">
             <Label>Description</Label>
             <Input value={description} onChange={e => setDescription(e.target.value)} />
+          </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Show on student dashboard mocks</p>
+                <p className="text-xs text-muted-foreground">
+                  Learners whose program includes this paper see it under Practice → GCE mocks.
+                </p>
+              </div>
+              <Switch
+                checked={visibleForStudents}
+                onCheckedChange={setVisibleForStudents}
+                aria-label="Visible to enrolled students"
+              />
+            </div>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Show on Community</p>
+                <p className="text-xs text-muted-foreground">
+                  Featured blueprint for subscribers with Community access — any program can open it.
+                </p>
+              </div>
+              <Switch
+                checked={visibleInCommunity}
+                onCheckedChange={setVisibleInCommunity}
+                aria-label="Visible on community page"
+              />
+            </div>
           </div>
 
           <div className="flex items-center justify-between">

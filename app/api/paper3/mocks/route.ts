@@ -2,7 +2,9 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getUserPaper3Subjects } from "@/lib/paper3/subject-tasks";
 import type {
   MockStatus,
   Paper3Subject,
@@ -36,9 +38,7 @@ export async function GET(req: Request) {
     }
 
     const userRole = (session.user as { role?: string })?.role;
-    if (userRole !== "ADMIN") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    const isAdmin = userRole === "ADMIN";
 
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get("subject") as Paper3Subject | null;
@@ -48,18 +48,90 @@ export async function GET(req: Request) {
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const skip = (page - 1) * limit;
 
-    const where: {
-      subject?: Paper3Subject;
-      status?: MockStatus;
-      focusCategory?:
-        | "MIXED"
-        | "DATABASE"
-        | "SPREADSHEET"
-        | "PROGRAMMING"
-        | "WEB_PROGRAMMING";
-    } = {};
-    if (subject) where.subject = subject;
-    if (status) where.status = status;
+    if (isAdmin) {
+      const where: Prisma.Paper3MockWhereInput = {};
+      if (subject) where.subject = subject;
+      if (status) where.status = status;
+      if (
+        focusCategory &&
+        [
+          "MIXED",
+          "DATABASE",
+          "SPREADSHEET",
+          "PROGRAMMING",
+          "WEB_PROGRAMMING",
+        ].includes(focusCategory)
+      ) {
+        where.focusCategory = focusCategory as NonNullable<
+          Prisma.Paper3MockWhereInput["focusCategory"]
+        >;
+      }
+
+      const [mocks, total] = await Promise.all([
+        prisma.paper3Mock.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+          include: {
+            module: {
+              select: {
+                id: true,
+                title: true,
+                status: true,
+                visibleToAllStudents: true,
+              },
+            },
+            questions: {
+              include: {
+                question: {
+                  select: {
+                    id: true,
+                    title: true,
+                    marks: true,
+                    taskType: true,
+                  },
+                },
+              },
+              orderBy: { order: "asc" },
+            },
+            _count: {
+              select: { attempts: true },
+            },
+          },
+        }),
+        prisma.paper3Mock.count({ where }),
+      ]);
+
+      return NextResponse.json({
+        mocks,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
+      });
+    }
+
+    const userSubjects = await getUserPaper3Subjects(session.user.id);
+
+    const whereStudent: Prisma.Paper3MockWhereInput = {
+      status: "PUBLISHED",
+      OR: [
+        { visibleToAllStudents: true },
+        {
+          module: {
+            status: "PUBLISHED",
+            visibleToAllStudents: true,
+          },
+        },
+      ],
+    };
+
+    if (subject) {
+      whereStudent.subject = subject;
+    } else if (userSubjects.length > 0) {
+      whereStudent.subject = { in: userSubjects };
+    }
+
     if (
       focusCategory &&
       [
@@ -70,32 +142,32 @@ export async function GET(req: Request) {
         "WEB_PROGRAMMING",
       ].includes(focusCategory)
     ) {
-      where.focusCategory = focusCategory as NonNullable<
-        typeof where.focusCategory
+      whereStudent.focusCategory = focusCategory as NonNullable<
+        Prisma.Paper3MockWhereInput["focusCategory"]
       >;
     }
 
     const [mocks, total] = await Promise.all([
       prisma.paper3Mock.findMany({
-        where,
+        where: whereStudent,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
-        include: {
-          questions: {
-            include: {
-              question: {
-                select: { id: true, title: true, marks: true, taskType: true },
-              },
-            },
-            orderBy: { order: "asc" },
-          },
-          _count: {
-            select: { attempts: true },
+        select: {
+          id: true,
+          title: true,
+          subject: true,
+          focusCategory: true,
+          timeLimit: true,
+          totalMarks: true,
+          visibleToAllStudents: true,
+          createdAt: true,
+          module: {
+            select: { id: true, title: true, status: true },
           },
         },
       }),
-      prisma.paper3Mock.count({ where }),
+      prisma.paper3Mock.count({ where: whereStudent }),
     ]);
 
     return NextResponse.json({
@@ -168,6 +240,7 @@ export async function POST(req: Request) {
         totalMarks,
         createdBy: session.user.id,
         status: "DRAFT",
+        visibleToAllStudents: true,
         questions: {
           create: data.questionIds.map((questionId, index) => ({
             questionId,

@@ -67,6 +67,8 @@ type MockUpdatePayload = {
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   totalMarks?: number;
   questionIds?: string[];
+  moduleId?: string | null;
+  visibleToAllStudents?: boolean;
 };
 
 type MockGeneratePayload = {

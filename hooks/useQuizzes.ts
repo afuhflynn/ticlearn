@@ -64,6 +64,7 @@ export function useGenerateQuiz() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
       queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      queryClient.invalidateQueries({ queryKey: queryKeys.credits });
       toast.success("Quiz generation started");
     },
     onError: (error: Error) => {
@@ -88,7 +89,14 @@ export function useGenerateQuizFromWeakAreas() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
       queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-      toast.success(`Quiz generation started! Uses 50 credits. Targeted areas: ${data.weakAreasTargeted?.join(", ") || "general"}`);
+      queryClient.invalidateQueries({ queryKey: queryKeys.credits });
+      const debit =
+        typeof data.creditsUsed === "number" && data.creditsUsed > 0
+          ? `${data.creditsUsed} credits debited. `
+          : "";
+      toast.success(
+        `Quiz generation started! ${debit}Targeted areas: ${data.weakAreasTargeted?.join(", ") || "general"}`,
+      );
     },
     onError: (error: Error) => {
       toast.error(error.message);

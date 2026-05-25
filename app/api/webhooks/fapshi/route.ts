@@ -7,6 +7,8 @@ import {
   sendPaymentFailedEmail,
   sendPaymentSuccessEmail,
 } from "@/lib/email/send";
+import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
+import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
 
 const PLAN_LABELS: Record<string, string> = {
   STARTER: "Starter Plan",
@@ -24,7 +26,6 @@ const COMMISSION_RATE = 0.2;
 
 export async function POST(req: Request) {
   try {
-    // 1. Security Check
     const headersList = await headers();
     const authHeader = headersList.get("Authorization");
 
@@ -37,14 +38,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const {
-      transId,
-      status,
-      externalId,
-      amount,
-      dateConfirmed,
-      financialTransId,
-    } = body;
+    const { transId, status, externalId, amount } = body;
 
     if (!externalId || !status) {
       return NextResponse.json(
@@ -53,7 +47,40 @@ export async function POST(req: Request) {
       );
     }
 
-    // 2. Find Subscription
+    // --- Credit top-up (pay-as-you-go): externalId is prefixed ---
+    if (externalId.startsWith(CREDIT_PURCHASE_EXTERNAL_ID_PREFIX)) {
+      const orderId = externalId.slice(CREDIT_PURCHASE_EXTERNAL_ID_PREFIX.length);
+
+      const order = await prisma.creditPurchaseOrder.findUnique({
+        where: { id: orderId },
+      });
+
+      if (!order) {
+        console.error(`Credit purchase order ${orderId} not found`);
+        return NextResponse.json({ error: "Not found" }, { status: 404 });
+      }
+
+      const result = await fulfillCreditPurchaseFromFapshi({
+        externalId,
+        transId,
+        status,
+      });
+
+      if (!result.ok && result.reason !== "status_" + status) {
+        console.error(`Credit fulfillment issue ${orderId}: ${result.reason}`);
+      }
+
+      const user = await prisma.user.findUnique({
+        where: { id: order.userId },
+      });
+      if (user?.email && status === "SUCCESSFUL") {
+        console.log(`Credit purchase webhook ${result.credited ? "credited" : "processed"} for ${user.email}`);
+      }
+
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
+    // --- Subscription payment (legacy externalId = Subscription.id) ---
     const sub = await prisma.subscription.findUnique({
       where: { id: externalId },
       include: { user: true },
@@ -64,7 +91,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    // 3. Handle SUCCESSFUL Status
     if (status === "SUCCESSFUL") {
       const planPrice = PLAN_PRICES[sub.plan] || sub.amount;
       const commission = Math.round(planPrice * COMMISSION_RATE);
@@ -73,10 +99,12 @@ export async function POST(req: Request) {
         where: { userId: sub.userId },
       });
       if (!existingStats) {
-        const profileId = await prisma.user.findUnique({
-          where: { id: sub.userId },
-          select: { activeProfileId: true },
-        }).then(u => u?.activeProfileId);
+        const profileId = await prisma.user
+          .findUnique({
+            where: { id: sub.userId },
+            select: { activeProfileId: true },
+          })
+          .then((u) => u?.activeProfileId);
 
         await prisma.userStats.create({
           data: {
@@ -132,9 +160,6 @@ export async function POST(req: Request) {
         }
       }
 
-      const planLabel = PLAN_LABELS[sub.plan] || sub.plan;
-
-      // --- EMAIL TO USER ---
       console.log(`Sending success email to ${sub.userEmail}`);
       await sendPaymentSuccessEmail({
         email: sub.userEmail,
@@ -144,7 +169,6 @@ export async function POST(req: Request) {
         transId: transId,
       });
 
-      // --- EMAIL TO ADMIN ---
       await sendAdminPaymentAlert({
         adminEmail: process.env.ADMIN_EMAIL!,
         userName: sub.userName || "User",
@@ -152,15 +176,12 @@ export async function POST(req: Request) {
         planLabel: PLAN_LABELS[sub.plan],
         amount: amount || sub.amount,
       });
-    }
-    // 4. Handle FAILURE / EXPIRED
-    else if (status === "FAILED" || status === "EXPIRED") {
+    } else if (status === "FAILED" || status === "EXPIRED") {
       await prisma.subscription.update({
         where: { id: sub.id },
         data: { status: "FAILED", fapshiTransId: transId },
       });
 
-      // --- EMAIL TO USER (FAILURE) ---
       await sendPaymentFailedEmail({
         email: sub.userEmail,
         name: sub.userName || "Student",
