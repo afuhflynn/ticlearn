@@ -58,7 +58,7 @@ export async function proxy(request: NextRequest) {
   // Handle root separately with exact match
   if (pathname === "/") {
     if (sessionCookie && session) {
-      return NextResponse.redirect(new URL("/dashboard", request.url));
+      return NextResponse.redirect(new URL("/chat", request.url));
     }
     return NextResponse.next();
   }
@@ -84,7 +84,7 @@ export async function proxy(request: NextRequest) {
   }
 
   if (sessionCookie && session && isAuthRoute) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    return NextResponse.redirect(new URL("/chat", request.url));
   }
 
   // Role-based routing

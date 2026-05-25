@@ -42,7 +42,7 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const redirect = decodeURIComponent((callbackUrl as string) || "/dashboard");
+  const redirect = decodeURIComponent((callbackUrl as string) || "/chat");
 
   useEffect(() => {
     if (refCode) {

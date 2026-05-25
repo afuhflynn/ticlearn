@@ -135,8 +135,9 @@ export default function OnboardingPage() {
           readinessRes.needsAssessment === false &&
           readinessRes.readiness > 0
         ) {
-          router.push("/dashboard");
-          return;
+          // Don't redirect — progress restoration below handles step recovery.
+          // Previously this sent returning users to /dashboard which caused an
+          // infinite loop when onboardingCompleted was false (phone requirement).
         }
 
         const list = Array.isArray(levelsRes.levels) ? levelsRes.levels : [];
@@ -348,9 +349,9 @@ export default function OnboardingPage() {
         body: JSON.stringify({ skipped: true }),
       });
       store.reset();
-      router.push("/dashboard");
+      router.push("/chat");
     } catch {
-      router.push("/dashboard");
+      router.push("/chat");
     } finally {
       setSaving(false);
     }
@@ -909,8 +910,9 @@ export default function OnboardingPage() {
                   )}
 
                 <div className="flex flex-col gap-3 pt-4">
-                  <Button size="lg" onClick={() => router.push("/dashboard")}>
-                    Start First Practice <ArrowRight className="ml-2 h-4 w-4" />
+                  <Button size="lg" onClick={() => router.push("/chat")}>
+                    Start with TiC AI Tutor{" "}
+                    <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                   <Button
                     variant="outline"

@@ -54,7 +54,7 @@ function VerifyEmailForm() {
 
   useEffect(() => {
     if (session?.user) {
-      router.push("/dashboard");
+      router.push("/chat");
     }
   }, [session, router]);
 

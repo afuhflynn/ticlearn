@@ -43,7 +43,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
-  const redirect = decodeURIComponent((callbackUrl as string) || "/dashboard");
+  const redirect = decodeURIComponent((callbackUrl as string) || "/chat");
 
   useEffect(() => {
     if (refCode) {
@@ -93,7 +93,7 @@ export default function SignInPage() {
               body: JSON.stringify({ code: pendingRef }),
             }).then(() => localStorage.removeItem("pendingReferralCode"));
           }
-          router.push(callbackUrl ?? "/dashboard"); // @todo: Make this better later
+          router.push(callbackUrl ?? "/chat");
         },
       },
     });

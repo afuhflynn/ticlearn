@@ -28,7 +28,7 @@ export default async function OnboardingLayout({
         (p) => p.id === user.activeProfileId,
       );
       if (activeProfile?.onboardingCompleted && (activeProfile.onboardingSkipped || !!activeProfile.phoneNumber)) {
-        redirect("/dashboard");
+        redirect("/chat");
       }
     }
   }
