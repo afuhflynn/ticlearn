@@ -43,6 +43,16 @@ import { CheckIcon, CopyIcon, FileIcon, FileTextIcon, ImageIcon } from "lucide-r
 import { toast } from "sonner";
 import { useState } from "react";
 
+function normalizeMarkdownForDisplay(content: string) {
+  if (!content) return content;
+
+  return content
+    .replace(/\r\n/g, "\n")
+    .replace(/[ \t]+$/gm, "")
+    .replace(/(^|\n)\s*(#{1,6})\s*/g, "$1$2 ")
+    .replace(/([^\n])\n(#{1,6}\s)/g, "$1\n\n$2");
+}
+
 function getToolTitle(toolType: string) {
   return toolType
     .replace(/^tool-/, "")
@@ -198,6 +208,7 @@ function MessageBody({ message }: { message: UIMessage }) {
     .filter(isTextUIPart)
     .map((part) => part.text)
     .join("\n");
+  const normalizedText = normalizeMarkdownForDisplay(text);
   const reasoning = message.parts
     .filter(isReasoningUIPart)
     .map((part) => part.text)
@@ -248,15 +259,15 @@ function MessageBody({ message }: { message: UIMessage }) {
 
       {text.trim() || toolSummary ? (
         <MessageContent>
-          <MessageResponse>{text.trim() || toolSummary}</MessageResponse>
+          <MessageResponse>{normalizedText.trim() || toolSummary}</MessageResponse>
         </MessageContent>
       ) : null}
 
       {message.role === "assistant" && (
-        <MessageActions className="opacity-0 group-hover:opacity-100 transition-opacity">
+        <MessageActions className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
           <MessageAction
             tooltip="Copy response"
-            onClick={() => handleCopy(text.trim(), message.id)}
+            onClick={() => handleCopy(normalizedText.trim(), message.id)}
           >
             {copiedId === message.id ? (
               <CheckIcon className="w-3.5 h-3.5 text-green-500" />

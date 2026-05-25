@@ -76,6 +76,16 @@ function formatTime(totalSeconds: number) {
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
+function MathMarkdown({ content }: { content: string }) {
+  return (
+    <div className="max-w-full break-words [&_*]:break-words">
+      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 export default function QuizPlayerPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
@@ -440,8 +450,8 @@ export default function QuizPlayerPage() {
                         {answer?.isCorrect ? "Correct" : "Incorrect"}
                       </Badge>
                     </div>
-                    <CardDescription className="break-words">
-                      {question.question}
+                    <CardDescription className="break-words text-foreground">
+                      <MathMarkdown content={question.question} />
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -454,15 +464,17 @@ export default function QuizPlayerPage() {
                             : "border-red-200 bg-red-50 dark:bg-red-950"
                         }`}
                       >
-                        <p
+                        <div
                           className={`break-words text-sm ${
                             answer?.isCorrect
                               ? "text-green-700 dark:text-green-300"
                               : "text-red-700 dark:text-red-300"
                           }`}
                         >
-                          {answer?.userAnswer || "No answer submitted"}
-                        </p>
+                          <MathMarkdown
+                            content={answer?.userAnswer || "No answer submitted"}
+                          />
+                        </div>
                       </div>
                     </div>
                     {!answer?.isCorrect && (
@@ -471,9 +483,9 @@ export default function QuizPlayerPage() {
                           Correct answer
                         </p>
                         <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:bg-green-950">
-                          <p className="break-words text-sm text-green-700 dark:text-green-300">
-                            {answer?.correctAnswer}
-                          </p>
+                          <div className="break-words text-sm text-green-700 dark:text-green-300">
+                            <MathMarkdown content={answer?.correctAnswer || ""} />
+                          </div>
                         </div>
                       </div>
                     )}
@@ -483,9 +495,9 @@ export default function QuizPlayerPage() {
                           Correct answer
                         </p>
                         <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:bg-green-950">
-                          <p className="break-words text-sm text-green-700 dark:text-green-300">
-                            {answer?.correctAnswer}
-                          </p>
+                          <div className="break-words text-sm text-green-700 dark:text-green-300">
+                            <MathMarkdown content={answer?.correctAnswer || ""} />
+                          </div>
                         </div>
                       </div>
                     )}
@@ -532,7 +544,7 @@ export default function QuizPlayerPage() {
                 </Badge>
               </div>
               <CardDescription className="break-words text-base text-foreground">
-                {currentQuestion.question}
+                <MathMarkdown content={currentQuestion.question} />
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -554,7 +566,7 @@ export default function QuizPlayerPage() {
                         disabled={selected}
                       >
                         <span className="min-w-0 break-words text-left">
-                          {option}
+                          <MathMarkdown content={option} />
                         </span>
                       </Button>
                     );

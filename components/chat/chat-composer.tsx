@@ -80,6 +80,24 @@ export function ChatComposer({
     setAttachments((current) => current.filter((item) => item.id !== id));
   }, []);
 
+  const handleTextareaKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (event.key !== "Enter" || event.shiftKey) return;
+
+      const isMobile =
+        typeof window !== "undefined" &&
+        (window.matchMedia("(max-width: 768px)").matches ||
+          window.matchMedia("(pointer: coarse)").matches);
+
+      if (isMobile) {
+        event.preventDefault();
+        event.stopPropagation();
+        setText((current) => `${current}\n`);
+      }
+    },
+    [],
+  );
+
   const isSubmitDisabled = useMemo(() => {
     if (disabled || uploading) return true;
     return !(text.trim() || attachments.length > 0) || status === "streaming";
@@ -167,6 +185,7 @@ export function ChatComposer({
           <PromptInputTextarea
             disabled={disabled || uploading}
             onChange={handleTextChange}
+            onKeyDown={handleTextareaKeyDown}
             placeholder={
               uploading
                 ? "Uploading files..."
