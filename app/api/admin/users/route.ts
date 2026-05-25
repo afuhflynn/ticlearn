@@ -1,6 +1,5 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -27,7 +26,7 @@ export async function GET(req: Request) {
     const onboardingStatus = searchParams.get("onboardingStatus") || "all";
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
-    const onboardingWhere: Prisma.UserWhereInput =
+    const onboardingWhere =
       onboardingStatus === "completed"
         ? {
             activeProfile: {
@@ -55,10 +54,10 @@ export async function GET(req: Request) {
               }
             : {};
 
-    const roleWhere: Prisma.UserWhereInput =
+    const roleWhere =
       role === "USER" || role === "ADMIN" ? { role } : {};
 
-    const where: Prisma.UserWhereInput = {
+    const where = {
       AND: [
         ...(search
           ? [
