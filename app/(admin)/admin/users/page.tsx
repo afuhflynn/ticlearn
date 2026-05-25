@@ -5,15 +5,11 @@ import { useAdminUsers } from "@/hooks/useAdmin";
 import {
   Users,
   Shield,
-  Mail,
   MoreVertical,
   UserPlus,
   Loader2,
-  Check,
   X,
   Search,
-  Filter,
-  ArrowUpDown,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -61,13 +57,13 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/api-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("USER");
+  const [onboardingFilter, setOnboardingFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
@@ -75,9 +71,14 @@ export default function AdminUsersPage() {
 
   const queryClient = useQueryClient();
 
-  const { users, total, totalPages, isLoading, refetch } = useAdminUsers({
+  const { users, total, totalPages, isLoading } = useAdminUsers({
     search,
     role: roleFilter,
+    onboardingStatus: onboardingFilter as
+      | "completed"
+      | "not_completed"
+      | "skipped"
+      | "all",
     limit: 20,
     page,
   });
@@ -215,6 +216,23 @@ export default function AdminUsersPage() {
                       <SelectItem value="all">All</SelectItem>
                     </SelectContent>
                   </Select>
+                  <Select
+                    value={onboardingFilter}
+                    onValueChange={(v) => {
+                      setOnboardingFilter(v);
+                      setPage(1);
+                    }}
+                  >
+                    <SelectTrigger className="w-40">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All onboarding</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                      <SelectItem value="not_completed">Incomplete</SelectItem>
+                      <SelectItem value="skipped">Skipped</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <div className="relative w-64">
                     <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -245,6 +263,7 @@ export default function AdminUsersPage() {
                     <TableRow>
                       <TableHead>User</TableHead>
                       <TableHead>Role</TableHead>
+                      <TableHead>Onboarding</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -268,6 +287,17 @@ export default function AdminUsersPage() {
                           {user.role === "ADMIN" && <Shield className="h-3 w-3" />}
                           {user.role}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {!user.activeProfileId ? (
+                          <Badge variant="outline">No profile</Badge>
+                        ) : user.onboardingSkipped ? (
+                          <Badge variant="secondary">Skipped</Badge>
+                        ) : user.onboardingCompleted ? (
+                          <Badge>Completed</Badge>
+                        ) : (
+                          <Badge variant="outline">Incomplete</Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {format(new Date(user.createdAt), "MMM d, yyyy 'at' h:mm a")}
@@ -353,7 +383,7 @@ export default function AdminUsersPage() {
                     No pending invitations
                   </div>
                 ) : (
-                  invitesData?.invites?.map((invite: any) => (
+                  invitesData?.invites?.map((invite: { id: string; email: string; status: string; expiresAt: string }) => (
                     <div
                       key={invite.id}
                       className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"

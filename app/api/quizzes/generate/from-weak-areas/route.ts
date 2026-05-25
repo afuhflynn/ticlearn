@@ -4,6 +4,11 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { inngest } from "@/lib/inngest/client";
+import {
+  getPlatformSettings,
+  quizCreditsRequired,
+} from "@/lib/platform-settings";
+import { spendCredits } from "@/lib/credits";
 
 const generateFromWeakAreasSchema = z.object({
   questionCount: z.number().int().min(5).max(50).optional(),
@@ -11,8 +16,6 @@ const generateFromWeakAreasSchema = z.object({
   timeLimit: z.number().int().min(1).max(180).nullable().optional(),
   isPublic: z.boolean().optional(),
 });
-
-const CREDITS_COST = 50;
 
 export async function POST(req: Request) {
   try {
@@ -36,9 +39,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    if (user.credits < CREDITS_COST) {
+    const settings = await getPlatformSettings();
+    const wantsDebit = quizCreditsRequired(settings);
+    const quizCost = settings.creditCostQuizGeneration;
+
+    if (wantsDebit && user.credits < quizCost) {
       return NextResponse.json(
-        { error: `Insufficient credits. Need ${CREDITS_COST} credits to generate quiz from weak areas.` },
+        {
+          error: `Insufficient credits. Need ${quizCost} credits to generate quiz from weak areas.`,
+          balance: user.credits,
+          requiredCredits: quizCost,
+        },
         { status: 402 },
       );
     }
@@ -92,22 +103,15 @@ export async function POST(req: Request) {
       },
     });
 
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        credits: { decrement: CREDITS_COST },
-      },
-    });
-
-    await prisma.creditTransaction.create({
-      data: {
+    if (wantsDebit) {
+      await spendCredits({
         userId: session.user.id,
-        amount: -CREDITS_COST,
+        amount: quizCost,
         type: "QUIZ_GENERATION",
         description: `Quiz generation from weak areas (${weakConcepts.slice(0, 3).join(", ") || "general"})`,
         referenceId: quiz.id,
-      },
-    });
+      });
+    }
 
     try {
       await inngest.send({
@@ -133,7 +137,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       quizId: quiz.id,
       status: "GENERATING",
-      creditsUsed: CREDITS_COST,
+      creditsUsed: wantsDebit ? quizCost : 0,
       weakAreasTargeted: weakConcepts.slice(0, 5),
       message: "Quiz generation started. You will be notified when ready.",
     });

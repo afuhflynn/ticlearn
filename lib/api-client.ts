@@ -515,6 +515,11 @@ export const api = {
             limit?: number;
             search?: string;
             role?: string;
+            onboardingStatus?:
+              | "completed"
+              | "not_completed"
+              | "skipped"
+              | "all";
             sortBy?: string;
             sortOrder?: string;
           } = {},
@@ -524,6 +529,9 @@ export const api = {
           if (params.limit) searchParams.set("limit", params.limit.toString());
           if (params.search) searchParams.set("search", params.search);
           if (params.role) searchParams.set("role", params.role);
+          if (params.onboardingStatus) {
+            searchParams.set("onboardingStatus", params.onboardingStatus);
+          }
           if (params.sortBy) searchParams.set("sortBy", params.sortBy);
           if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
           return apiRequest<{

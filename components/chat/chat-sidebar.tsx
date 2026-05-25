@@ -185,7 +185,7 @@ export function ChatSidebar() {
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <Button
-                                  className="h-7 w-7 shrink-0 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                                  className="h-7 w-7 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100"
                                   size="icon"
                                   variant="ghost"
                                 >

@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -6,6 +7,11 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { openai } from "@ai-sdk/openai";
 import { getActiveProfileId } from "@/lib/exam-profile";
+import {
+  creditEnforcementEffective,
+  getPlatformSettings,
+} from "@/lib/platform-settings";
+import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 
 const aiModel = openai("gpt-5.5");
 
@@ -84,6 +90,43 @@ export async function POST(req: Request) {
       wrongCount: resultsSummary.filter((r) => !r.isCorrect).length,
     };
 
+    const subscription = await prisma.subscription.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    });
+    const plan = subscription?.plan || "FREE";
+    const isPaid = plan !== "FREE" && subscription?.status === "ACTIVE";
+
+    const settings = await getPlatformSettings();
+    const enforcement = creditEnforcementEffective(settings);
+    const tutorCost = settings.creditCostAiTutorMessage;
+    const tutorCreditsGate =
+      enforcement.aiTutor && tutorCost > 0 && !isPaid;
+
+    if (tutorCreditsGate) {
+      const balance = await getUserCreditBalance(session.user.id);
+      if (balance < tutorCost) {
+        return NextResponse.json(
+          {
+            error: `Insufficient credits. Need ${tutorCost} credits per Paper 3 tutor message.`,
+            balance,
+            requiredCredits: tutorCost,
+          },
+          { status: 402 },
+        );
+      }
+    }
+
+    const lastContent =
+      typeof messages[messages.length - 1]?.content === "string"
+        ? messages[messages.length - 1].content
+        : "";
+    const referenceId = `${attemptId}:${crypto
+      .createHash("sha256")
+      .update(lastContent)
+      .digest("hex")
+      .slice(0, 32)}`;
+
     const responseSchema = z.object({
       response: z.string(),
     });
@@ -151,6 +194,20 @@ Respond as TiC with helpful guidance. Keep responses focused and educational.`;
       schema: responseSchema,
       prompt,
     });
+
+    if (tutorCreditsGate) {
+      try {
+        await spendCredits({
+          userId: session.user.id,
+          amount: tutorCost,
+          type: "AI_TUTOR_MESSAGE",
+          description: `Paper 3 mock tutor (${attempt.mock.title})`,
+          referenceId,
+        });
+      } catch (err) {
+        console.error("[Paper3 chat] Tutor credit debit failed:", err);
+      }
+    }
 
     return NextResponse.json({ response: result.object.response });
   } catch (error) {

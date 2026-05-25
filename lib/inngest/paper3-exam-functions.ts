@@ -1,6 +1,8 @@
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { evaluateAnswer } from "@/lib/paper3/evaluate";
+import { gradeShortAnswer } from "@/lib/paper3/grade-short-answer";
+import { getPlatformSettings } from "@/lib/platform-settings";
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
@@ -75,6 +77,9 @@ export const evaluatePaper3Exam = inngest.createFunction(
     });
 
     const correctAnswerViewed = attempt?.correctAnswerViewed ?? false;
+    const platformSettings = await step.run("load-platform-settings", async () =>
+      getPlatformSettings(),
+    );
 
     const evaluationResults = await step.run("evaluate-answers", async () => {
       const results: Array<{
@@ -102,7 +107,12 @@ export const evaluatePaper3Exam = inngest.createFunction(
       for (const mq of mock.questions) {
         const userAnswer = answers[mq.question.id] || "";
 
-        const result = await evaluateAnswer(
+        const shortAnswerTypes = new Set([
+          "INPUT_FIELD",
+          "ALGORITHM_PSEUDOCODE",
+        ]);
+
+        let result = await evaluateAnswer(
           {
             taskType: mq.question.taskType,
             expectedAnswer: mq.question.expectedAnswer,
@@ -119,6 +129,39 @@ export const evaluatePaper3Exam = inngest.createFunction(
           },
           userAnswer,
         );
+
+        if (
+          platformSettings.useAceShortAnswerGrading &&
+          shortAnswerTypes.has(mq.question.taskType) &&
+          mq.question.expectedAnswer.trim()
+        ) {
+          try {
+            const aiGrade = await gradeShortAnswer({
+              prompt: mq.question.contentMd || mq.question.content,
+              modelAnswer: mq.question.expectedAnswer,
+              studentAnswer: userAnswer,
+              maxMarks: mq.marks,
+            });
+
+            result = {
+              ...result,
+              marksEarned: aiGrade.marksAwarded,
+              feedback: aiGrade.feedback,
+              isCorrect: aiGrade.marksAwarded >= mq.marks,
+              partialCredit:
+                aiGrade.marksAwarded > 0 && aiGrade.marksAwarded < mq.marks,
+              breakdown: [
+                {
+                  criteria: "AI short-answer marking",
+                  marks: aiGrade.marksAwarded,
+                  description: aiGrade.feedback,
+                },
+              ],
+            };
+          } catch {
+            // Keep deterministic evaluateAnswer result on AI failure.
+          }
+        }
 
         const finalMarksEarned = correctAnswerViewed ? 0 : result.marksEarned;
 

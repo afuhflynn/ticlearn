@@ -8,6 +8,7 @@ import {
   Link2,
   ListChecks,
   MessageCircle,
+  School,
   Shield,
   TrendingUp,
   Upload,
@@ -42,6 +43,7 @@ const adminNavItems = [
     label: "Payment Settings",
   },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
+  { href: "/admin/mocks/p1-p2", icon: School, label: "Manage Mocks" },
 ];
 
 const paper3NavItems = [
