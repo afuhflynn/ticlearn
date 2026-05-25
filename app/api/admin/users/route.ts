@@ -1,7 +1,8 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import type { Prisma } from "@/lib/generated/prisma";
 
 export async function GET(req: Request) {
   try {
@@ -13,29 +14,56 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log({ running: "I am running" });
-
     const userRole = (session.user as { role?: string })?.role;
     if (userRole !== "ADMIN") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
     const search = searchParams.get("search") || "";
     const role = searchParams.get("role") || "USER";
+    const onboardingStatus = searchParams.get("onboardingStatus") || "all";
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
+    const onboardingWhere: Prisma.UserWhereInput =
+      onboardingStatus === "completed"
+        ? {
+            activeProfile: {
+              onboardingCompleted: true,
+              onboardingSkipped: false,
+            },
+          }
+        : onboardingStatus === "skipped"
+          ? {
+              activeProfile: {
+                onboardingSkipped: true,
+              },
+            }
+          : onboardingStatus === "not_completed"
+            ? {
+                OR: [
+                  { activeProfile: null },
+                  {
+                    activeProfile: {
+                      onboardingCompleted: false,
+                      onboardingSkipped: false,
+                    },
+                  },
+                ],
+              }
+            : {};
 
-    const where = {
+    const where: Prisma.UserWhereInput = {
       ...(search && {
         OR: [
           { name: { contains: search, mode: "insensitive" as const } },
           { email: { contains: search, mode: "insensitive" as const } },
         ],
       }),
-      ...(role !== "all" && { role: role as any }),
+      ...(role !== "all" && { role: role as Prisma.UserRole }),
+      ...onboardingWhere,
     };
 
     const [users, total] = await Promise.all([
@@ -50,9 +78,17 @@ export async function GET(req: Request) {
           email: true,
           image: true,
           role: true,
+          activeProfileId: true,
           createdAt: true,
           referredBy: true,
           refApplied: true,
+          activeProfile: {
+            select: {
+              onboardingCompleted: true,
+              onboardingSkipped: true,
+              onboardingStep: true,
+            },
+          },
           _count: {
             select: {
               notes: true,
@@ -80,6 +116,9 @@ export async function GET(req: Request) {
           notesCount: u._count.notes,
           quizzesCount: u._count.quizzes,
           attemptsCount: u._count.quizAttempts,
+          onboardingCompleted: u.activeProfile?.onboardingCompleted ?? null,
+          onboardingSkipped: u.activeProfile?.onboardingSkipped ?? null,
+          onboardingStep: u.activeProfile?.onboardingStep ?? null,
           referredByName: referredByUser?.userName || null,
           referredByEmail: referredByUser?.userEmail || null,
         };
