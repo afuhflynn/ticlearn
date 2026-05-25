@@ -93,7 +93,9 @@ export function ChatSidebar() {
 
     const groups: Record<string, Conversation[]> = {};
     for (const conv of filtered) {
-      const label = formatGroupLabel(new Date(conv.updatedAt || conv.createdAt));
+      const label = formatGroupLabel(
+        new Date(conv.updatedAt || conv.createdAt),
+      );
       if (!groups[label]) groups[label] = [];
       groups[label].push(conv);
     }
@@ -172,12 +174,10 @@ export function ChatSidebar() {
                             <SidebarMenuButton
                               asChild
                               className="min-w-0 flex-1"
-                              isActive={
-                                pathname === `/chat/${conv.id}`
-                              }
+                              isActive={pathname === `/chat/${conv.id}`}
                             >
                               <Link href={`/chat/${conv.id}`}>
-                                <span className="truncate">
+                                <span className="line-clamp-1">
                                   {conv.title}
                                 </span>
                               </Link>
@@ -194,14 +194,18 @@ export function ChatSidebar() {
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
                                 <DropdownMenuItem
-                                  onClick={() => toast.info("Rename coming soon")}
+                                  onClick={() =>
+                                    toast.info("Rename coming soon")
+                                  }
                                 >
                                   Rename
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   className="text-destructive focus:text-destructive"
                                   disabled={deleteConversation.isPending}
-                                  onClick={() => handleDeleteConversation(conv.id)}
+                                  onClick={() =>
+                                    handleDeleteConversation(conv.id)
+                                  }
                                 >
                                   <Trash2 className="mr-2 h-3.5 w-3.5" />
                                   Delete
