@@ -404,6 +404,8 @@ model ExamProfile {
   examDate            DateTime? @map("exam_date")
   isRetaking          Boolean   @default(false) @map("is_retaking")
   studyHoursPerWeek   Int?      @map("study_hours_per_week")
+  phoneCountryCode    String?   @default("+237") @map("phone_country_code")
+  phoneNumber         String?   @map("phone_number")
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 

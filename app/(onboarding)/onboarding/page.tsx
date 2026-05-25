@@ -4,6 +4,14 @@ import { useSession } from "@/lib/auth-client";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2, ChevronLeft, ArrowRight } from "lucide-react";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
@@ -18,6 +26,7 @@ const STEP_NAMES = [
   "Exam Date",
   "Confidence",
   "Study Plan",
+  "Phone",
 ];
 
 function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
@@ -54,6 +63,7 @@ export default function OnboardingPage() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [components, setComponents] = useState<Component[]>([]);
   const [baselines, setBaselines] = useState<Record<string, number>>({});
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [readiness, setReadiness] = useState<{
     readiness: number;
     weakestTopic: string | null;
@@ -165,6 +175,8 @@ export default function OnboardingPage() {
       case 3:
         return 4;
       case 4:
+        return 5;
+      case 5:
         await handleFinalize();
         return null;
       default:
@@ -191,6 +203,8 @@ export default function OnboardingPage() {
           baselines: baselineEntries,
           isRetaking: store.isRetaking,
           studyHoursPerWeek: store.studyHoursPerWeek,
+          phoneCountryCode: "+237",
+          phoneNumber: phoneDigits,
           skipped: false,
         }),
       });
@@ -251,7 +265,7 @@ export default function OnboardingPage() {
     }
   };
 
-  const totalSteps = 5;
+  const totalSteps = 6;
   const progress = (step / totalSteps) * 100;
 
   if (!session) return null;
@@ -601,6 +615,54 @@ export default function OnboardingPage() {
 
       case 5:
         return (
+          <div className="space-y-6">
+            <div className="text-center">
+              <h1 className="text-xl font-bold">Phone number verification</h1>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Enter a valid Cameroon phone number so our team can contact you when needed.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Country</label>
+              <Select value="CM" disabled>
+                <SelectTrigger className="h-12 rounded-xl">
+                  <SelectValue placeholder="Select country" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CM">Cameroon (+237)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="phone" className="text-sm font-medium">Phone number</label>
+              <div className="flex items-center rounded-xl border border-input bg-background px-3">
+                <span className="pr-2 text-sm font-semibold text-muted-foreground">+237</span>
+                <Input
+                  id="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={9}
+                  value={phoneDigits}
+                  onChange={(e) => {
+                    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    setPhoneDigits(digits);
+                  }}
+                  placeholder="6XXXXXXXX"
+                  className="h-12 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enter at least 9 digits (for example: 6XXXXXXXX).
+              </p>
+            </div>
+          </div>
+        );
+
+      case 6:
+        return (
           <div className="space-y-6 text-center">
             {showAnalyzing ? (
               <div className="flex flex-col items-center gap-4 py-12">
@@ -728,6 +790,8 @@ export default function OnboardingPage() {
         return true;
       case 4:
         return store.studyHoursPerWeek !== null;
+      case 5:
+        return phoneDigits.length >= 9;
       default:
         return false;
     }
@@ -741,7 +805,7 @@ export default function OnboardingPage() {
         </div>
       )}
 
-      {step < 5 && (
+      {step < 6 && (
         <div className="space-y-2">
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>
@@ -771,7 +835,7 @@ export default function OnboardingPage() {
         {renderStep()}
       </div>
 
-      {step < 5 && (
+      {step < 6 && (
         <div className="flex items-center justify-between">
           <Button
             variant="ghost"
@@ -788,7 +852,7 @@ export default function OnboardingPage() {
             >
               {saving ? "Saving..." : "Skip"}
             </button>
-            {step < 4 ? (
+            {step < 5 ? (
               <Button
                 onClick={async () => {
                   const next = await handleStepContinue();
