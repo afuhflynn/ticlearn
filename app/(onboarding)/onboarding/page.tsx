@@ -135,7 +135,7 @@ export default function OnboardingPage() {
           readinessRes.needsAssessment === false &&
           readinessRes.readiness > 0
         ) {
-          router.push("/dashboard");
+          router.push("/chat");
           return;
         }
 
