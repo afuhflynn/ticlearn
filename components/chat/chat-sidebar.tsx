@@ -1,11 +1,17 @@
 "use client";
 
-import { Loader2, Plus, Search, Trash2 } from "lucide-react";
+import { Loader2, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
@@ -162,10 +168,10 @@ export function ChatSidebar() {
                     <SidebarMenu className="px-2">
                       {group.conversations.map((conv) => (
                         <SidebarMenuItem key={conv.id}>
-                          <div className="group flex items-center gap-2">
+                          <div className="group flex items-center gap-1.5 pr-1">
                             <SidebarMenuButton
                               asChild
-                              className="flex-1"
+                              className="min-w-0 flex-1"
                               isActive={
                                 pathname === `/chat/${conv.id}`
                               }
@@ -176,17 +182,32 @@ export function ChatSidebar() {
                                 </span>
                               </Link>
                             </SidebarMenuButton>
-                            <Button
-                              className="h-7 w-7 opacity-0 transition-opacity group-hover:opacity-100"
-                              disabled={deleteConversation.isPending}
-                              onClick={() =>
-                                handleDeleteConversation(conv.id)
-                              }
-                              size="icon"
-                              variant="ghost"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  className="h-7 w-7 shrink-0 opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100"
+                                  size="icon"
+                                  variant="ghost"
+                                >
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() => toast.info("Rename coming soon")}
+                                >
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={deleteConversation.isPending}
+                                  onClick={() => handleDeleteConversation(conv.id)}
+                                >
+                                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </SidebarMenuItem>
                       ))}

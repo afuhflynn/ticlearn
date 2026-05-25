@@ -22,7 +22,7 @@ export default async function DashboardLayout({
       where: { id: session.user.id },
       include: {
         examProfiles: {
-          select: { id: true, onboardingCompleted: true, onboardingSkipped: true },
+          select: { id: true, onboardingCompleted: true, onboardingSkipped: true, phoneNumber: true },
         },
       },
     });
@@ -31,8 +31,11 @@ export default async function DashboardLayout({
       const activeProfile = user.examProfiles.find(
         (p) => p.id === user.activeProfileId,
       );
-      if (activeProfile && !activeProfile.onboardingCompleted && !activeProfile.onboardingSkipped) {
-        redirect("/onboarding");
+      if (activeProfile && !activeProfile.onboardingSkipped) {
+        const missingRequiredPhone = !activeProfile.phoneNumber;
+        if (!activeProfile.onboardingCompleted || missingRequiredPhone) {
+          redirect("/onboarding");
+        }
       }
     } else {
       redirect("/onboarding");
