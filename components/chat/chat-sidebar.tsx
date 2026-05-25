@@ -175,7 +175,7 @@ export function ChatSidebar() {
                         >
                           <SidebarMenuButton
                             asChild
-                            className="flex-1"
+                            className="flex-1 line-clamp-1"
                             isActive={pathname === `/chat/${conv.id}`}
                           >
                             <Link
@@ -188,7 +188,7 @@ export function ChatSidebar() {
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
-                                className="h-7 w-7 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100 absolute right-0 top-1/2 -translate-y-1/2"
+                                className="h-7 w-7 hidden group-hover:block absolute top-1/2 right-2 -translate-y-1/2"
                                 size="icon"
                                 variant="ghost"
                               >
