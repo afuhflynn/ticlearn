@@ -20,6 +20,15 @@ type Program = { id: string; name: string; code: string };
 type Topic = { id: string; name: string; order: number };
 type Component = { id: string; code: string; name: string; topics: Topic[] };
 
+type OnboardingProgressResponse = {
+  activeProfile: {
+    onboardingStep: number;
+    onboardingCompleted: boolean;
+    onboardingSkipped: boolean;
+    phoneNumber: string | null;
+  } | null;
+};
+
 const STEP_NAMES = [
   "Level",
   "Subjects",
@@ -59,6 +68,7 @@ export default function OnboardingPage() {
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [phoneReason, setPhoneReason] = useState<string | null>(null);
   const [levels, setLevels] = useState<ExamLevel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [components, setComponents] = useState<Component[]>([]);
@@ -134,18 +144,28 @@ export default function OnboardingPage() {
       .finally(() => setLevelsLoading(false));
   }, [session]);
 
-  useEffect(() => {
-    if (!session) return;
-    apiFetch<{ readiness: number; needsAssessment: boolean }>(
-      "/api/onboarding/readiness",
-    )
-      .then((d) => {
-        if (d.needsAssessment === false && d.readiness > 0) {
-          router.push("/dashboard");
+        if (profile.onboardingCompleted && !profile.phoneNumber) {
+          setStep(5);
+          setPhoneReason(
+            "Please add your phone number to complete onboarding. It helps us reach you for important support and exam guidance.",
+          );
+          return;
+        }
+
+        if (!profile.onboardingCompleted) {
+          const restoredStep = Math.min(Math.max(profile.onboardingStep || 0, 0), 5);
+          setStep(restoredStep);
+          if (restoredStep === 5) {
+            setPhoneReason(
+              "Final step: add your phone number so we can contact you for support and key exam updates.",
+            );
+          }
         }
       })
       .catch(() => {});
-  }, [step]);
+
+    setInitialized(true);
+  }, [session]);
 
   const setStep = (s: number) => {
     setStepInner(s);
