@@ -170,10 +170,10 @@ export function ChatSidebar() {
                     <SidebarMenu className="px-2">
                       {group.conversations.map((conv) => (
                         <SidebarMenuItem key={conv.id}>
-                          <div className="group flex items-center gap-1.5 pr-1">
+                          <div className="group flex items-center gap-1.5 pr-1 w-full">
                             <SidebarMenuButton
                               asChild
-                              className="min-w-0 flex-1 max-w-full"
+                              className="flex-1"
                               isActive={pathname === `/chat/${conv.id}`}
                             >
                               <Link
