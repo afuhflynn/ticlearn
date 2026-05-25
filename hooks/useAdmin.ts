@@ -35,6 +35,8 @@ export function useAdminUsers(
       onboardingCompleted: boolean | null;
       onboardingSkipped: boolean | null;
       onboardingStep: number | null;
+      phoneNumber: string | null;
+      phoneCountryCode: string | null;
       createdAt: string;
       notesCount: number;
       quizzesCount: number;

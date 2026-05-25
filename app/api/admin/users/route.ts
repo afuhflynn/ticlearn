@@ -100,6 +100,8 @@ export async function GET(req: Request) {
               onboardingCompleted: true,
               onboardingSkipped: true,
               onboardingStep: true,
+              phoneNumber: true,
+              phoneCountryCode: true,
             },
           },
           _count: {
@@ -132,6 +134,8 @@ export async function GET(req: Request) {
           onboardingCompleted: u.activeProfile?.onboardingCompleted ?? null,
           onboardingSkipped: u.activeProfile?.onboardingSkipped ?? null,
           onboardingStep: u.activeProfile?.onboardingStep ?? null,
+          phoneNumber: u.activeProfile?.phoneNumber ?? null,
+          phoneCountryCode: u.activeProfile?.phoneCountryCode ?? null,
           referredByName: referredByUser?.userName || null,
           referredByEmail: referredByUser?.userEmail || null,
         };

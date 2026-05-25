@@ -264,6 +264,7 @@ export default function AdminUsersPage() {
                       <TableHead>User</TableHead>
                       <TableHead>Role</TableHead>
                       <TableHead>Onboarding</TableHead>
+                      <TableHead>Phone</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -298,6 +299,11 @@ export default function AdminUsersPage() {
                         ) : (
                           <Badge variant="outline">Incomplete</Badge>
                         )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm font-mono">
+                        {user.phoneNumber
+                          ? `${user.phoneCountryCode ?? "+237"} ${user.phoneNumber}`
+                          : "—"}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {format(new Date(user.createdAt), "MMM d, yyyy 'at' h:mm a")}
