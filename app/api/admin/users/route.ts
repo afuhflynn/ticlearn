@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import type { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
-import type { Prisma } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -55,15 +55,24 @@ export async function GET(req: Request) {
               }
             : {};
 
+    const roleWhere: Prisma.UserWhereInput =
+      role === "USER" || role === "ADMIN" ? { role } : {};
+
     const where: Prisma.UserWhereInput = {
-      ...(search && {
-        OR: [
-          { name: { contains: search, mode: "insensitive" as const } },
-          { email: { contains: search, mode: "insensitive" as const } },
-        ],
-      }),
-      ...(role !== "all" && { role: role as Prisma.UserRole }),
-      ...onboardingWhere,
+      AND: [
+        ...(search
+          ? [
+              {
+                OR: [
+                  { name: { contains: search, mode: "insensitive" as const } },
+                  { email: { contains: search, mode: "insensitive" as const } },
+                ],
+              },
+            ]
+          : []),
+        roleWhere,
+        onboardingWhere,
+      ],
     };
 
     const [users, total] = await Promise.all([
