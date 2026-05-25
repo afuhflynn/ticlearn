@@ -1,8 +1,9 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "@/lib/auth-client";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -12,8 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ChevronLeft, ArrowRight } from "lucide-react";
-import { useOnboardingStore } from "@/stores/onboarding-store";
+import { ArrowRight, ChevronLeft, Loader2 } from "lucide-react";
 
 type ExamLevel = { id: string; name: string; code: string };
 type Program = { id: string; name: string; code: string };
@@ -27,6 +27,15 @@ type OnboardingProgressResponse = {
     onboardingSkipped: boolean;
     phoneNumber: string | null;
   } | null;
+};
+
+type ReadinessResponse = {
+  readiness: number;
+  weakestTopic: string | null;
+  weakestProgram: string | null;
+  daysUntilExam: number | null;
+  highRisk: boolean;
+  programReadiness: Array<{ program: string; readiness: number }>;
 };
 
 const STEP_NAMES = [
@@ -65,29 +74,32 @@ export default function OnboardingPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const store = useOnboardingStore();
+
   const [direction, setDirection] = useState<"next" | "prev">("next");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [phoneReason, setPhoneReason] = useState<string | null>(null);
+
   const [levels, setLevels] = useState<ExamLevel[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [components, setComponents] = useState<Component[]>([]);
   const [baselines, setBaselines] = useState<Record<string, number>>({});
   const [phoneDigits, setPhoneDigits] = useState("");
-  const [readiness, setReadiness] = useState<{
-    readiness: number;
-    weakestTopic: string | null;
-    weakestProgram: string | null;
-    daysUntilExam: number | null;
-    highRisk: boolean;
-    programReadiness: Array<{ program: string; readiness: number }>;
-  } | null>(null);
+
+  const [readiness, setReadiness] = useState<ReadinessResponse | null>(null);
   const [showAnalyzing, setShowAnalyzing] = useState(false);
   const [animateIn, setAnimateIn] = useState(true);
+
   const [step, setStepInner] = useState(store.step > 0 ? store.step : 0);
   const [levelsLoading, setLevelsLoading] = useState(true);
   const [levelsError, setLevelsError] = useState<string | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const setStep = (s: number) => {
+    setStepInner(s);
+    store.setStep(s);
+  };
 
   const isGCEAlevel = store.examLevelId
     ? levels.find((l) => l.id === store.examLevelId)?.code === "GCE_AL"
@@ -103,46 +115,72 @@ export default function OnboardingPage() {
   useEffect(() => {
     if (!session) return;
 
-    apiFetch<{ readiness: number; needsAssessment: boolean }>(
-      "/api/onboarding/readiness",
-    )
-      .then((d) => {
-        if (d.needsAssessment === false && d.readiness > 0) {
-          router.push("/dashboard");
-        }
-      })
-      .catch(() => {});
+    let alive = true;
 
-    setLevelsLoading(true);
-    setLevelsError(null);
-    apiFetch<{ levels: ExamLevel[] }>("/api/exam-levels")
-      .then((d) => {
-        const list = Array.isArray(d.levels) ? d.levels : [];
+    const loadData = async () => {
+      try {
+        setLevelsLoading(true);
+        setLevelsError(null);
+
+        const [readinessRes, levelsRes] = await Promise.all([
+          apiFetch<{ readiness: number; needsAssessment: boolean }>(
+            "/api/onboarding/readiness",
+          ),
+          apiFetch<{ levels: ExamLevel[] }>("/api/exam-levels"),
+        ]);
+
+        if (!alive) return;
+
+        if (
+          readinessRes.needsAssessment === false &&
+          readinessRes.readiness > 0
+        ) {
+          router.push("/dashboard");
+          return;
+        }
+
+        const list = Array.isArray(levelsRes.levels) ? levelsRes.levels : [];
         setLevels(list);
-        if (store.examLevelId && list.length > 0) {
+
+        if (store.examLevelId) {
           const level = list.find((l) => l.id === store.examLevelId);
           if (level) {
             apiFetch<{ programs: Program[] }>(
               `/api/programs?examLevelId=${level.id}`,
-            ).then((pd) => {
-              const filtered = pd.programs.filter(
-                (p) => p.code !== "UNKNOWN",
-              );
-              setPrograms(filtered);
-            });
+            )
+              .then((pd) => {
+                if (!alive) return;
+                const filtered = pd.programs.filter(
+                  (p) => p.code !== "UNKNOWN",
+                );
+                setPrograms(filtered);
+              })
+              .catch(() => {});
           }
         }
-        if (store.programIds.length > 0 && list.length > 0) {
+
+        if (store.programIds.length > 0) {
           loadTopics(store.programIds[0]);
         }
-      })
-      .catch((e) => {
+      } catch (e) {
+        if (!alive) return;
         setLevelsError(
-          e instanceof Error ? e.message : "Could not load exam levels.",
+          e instanceof Error ? e.message : "Could not load onboarding data.",
         );
-      })
-      .finally(() => setLevelsLoading(false));
-  }, [session]);
+      } finally {
+        if (alive) setLevelsLoading(false);
+      }
+    };
+
+    const loadProgress = async () => {
+      try {
+        const progress = await apiFetch<OnboardingProgressResponse>(
+          "/api/onboarding/progress",
+        );
+
+        if (!alive || !progress.activeProfile) return;
+
+        const profile = progress.activeProfile;
 
         if (profile.onboardingCompleted && !profile.phoneNumber) {
           setStep(5);
@@ -153,23 +191,74 @@ export default function OnboardingPage() {
         }
 
         if (!profile.onboardingCompleted) {
-          const restoredStep = Math.min(Math.max(profile.onboardingStep || 0, 0), 5);
+          const restoredStep = Math.min(
+            Math.max(profile.onboardingStep || 0, 0),
+            5,
+          );
           setStep(restoredStep);
+
           if (restoredStep === 5) {
             setPhoneReason(
               "Final step: add your phone number so we can contact you for support and key exam updates.",
             );
           }
         }
-      })
-      .catch(() => {});
+      } catch {
+        // ignore progress restore failures
+      }
+    };
 
-    setInitialized(true);
-  }, [session]);
+    const loadTopics = async (programId: string) => {
+      try {
+        const d = await apiFetch<{ components: Component[] }>(
+          `/api/onboarding/topics?programId=${programId}`,
+        );
 
-  const setStep = (s: number) => {
-    setStepInner(s);
-    store.setStep(s);
+        if (!alive) return;
+
+        if (d.components) {
+          setComponents(d.components);
+
+          const defaults: Record<string, number> = {};
+          for (const comp of d.components) {
+            for (const topic of comp.topics || []) {
+              defaults[topic.id] = baselines[topic.id] || 3;
+            }
+          }
+          setBaselines(defaults);
+        }
+      } catch {
+        // silent
+      }
+    };
+
+    void loadData();
+    void loadProgress();
+
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session, router]);
+
+  const loadTopics = async (programId: string) => {
+    try {
+      const d = await apiFetch<{ components: Component[] }>(
+        `/api/onboarding/topics?programId=${programId}`,
+      );
+      if (d.components) {
+        setComponents(d.components);
+        const defaults: Record<string, number> = {};
+        for (const comp of d.components) {
+          for (const topic of comp.topics || []) {
+            defaults[topic.id] = baselines[topic.id] || 3;
+          }
+        }
+        setBaselines(defaults);
+      }
+    } catch {
+      // silent
+    }
   };
 
   const goToStep = (s: number, dir: "next" | "prev") => {
@@ -207,6 +296,7 @@ export default function OnboardingPage() {
   const handleFinalize = async () => {
     setSaving(true);
     setError(null);
+
     try {
       const baselineEntries = Object.entries(baselines)
         .filter(([, v]) => v > 0)
@@ -234,19 +324,19 @@ export default function OnboardingPage() {
         throw new Error(err.error || "Failed to save");
       }
 
-      const data = await res.json();
+      const data: { readiness: ReadinessResponse } = await res.json();
+
+      setStep(6);
+      setShowAnalyzing(true);
+      setReadiness(data.readiness);
+      setShowAnalyzing(false);
 
       store.reset();
-
-      setShowAnalyzing(true);
-      const rd = data.readiness;
-      setReadiness(rd);
-      setShowAnalyzing(false);
-      goToStep(5, "next");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed");
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   const handleSkip = async () => {
@@ -261,27 +351,8 @@ export default function OnboardingPage() {
       router.push("/dashboard");
     } catch {
       router.push("/dashboard");
-    }
-    setSaving(false);
-  };
-
-  const loadTopics = async (programId: string) => {
-    try {
-      const d = await apiFetch<{ components: Component[] }>(
-        `/api/onboarding/topics?programId=${programId}`,
-      );
-      if (d.components) {
-        setComponents(d.components);
-        const defaults: Record<string, number> = {};
-        for (const comp of d.components) {
-          for (const topic of comp.topics || []) {
-            defaults[topic.id] = baselines[topic.id] || 3;
-          }
-        }
-        setBaselines(defaults);
-      }
-    } catch {
-      // silent
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -290,9 +361,44 @@ export default function OnboardingPage() {
 
   if (!session) return null;
 
+  const canProceed = (): boolean => {
+    switch (step) {
+      case 0:
+        return !!store.examLevelId;
+      case 1:
+        return store.programIds.length > 0;
+      case 2:
+        return store.examYear !== null || store.examDate !== null;
+      case 3:
+        return true;
+      case 4:
+        return store.studyHoursPerWeek !== null;
+      case 5:
+        return phoneDigits.length >= 9;
+      default:
+        return false;
+    }
+  };
+
   const renderStep = () => {
     switch (step) {
       case 0:
+        if (levelsLoading) {
+          return (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          );
+        }
+
+        if (levelsError) {
+          return (
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+              {levelsError}
+            </div>
+          );
+        }
+
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -303,6 +409,7 @@ export default function OnboardingPage() {
                 Select your exam level to get started.
               </p>
             </div>
+
             <div className="space-y-3">
               {levels.map((level) => (
                 <button
@@ -321,7 +428,13 @@ export default function OnboardingPage() {
                         setPrograms(filtered);
                         goToStep(1, "next");
                       })
-                      .catch((e) => setError(e.message));
+                      .catch((e) =>
+                        setError(
+                          e instanceof Error
+                            ? e.message
+                            : "Failed to load subjects.",
+                        ),
+                      );
                   }}
                   disabled={saving}
                   className="group relative w-full rounded-xl border-2 border-border bg-card p-5 text-left transition-all hover:border-primary hover:bg-primary/5 active:scale-[0.98]"
@@ -333,12 +446,7 @@ export default function OnboardingPage() {
                     {level.name}
                   </p>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    {level.code === "GCE_AL" &&
-                      "Upper Sixth - Advanced Level general certificate"}
-                    {level.code === "GCE_OL" &&
-                      "Form 5 - Ordinary Level general certificate"}
-                    {level.code === "HND" &&
-                      "Higher National Diploma - specialised programme"}
+                    {levelSubtitle(level.code)}
                   </p>
                 </button>
               ))}
@@ -362,13 +470,15 @@ export default function OnboardingPage() {
               </p>
               {isMultiSelect && store.programIds.length > 4 && (
                 <p className="mt-2 text-xs text-amber-600">
-                  Most students prepare 2–4 subjects.
+                  Most students prepare 2-4 subjects.
                 </p>
               )}
             </div>
+
             <div className="flex flex-wrap gap-2">
               {programs.map((prog) => {
                 const selected = store.programIds.includes(prog.id);
+
                 return (
                   <button
                     key={prog.id}
@@ -394,6 +504,7 @@ export default function OnboardingPage() {
                 );
               })}
             </div>
+
             {store.programIds.length > 0 && (
               <p className="text-xs text-muted-foreground">
                 {store.programIds.length} selected
@@ -411,6 +522,7 @@ export default function OnboardingPage() {
                 This helps us track your countdown.
               </p>
             </div>
+
             <div className="space-y-3">
               {[
                 {
@@ -459,6 +571,7 @@ export default function OnboardingPage() {
                   <p className="text-sm text-muted-foreground">{opt.sub}</p>
                 </button>
               ))}
+
               <div className="pt-2">
                 <label className="text-sm text-muted-foreground">
                   Or pick a specific date:
@@ -490,6 +603,7 @@ export default function OnboardingPage() {
                 confident.
               </p>
             </div>
+
             {components.length === 0 ? (
               <div className="rounded-xl border-2 border-dashed border-border p-8 text-center text-sm text-muted-foreground">
                 Topics are not yet available for this subject. You can skip this
@@ -499,7 +613,7 @@ export default function OnboardingPage() {
               <div className="space-y-6">
                 {components.map((comp) => (
                   <div key={comp.id}>
-                    <h3 className="mb-3 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                       {comp.name}
                     </h3>
                     <div className="space-y-3">
@@ -521,6 +635,7 @@ export default function OnboardingPage() {
                               {baselines[topic.id] || 3}/5
                             </span>
                           </div>
+
                           <div className="flex gap-1">
                             {[1, 2, 3, 4, 5].map((v) => (
                               <button
@@ -575,7 +690,9 @@ export default function OnboardingPage() {
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() => store.setStudyIntent(true, store.studyHoursPerWeek)}
+                  onClick={() =>
+                    store.setStudyIntent(true, store.studyHoursPerWeek)
+                  }
                   className={`flex-1 rounded-xl border-2 py-3 text-sm font-medium transition-all active:scale-[0.97] ${
                     store.isRetaking
                       ? "border-primary bg-primary text-primary-foreground"
@@ -586,7 +703,9 @@ export default function OnboardingPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => store.setStudyIntent(false, store.studyHoursPerWeek)}
+                  onClick={() =>
+                    store.setStudyIntent(false, store.studyHoursPerWeek)
+                  }
                   className={`flex-1 rounded-xl border-2 py-3 text-sm font-medium transition-all active:scale-[0.97] ${
                     !store.isRetaking
                       ? "border-primary bg-primary text-primary-foreground"
@@ -615,11 +734,11 @@ export default function OnboardingPage() {
                     onClick={() =>
                       store.setStudyIntent(
                         store.isRetaking,
-                        parseInt(opt.value),
+                        parseInt(opt.value, 10),
                       )
                     }
                     className={`rounded-xl border-2 p-4 text-left transition-all active:scale-[0.97] ${
-                      store.studyHoursPerWeek === parseInt(opt.value)
+                      store.studyHoursPerWeek === parseInt(opt.value, 10)
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-primary/50"
                     }`}
@@ -639,8 +758,14 @@ export default function OnboardingPage() {
             <div className="text-center">
               <h1 className="text-xl font-bold">Phone number verification</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                Enter a valid Cameroon phone number so our team can contact you when needed.
+                Enter a valid Cameroon phone number so our team can contact you
+                when needed.
               </p>
+              {phoneReason && (
+                <p className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-left text-sm text-blue-700">
+                  {phoneReason}
+                </p>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -656,9 +781,13 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="phone" className="text-sm font-medium">Phone number</label>
+              <label htmlFor="phone" className="text-sm font-medium">
+                Phone number
+              </label>
               <div className="flex items-center rounded-xl border border-input bg-background px-3">
-                <span className="pr-2 text-sm font-semibold text-muted-foreground">+237</span>
+                <span className="pr-2 text-sm font-semibold text-muted-foreground">
+                  +237
+                </span>
                 <Input
                   id="phone"
                   type="tel"
@@ -667,7 +796,9 @@ export default function OnboardingPage() {
                   maxLength={9}
                   value={phoneDigits}
                   onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    const digits = e.target.value
+                      .replace(/\D/g, "")
+                      .slice(0, 9);
                     setPhoneDigits(digits);
                   }}
                   placeholder="6XXXXXXXX"
@@ -741,8 +872,8 @@ export default function OnboardingPage() {
 
                 {readiness.highRisk && (
                   <div className="rounded-xl border-2 border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                    ⚠️ Exam is approaching and readiness is low. We recommend
-                    starting practice immediately.
+                    ⚠️ Exam is approaching and readiness is low. Start practice
+                    immediately.
                   </div>
                 )}
 
@@ -798,25 +929,6 @@ export default function OnboardingPage() {
     }
   };
 
-  const canProceed = (): boolean => {
-    switch (step) {
-      case 0:
-        return !!store.examLevelId;
-      case 1:
-        return store.programIds.length > 0;
-      case 2:
-        return store.examYear !== null || store.examDate !== null;
-      case 3:
-        return true;
-      case 4:
-        return store.studyHoursPerWeek !== null;
-      case 5:
-        return phoneDigits.length >= 9;
-      default:
-        return false;
-    }
-  };
-
   return (
     <div className="mx-auto w-full max-w-lg space-y-6 px-4">
       {error && (
@@ -864,6 +976,7 @@ export default function OnboardingPage() {
           >
             <ChevronLeft className="mr-1 h-4 w-4" /> Back
           </Button>
+
           <div className="flex items-center gap-3">
             <button
               onClick={handleSkip}
@@ -872,6 +985,7 @@ export default function OnboardingPage() {
             >
               {saving ? "Saving..." : "Skip"}
             </button>
+
             {step < 5 ? (
               <Button
                 onClick={async () => {
