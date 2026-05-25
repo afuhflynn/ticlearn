@@ -175,7 +175,7 @@ export function ChatSidebar() {
                         >
                           <SidebarMenuButton
                             asChild
-                            className="flex-1"
+                            className="w-full relative"
                             isActive={pathname === `/chat/${conv.id}`}
                           >
                             <Link
@@ -184,35 +184,37 @@ export function ChatSidebar() {
                             >
                               {conv.title}
                             </Link>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  className="h-7 w-7 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100 absolute right-0 top-1/2 -translate-y-1/2"
+                                  size="icon"
+                                  variant="ghost"
+                                >
+                                  <MoreHorizontal className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    toast.info("Rename coming soon")
+                                  }
+                                >
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive"
+                                  disabled={deleteConversation.isPending}
+                                  onClick={() =>
+                                    handleDeleteConversation(conv.id)
+                                  }
+                                >
+                                  <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </SidebarMenuButton>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                className="h-7 w-7 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100"
-                                size="icon"
-                                variant="ghost"
-                              >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => toast.info("Rename coming soon")}
-                              >
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                disabled={deleteConversation.isPending}
-                                onClick={() =>
-                                  handleDeleteConversation(conv.id)
-                                }
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
                         </SidebarMenuItem>
                       ))}
                     </SidebarMenu>
