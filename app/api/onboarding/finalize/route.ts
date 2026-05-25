@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       isRetaking,
       studyHoursPerWeek,
       skipped,
+      phoneCountryCode,
+      phoneNumber,
     } = body;
 
     const data: {
@@ -34,6 +36,8 @@ export async function POST(req: Request) {
       onboardingCompleted?: boolean;
       onboardingSkipped?: boolean;
       onboardingStep?: number;
+      phoneCountryCode?: string | null;
+      phoneNumber?: string | null;
     } = {};
 
     if (examYear) data.examYear = examYear;
@@ -41,11 +45,32 @@ export async function POST(req: Request) {
     if (typeof isRetaking === "boolean") data.isRetaking = isRetaking;
     if (studyHoursPerWeek) data.studyHoursPerWeek = studyHoursPerWeek;
 
+    const sanitizedPhoneDigits =
+      typeof phoneNumber === "string" ? phoneNumber.replace(/\D/g, "") : "";
+    const selectedCountryCode =
+      typeof phoneCountryCode === "string" ? phoneCountryCode.trim() : "+237";
+
     if (skipped) {
       data.onboardingSkipped = true;
       data.onboardingCompleted = false;
       data.onboardingStep = 6;
     } else {
+      if (selectedCountryCode !== "+237") {
+        return NextResponse.json(
+          { error: "Only Cameroon (+237) is supported for now." },
+          { status: 400 },
+        );
+      }
+
+      if (sanitizedPhoneDigits.length < 9) {
+        return NextResponse.json(
+          { error: "Phone number must contain at least 9 digits." },
+          { status: 400 },
+        );
+      }
+
+      data.phoneCountryCode = "+237";
+      data.phoneNumber = sanitizedPhoneDigits;
       data.onboardingCompleted = true;
       data.onboardingSkipped = false;
       data.onboardingStep = 6;
