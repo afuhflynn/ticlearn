@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { UserRole } from "@/lib/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -55,7 +56,11 @@ export async function GET(req: Request) {
             : {};
 
     const roleWhere =
-      role === "USER" || role === "ADMIN" ? { role } : {};
+      role === "USER"
+        ? { role: UserRole.USER }
+        : role === "ADMIN"
+          ? { role: UserRole.ADMIN }
+          : {};
 
     const where = {
       AND: [
