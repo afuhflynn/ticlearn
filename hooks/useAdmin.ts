@@ -15,6 +15,7 @@ export function useAdminUsers(
     limit?: number;
     search?: string;
     role?: string;
+    onboardingStatus?: "completed" | "not_completed" | "skipped" | "all";
     sortBy?: string;
     sortOrder?: string;
   } = {},
@@ -30,6 +31,10 @@ export function useAdminUsers(
       email: string;
       image: string | null;
       role: string;
+      activeProfileId: string | null;
+      onboardingCompleted: boolean | null;
+      onboardingSkipped: boolean | null;
+      onboardingStep: number | null;
       createdAt: string;
       notesCount: number;
       quizzesCount: number;
