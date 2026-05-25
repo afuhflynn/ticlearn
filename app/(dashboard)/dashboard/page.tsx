@@ -12,7 +12,10 @@ import {
   AlertTriangle,
   Target,
   Clock,
-  X,
+  NotebookPen,
+  BotMessageSquare,
+  Trophy,
+  GraduationCap,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -268,6 +271,71 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      <Card className="border-muted">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg">Quick actions</CardTitle>
+          <CardDescription>
+            Paper 1 &amp; 2 mocks, Ace Paper 3, chat, uploads, leaderboard.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <Button
+            variant="outline"
+            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
+            asChild
+          >
+            <Link href="/practice/mock">
+              <NotebookPen className="h-5 w-5 text-primary" />
+              <span className="font-semibold leading-tight">
+                GCE Paper 1 &amp; 2 mocks
+              </span>
+              <span className="text-muted-foreground text-xs font-normal">
+                Blueprint exams from official-style questions.
+              </span>
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
+            asChild
+          >
+            <Link href="/practice">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              <span className="font-semibold leading-tight">AcePaper 3</span>
+              <span className="text-muted-foreground text-xs font-normal">
+                Practical ICT / CS tasks.
+              </span>
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
+            asChild
+          >
+            <Link href="/chat">
+              <BotMessageSquare className="h-5 w-5 text-primary" />
+              <span className="font-semibold leading-tight">Ask TiC</span>
+              <span className="text-muted-foreground text-xs font-normal">
+                Get explanations anytime.
+              </span>
+            </Link>
+          </Button>
+          <Button
+            variant="outline"
+            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
+            asChild
+          >
+            <Link href="/leaderboard">
+              <Trophy className="h-5 w-5 text-primary" />
+              <span className="font-semibold leading-tight">Leaderboard</span>
+              <span className="text-muted-foreground text-xs font-normal">
+                Compare mock scores with peers.
+              </span>
+            </Link>
+          </Button>
+        </CardContent>
+      </Card>
 
       {loading && <Skeleton className="h-48" />}
 

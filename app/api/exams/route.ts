@@ -21,6 +21,8 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     });
 
+    
+
     return NextResponse.json({ exams });
   } catch (error) {
     console.error("Exams GET error:", error);

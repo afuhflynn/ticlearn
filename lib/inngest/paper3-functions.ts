@@ -1,4 +1,4 @@
-import { NonRetriableError } from "inngest";
+import { NonRetriableError, type GetStepTools } from "inngest";
 import { openai } from "@ai-sdk/openai";
 import type {
   Paper3Category,
@@ -17,16 +17,17 @@ import {
   extractTextFromWord,
 } from "@/lib/ai";
 import { inngest } from "@/lib/inngest/client";
+import { buildPaper3SourceContextBlock } from "@/lib/paper3/exam-context";
+import {
+  examSystemPreamble,
+  groundedQuestionBatchPrompt,
+} from "@/lib/paper3/prompts";
 import { prisma } from "@/lib/prisma";
 
 const aiModel = openai("gpt-5.5");
 const SOURCE_TEXT_MIN_LENGTH = 100;
 
-type StepTools = {
-  run<T>(name: string, fn: () => Promise<T>): Promise<T>;
-  sendEvent: (name: string, payload: unknown) => Promise<void>;
-  fetch: (url: string, options?: RequestInit) => Promise<Response>;
-};
+type Paper3StepTools = GetStepTools<typeof inngest>;
 
 const skillTypeSchema = z.enum([
   "ALGORITHMIC_THINKING",
@@ -146,6 +147,9 @@ type GenerateMockInput = {
   timeLimit?: number;
   description?: string;
   createdBy: string;
+  sourceIds?: string[];
+  difficulty?: "foundation" | "standard" | "stretch";
+  authorNotes?: string;
 };
 
 function normalizeExtractedText(text: string) {
@@ -606,18 +610,82 @@ async function extractSourceText(source: ProcessSourceEvent) {
   );
 }
 
+async function loadApprovedQuestionBankBlock(params: {
+  subject: Paper3Subject;
+  limit?: number;
+}): Promise<string> {
+  const take = params.limit ?? 15;
+  const rows = await prisma.paper3Question.findMany({
+    where: {
+      status: "APPROVED",
+      source: { subject: params.subject },
+    },
+    select: {
+      title: true,
+      contentMd: true,
+      taskType: true,
+      marks: true,
+      section: true,
+      concepts: true,
+    },
+    orderBy: { updatedAt: "desc" },
+    take,
+  });
+  if (rows.length === 0) {
+    return "";
+  }
+  return rows
+    .map((q, i) => {
+      const body = (q.contentMd || "").slice(0, 2200);
+      return `### Approved bank item ${i + 1} [${q.taskType}] (${q.marks} marks, section ${q.section})\n**${q.title}**\nConcepts: ${(q.concepts || []).join(", ")}\n${body}`;
+    })
+    .join("\n\n---\n\n");
+}
+
 async function generateNewQuestions(
   input: GenerateMockInput,
-  step: any,
+  step: Paper3StepTools,
 ): Promise<GeneratedQuestion[]> {
   const responseSchema = z.object({
     questions: z.array(generatedQuestionSchema),
   });
 
-  const prompt = `You are an expert GCE examiner creating a new Paper 3 mock for TiCLearn.
+  const pastPaperContext = await step.run(
+    "load-paper3-source-context",
+    async () =>
+      buildPaper3SourceContextBlock({
+        sourceIds: input.sourceIds,
+        subject: input.subject,
+      }),
+  );
 
-Mock title: ${input.title}
-Subject: ${input.subject}
+  const bankBlock = await step.run(
+    "load-approved-question-bank",
+    async () =>
+      loadApprovedQuestionBankBlock({
+        subject: (input.subject ?? "COMPUTER_SCIENCE") as Paper3Subject,
+      }),
+  );
+
+  const combinedGrounding = [pastPaperContext.trim(), bankBlock.trim()]
+    .filter(Boolean)
+    .join("\n\n---\n\n");
+
+  const groundedPrompt = groundedQuestionBatchPrompt({
+    focusCategory: input.focusCategory ?? "MIXED",
+    count: input.questionCount,
+    difficulty: input.difficulty ?? "standard",
+    pastPaperContext: combinedGrounding || pastPaperContext,
+    notes: input.authorNotes,
+    mockTitle: input.title,
+  });
+
+  const prompt = `${examSystemPreamble}
+
+${groundedPrompt}
+
+Return structured questions compatible with TiCLearn Paper 3 mocks.
+Subject: ${input.subject ?? "COMPUTER_SCIENCE"}
 Section: ${input.section ?? "A"}
 Focus category: ${input.focusCategory ?? "MIXED"}
 Question count: ${input.questionCount}
@@ -633,6 +701,7 @@ Critical requirements:
 - also provide structured \`visualElements\` matching the markdown
 - prefer a realistic mix of visual practical tasks rather than plain input questions
 - keep all questions aligned to Cameroon GCE A-Level Paper 3
+- generate ORIGINAL variants grounded in the source bank — do not copy stems verbatim
 
 Continuous-set rules:
 - the full question set must read like one coherent practical paper in the chosen focus category
@@ -900,7 +969,8 @@ export const generatePaper3Mock = inngest.createFunction(
                 timeLimit: data.timeLimit ?? 120,
                 totalMarks,
                 createdBy: data.createdBy,
-                status: "PUBLISHED", // @todo: Make this better later
+                status: "DRAFT",
+                visibleToAllStudents: true,
               },
             });
 

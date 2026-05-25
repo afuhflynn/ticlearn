@@ -39,6 +39,19 @@ function apiFetch<T>(url: string, options?: RequestInit): Promise<T> {
   });
 }
 
+function levelSubtitle(code: string): string {
+  switch (code) {
+    case "GCE_AL":
+      return "Upper Sixth - Advanced Level general certificate";
+    case "GCE_OL":
+      return "Form 5 - Ordinary Level general certificate";
+    case "HND":
+      return "Higher National Diploma - specialised programme";
+    default:
+      return "TiCLearn exam programme";
+  }
+}
+
 export default function OnboardingPage() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -63,7 +76,8 @@ export default function OnboardingPage() {
   const [showAnalyzing, setShowAnalyzing] = useState(false);
   const [animateIn, setAnimateIn] = useState(true);
   const [step, setStepInner] = useState(store.step > 0 ? store.step : 0);
-  const [initialized, setInitialized] = useState(false);
+  const [levelsLoading, setLevelsLoading] = useState(true);
+  const [levelsError, setLevelsError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const isGCEAlevel = store.examLevelId
@@ -79,40 +93,53 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (!session) return;
-    if (initialized) return;
 
-    apiFetch<{ levels: ExamLevel[] }>("/api/exam-levels")
+    apiFetch<{ readiness: number; needsAssessment: boolean }>(
+      "/api/onboarding/readiness",
+    )
       .then((d) => {
-        if (Array.isArray(d.levels)) {
-          setLevels(d.levels);
-          if (store.examLevelId) {
-            const level = d.levels.find((l) => l.id === store.examLevelId);
-            if (level) {
-              apiFetch<{ programs: Program[] }>(
-                `/api/programs?examLevelId=${level.id}`,
-              ).then((pd) => {
-                const filtered = pd.programs.filter(
-                  (p) => p.code !== "UNKNOWN",
-                );
-                setPrograms(filtered);
-              });
-            }
-          }
-          if (store.programIds.length > 0) {
-            loadTopics(store.programIds[0]);
-          }
+        if (d.needsAssessment === false && d.readiness > 0) {
+          router.push("/dashboard");
         }
       })
       .catch(() => {});
 
-    apiFetch<{
-      activeProfile: {
-        onboardingStep: number;
-        onboardingCompleted: boolean;
-        onboardingSkipped: boolean;
-        phoneNumber: string | null;
-      } | null;
-    }>("/api/onboarding/progress")
+    setLevelsLoading(true);
+    setLevelsError(null);
+    apiFetch<{ levels: ExamLevel[] }>("/api/exam-levels")
+      .then((d) => {
+        const list = Array.isArray(d.levels) ? d.levels : [];
+        setLevels(list);
+        if (store.examLevelId && list.length > 0) {
+          const level = list.find((l) => l.id === store.examLevelId);
+          if (level) {
+            apiFetch<{ programs: Program[] }>(
+              `/api/programs?examLevelId=${level.id}`,
+            ).then((pd) => {
+              const filtered = pd.programs.filter(
+                (p) => p.code !== "UNKNOWN",
+              );
+              setPrograms(filtered);
+            });
+          }
+        }
+        if (store.programIds.length > 0 && list.length > 0) {
+          loadTopics(store.programIds[0]);
+        }
+      })
+      .catch((e) => {
+        setLevelsError(
+          e instanceof Error ? e.message : "Could not load exam levels.",
+        );
+      })
+      .finally(() => setLevelsLoading(false));
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+    apiFetch<{ readiness: number; needsAssessment: boolean }>(
+      "/api/onboarding/readiness",
+    )
       .then((d) => {
         const profile = d.activeProfile;
         if (!profile || profile.onboardingSkipped) return;
@@ -614,11 +641,6 @@ export default function OnboardingPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Enter a valid Cameroon phone number so our team can contact you when needed.
               </p>
-              {phoneReason && (
-                <p className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-xs text-primary">
-                  {phoneReason}
-                </p>
-              )}
             </div>
 
             <div className="space-y-3">

@@ -89,7 +89,7 @@ export async function proxy(request: NextRequest) {
 
   // Role-based routing
   if (pathname.startsWith("/admin") && session?.user.role !== "ADMIN") {
-    NextResponse.redirect("/dashboard");
+    return NextResponse.redirect("/dashboard");
   }
 
   return NextResponse.next();

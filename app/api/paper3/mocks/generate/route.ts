@@ -35,6 +35,9 @@ const generateMockSchema = z.object({
       hard: z.number().int().min(0),
     })
     .optional(),
+  sourceIds: z.array(z.string()).max(20).optional(),
+  difficulty: z.enum(["foundation", "standard", "stretch"]).optional(),
+  authorNotes: z.string().max(2000).optional(),
 });
 
 export async function POST(req: Request) {
@@ -66,6 +69,9 @@ export async function POST(req: Request) {
         timeLimit: data.timeLimit,
         questionCount: data.questionCount,
         markDistribution: data.markDistribution,
+        sourceIds: data.sourceIds,
+        difficulty: data.difficulty,
+        authorNotes: data.authorNotes,
         createdBy: session.user.id,
       },
     });

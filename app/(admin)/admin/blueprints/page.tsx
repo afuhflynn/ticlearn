@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -11,6 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -20,6 +22,8 @@ interface Blueprint {
   description: string | null;
   totalMarks: number;
   durationMin: number;
+  visibleForStudents: boolean;
+  visibleInCommunity: boolean;
   sections: Array<{
     name: string;
     questionCount: number;
@@ -54,13 +58,33 @@ export default function BlueprintsPage() {
     toast.success("Blueprint deleted");
   };
 
+  const patchVisibility = async (
+    blueprintId: string,
+    patch: { visibleForStudents?: boolean; visibleInCommunity?: boolean },
+  ) => {
+    const res = await fetch(`/api/admin/blueprints/${blueprintId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      toast.error("Failed to update visibility");
+      return;
+    }
+    const data = (await res.json()) as { blueprint: Blueprint };
+    setBlueprints((prev) =>
+      prev.map((b) => (b.id === blueprintId ? { ...b, ...data.blueprint } : b)),
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Exam Blueprints</h1>
           <p className="text-muted-foreground">
-            Define mock exam structure for each component.
+            Paper 1 &amp; 2 mock templates. Toggle where each blueprint appears
+            — student Practice list and/or Community highlights.
           </p>
         </div>
         <Button onClick={() => router.push("/admin/blueprints/create")}>
@@ -113,7 +137,7 @@ export default function BlueprintsPage() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {bp.sections.map((sec, i) => (
                     <Badge key={i} variant="secondary">
@@ -121,6 +145,30 @@ export default function BlueprintsPage() {
                       {sec.totalMarks}m)
                     </Badge>
                   ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-6 rounded-lg border p-4">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`student-${bp.id}`}
+                      checked={bp.visibleForStudents !== false}
+                      onCheckedChange={(v) => patchVisibility(bp.id, { visibleForStudents: v })}
+                      aria-labelledby={`student-${bp.id}-label`}
+                    />
+                    <Label id={`student-${bp.id}-label`} htmlFor={`student-${bp.id}`} className="cursor-pointer text-sm font-medium">
+                      Students (Practice mocks)
+                    </Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={`community-${bp.id}`}
+                      checked={bp.visibleInCommunity === true}
+                      onCheckedChange={(v) => patchVisibility(bp.id, { visibleInCommunity: v })}
+                      aria-labelledby={`community-${bp.id}-label`}
+                    />
+                    <Label id={`community-${bp.id}-label`} htmlFor={`community-${bp.id}`} className="cursor-pointer text-sm font-medium">
+                      Community
+                    </Label>
+                  </div>
                 </div>
               </CardContent>
             </Card>
