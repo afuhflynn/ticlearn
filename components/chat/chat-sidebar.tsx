@@ -173,10 +173,13 @@ export function ChatSidebar() {
                           <div className="group flex items-center gap-1.5 pr-1">
                             <SidebarMenuButton
                               asChild
-                              className="min-w-0 flex-1"
+                              className="min-w-0 flex-1 max-w-full"
                               isActive={pathname === `/chat/${conv.id}`}
                             >
-                              <Link href={`/chat/${conv.id}`}>
+                              <Link
+                                href={`/chat/${conv.id}`}
+                                className="flex-1"
+                              >
                                 <span className="line-clamp-1">
                                   {conv.title}
                                 </span>
