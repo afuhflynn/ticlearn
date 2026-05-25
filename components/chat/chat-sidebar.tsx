@@ -169,53 +169,50 @@ export function ChatSidebar() {
                   <SidebarGroupContent>
                     <SidebarMenu className="px-2">
                       {group.conversations.map((conv) => (
-                        <SidebarMenuItem key={conv.id}>
-                          <div className="group flex items-center gap-1.5 pr-1 w-full">
-                            <SidebarMenuButton
-                              asChild
-                              className="flex-1"
-                              isActive={pathname === `/chat/${conv.id}`}
+                        <SidebarMenuItem
+                          key={conv.id}
+                          className="group flex items-center gap-1.5 pr-1 w-full"
+                        >
+                          <SidebarMenuButton
+                            asChild
+                            className="flex-1"
+                            isActive={pathname === `/chat/${conv.id}`}
+                          >
+                            <Link
+                              href={`/chat/${conv.id}`}
+                              className="w-full line-clamp-1"
                             >
-                              <Link
-                                href={`/chat/${conv.id}`}
-                                className="flex-1"
+                              {conv.title}
+                            </Link>
+                          </SidebarMenuButton>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                className="h-7 w-7 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100"
+                                size="icon"
+                                variant="ghost"
                               >
-                                <span className="line-clamp-1">
-                                  {conv.title}
-                                </span>
-                              </Link>
-                            </SidebarMenuButton>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  className="h-7 w-7 opacity-100 md:opacity-0 transition-opacity md:group-hover:opacity-100"
-                                  size="icon"
-                                  variant="ghost"
-                                >
-                                  <MoreHorizontal className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    toast.info("Rename coming soon")
-                                  }
-                                >
-                                  Rename
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  disabled={deleteConversation.isPending}
-                                  onClick={() =>
-                                    handleDeleteConversation(conv.id)
-                                  }
-                                >
-                                  <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                  Delete
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                                <MoreHorizontal className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                onClick={() => toast.info("Rename coming soon")}
+                              >
+                                Rename
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                disabled={deleteConversation.isPending}
+                                onClick={() =>
+                                  handleDeleteConversation(conv.id)
+                                }
+                              >
+                                <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </SidebarMenuItem>
                       ))}
                     </SidebarMenu>
