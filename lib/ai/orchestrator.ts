@@ -79,6 +79,9 @@ export async function generate<T>(
         prompt: opts.prompt,
         messages: opts.messages as never,
         system: opts.system,
+        providerOptions: {
+          google: { structuredOutputs: false },
+        },
         ...opts.modelOptions,
       });
 

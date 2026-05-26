@@ -1,8 +1,6 @@
 import type { LanguageModel } from "ai";
 import {
   geminiFlash,
-  geminiFlashLite,
-  geminiPro,
   nimDeepSeek,
   nimMistral,
   nimNemotron,
@@ -18,49 +16,49 @@ export interface TaskConfig {
 
 export const taskRegistry: Record<string, TaskConfig> = {
   reasoning: {
-    chain: [nimDeepSeek, nimMistral, nimNemotron, openai("gpt-5.5")],
+    chain: [nimMistral, nimNemotron, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: true,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   fast_chat: {
-    chain: [geminiFlash, geminiFlashLite, nimMistral, nimDeepSeek],
+    chain: [geminiFlash, nimMistral, nimDeepSeek],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   quiz_gen: {
-    chain: [geminiFlash, geminiFlashLite, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   exam_gen: {
-    chain: [geminiFlash, geminiPro, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_gen: {
-    chain: [geminiFlash, geminiPro, nimMistral, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_eval: {
-    chain: [geminiFlash, geminiPro, nimMistral, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,
   },
 
   summarize: {
-    chain: [geminiFlash, geminiFlashLite, openai("gpt-5.5")],
+    chain: [geminiFlash, nimMistral, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 30 * 24 * 60 * 60 * 1000,
