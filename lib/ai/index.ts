@@ -2,7 +2,7 @@ import {
   MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
   MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
 } from "@/constants";
-import { generate, generateTextWithFallback, streamChat } from "@/lib/ai/orchestrator";
+import { generate, generateTextWithFallback, OrchestratorError, streamChat } from "@/lib/ai/orchestrator";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
 import {
@@ -509,7 +509,11 @@ export async function generateQuizFromNote(
 
     return questions;
   } catch (error) {
-    console.error("[AI] Quiz generation failed:", error);
+    if (error instanceof OrchestratorError) {
+      console.error("[AI] Quiz generation failed — model errors:", error.modelErrors);
+    } else {
+      console.error("[AI] Quiz generation failed:", error);
+    }
     return [];
   }
 }
@@ -605,7 +609,11 @@ Rules:
 
     return questions;
   } catch (error) {
-    console.error("[AI] Quiz generation from weak areas failed:", error);
+    if (error instanceof OrchestratorError) {
+      console.error("[AI] Quiz generation from weak areas failed — model errors:", error.modelErrors);
+    } else {
+      console.error("[AI] Quiz generation from weak areas failed:", error);
+    }
     return [];
   }
 }
@@ -696,7 +704,11 @@ export async function generateQuizFromTopic(
 
     return questions;
   } catch (error) {
-    console.error("[AI] Default quiz generation failed:", error);
+    if (error instanceof OrchestratorError) {
+      console.error("[AI] Default quiz generation failed — model errors:", error.modelErrors);
+    } else {
+      console.error("[AI] Default quiz generation failed:", error);
+    }
     return [];
   }
 }
@@ -784,7 +796,11 @@ export async function generateExamQuestions(
 
     return normalizeGeneratedQuestions(object.questions);
   } catch (error) {
-    console.error("Exam generation error:", error);
+    if (error instanceof OrchestratorError) {
+      console.error("Exam generation error — model errors:", error.modelErrors);
+    } else {
+      console.error("Exam generation error:", error);
+    }
     return [];
   }
 }

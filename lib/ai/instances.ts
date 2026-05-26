@@ -12,8 +12,8 @@ export const nim = createOpenAICompatible({
 });
 
 export const nimDeepSeek = nim.chatModel("deepseek-ai/deepseek-v4-pro");
-export const nimGemma = nim.chatModel("google/gemma-3-27b-it");
-export const nimNemotron = nim.chatModel("nvidia/nemotron-4-ultra");
+export const nimMistral = nim.chatModel("mistralai/mistral-nemotron");
+export const nimNemotron = nim.chatModel("nvidia/llama-3.3-nemotron-super-49b-v1");
 
 // === Google Gemini — free tier, primarily for structured output ===
 // Free until ~October 2026 (1,500 RPD for Flash, 100 RPD for Pro)

@@ -4,7 +4,7 @@ import {
   geminiFlashLite,
   geminiPro,
   nimDeepSeek,
-  nimGemma,
+  nimMistral,
   nimNemotron,
   openai,
 } from "./instances";
@@ -18,14 +18,14 @@ export interface TaskConfig {
 
 export const taskRegistry: Record<string, TaskConfig> = {
   reasoning: {
-    chain: [nimDeepSeek, nimGemma, nimNemotron, openai("gpt-5.5")],
+    chain: [nimDeepSeek, nimMistral, nimNemotron, openai("gpt-5.5")],
     requiresTools: true,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   fast_chat: {
-    chain: [geminiFlashLite, geminiFlash, nimDeepSeek],
+    chain: [geminiFlash, geminiFlashLite, nimMistral, nimDeepSeek],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
@@ -46,28 +46,28 @@ export const taskRegistry: Record<string, TaskConfig> = {
   },
 
   paper3_gen: {
-    chain: [geminiPro, geminiFlash, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, geminiPro, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_eval: {
-    chain: [geminiPro, geminiFlash, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, geminiPro, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,
   },
 
   summarize: {
-    chain: [geminiFlashLite, geminiFlash, openai("gpt-5.5")],
+    chain: [geminiFlash, geminiFlashLite, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 30 * 24 * 60 * 60 * 1000,
   },
 
   grading: {
-    chain: [geminiFlash, nimDeepSeek, openai("gpt-5.5")],
+    chain: [geminiFlash, nimMistral, nimDeepSeek, openai("gpt-5.5")],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,

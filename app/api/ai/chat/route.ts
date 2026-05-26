@@ -4,6 +4,7 @@ import {
   generateText,
   stepCountIs,
   streamText,
+  type LanguageModel,
   type UIMessage,
 } from "ai";
 import { headers } from "next/headers";
@@ -35,21 +36,39 @@ import {
 export const runtime = "nodejs";
 
 const chatConfig = getTaskConfig("reasoning");
-const model = chatConfig.chain[0];
+
+function modelName(model: LanguageModel): string {
+  try {
+    return (model as unknown as { modelId?: string }).modelId || String(model);
+  } catch {
+    return "unknown";
+  }
+}
 
 async function generateTitle(userMessage: string): Promise<string> {
-  const result = await generateText({
-    model: model,
-    prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
+  const errors: string[] = [];
+  for (const m of chatConfig.chain) {
+    try {
+      const result = await generateText({
+        model: m,
+        prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
 The title should be concise and capture the main topic.
 Do not use quotes or special characters in the title.
 
 User message: "${userMessage}"
 
 Respond with only the title, nothing else.`,
-  });
+      });
 
-  return result.text.trim().slice(0, 50);
+      return result.text.trim().slice(0, 50);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      errors.push(`${modelName(m)}: ${msg}`);
+      console.warn(`[Chat] Title gen failed for ${modelName(m)}: ${msg}`);
+    }
+  }
+  console.error("[Chat] All models failed for title generation:", errors.join("; "));
+  return "New Chat";
 }
 
 function messageHasImage(parts: UIMessage["parts"]): string | null {
@@ -482,15 +501,20 @@ Guidelines:
 
     const modelMessages = await convertToModelMessages(messages);
 
-    const result = streamText({
-      model,
-      system: systemPrompt,
-      tools: createChatTools({ userId: session.user.id }),
-      messages: modelMessages,
-      stopWhen: stepCountIs(5),
-    });
+    const tools = createChatTools({ userId: session.user.id });
 
-    return result.toUIMessageStreamResponse({
+    let lastError: unknown;
+    for (const m of chatConfig.chain) {
+      try {
+        const result = streamText({
+          model: m,
+          system: systemPrompt,
+          tools,
+          messages: modelMessages,
+          stopWhen: stepCountIs(5),
+        });
+
+        return result.toUIMessageStreamResponse({
       onFinish: async ({ isAborted, responseMessage }) => {
         if (isAborted) {
           return;
@@ -525,6 +549,21 @@ Guidelines:
       sendReasoning: true,
       sendSources: true,
     });
+      } catch (e) {
+        lastError = e;
+        console.warn(`[Chat] Model ${modelName(m)} failed:`, e);
+      }
+    }
+
+    if (lastError) {
+      console.error("[Chat] All models in chain failed:", lastError);
+      throw lastError;
+    }
+
+    return NextResponse.json(
+      { error: "No models available to generate response" },
+      { status: 503 },
+    );
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
