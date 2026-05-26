@@ -3,12 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { evaluateAnswer } from "@/lib/paper3/evaluate";
 import { gradeShortAnswer } from "@/lib/paper3/grade-short-answer";
 import { getPlatformSettings } from "@/lib/platform-settings";
-import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { Prisma } from "@/lib/generated/prisma/client";
-
-const aiModel = openai("gpt-5.5");
+import { generate } from "@/lib/ai/orchestrator";
 
 type EvaluateExamEvent = {
   attemptId: string;
@@ -208,8 +206,8 @@ export const evaluatePaper3Exam = inngest.createFunction(
 
           if (needsCodeExplanation && result.userAnswerForAi.trim()) {
             try {
-              const { object } = await generateObject({
-                model: aiModel,
+              const { object } = await generate({
+                task: "reasoning",
                 schema: codeExplanationSchema,
                 prompt: `You are a GCE A-Level Computer Science examiner. Analyze this student's code answer and explain what went wrong.
 

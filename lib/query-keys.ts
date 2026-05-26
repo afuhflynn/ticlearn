@@ -53,6 +53,8 @@ export const queryKeys = {
   chatConversations: ["chat", "conversations"] as const,
   chatConversation: (id: string) => ["chat", "conversations", id] as const,
   chatMessages: (conversationId: string) => ["chat", conversationId] as const,
+  chatMessagesPaginated: (conversationId: string) =>
+    ["chat", conversationId, "paginated"] as const,
 
   // Community
   communityPosts: ["community", "posts"] as const,

@@ -3,17 +3,14 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { generateObject } from "ai";
 import { z } from "zod";
-import { openai } from "@ai-sdk/openai";
 import { getActiveProfileId } from "@/lib/exam-profile";
 import {
   creditEnforcementEffective,
   getPlatformSettings,
 } from "@/lib/platform-settings";
 import { getUserCreditBalance, spendCredits } from "@/lib/credits";
-
-const aiModel = openai("gpt-5.5");
+import { generate } from "@/lib/ai/orchestrator";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -189,8 +186,8 @@ User's latest message: ${messages[messages.length - 1]?.content || ""}
 
 Respond as TiC with helpful guidance. Keep responses focused and educational.`;
 
-    const result = await generateObject({
-      model: aiModel,
+    const result = await generate({
+      task: "reasoning",
       schema: responseSchema,
       prompt,
     });

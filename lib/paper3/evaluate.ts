@@ -1,8 +1,6 @@
-import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
-
-const aiModel = openai("gpt-5.5");
+import { generate } from "@/lib/ai/orchestrator";
 
 // Must match Prisma enum in lib/generated/prisma/enums.ts
 export type Paper3TaskType =
@@ -1085,8 +1083,8 @@ Use partial credit where appropriate.`;
   });
 
   try {
-    const { object } = await generateObject({
-      model: aiModel,
+    const { object } = await generate({
+      task: "paper3_eval",
       schema: responseSchema,
       prompt,
     });

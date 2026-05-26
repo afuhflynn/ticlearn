@@ -4,11 +4,11 @@ import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useCallback } from "react";
 import { toast } from "sonner";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { useCheckLimit, useUsage } from "@/hooks";
-import { useChatConversation } from "@/hooks/useChat";
+import { useMessagesPaginated } from "@/hooks/useChat";
 import { normalizeStoredParts } from "@/lib/chat-messages";
 import { queryKeys } from "@/lib/query-keys";
 import { ChatComposer } from "./chat-composer";
@@ -34,6 +34,9 @@ function ConversationSession({
   const queryClient = useQueryClient();
   const { allowed: canChat } = useCheckLimit("chat");
   const { chatDailyUsage } = useUsage();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const { messages, sendMessage, status, error } = useChat<UIMessage>({
     id: conversationId,
@@ -124,7 +127,7 @@ function ConversationSession({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 flex-1" ref={scrollRef}>
         <ChatMessageList
           emptyState={
             <div className="px-4 py-10 text-center text-muted-foreground">
@@ -167,17 +170,42 @@ function ConversationSession({
 }
 
 export function ChatThread({ conversationId }: { conversationId: string }) {
-  const { conversation, messages, isLoading, error } =
-    useChatConversation(conversationId);
+  const {
+    messages: paginatedMessages,
+    conversationInfo,
+    isLoading,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useMessagesPaginated(conversationId);
+
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sentinelRef.current || !hasNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting && hasNextPage && !isFetchingNextPage) {
+          void fetchNextPage();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const initialMessages = useMemo(
     () =>
-      messages.map((message: ChatMessageRecord) => ({
+      paginatedMessages.map((message: ChatMessageRecord) => ({
         id: message.id,
         role: message.role as UIMessage["role"],
         parts: normalizeStoredParts(message.parts, message.content),
       })),
-    [messages],
+    [paginatedMessages],
   );
 
   if (isLoading) {
@@ -188,7 +216,7 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
     );
   }
 
-  if (error || !conversation) {
+  if (error || !conversationInfo) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
         <h2 className="text-xl font-semibold">Conversation unavailable</h2>
@@ -201,10 +229,25 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
   }
 
   return (
-    <ConversationSession
-      conversationId={conversationId}
-      initialMessages={initialMessages}
-      key={conversationId}
-    />
+    <div className="relative flex h-full flex-col">
+      {hasNextPage && (
+        <div className="absolute left-0 right-0 top-0 z-10 flex justify-center">
+          <button
+            type="button"
+            onClick={() => fetchNextPage()}
+            disabled={isFetchingNextPage}
+            className="rounded-full bg-muted px-4 py-1 text-xs text-muted-foreground shadow transition-colors hover:bg-muted/80"
+          >
+            {isFetchingNextPage ? "Loading..." : "Load older messages"}
+          </button>
+        </div>
+      )}
+      <div ref={sentinelRef} className="h-1" />
+      <ConversationSession
+        conversationId={conversationId}
+        initialMessages={initialMessages}
+        key={conversationId}
+      />
+    </div>
   );
 }

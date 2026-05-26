@@ -1,5 +1,4 @@
 import { NonRetriableError, type GetStepTools } from "inngest";
-import { openai } from "@ai-sdk/openai";
 import type {
   Paper3Category,
   Paper3Language,
@@ -9,7 +8,6 @@ import type {
   Paper3Subject,
   Paper3TaskType,
 } from "@/lib/generated/prisma/client";
-import { generateObject } from "ai";
 import { z } from "zod";
 import {
   extractTextFromImage,
@@ -23,8 +21,7 @@ import {
   groundedQuestionBatchPrompt,
 } from "@/lib/paper3/prompts";
 import { prisma } from "@/lib/prisma";
-
-const aiModel = openai("gpt-5.5");
+import { generate } from "@/lib/ai/orchestrator";
 const SOURCE_TEXT_MIN_LENGTH = 100;
 
 type Paper3StepTools = GetStepTools<typeof inngest>;
@@ -474,8 +471,8 @@ Rules:
 - Keep the question meaning unchanged.`;
 
   const result = await step.run(stepName, async () => {
-    const { object } = await generateObject({
-      model: aiModel,
+    const { object } = await generate({
+      task: "paper3_gen",
       schema: repairSchema,
       prompt,
     });
@@ -535,8 +532,8 @@ Source text:
 ${extractedText.slice(0, 24000)}`;
 
   const object = await step.run("structure-paper3-source", async () => {
-    const result = await generateObject({
-      model: aiModel,
+    const result = await generate({
+      task: "paper3_gen",
       schema: responseSchema,
       prompt,
     });
@@ -733,8 +730,8 @@ ${JSON.stringify(input.markDistribution ?? null)}
 `;
 
   const object = await step.run("generate-paper3-mock-questions", async () => {
-    const result = await generateObject({
-      model: aiModel,
+    const result = await generate({
+      task: "paper3_gen",
       schema: responseSchema,
       prompt,
     });

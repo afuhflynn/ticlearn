@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 
@@ -13,6 +18,25 @@ export function useChatConversations() {
     isLoading,
     error,
     refetch,
+  };
+}
+
+export function useMessagesPaginated(conversationId: string) {
+  const query = useInfiniteQuery({
+    queryKey: queryKeys.chatMessagesPaginated(conversationId),
+    queryFn: ({ pageParam }) =>
+      api.queries.chat.getMessages(conversationId, pageParam as string | null),
+    initialPageParam: null as string | null,
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    enabled: !!conversationId,
+  });
+
+  const messages = query.data?.pages.flatMap((page) => page.messages) ?? [];
+
+  return {
+    ...query,
+    messages,
+    conversationInfo: query.data?.pages[0]?.conversation ?? null,
   };
 }
 
@@ -77,6 +101,9 @@ export function useAddChatMessage() {
     onSuccess: (_, { conversationId }) => {
       queryClient.invalidateQueries({
         queryKey: queryKeys.chatConversation(conversationId),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.chatMessagesPaginated(conversationId),
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
     },

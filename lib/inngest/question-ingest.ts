@@ -1,11 +1,9 @@
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { extractTextFromPDF, extractTextFromImage, extractTextFromWord } from "@/lib/ai";
-import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
-
-const aiModel = openai("gpt-5.4");
+import { generate } from "@/lib/ai/orchestrator";
 
 const parsedQuestionSchema = z.object({
   sections: z.array(z.object({
@@ -69,8 +67,8 @@ export const ingestQuestions = inngest.createFunction(
     }
 
     const parsed = await step.run("parse-questions", async () => {
-      const result = await generateObject({
-        model: aiModel,
+      const result = await generate({
+        task: "reasoning",
         schema: parsedQuestionSchema,
         system: `You are an exam question parser. Given raw text from an exam paper, extract all questions organized by section.
 

@@ -1,15 +1,17 @@
 import { headers } from "next/headers";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { normalizeStoredParts } from "@/lib/chat-messages";
 import { deleteFile, getUploadThingFileKey, utapi } from "@/lib/file";
 import { prisma } from "@/lib/prisma";
 
+const MESSAGES_PER_PAGE = 30;
+
 interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(_req: Request, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -19,21 +21,15 @@ export async function GET(_req: Request, { params }: RouteParams) {
     }
 
     const { id } = await params;
+    const cursor = req.nextUrl.searchParams.get("cursor");
+    const limit = Math.min(
+      Number(req.nextUrl.searchParams.get("limit")) || MESSAGES_PER_PAGE,
+      100,
+    );
 
     const conversation = await prisma.chatConversation.findFirst({
       where: { id, userId: session.user.id },
-      include: {
-        messages: {
-          orderBy: { createdAt: "asc" },
-          select: {
-            id: true,
-            role: true,
-            content: true,
-            parts: true,
-            createdAt: true,
-          },
-        },
-      },
+      select: { id: true, title: true, createdAt: true, updatedAt: true, summary: true },
     });
 
     if (!conversation) {
@@ -43,14 +39,33 @@ export async function GET(_req: Request, { params }: RouteParams) {
       );
     }
 
+    const messages = await prisma.chatMessage.findMany({
+      where: { conversationId: id },
+      orderBy: { createdAt: "desc" },
+      take: limit + 1,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+      select: {
+        id: true,
+        role: true,
+        content: true,
+        parts: true,
+        createdAt: true,
+      },
+    });
+
+    const hasMore = messages.length > limit;
+    const pageMessages = hasMore ? messages.slice(0, limit) : messages;
+    const nextCursor = hasMore ? pageMessages[pageMessages.length - 1]?.id : null;
+
     return NextResponse.json({
-      conversation: {
-        ...conversation,
-        messages: conversation.messages.map((message) => ({
+      conversation,
+      messages: pageMessages
+        .reverse()
+        .map((message) => ({
           ...message,
           parts: normalizeStoredParts(message.parts, message.content),
         })),
-      },
+      nextCursor,
     });
   } catch (error) {
     console.error("[CHAT] Get conversation error:", error);

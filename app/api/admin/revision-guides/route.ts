@@ -1,9 +1,9 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { auth } from "@/lib/auth";
+import { generateTextWithFallback } from "@/lib/ai/orchestrator";
 import { buildPaper3SourceContextBlock } from "@/lib/paper3/exam-context";
 import {
   examSystemPreamble,
@@ -28,7 +28,7 @@ const generateSchema = z.object({
   subject: z.enum(["ICT", "COMPUTER_SCIENCE"]).optional(),
 });
 
-const aiModel = openai(process.env.OPENAI_REVISION_MODEL ?? "gpt-4o-mini");
+
 
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
@@ -89,11 +89,11 @@ export async function POST(req: Request) {
       customNotes: data.notes,
     });
 
-    const result = await generateText({
-      model: aiModel,
-      temperature: 0.35,
+    const result = await generateTextWithFallback({
+      task: "summarize",
       system: examSystemPreamble,
       prompt,
+      modelOptions: { temperature: 0.35 },
     });
 
     const markdown = result.text.trim();

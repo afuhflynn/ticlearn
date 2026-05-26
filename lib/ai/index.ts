@@ -2,8 +2,8 @@ import {
   MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
   MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
 } from "@/constants";
-import { openai } from "@ai-sdk/openai";
-import { generateObject, generateText, streamText } from "ai";
+import { generate, generateTextWithFallback, streamChat } from "@/lib/ai/orchestrator";
+import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
 import {
   GlobalWorkerOptions,
@@ -21,8 +21,6 @@ GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url,
 ).href;
 
-export const aiModel = openai("gpt-5.5");
-
 const generatedQuestionSchema = z.object({
   type: z.enum(["MCQ", "OPEN"]),
   question: z.string().min(1),
@@ -30,45 +28,6 @@ const generatedQuestionSchema = z.object({
   correctAnswer: z.string().min(1),
   explanation: z.string().min(1),
 });
-
-function normalizeGeneratedQuestions(
-  questions: z.infer<typeof generatedQuestionSchema>[],
-) {
-  return questions
-    .map((question) => {
-      const normalized = {
-        ...question,
-        question: question.question.trim(),
-        correctAnswer: question.correctAnswer.trim(),
-        explanation: question.explanation.trim(),
-        options: question.options
-          .map((option) => option.trim())
-          .filter(Boolean),
-      };
-
-      if (normalized.type === "MCQ" && normalized.options.length !== 4) {
-        return null;
-      }
-
-      if (normalized.type === "OPEN") {
-        normalized.options = [];
-      }
-
-      if (
-        !normalized.question ||
-        !normalized.correctAnswer ||
-        !normalized.explanation
-      ) {
-        return null;
-      }
-
-      return normalized;
-    })
-    .filter(
-      (question): question is z.infer<typeof generatedQuestionSchema> =>
-        question !== null,
-    );
-}
 
 export async function extractTextFromPDF(
   uploadthingKey: string,
@@ -474,8 +433,8 @@ Requirements:
 Notes:
 ${excerpt}`;
 
-  const { object } = await generateObject({
-    model: aiModel,
+  const { object } = await generate({
+    task: "summarize",
     schema,
     prompt,
   });
@@ -534,17 +493,13 @@ export async function generateQuizFromNote(
   });
 
   try {
-    console.log("[AI] Calling OpenAI with model: gpt-5.5");
-
-    const { object } = await generateObject({
-      model: aiModel,
+    const { object } = await generate({
+      task: "quiz_gen",
       schema,
       prompt,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
-
-    console.log(`[AI] OpenAI returned ${questions.length} questions`);
     if (questions.length > 0) {
       console.log(
         `[AI] First question:`,
@@ -636,18 +591,13 @@ Rules:
   });
 
   try {
-    console.log("[AI] Calling OpenAI with model: gpt-5.5 for weak areas quiz");
-    const { object } = await generateObject({
-      model: aiModel,
+    const { object } = await generate({
+      task: "quiz_gen",
       schema,
       prompt,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
-
-    console.log(
-      `[AI] OpenAI returned ${questions.length} questions for weak areas`,
-    );
     console.log(
       `[AI] Sample:`,
       JSON.stringify(questions[0], null, 2).slice(0, 500),
@@ -736,15 +686,13 @@ export async function generateQuizFromTopic(
   });
 
   try {
-    console.log("[AI] Calling OpenAI for default quiz with model: gpt-5.5");
-    const { object } = await generateObject({
-      model: aiModel,
+    const { object } = await generate({
+      task: "quiz_gen",
       schema,
       prompt,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
-    console.log(`[AI] Default quiz returned ${questions.length} questions`);
 
     return questions;
   } catch (error) {
@@ -769,8 +717,8 @@ export async function gradeOpenAnswer(
   2. Feedback on the answer
   3. Key points the user missed`;
 
-  const { text } = await generateText({
-    model: aiModel,
+  const { text } = await generateTextWithFallback({
+    task: "grading",
     prompt,
   });
 
@@ -795,8 +743,8 @@ Provide a brief explanation (2-3 sentences) explaining:
 2. Why the correct answer is right
 3. A tip to remember this concept`;
 
-  const { text } = await generateText({
-    model: aiModel,
+  const { text } = await generateTextWithFallback({
+    task: "reasoning",
     prompt,
   });
 
@@ -828,8 +776,8 @@ export async function generateExamQuestions(
   });
 
   try {
-    const { object } = await generateObject({
-      model: aiModel,
+    const { object } = await generate({
+      task: "exam_gen",
       schema,
       prompt,
     });
@@ -862,12 +810,10 @@ export async function createChatStream(
   - Stay focused on educational topics
   - If asked about non-educational topics, politely redirect`;
 
-  const result = await streamText({
-    model: aiModel,
-    messages: [
-      { role: "system", content: systemPrompt },
-      ...messages.slice(-10),
-    ],
+  const result = await streamChat({
+    task: "fast_chat",
+    system: systemPrompt,
+    messages: [...messages.slice(-10)],
   });
 
   return result.textStream;

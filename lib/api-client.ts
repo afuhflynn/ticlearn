@@ -237,6 +237,15 @@ export const api = {
           `/chat/conversations/${id}`,
           { method: "GET" },
         ),
+      getMessages: (id: string, cursor?: string | null, limit = 30) =>
+        apiRequest<{
+          conversation: { id: string; title: string; createdAt: string; updatedAt: string; summary: string | null };
+          messages: ChatMessage[];
+          nextCursor: string | null;
+        }>(
+          `/chat/conversations/${id}?limit=${limit}${cursor ? `&cursor=${cursor}` : ""}`,
+          { method: "GET" },
+        ),
     },
 
     subscription: () =>

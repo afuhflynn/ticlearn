@@ -1,12 +1,10 @@
 import { prisma } from "./prisma";
-import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 
 import { extractMcqFromPlainText } from "./mcq-parse";
 import { shuffleArrayCopy } from "./shuffle";
-
-const aiModel = openai("gpt-5.4");
+import { generate } from "@/lib/ai/orchestrator";
 
 type SectionConfig = {
   id: string;
@@ -353,8 +351,8 @@ async function generateAIQuestions(
     section.marksPerQuestion ?? Math.ceil(section.totalMarks / Math.max(count, 1));
 
   if (section.questionType === "MCQ") {
-    const result = await generateObject({
-      model: aiModel,
+    const result = await generate({
+      task: "exam_gen",
       schema: z.object({
         questions: z.array(
           z.object({
@@ -403,8 +401,8 @@ Options must not give away the answer; avoid "all of the above". Use syllabus-ap
     });
   }
 
-  const result = await generateObject({
-    model: aiModel,
+  const result = await generate({
+    task: "exam_gen",
     schema: z.object({
       questions: z.array(
         z.object({

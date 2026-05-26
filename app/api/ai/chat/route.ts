@@ -1,4 +1,3 @@
-import { openai } from "@ai-sdk/openai";
 import {
   convertToModelMessages,
   generateObject,
@@ -11,6 +10,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
+import { getTaskConfig } from "@/lib/ai/registry";
+import { geminiFlash } from "@/lib/ai/instances";
 import { trackEvent, EVENTS } from "@/lib/kpi";
 import {
   extractTextFromParts,
@@ -33,7 +34,8 @@ import {
 
 export const runtime = "nodejs";
 
-const model = openai("gpt-5.5");
+const chatConfig = getTaskConfig("reasoning");
+const model = chatConfig.chain[0];
 
 async function generateTitle(userMessage: string): Promise<string> {
   const result = await generateText({
@@ -86,7 +88,7 @@ async function processImageQuestion(
 
     // Step 1: Extract question text from image
     const extraction = await generateObject({
-      model: model,
+      model: geminiFlash,
       schema: z.object({
         questionText: z.string(),
         isQuestion: z.boolean(),
@@ -119,7 +121,7 @@ async function processImageQuestion(
     const topicNames = allTopics.map((t) => t.name);
 
     const classification = await generateObject({
-      model: model,
+      model: geminiFlash,
       schema: z.object({
         topicIdx: z.number().optional(),
         isClassified: z.boolean(),
@@ -256,15 +258,15 @@ export async function POST(req: Request) {
     const tutorCreditsGate =
       enforcement.aiTutor && tutorCost > 0 && !isPaid;
 
-    // Define limits per plan
-    const limits: Record<string, number> = {
+    // Define daily message limits per plan
+    const dailyLimits: Record<string, number> = {
       FREE: 8,
       STARTER: -1,
       STANDARD: -1,
       PREMIUM: -1,
     };
 
-    const chatLimit = limits[plan] || 8;
+    const chatLimit = dailyLimits[plan] || 8;
 
     const { nextResetAt, windowStart } = getChatResetWindow();
     const chatsToday = await prisma.chatMessage.count({
@@ -302,8 +304,47 @@ export async function POST(req: Request) {
       }
     }
 
+    // Conversation length limit per plan
+    const conversationLimits: Record<string, number> = {
+      FREE: 50,
+      STARTER: 100,
+      STANDARD: 200,
+      PREMIUM: 500,
+    };
+    const maxMessagesPerConversation = conversationLimits[plan] ?? 50;
+    if (
+      conversation._count.messages >= maxMessagesPerConversation
+    ) {
+      return NextResponse.json(
+        {
+          error: `This conversation has reached the ${maxMessagesPerConversation}-message limit. Please start a new conversation to continue.`,
+        },
+        { status: 403 },
+      );
+    }
+
     const normalizedUserParts = normalizeStoredParts(latestUserMessage.parts);
     const userContent = extractTextFromParts(normalizedUserParts);
+
+    // Log potential duplicates (non-blocking)
+    try {
+      const recentUserMessages = await prisma.chatMessage.findMany({
+        where: { conversationId, role: "user" },
+        orderBy: { createdAt: "desc" },
+        take: 2,
+        select: { content: true },
+      });
+      const isDuplicate = recentUserMessages.some((msg) => {
+        const existing = msg.content.trim().toLowerCase();
+        const input = userContent.trim().toLowerCase();
+        return existing === input || (input.length >= 10 && existing.includes(input));
+      });
+      if (isDuplicate) {
+        console.warn(`[CHAT] Possible duplicate message in conversation ${conversationId}`);
+      }
+    } catch {
+      // Non-critical; don't block the user
+    }
 
     const userMsgRecord = await saveMessage(
       conversationId,
