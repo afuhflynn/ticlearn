@@ -11,20 +11,16 @@ export const nim = createOpenAICompatible({
   },
 });
 
-export const nimDeepSeek = nim.chatModel("deepseek-ai/deepseek-v4-pro");
-export const nimMistral = nim.chatModel("mistralai/mistral-nemotron");
+export const nimDeepSeek = nim.chatModel("deepseek-ai/deepseek-v4-flash");
 export const nimNemotron = nim.chatModel("nvidia/llama-3.3-nemotron-super-49b-v1");
+export const nimMistral = nim.chatModel("mistralai/mistral-nemotron");
 
-// === Google Gemini — free tier, primarily for structured output ===
-// Free until ~October 2026 (1,500 RPD for Flash, 100 RPD for Pro)
+// === Google Gemini 3+ — free tier, flash for speed, pro for deep reasoning ===
 export const google = createGoogleGenerativeAI({
   apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY,
 });
 
-export const geminiFlash = google("gemini-2.5-flash");
-export const geminiFlashLite = google("gemini-2.5-flash-lite");
-export const geminiPro = google("gemini-2.5-pro");
+export const geminiFlash = google("gemini-3.5-flash");
 
-// === OpenAI — emergency fallback only ===
-// Kept for backward compatibility; orchestrator uses this as last resort
+// === OpenAI — quota-exhausted (429), fail fast ===
 export { openai } from "@ai-sdk/openai";

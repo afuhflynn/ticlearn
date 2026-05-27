@@ -119,6 +119,7 @@ export async function streamChat(opts: StreamChatOptions) {
         messages: opts.messages as never,
         tools: opts.tools as never,
         onFinish: opts.onFinish as never,
+        maxRetries: 0,
       });
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
@@ -148,6 +149,7 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
         prompt: opts.prompt,
         messages: opts.messages as never,
         system: opts.system,
+        maxRetries: 0,
         ...opts.modelOptions,
       });
     } catch (error) {
