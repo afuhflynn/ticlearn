@@ -253,7 +253,8 @@ export default function SubscriptionPage() {
             toast.success("Credits added", {
               description: `Balance: ${Number(data.balance ?? 0).toLocaleString()} credits.`,
             });
-            if (typeof data.balance === "number") setCreditBalance(data.balance);
+            if (typeof data.balance === "number")
+              setCreditBalance(data.balance);
           } else if (
             res.ok &&
             data.result?.ok &&
@@ -262,14 +263,23 @@ export default function SubscriptionPage() {
             toast.success("You're all set", {
               description: `Balance: ${Number(data.balance ?? 0).toLocaleString()} credits.`,
             });
-            if (typeof data.balance === "number") setCreditBalance(data.balance);
-          } else if (res.ok && data.softPending === true && data.result?.reason === "order_still_pending") {
+            if (typeof data.balance === "number")
+              setCreditBalance(data.balance);
+          } else if (
+            res.ok &&
+            data.softPending === true &&
+            data.result?.reason === "order_still_pending"
+          ) {
             toast.message("Almost there…", {
               description:
                 "Payment succeeded—finalizing credits. Refresh in a few seconds if the balance looks unchanged.",
             });
             await refreshBalance();
-          } else if (res.ok && redirectStatus === "SUCCESSFUL" && !data.result?.ok) {
+          } else if (
+            res.ok &&
+            redirectStatus === "SUCCESSFUL" &&
+            !data.result?.ok
+          ) {
             toast.message("Confirming payment…", {
               description:
                 "Gateway responded but fulfillment is still pending—refresh in a moment or contact support if credits don't appear.",
@@ -306,9 +316,7 @@ export default function SubscriptionPage() {
 
   const estimatedCredits =
     purchaseConfig && creditAmountXaf > 0
-      ? Math.floor(
-          (creditAmountXaf * purchaseConfig.creditsPer1000Xaf) / 1000,
-        )
+      ? Math.floor((creditAmountXaf * purchaseConfig.creditsPer1000Xaf) / 1000)
       : 0;
 
   const handleBuyCredits = async () => {
@@ -447,7 +455,8 @@ export default function SubscriptionPage() {
             Subscription & Usage
           </h1>
           <p className="text-muted-foreground">
-            Manage your plan and credits, track usage, and upgrade for more features
+            Manage your plan and credits, track usage, and upgrade for more
+            features
           </p>
         </div>
         <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
@@ -532,15 +541,18 @@ export default function SubscriptionPage() {
         </Dialog>
       </div>
 
-      <Card id="credits-top-up" className="border-primary/20 bg-primary/5 scroll-mt-24">
+      <Card
+        id="credits-top-up"
+        className="border-primary/20 bg-primary/5 scroll-mt-24"
+      >
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <Coins className="h-5 w-5 text-primary" />
             Pay-as-you-go credits
           </CardTitle>
           <CardDescription>
-            Buy credits with MTN or Orange Money (Fapshi). Credits are used for mocks,
-            practice, and other features when your school enables enforcement.
+            Buy credits with MTN or Orange Money (Fapshi). Credits are used for
+            mocks, practice, and other features.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -587,9 +599,7 @@ export default function SubscriptionPage() {
                 className="w-full"
                 onClick={handleBuyCredits}
                 disabled={
-                  isPurchasingCredits ||
-                  !purchaseConfig ||
-                  estimatedCredits < 1
+                  isPurchasingCredits || !purchaseConfig || estimatedCredits < 1
                 }
               >
                 {isPurchasingCredits ? (
@@ -603,7 +613,7 @@ export default function SubscriptionPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="manual" className="w-full">
+      <Tabs defaultValue="auto" className="w-full">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="auto" className="gap-2">
             <CreditCard className="h-4 w-4" />
