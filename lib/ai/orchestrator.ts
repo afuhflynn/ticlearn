@@ -111,30 +111,43 @@ export async function streamChat(opts: StreamChatOptions) {
   const chain = config.chain;
   const modelErrors: Array<{ model: string; error: string }> = [];
 
+  // Health-check models first: streamText doesn't throw synchronously for API errors
+  let workingModel: LanguageModel | null = null;
   for (const model of chain) {
     try {
-      return streamText({
+      await generateText({
         model,
-        system: opts.system,
-        messages: opts.messages as never,
-        tools: opts.tools as never,
-        onFinish: opts.onFinish as never,
+        prompt: ".",
+        maxOutputTokens: 1,
         maxRetries: 0,
       });
+      workingModel = model;
+      break;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       modelErrors.push({ model: modelName(model), error: msg });
       console.warn(
-        `[Orchestrator] Model ${modelName(model)} failed streaming for task "${opts.task}": ${msg}. Trying next...`,
+        `[Orchestrator] Model ${modelName(model)} failed health check for streaming task "${opts.task}": ${msg}. Trying next...`,
       );
     }
   }
 
-  throw new OrchestratorError(
-    `All ${chain.length} models failed streaming for task "${opts.task}".`,
-    opts.task,
-    modelErrors,
-  );
+  if (!workingModel) {
+    throw new OrchestratorError(
+      `All ${chain.length} models failed streaming for task "${opts.task}".`,
+      opts.task,
+      modelErrors,
+    );
+  }
+
+  return streamText({
+    model: workingModel,
+    system: opts.system,
+    messages: opts.messages as never,
+    tools: opts.tools as never,
+    onFinish: opts.onFinish as never,
+    maxRetries: 0,
+  });
 }
 
 export async function generateTextWithFallback(opts: TextGenOptions) {

@@ -51,6 +51,7 @@ async function generateTitle(userMessage: string): Promise<string> {
     try {
       const result = await generateText({
         model: m,
+        maxRetries: 0,
         prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
 The title should be concise and capture the main topic.
 Do not use quotes or special characters in the title.
@@ -503,18 +504,45 @@ Guidelines:
 
     const tools = createChatTools({ userId: session.user.id });
 
-    let lastError: unknown;
+    // Health-check models first: streamText doesn't throw synchronously for API errors (e.g. 429 quota).
+    // A 429 from OpenAI would be lost to the response stream, never caught by try/catch.
+    let workingModel: LanguageModel | null = null;
+    const healthErrors: string[] = [];
     for (const m of chatConfig.chain) {
       try {
-        const result = streamText({
+        await generateText({
           model: m,
-          system: systemPrompt,
-          tools,
-          messages: modelMessages,
-          stopWhen: stepCountIs(5),
+          prompt: ".",
+          maxOutputTokens: 1,
+          maxRetries: 0,
         });
+        workingModel = m;
+        break;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        healthErrors.push(`${modelName(m)}: ${msg}`);
+        console.warn(`[Chat] Health check failed for ${modelName(m)}: ${msg}`);
+      }
+    }
 
-        return result.toUIMessageStreamResponse({
+    if (!workingModel) {
+      console.error("[Chat] All models failed health check:", healthErrors.join("; "));
+      return NextResponse.json(
+        { error: "No AI models available. Please try again later." },
+        { status: 503 },
+      );
+    }
+
+    const result = streamText({
+      model: workingModel,
+      system: systemPrompt,
+      tools,
+      messages: modelMessages,
+      stopWhen: stepCountIs(5),
+      maxRetries: 0,
+    });
+
+    return result.toUIMessageStreamResponse({
       onFinish: async ({ isAborted, responseMessage }) => {
         if (isAborted) {
           return;
@@ -549,21 +577,6 @@ Guidelines:
       sendReasoning: true,
       sendSources: true,
     });
-      } catch (e) {
-        lastError = e;
-        console.warn(`[Chat] Model ${modelName(m)} failed:`, e);
-      }
-    }
-
-    if (lastError) {
-      console.error("[Chat] All models in chain failed:", lastError);
-      throw lastError;
-    }
-
-    return NextResponse.json(
-      { error: "No models available to generate response" },
-      { status: 503 },
-    );
   } catch (error) {
     console.error("Chat API error:", error);
     return NextResponse.json(
