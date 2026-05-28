@@ -2,6 +2,15 @@ import { tavily } from "@tavily/core";
 import { tool } from "ai";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import {
+  getPlatformSettings,
+  quizCreditsRequired,
+} from "@/lib/platform-settings";
+import {
+  getEffectiveCreditCost,
+  getUserCreditBalance,
+  spendCredits,
+} from "@/lib/credits";
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
@@ -468,6 +477,46 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
           throw new Error("timeLimit is required when timed is true.");
         }
 
+        // Plan limit + credit checks
+        const subscription = await prisma.subscription.findFirst({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+        });
+        const plan = subscription?.status === "ACTIVE" ? subscription.plan : "FREE";
+
+        const quizLimits: Record<string, number> = {
+          FREE: 4,
+          STARTER: 20,
+          STANDARD: 60,
+          PREMIUM: -1,
+          PRO: -1,
+        };
+        const quizLimit = quizLimits[plan] ?? quizLimits.FREE;
+        const quizCount = await prisma.quiz.count({ where: { userId } });
+        if (quizLimit !== -1 && quizCount >= quizLimit) {
+          throw new Error(
+            `Quiz generation limit reached (${quizLimit}). Upgrade your plan to generate more quizzes.`,
+          );
+        }
+
+        const settings = await getPlatformSettings();
+        const wantsDebit = quizCreditsRequired(settings);
+        const planValue = plan === "FREE" ? null : plan;
+        const quizCost = getEffectiveCreditCost(
+          settings.creditCostQuizGeneration,
+          planValue,
+          settings,
+        );
+
+        if (wantsDebit) {
+          const balance = await getUserCreditBalance(userId);
+          if (balance < quizCost) {
+            throw new Error(
+              `Insufficient credits. Need ${quizCost} credits to generate a quiz.`,
+            );
+          }
+        }
+
         const quiz = await prisma.$transaction(async (tx) => {
           const created = await tx.quiz.create({
             data: {
@@ -497,6 +546,20 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
 
           return created;
         });
+
+        if (wantsDebit) {
+          try {
+            await spendCredits({
+              userId,
+              amount: quizCost,
+              type: "QUIZ_GENERATION",
+              description: `Quiz from AI tool: ${title}`,
+              referenceId: quiz.id,
+            });
+          } catch (err) {
+            console.error("[createQuiz] Credit debit failed:", err);
+          }
+        }
 
         return {
           quizId: quiz.id,

@@ -160,6 +160,7 @@ export function useCanAccess(
     canAccessGCE,
     isPaid,
     isPending,
+    canUpload,
     canGenerateQuiz,
     canUseAIChat,
     canTakePaper3Exam,
@@ -185,7 +186,7 @@ export function useCanAccess(
     case "quiz":
       return canGenerateQuiz || isPending;
     case "upload":
-      return true;
+      return canUpload || isPending;
     case "paper3":
       return canTakePaper3Exam || isPending;
     case "paper3Retake":

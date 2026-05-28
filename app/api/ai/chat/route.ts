@@ -28,10 +28,7 @@ import {
   creditEnforcementEffective,
   getPlatformSettings,
 } from "@/lib/platform-settings";
-import {
-  getUserCreditBalance,
-  spendCredits,
-} from "@/lib/credits";
+import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 
 export const runtime = "nodejs";
 
@@ -68,14 +65,22 @@ Respond with only the title, nothing else.`,
       console.warn(`[Chat] Title gen failed for ${modelName(m)}: ${msg}`);
     }
   }
-  console.error("[Chat] All models failed for title generation:", errors.join("; "));
+  console.error(
+    "[Chat] All models failed for title generation:",
+    errors.join("; "),
+  );
   return "New Chat";
 }
 
 function messageHasImage(parts: UIMessage["parts"]): string | null {
   for (const part of parts) {
     if (part.type === "file") {
-      const filePart = part as { mediaType?: string; mimeType?: string; url?: string; data?: string };
+      const filePart = part as {
+        mediaType?: string;
+        mimeType?: string;
+        url?: string;
+        data?: string;
+      };
       const contentType = filePart.mediaType || filePart.mimeType || "";
       if (contentType.startsWith("image/")) {
         return filePart.data || filePart.url || null;
@@ -275,8 +280,6 @@ export async function POST(req: Request) {
     const settings = await getPlatformSettings();
     const enforcement = creditEnforcementEffective(settings);
     const tutorCost = settings.creditCostAiTutorMessage;
-    const tutorCreditsGate =
-      enforcement.aiTutor && tutorCost > 0 && !isPaid;
 
     // Define daily message limits per plan
     const dailyLimits: Record<string, number> = {
@@ -302,19 +305,7 @@ export async function POST(req: Request) {
     });
 
     if (!isPaid) {
-      if (tutorCreditsGate) {
-        const balance = await getUserCreditBalance(userId);
-        if (balance < tutorCost) {
-          return NextResponse.json(
-            {
-              error: `Insufficient credits. Need ${tutorCost} credits per tutor message.`,
-              balance,
-              requiredCredits: tutorCost,
-            },
-            { status: 402 },
-          );
-        }
-      } else if (chatLimit !== -1 && chatsToday >= chatLimit) {
+      if (chatLimit !== -1 && chatsToday >= chatLimit) {
         return NextResponse.json(
           {
             error:
@@ -333,9 +324,7 @@ export async function POST(req: Request) {
       PREMIUM: 500,
     };
     const maxMessagesPerConversation = conversationLimits[plan] ?? 50;
-    if (
-      conversation._count.messages >= maxMessagesPerConversation
-    ) {
+    if (conversation._count.messages >= maxMessagesPerConversation) {
       return NextResponse.json(
         {
           error: `This conversation has reached the ${maxMessagesPerConversation}-message limit. Please start a new conversation to continue.`,
@@ -358,10 +347,14 @@ export async function POST(req: Request) {
       const isDuplicate = recentUserMessages.some((msg) => {
         const existing = msg.content.trim().toLowerCase();
         const input = userContent.trim().toLowerCase();
-        return existing === input || (input.length >= 10 && existing.includes(input));
+        return (
+          existing === input || (input.length >= 10 && existing.includes(input))
+        );
       });
       if (isDuplicate) {
-        console.warn(`[CHAT] Possible duplicate message in conversation ${conversationId}`);
+        console.warn(
+          `[CHAT] Possible duplicate message in conversation ${conversationId}`,
+        );
       }
     } catch {
       // Non-critical; don't block the user
@@ -469,7 +462,7 @@ Use this profile to personalize study recommendations, focus on weakest topics, 
 
 Your expertise:
 - Computer Science and ICT (GCE A-Level syllabus)
-- Biology, Chemistry, Physics, Mathematics
+- Biology, Chemistry, Physics, Mathematics, Maths Statistics, History, Geography, Literature in English, French, and General Paper (GCE A-Level, O-Level, HND syllabi)
 - General academic tutoring and exam preparation
 
 TOOLS YOU CAN USE:
@@ -499,6 +492,8 @@ Guidelines:
 - Stay focused on educational topics
 - If asked about non-educational topics, politely redirect
 - Keep responses concise but informative
+
+NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent links e.g in say links to quizzes, notes and others.
 `;
 
     const modelMessages = await convertToModelMessages(messages);
@@ -527,7 +522,10 @@ Guidelines:
     }
 
     if (!workingModel) {
-      console.error("[Chat] All models failed health check:", healthErrors.join("; "));
+      console.error(
+        "[Chat] All models failed health check:",
+        healthErrors.join("; "),
+      );
       return NextResponse.json(
         { error: "No AI models available. Please try again later." },
         { status: 503 },
@@ -560,15 +558,18 @@ Guidelines:
           assistantParts,
         );
 
-        if (tutorCreditsGate) {
+        if (enforcement.aiTutor && tutorCost > 0) {
           try {
-            await spendCredits({
-              userId,
-              amount: tutorCost,
-              type: "AI_TUTOR_MESSAGE",
-              description: "TiC AI tutor message",
-              referenceId: userMsgRecord.id,
-            });
+            const balance = await getUserCreditBalance(userId);
+            if (balance >= tutorCost) {
+              await spendCredits({
+                userId,
+                amount: tutorCost,
+                type: "AI_TUTOR_MESSAGE",
+                description: "TiC AI tutor message",
+                referenceId: userMsgRecord.id,
+              });
+            }
           } catch (err) {
             console.error("[CHAT] Tutor credit debit failed:", err);
           }

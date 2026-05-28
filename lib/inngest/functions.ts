@@ -6,6 +6,7 @@ import {
 } from "@/lib/ai";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
+import { grantCredits } from "@/lib/credits";
 
 export const processNote = inngest.createFunction(
   {
@@ -332,6 +333,20 @@ export const generateQuizFromWeakAreas = inngest.createFunction(
         where: { id: quizId },
         data: { status: "ERROR" },
       });
+
+      const quizCost = event.data.quizCost ?? 0;
+      if (quizCost > 0) {
+        try {
+          await grantCredits({
+            userId,
+            amount: quizCost,
+            type: "BONUS",
+            description: `Refund: quiz from weak areas generation failed (${quizId})`,
+          });
+        } catch (refundErr) {
+          console.error("[Inngest] Failed to refund credits:", refundErr);
+        }
+      }
 
       return { success: false, error: "Quiz generation failed" };
     }

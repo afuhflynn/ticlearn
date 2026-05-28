@@ -8,7 +8,7 @@ import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
-import { getEffectiveCreditCost, spendCredits } from "@/lib/credits";
+import { getEffectiveCreditCost, spendCredits, grantCredits } from "@/lib/credits";
 
 const generateFromWeakAreasSchema = z.object({
   questionCount: z.number().int().min(5).max(50).optional(),
@@ -44,6 +44,29 @@ export async function POST(req: Request) {
       where: { userId: session.user.id },
       orderBy: { createdAt: "desc" },
     });
+    const plan = subscription?.status === "ACTIVE" ? subscription.plan : "FREE";
+
+    // Plan limit check
+    const quizLimits: Record<string, number> = {
+      FREE: 4,
+      STARTER: 20,
+      STANDARD: 60,
+      PREMIUM: -1,
+      PRO: -1,
+    };
+    const quizLimit = quizLimits[plan] ?? quizLimits.FREE;
+    const quizCount = await prisma.quiz.count({
+      where: { userId: session.user.id },
+    });
+    if (quizLimit !== -1 && quizCount >= quizLimit) {
+      return NextResponse.json(
+        {
+          error: `Quiz generation limit reached (${quizLimit}). Upgrade your plan to generate more quizzes.`,
+        },
+        { status: 403 },
+      );
+    }
+
     const wantsDebit = quizCreditsRequired(settings);
     const quizCost = getEffectiveCreditCost(
       settings.creditCostQuizGeneration,
@@ -136,10 +159,24 @@ export async function POST(req: Request) {
           })),
           questionCount,
           readinessScore,
+          quizCost: wantsDebit ? quizCost : 0,
         },
       });
     } catch (inngestError) {
       console.error("Failed to send Inngest event:", inngestError);
+      // Refund credits if Inngest job failed to dispatch
+      if (wantsDebit) {
+        try {
+          await grantCredits({
+            userId: session.user.id,
+            amount: quizCost,
+            type: "BONUS",
+            description: "Refund: quiz generation from weak areas failed to start",
+          });
+        } catch (refundErr) {
+          console.error("Failed to refund credits after Inngest failure:", refundErr);
+        }
+      }
     }
 
     return NextResponse.json({

@@ -97,22 +97,6 @@ export async function POST(req: Request) {
     const settings = await getPlatformSettings();
     const enforcement = creditEnforcementEffective(settings);
     const tutorCost = settings.creditCostAiTutorMessage;
-    const tutorCreditsGate =
-      enforcement.aiTutor && tutorCost > 0 && !isPaid;
-
-    if (tutorCreditsGate) {
-      const balance = await getUserCreditBalance(session.user.id);
-      if (balance < tutorCost) {
-        return NextResponse.json(
-          {
-            error: `Insufficient credits. Need ${tutorCost} credits per Paper 3 tutor message.`,
-            balance,
-            requiredCredits: tutorCost,
-          },
-          { status: 402 },
-        );
-      }
-    }
 
     const lastContent =
       typeof messages[messages.length - 1]?.content === "string"
@@ -192,15 +176,18 @@ Respond as TiC with helpful guidance. Keep responses focused and educational.`;
       prompt,
     });
 
-    if (tutorCreditsGate) {
+    if (enforcement.aiTutor && tutorCost > 0) {
       try {
-        await spendCredits({
-          userId: session.user.id,
-          amount: tutorCost,
-          type: "AI_TUTOR_MESSAGE",
-          description: `Paper 3 mock tutor (${attempt.mock.title})`,
-          referenceId,
-        });
+        const balance = await getUserCreditBalance(session.user.id);
+        if (balance >= tutorCost) {
+          await spendCredits({
+            userId: session.user.id,
+            amount: tutorCost,
+            type: "AI_TUTOR_MESSAGE",
+            description: `Paper 3 mock tutor (${attempt.mock.title})`,
+            referenceId,
+          });
+        }
       } catch (err) {
         console.error("[Paper3 chat] Tutor credit debit failed:", err);
       }
