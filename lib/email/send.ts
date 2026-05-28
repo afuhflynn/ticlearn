@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { prisma } from "@/lib/prisma";
 
 function escapeHtml(str: string): string {
   return String(str)
@@ -948,4 +949,62 @@ export async function sendEngagementEmail(
 ) {
   const { subject, html } = buildEngagementEmail(campaign, user);
   return sendEmail({ to, subject, html });
+}
+
+export async function hydrateEngagementData(
+  userId: string,
+): Promise<EngagementUserData | null> {
+  const [user, userStats, paper3Stats, activeProfile] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, name: true, email: true },
+    }),
+    prisma.userStats.findFirst({
+      where: { userId },
+      select: { currentStreak: true, lastActivityDate: true, quizzesTaken: true },
+    }),
+    prisma.paper3UserStats.findFirst({
+      where: { userId },
+      select: { weakConcepts: true, readinessScore: true, strongConcepts: true },
+    }),
+    prisma.examProfile.findFirst({
+      where: { userId, onboardingCompleted: true },
+      select: { examDate: true, onboardingCompleted: true },
+    }),
+  ]);
+
+  if (!user) return null;
+
+  const subscription = await prisma.subscription.findFirst({
+    where: { userId, status: "ACTIVE" },
+    orderBy: { createdAt: "desc" },
+    select: { plan: true },
+  });
+
+  const daysSinceActive = userStats?.lastActivityDate
+    ? Math.floor(
+        (Date.now() - userStats.lastActivityDate.getTime()) / (1000 * 60 * 60 * 24),
+      )
+    : null;
+
+  const daysUntilExam = activeProfile?.examDate
+    ? Math.ceil(
+        (activeProfile.examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+      )
+    : null;
+
+  return {
+    name: user.name,
+    email: user.email,
+    streak: userStats?.currentStreak ?? 0,
+    daysSinceActive,
+    readiness: paper3Stats ? Math.round(paper3Stats.readinessScore) : null,
+    weakestTopic: paper3Stats?.weakConcepts?.[0] ?? null,
+    weakestTopicScore: null,
+    strongestTopic: paper3Stats?.strongConcepts?.[0] ?? null,
+    daysUntilExam,
+    plan: subscription?.plan ?? "FREE",
+    quizzesTaken: userStats?.quizzesTaken ?? 0,
+    profileSetUp: activeProfile?.onboardingCompleted ?? false,
+  };
 }

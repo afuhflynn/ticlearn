@@ -69,6 +69,7 @@ model User {
   referralBonuses        ReferralBonus[]         @relation("ReferrerCredits")
   revisionGuides         RevisionGuide[]         @relation("RevisionGuideAuthor")
   kpiEvents              KpiEvent[]
+  engagementLogs         EngagementLog[]
 
   @@map("users")
 }
@@ -1508,4 +1509,17 @@ model ReferralBonus {
   @@index([referrerId])
   @@index([refereeId])
   @@map("referral_bonuses")
+}
+
+model EngagementLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  campaign  String   @map("campaign")
+  sentAt    DateTime @default(now()) @map("sent_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, campaign])
+  @@index([campaign])
+  @@map("engagement_log")
 }

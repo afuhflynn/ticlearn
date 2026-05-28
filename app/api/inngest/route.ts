@@ -15,6 +15,7 @@ import {
   generateDefaultQuiz,
   sendPlatformUpdateEmail,
   handleSubscriptionAction,
+  monthlyCreditBonus,
 } from "@/lib/inngest/functions";
 import {
   processPaper3Source,
@@ -25,6 +26,7 @@ import {
 } from "@/lib/inngest";
 import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
 import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
+import { dispatchEngagementCampaigns } from "@/lib/inngest/engagement-functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -43,6 +45,7 @@ export const { GET, POST, PUT } = serve({
     generateDefaultQuiz,
     sendPlatformUpdateEmail,
     handleSubscriptionAction,
+    monthlyCreditBonus,
     processPaper3Source,
     generatePaper3Mock,
     evaluatePaper3Exam,
@@ -50,5 +53,6 @@ export const { GET, POST, PUT } = serve({
     harvestPaper3Knowledge,
     ingestQuestions,
     computeDailyMetricsJob,
+    dispatchEngagementCampaigns,
   ],
 });
