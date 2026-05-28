@@ -11,6 +11,7 @@ import { ourFileRouter } from "./api/uploadthing/core";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Suspense } from "react";
 import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
+import { ReferralProcessor } from "@/components/referral-processor";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -116,6 +117,7 @@ export default function RootLayout({
                 {children}
                 <Toaster position="top-right" richColors />
                 <Analytics />
+                <ReferralProcessor />
               </QueryProvider>
             </Suspense>
           </ThemeProvider>

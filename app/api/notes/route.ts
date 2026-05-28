@@ -88,6 +88,7 @@ export async function POST(req: Request) {
       STARTER: 10,
       STANDARD: 30,
       PREMIUM: -1,
+      PRO: -1,
     };
 
     const uploadLimit = limits[plan] || 2;

@@ -24,7 +24,7 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!["STARTER", "STANDARD", "PREMIUM"].includes(plan)) {
+    if (!["STARTER", "STANDARD", "PREMIUM", "PRO"].includes(plan)) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
@@ -39,6 +39,7 @@ export async function POST(req: Request) {
       STARTER: 3000,
       STANDARD: 5000,
       PREMIUM: 10000,
+      PRO: 3500,
     };
 
     const user = await prisma.user.findUnique({

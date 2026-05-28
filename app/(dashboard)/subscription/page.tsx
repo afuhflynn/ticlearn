@@ -51,17 +51,32 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const MONTHLY_CREDIT_BONUS: Record<string, number> = {
+  STARTER: 400,
+  STANDARD: 1_200,
+  PREMIUM: 3_000,
+};
+
+const CREDIT_DISCOUNT: Record<string, string> = {
+  STARTER: "20% off",
+  STANDARD: "40% off",
+  PREMIUM: "60% off",
+};
+
 const PLAN_FEATURES = {
   FREE: [
     "2 PDF Uploads",
     "4 Quiz Generations",
     "8 AI Tutor Messages / day",
+    "Pay-per-use credits",
     "Standard Support",
   ],
   STARTER: [
     "10 PDF Uploads",
     "20 Quiz Generations",
-    "Unlimited AI Tutor Messages",
+    "50 AI Tutor Messages / day",
+    "+400 free credits / month",
+    "20% discount on all credit costs",
     "Community Access",
     "Leaderboard Participation",
     "GCE Exam Preparation",
@@ -70,6 +85,8 @@ const PLAN_FEATURES = {
     "30 PDF Uploads",
     "60 Quiz Generations",
     "Unlimited AI Tutor Messages",
+    "+1,200 free credits / month",
+    "40% discount on all credit costs",
     "Everything in Starter",
     "Priority Support",
   ],
@@ -77,10 +94,18 @@ const PLAN_FEATURES = {
     "Unlimited PDF Uploads",
     "Unlimited Quiz Generations",
     "Unlimited AI Tutor Messages",
+    "+3,000 free credits / month",
+    "60% discount on all credit costs",
     "Everything in Standard",
     "Early Access to Features",
   ],
 };
+
+const CREDIT_COST_EXAMPLES = [
+  { action: "Quiz generation", baseCost: 50, icon: "ListTodo" },
+  { action: "Mock exam build", baseCost: 40, icon: "FileText" },
+  { action: "AI tutor message", baseCost: 5, icon: "MessageSquare" },
+];
 
 const PLAN_PRICES = {
   STARTER: 3000,
@@ -478,65 +503,90 @@ export default function SubscriptionPage() {
                 Choose the perfect plan to accelerate your learning journey
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-6 md:grid-cols-3 py-6">
-              {Object.entries(PLAN_PRICES).map(([p, price]) => (
-                <Card
-                  key={p}
-                  className={
-                    plan === p ? "border-primary ring-1 ring-primary" : ""
-                  }
-                >
-                  <CardHeader>
-                    <CardTitle className="flex items-center justify-between">
-                      {p}
-                      {plan === p && <Badge>Current</Badge>}
-                    </CardTitle>
-                    <div className="mt-2">
-                      <span className="text-3xl font-bold">
-                        {price.toLocaleString()} XAF
-                      </span>
-                      <span className="text-muted-foreground">/month</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ul className="space-y-2 text-sm">
-                      {PLAN_FEATURES[p as keyof typeof PLAN_FEATURES].map(
-                        (feature) => (
-                          <li key={feature} className="flex items-start gap-2">
-                            <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                            <span>{feature}</span>
-                          </li>
-                        ),
-                      )}
-                    </ul>
-                  </CardContent>
-                  <CardFooter>
-                    <Button
-                      className="w-full"
-                      variant={
-                        plan === p && status === "ACTIVE"
-                          ? "outline"
-                          : "default"
+              <div className="grid gap-6 md:grid-cols-3 py-6">
+                {Object.entries(PLAN_PRICES).map(([p, price]) => {
+                  const creditBonus = MONTHLY_CREDIT_BONUS[p] ?? 0;
+                  const discount = CREDIT_DISCOUNT[p] ?? "";
+                  return (
+                    <Card
+                      key={p}
+                      className={
+                        plan === p ? "border-primary ring-1 ring-primary" : ""
                       }
-                      disabled={
-                        (plan === p && status === "ACTIVE") || isProcessing
-                      }
-                      onClick={() => handleUpgrade(p)}
                     >
-                      {isProcessing ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : plan === p && status === "ACTIVE" ? (
-                        "Current Plan"
-                      ) : isPending && plan === p ? (
-                        <>Payment Pending</>
-                      ) : (
-                        "Upgrade Now"
-                      )}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          {p}
+                          {plan === p && <Badge>Current</Badge>}
+                        </CardTitle>
+                        <div className="mt-2">
+                          <span className="text-3xl font-bold">
+                            {price.toLocaleString()} XAF
+                          </span>
+                          <span className="text-muted-foreground">/month</span>
+                        </div>
+                        {p !== "FREE" && (
+                          <div className="mt-2 space-y-1">
+                            <Badge variant="secondary" className="text-xs">
+                              +{creditBonus.toLocaleString()} credits/mo
+                            </Badge>
+                            <Badge variant="outline" className="text-xs ml-1">
+                              {discount}
+                            </Badge>
+                          </div>
+                        )}
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <ul className="space-y-2 text-sm">
+                          {PLAN_FEATURES[p as keyof typeof PLAN_FEATURES].map(
+                            (feature) => (
+                              <li key={feature} className="flex items-start gap-2">
+                                <Check className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                <span>{feature}</span>
+                              </li>
+                            ),
+                          )}
+                        </ul>
+                        {p === "FREE" && status !== "ACTIVE" && (
+                          <div className="rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3 text-xs text-amber-800 dark:text-amber-200">
+                            <p className="font-medium mb-1">What you miss without a plan:</p>
+                            <ul className="space-y-1 list-disc pl-4">
+                              <li>You pay full credit prices (no discount)</li>
+                              <li>No free monthly credits</li>
+                              <li>Limited AI tutor (8/day vs unlimited)</li>
+                              <li>No leaderboard or community access</li>
+                            </ul>
+                          </div>
+                        )}
+                      </CardContent>
+                      <CardFooter>
+                        <Button
+                          className="w-full"
+                          variant={
+                            plan === p && status === "ACTIVE"
+                              ? "outline"
+                              : "default"
+                          }
+                          disabled={
+                            (plan === p && status === "ACTIVE") || isProcessing
+                          }
+                          onClick={() => handleUpgrade(p)}
+                        >
+                          {isProcessing ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : plan === p && status === "ACTIVE" ? (
+                            "Current Plan"
+                          ) : isPending && plan === p ? (
+                            <>Payment Pending</>
+                          ) : (
+                            "Upgrade Now"
+                          )}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
+              </div>
           </DialogContent>
         </Dialog>
       </div>
@@ -610,6 +660,60 @@ export default function SubscriptionPage() {
               </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-primary/10">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Credit cost comparison
+          </CardTitle>
+          <CardDescription>
+            Every action costs credits. Subscribers pay less — the table below
+            shows what each tier pays per action.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-muted-foreground">
+                  <th className="text-left py-2 pr-4 font-medium">Action</th>
+                  <th className="text-right py-2 px-2 font-medium">FREE</th>
+                  <th className="text-right py-2 px-2 font-medium text-blue-600">STARTER <span className="text-xs font-normal">(20% off)</span></th>
+                  <th className="text-right py-2 px-2 font-medium text-green-600">STANDARD <span className="text-xs font-normal">(40% off)</span></th>
+                  <th className="text-right py-2 px-2 font-medium text-purple-600">PREMIUM <span className="text-xs font-normal">(60% off)</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {CREDIT_COST_EXAMPLES.map(({ action, baseCost }) => (
+                  <tr key={action} className="border-b last:border-0">
+                    <td className="py-3 pr-4">{action}</td>
+                    <td className="text-right py-3 px-2 font-mono">{baseCost}</td>
+                    <td className="text-right py-3 px-2 font-mono text-blue-600">
+                      {Math.ceil(baseCost * 0.8)}
+                      <span className="text-xs text-muted-foreground ml-1">save {baseCost - Math.ceil(baseCost * 0.8)}</span>
+                    </td>
+                    <td className="text-right py-3 px-2 font-mono text-green-600">
+                      {Math.ceil(baseCost * 0.6)}
+                      <span className="text-xs text-muted-foreground ml-1">save {baseCost - Math.ceil(baseCost * 0.6)}</span>
+                    </td>
+                    <td className="text-right py-3 px-2 font-mono text-purple-600">
+                      {Math.ceil(baseCost * 0.4)}
+                      <span className="text-xs text-muted-foreground ml-1">save {baseCost - Math.ceil(baseCost * 0.4)}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+            <AlertCircle className="h-3 w-3" />
+            FREE users pay full price. Subscribers pay less AND get free credits
+            each month. Example: a STANDARD subscriber saves 40% on every quiz
+            + gets 1,200 free credits monthly.
+          </p>
         </CardContent>
       </Card>
 

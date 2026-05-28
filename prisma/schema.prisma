@@ -1049,6 +1049,12 @@ model PlatformSettings {
   minCreditPurchaseXaf Int @default(100) @map("min_credit_purchase_xaf")
   maxCreditPurchaseXaf Int @default(500000) @map("max_credit_purchase_xaf")
 
+  /// Tier-based credit cost multipliers (applied on top of base costs).
+  creditCostMultiplierStarter  Float @default(0.8) @map("credit_cost_multiplier_starter")
+  creditCostMultiplierStandard Float @default(0.6) @map("credit_cost_multiplier_standard")
+  creditCostMultiplierPremium  Float @default(0.4) @map("credit_cost_multiplier_premium")
+  creditCostMultiplierPro      Float @default(0.4) @map("credit_cost_multiplier_pro")
+
   /// Prefer ace-3 style AI short-answer marking for text-heavy Paper 3 items.
   useAceShortAnswerGrading Boolean @default(true) @map("use_ace_short_answer_grading")
 

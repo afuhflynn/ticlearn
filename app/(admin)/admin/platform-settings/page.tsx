@@ -24,6 +24,10 @@ type PlatformSettings = {
   creditCostRevisionGuideView: number;
   creditCostRevisionGuideGen: number;
   creditCostAiTutorMessage: number;
+  creditCostMultiplierStarter: number;
+  creditCostMultiplierStandard: number;
+  creditCostMultiplierPremium: number;
+  creditCostMultiplierPro: number;
   mockMinQuestions: number;
   mockMaxQuestions: number;
   enforceCreditsAll: boolean;
@@ -259,6 +263,44 @@ export default function AdminPlatformSettingsPage() {
                   update({ [key]: Number(e.target.value) || 0 } as Partial<PlatformSettings>)
                 }
               />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Tier credit cost multipliers</CardTitle>
+          <CardDescription>
+            Applied on top of per-action costs. Subscribers pay
+            <code className="text-xs mx-1">ceil(baseCost × multiplier)</code>.
+            FREE (no subscription) always pays 1.0×.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-4 sm:grid-cols-2">
+          {(
+            [
+              ["creditCostMultiplierStarter", "STARTER"],
+              ["creditCostMultiplierStandard", "STANDARD"],
+              ["creditCostMultiplierPremium", "PREMIUM"],
+              ["creditCostMultiplierPro", "PRO"],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key} className="space-y-2">
+              <Label>{label} multiplier</Label>
+              <Input
+                type="number"
+                min={0.01}
+                max={5}
+                step={0.05}
+                value={settings[key]}
+                onChange={(e) =>
+                  update({ [key]: Number(e.target.value) || 0 } as Partial<PlatformSettings>)
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Default: {defaults?.[key] ?? "—"}
+              </p>
             </div>
           ))}
         </CardContent>

@@ -8,7 +8,7 @@ import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
-import { getUserCreditBalance, spendCredits } from "@/lib/credits";
+import { getEffectiveCreditCost, getUserCreditBalance, spendCredits } from "@/lib/credits";
 import { trackEvent, EVENTS } from "@/lib/kpi";
 
 
@@ -70,6 +70,7 @@ export async function POST(req: Request) {
       STARTER: 20,
       STANDARD: 60,
       PREMIUM: -1,
+      PRO: -1,
     };
 
     const quizLimit = quizLimits[plan] ?? quizLimits.FREE;
@@ -88,7 +89,12 @@ export async function POST(req: Request) {
 
     const settings = await getPlatformSettings();
     const wantsDebit = quizCreditsRequired(settings);
-    const quizCost = settings.creditCostQuizGeneration;
+    const planValue = plan === "FREE" ? null : plan;
+    const quizCost = getEffectiveCreditCost(
+      settings.creditCostQuizGeneration,
+      planValue,
+      settings,
+    );
 
     if (wantsDebit) {
       const balance = await getUserCreditBalance(session.user.id);

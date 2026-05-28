@@ -35,12 +35,14 @@ import {
   ClipboardList,
   ChevronRight,
   Clock,
+  Coins,
   History,
   Loader2,
   Play,
   Plus,
   Layers,
 } from "lucide-react";
+import { useCredits } from "@/hooks";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -166,6 +168,9 @@ function CuratedSetsSkeleton() {
 
 export default function MockListPage() {
   const router = useRouter();
+  const { data: creditsData } = useCredits();
+  const creditBalance = creditsData?.balance ?? 0;
+  const MOCK_CREDIT_COST = 40;
   const [blueprints, setBlueprints] = useState<Blueprint[]>([]);
   const [loadingBlueprints, setLoadingBlueprints] = useState(true);
 
@@ -470,12 +475,26 @@ export default function MockListPage() {
                 }
               </div>
               {canConfigureMock ? (
-                <div className="border-t bg-muted/30 -mx-4 -mb-4 mt-auto flex-shrink-0 space-y-2 px-6 py-4">
+                <div className="border-t bg-muted/30 -mx-4 -mb-4 mt-auto flex-shrink-0 space-y-3 px-6 py-4">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Coins className="h-3 w-3" />
+                      Cost: <strong>{MOCK_CREDIT_COST}</strong> credits
+                    </span>
+                    <span className="flex items-center gap-1">
+                      Balance: <strong>{creditBalance}</strong>
+                      {creditBalance < MOCK_CREDIT_COST && (
+                        <span className="text-destructive font-medium ml-1">
+                          Insufficient
+                        </span>
+                      )}
+                    </span>
+                  </div>
                   <Button
                     type="button"
                     className="w-full rounded-full"
                     size="lg"
-                    disabled={creatingCustom}
+                    disabled={creatingCustom || creditBalance < MOCK_CREDIT_COST}
                     onClick={startCustomMock}
                   >
                     {creatingCustom ?
@@ -489,6 +508,18 @@ export default function MockListPage() {
                       </>
                     }
                   </Button>
+                  {creditBalance < MOCK_CREDIT_COST && (
+                    <p className="text-xs text-center text-destructive">
+                      Not enough credits.{' '}
+                      <a href="/subscription#credits-top-up" className="underline">
+                        Buy credits
+                      </a>
+                      {' '}or{' '}
+                      <a href="/subscription" className="underline">
+                        upgrade for discounts
+                      </a>.
+                    </p>
+                  )}
                 </div>
               ) : null}
             </DialogContent>
