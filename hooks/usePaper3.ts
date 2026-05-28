@@ -275,8 +275,11 @@ function getPaper3Mocks(params?: {
 
 function getPaper3Mock(id: string) {
   return fetch(`/api/paper3/mocks/${id}`, { credentials: "include" }).then(
-    (res) => {
-      if (!res.ok) throw new Error("Failed to fetch mock");
+    async (res) => {
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Failed to fetch mock");
+      }
       return res.json();
     },
   );
@@ -386,8 +389,11 @@ function startPaper3MockExam(data: MockStartPayload) {
   return fetch(`/api/paper3/mocks/${data.mockId}/start`, {
     method: "POST",
     credentials: "include",
-  }).then((res) => {
-    if (!res.ok) throw new Error("Failed to start exam");
+  }).then(async (res) => {
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body?.error ?? "Failed to start exam");
+    }
     return res.json();
   });
 }
