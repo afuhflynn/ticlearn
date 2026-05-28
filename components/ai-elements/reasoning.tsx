@@ -11,7 +11,12 @@ import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
+import { createMathPlugin } from "@streamdown/math";
+import "katex/dist/katex.min.css";
+import { normalizeMathNotation } from "@/lib/math-format";
 import { Shimmer } from "./shimmer";
+
+const mathPlugin = createMathPlugin({ singleDollarTextMath: true });
 
 type ReasoningContextValue = {
   isStreaming: boolean;
@@ -178,7 +183,7 @@ export const ReasoningContent = memo(
           className,
         )}
       >
-        <Streamdown>{children}</Streamdown>
+        <Streamdown plugins={{ math: mathPlugin }}>{normalizeMathNotation(children)}</Streamdown>
       </CollapsibleContent>
     );
   },

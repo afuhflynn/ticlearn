@@ -15,7 +15,6 @@ export function normalizeMathNotation(text: string): string {
     .replace(/##(.+?)##/g, (_, m) => `$$ ${m.trim()} $$`)
     // # formula # → $$ formula $$ (inline math, custom syntax)
     .replace(/(?<!\$|\\|`|#)#(.+?)#(?!\$|#)/g, (_, m) => `$$ ${m.trim()} $$`)
-    // $ ... $ → $$ ... $$ (when content looks like LaTeX: contains backslash)
-    // singleDollarTextMath: false disables single-$ math; only convert if it has \
-    .replace(/(?<!\$)\$(?!\$)([^$]*\\.+?)\$(?!\$)/g, (_, m) => `$$ ${m.trim()} $$`);
+    // $ ... $ → $$ ... $$ (catches remaining single-$ patterns)
+    .replace(/(?<!\$)\$(?!\$)([^$\n]+?)\$(?!\$)/g, (_, m) => `$$ ${m.trim()} $$`);
 }

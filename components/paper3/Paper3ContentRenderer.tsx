@@ -350,7 +350,7 @@ export function Paper3ContentRenderer({
     switch (segment.type) {
       case "text":
         return (
-          <ReactMarkdown key={`text-${index}`} components={markdownComponents}>
+          <ReactMarkdown key={`text-${index}`} components={markdownComponents} remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
             {segment.content}
           </ReactMarkdown>
         );
@@ -385,7 +385,7 @@ export function Paper3ContentRenderer({
     return (
       <div className={cn("space-y-2 w-full", className)}>
         {contentMd && (
-          <ReactMarkdown components={markdownComponents}>
+          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
             {contentMd}
           </ReactMarkdown>
         )}

@@ -23,7 +23,7 @@ import { createMathPlugin } from "@streamdown/math";
 import "katex/dist/katex.min.css";
 import { normalizeMathNotation } from "@/lib/math-format";
 
-const mathPlugin = createMathPlugin({ singleDollarTextMath: false });
+const mathPlugin = createMathPlugin({ singleDollarTextMath: true });
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
