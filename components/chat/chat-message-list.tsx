@@ -49,7 +49,7 @@ function normalizeMarkdownForDisplay(content: string) {
   return content
     .replace(/\r\n/g, "\n")
     .replace(/[ \t]+$/gm, "")
-    .replace(/(^|\n)\s*(#{1,6})\s*/g, "$1$2 ")
+    .replace(/(^|\n)[ \t]*(#{1,6})[ \t]*/g, "$1$2 ")
     .replace(/([^\n])\n(#{1,6}\s)/g, "$1\n\n$2");
 }
 

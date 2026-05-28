@@ -311,6 +311,7 @@ export type MessageResponseProps = ComponentProps<typeof Streamdown>;
 export const MessageResponse = memo(
   ({ className, children, ...props }: MessageResponseProps) => (
     <Streamdown
+      mode="static"
       plugins={{ math: mathPlugin }}
       className={cn(
         "size-full max-w-none text-sm leading-7 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
