@@ -6,7 +6,6 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { OnboardingBanner } from "@/components/onboarding/OnboardingBanner";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { ReferralProcessor } from "@/components/referral-processor";
 
 export default async function DashboardLayout({
   children,
@@ -54,7 +53,6 @@ export default async function DashboardLayout({
           </main>
         </div>
       </div>
-      <ReferralProcessor />
     </SidebarProvider>
   );
 }

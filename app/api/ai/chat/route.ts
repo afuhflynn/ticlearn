@@ -284,6 +284,7 @@ export async function POST(req: Request) {
       STARTER: -1,
       STANDARD: -1,
       PREMIUM: -1,
+      PRO: -1,
     };
 
     const chatLimit = dailyLimits[plan] || 8;

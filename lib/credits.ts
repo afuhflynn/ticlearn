@@ -1,5 +1,28 @@
-import type { CreditType } from "@/lib/generated/prisma/client";
+import type { CreditType, Plan } from "@/lib/generated/prisma/client";
+import type { PlatformSettingsSnapshot } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
+
+export function getCreditCostMultiplier(
+  plan: Plan | null,
+  settings: PlatformSettingsSnapshot,
+): number {
+  switch (plan) {
+    case "STARTER": return settings.creditCostMultiplierStarter;
+    case "STANDARD": return settings.creditCostMultiplierStandard;
+    case "PREMIUM": return settings.creditCostMultiplierPremium;
+    case "PRO": return settings.creditCostMultiplierPro;
+    default: return 1.0;
+  }
+}
+
+export function getEffectiveCreditCost(
+  baseCost: number,
+  plan: Plan | null,
+  settings: PlatformSettingsSnapshot,
+): number {
+  const multiplier = getCreditCostMultiplier(plan, settings);
+  return Math.ceil(baseCost * multiplier);
+}
 
 export class InsufficientCreditsError extends Error {
   readonly required: number;

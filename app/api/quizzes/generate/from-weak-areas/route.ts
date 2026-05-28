@@ -8,7 +8,7 @@ import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
-import { spendCredits } from "@/lib/credits";
+import { getEffectiveCreditCost, spendCredits } from "@/lib/credits";
 
 const generateFromWeakAreasSchema = z.object({
   questionCount: z.number().int().min(5).max(50).optional(),
@@ -40,8 +40,16 @@ export async function POST(req: Request) {
     }
 
     const settings = await getPlatformSettings();
+    const subscription = await prisma.subscription.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    });
     const wantsDebit = quizCreditsRequired(settings);
-    const quizCost = settings.creditCostQuizGeneration;
+    const quizCost = getEffectiveCreditCost(
+      settings.creditCostQuizGeneration,
+      subscription?.plan ?? null,
+      settings,
+    );
 
     if (wantsDebit && user.credits < quizCost) {
       return NextResponse.json(

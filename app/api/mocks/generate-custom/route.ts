@@ -12,6 +12,7 @@ import {
   practiceMockGenerationCreditsRequired,
 } from "@/lib/platform-settings";
 import {
+  getEffectiveCreditCost,
   getUserCreditBalance,
   InsufficientCreditsError,
   spendCredits,
@@ -97,8 +98,16 @@ export async function POST(req: Request) {
     }
 
     const settings = await getPlatformSettings();
+    const subscription = await prisma.subscription.findFirst({
+      where: { userId: session.user.id },
+      orderBy: { createdAt: "desc" },
+    });
     const wantsDebit = practiceMockGenerationCreditsRequired(settings);
-    const genCost = settings.creditCostMockGeneration;
+    const genCost = getEffectiveCreditCost(
+      settings.creditCostMockGeneration,
+      subscription?.plan ?? null,
+      settings,
+    );
 
     if (wantsDebit) {
       const balance = await getUserCreditBalance(session.user.id);

@@ -25,6 +25,10 @@ export type PlatformSettingsSnapshot = Pick<
   | "creditsPer1000Xaf"
   | "minCreditPurchaseXaf"
   | "maxCreditPurchaseXaf"
+  | "creditCostMultiplierStarter"
+  | "creditCostMultiplierStandard"
+  | "creditCostMultiplierPremium"
+  | "creditCostMultiplierPro"
   | "useAceShortAnswerGrading"
 >;
 
@@ -46,6 +50,10 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditsPer1000Xaf: 50,
   minCreditPurchaseXaf: 100,
   maxCreditPurchaseXaf: 500_000,
+  creditCostMultiplierStarter: 0.8,
+  creditCostMultiplierStandard: 0.6,
+  creditCostMultiplierPremium: 0.4,
+  creditCostMultiplierPro: 0.4,
   useAceShortAnswerGrading: true,
 };
 
@@ -118,6 +126,10 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
     creditsPer1000Xaf: settings.creditsPer1000Xaf,
     minCreditPurchaseXaf: settings.minCreditPurchaseXaf,
     maxCreditPurchaseXaf: settings.maxCreditPurchaseXaf,
+    creditCostMultiplierStarter: settings.creditCostMultiplierStarter,
+    creditCostMultiplierStandard: settings.creditCostMultiplierStandard,
+    creditCostMultiplierPremium: settings.creditCostMultiplierPremium,
+    creditCostMultiplierPro: settings.creditCostMultiplierPro,
     useAceShortAnswerGrading: settings.useAceShortAnswerGrading,
   };
 }

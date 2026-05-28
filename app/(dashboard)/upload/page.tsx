@@ -4,6 +4,7 @@ import {
   AlertCircle,
   BookOpen,
   Brain,
+  Coins,
   ExternalLink,
   FileText,
   FileType,
@@ -50,6 +51,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import {
   useCheckLimit,
+  useCredits,
   useDeleteNote,
   useGenerateQuiz,
   useNotes,
@@ -126,6 +128,9 @@ function UploadContent() {
 
   const { isLoading, plan } = usePlan();
   const { data: session, isPending } = useSession();
+  const { data: creditsData } = useCredits();
+  const creditBalance = creditsData?.balance ?? 0;
+  const QUIZ_CREDIT_COST = 50;
 
   const { startUpload, isUploading } = useUploadThing("documentUploader", {
     onClientUploadComplete: async (res) => {
@@ -933,29 +938,41 @@ function UploadContent() {
             </div>
           </div>
 
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setQuizDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button
-              onClick={submitQuizGeneration}
-              disabled={
-                generateQuizMutation.isPending ||
-                (quizConfig.timed && !Number(quizConfig.timeLimit))
-              }
-            >
-              {generateQuizMutation.isPending ? (
-                <>
-                  <Brain className="mr-2 h-4 w-4 animate-pulse" />
-                  Starting Background Job...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="mr-2 h-4 w-4" />
-                  Generate Quiz
-                </>
+          <DialogFooter className="flex-col gap-3 sm:flex-row">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground sm:mr-auto">
+              <Coins className="h-3 w-3" />
+              Cost: <strong>{QUIZ_CREDIT_COST}</strong> credits
+              <span className="text-muted-foreground/60">·</span>
+              Balance: <strong>{creditBalance}</strong>
+              {creditBalance < QUIZ_CREDIT_COST && (
+                <span className="text-destructive font-medium">Insufficient</span>
               )}
-            </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setQuizDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={submitQuizGeneration}
+                disabled={
+                  generateQuizMutation.isPending ||
+                  (quizConfig.timed && !Number(quizConfig.timeLimit)) ||
+                  creditBalance < QUIZ_CREDIT_COST
+                }
+              >
+                {generateQuizMutation.isPending ? (
+                  <>
+                    <Brain className="mr-2 h-4 w-4 animate-pulse" />
+                    Starting Background Job...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    Generate Quiz
+                  </>
+                )}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

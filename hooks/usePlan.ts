@@ -66,7 +66,7 @@ const PLAN_MAP: Record<string, typeof PRO_LIMITS> = {
   STARTER: {
     pdfUploads: 10,
     quizGenerations: 20,
-    aiTutorMessages: -1,
+    aiTutorMessages: 50,
     canAccessCommunity: true,
     canAccessLeaderboard: true,
     canAccessGCE: true,

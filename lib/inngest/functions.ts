@@ -882,4 +882,75 @@ export const handleSubscriptionAction = inngest.createFunction(
   },
 );
 
+export const monthlyCreditBonus = inngest.createFunction(
+  {
+    name: "Monthly Credit Bonus",
+    id: "monthly-credit-bonus",
+    triggers: {
+      cron: "0 0 1 * *",
+    },
+  },
+  async () => {
+    console.log("[Inngest] Running monthly credit bonus job...");
+
+    const BONUS_MAP: Record<string, number> = {
+      STARTER: 400,
+      STANDARD: 1_200,
+      PREMIUM: 3_000,
+      PRO: 3_000,
+    };
+
+    const subscriptions = await prisma.subscription.findMany({
+      where: {
+        status: "ACTIVE",
+        plan: { in: ["STARTER", "STANDARD", "PREMIUM", "PRO"] },
+      },
+      select: {
+        id: true,
+        userId: true,
+        plan: true,
+      },
+    });
+
+    console.log(`[Inngest] Found ${subscriptions.length} active subscribers`);
+
+    const { grantCredits } = await import("@/lib/credits");
+    let grantedCount = 0;
+    let errorCount = 0;
+
+    for (const sub of subscriptions) {
+      const bonus = BONUS_MAP[sub.plan];
+      if (!bonus) continue;
+
+      try {
+        const result = await grantCredits({
+          userId: sub.userId,
+          amount: bonus,
+          type: "BONUS",
+          description: `Monthly credit bonus — ${sub.plan} plan (${bonus} credits)`,
+          referenceId: `bonus-${sub.id}-${new Date().toISOString().slice(0, 7)}`,
+        });
+
+        if (!result.duplicate) {
+          grantedCount++;
+          console.log(
+            `[Inngest] Granted ${bonus} credits to user ${sub.userId} (${sub.plan})`,
+          );
+        }
+      } catch (error) {
+        errorCount++;
+        console.error(
+          `[Inngest] Failed to grant bonus for user ${sub.userId}:`,
+          error,
+        );
+      }
+    }
+
+    console.log(
+      `[Inngest] Monthly credit bonus complete: ${grantedCount} granted, ${errorCount} errors`,
+    );
+    return { success: true, granted: grantedCount, errors: errorCount };
+  },
+);
+
 export { inngest };
