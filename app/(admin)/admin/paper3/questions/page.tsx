@@ -51,7 +51,7 @@ export default function Paper3QuestionsPage() {
   const rejectQuestion = useRejectPaper3Question();
 
   const handleFilterChange = (key: string, value: string) => {
-    setFilter({ ...filter, [key]: value });
+    setFilter({ ...filter, [key]: value === "all" ? "" : value });
     setPage(1);
   };
 
@@ -111,7 +111,7 @@ export default function Paper3QuestionsPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="PENDING">Pending</SelectItem>
                   <SelectItem value="APPROVED">Approved</SelectItem>
                   <SelectItem value="REJECTED">Rejected</SelectItem>
@@ -129,7 +129,7 @@ export default function Paper3QuestionsPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Sections</SelectItem>
+                  <SelectItem value="all">All Sections</SelectItem>
                   <SelectItem value="A">Section A</SelectItem>
                   <SelectItem value="B">Section B</SelectItem>
                 </SelectContent>
@@ -146,7 +146,7 @@ export default function Paper3QuestionsPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Subjects</SelectItem>
+                  <SelectItem value="all">All Subjects</SelectItem>
                   <SelectItem value="ICT">ICT</SelectItem>
                   <SelectItem value="COMPUTER_SCIENCE">
                     Computer Science
@@ -165,7 +165,7 @@ export default function Paper3QuestionsPage() {
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Sources</SelectItem>
+                  <SelectItem value="all">All Sources</SelectItem>
                   {data?.sources?.map(
                     (s: { id: string; title: string }) => (
                       <SelectItem key={s.id} value={s.id}>
