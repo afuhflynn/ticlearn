@@ -650,7 +650,7 @@ function UploadContent() {
 
                           {note.latestQuiz?.status === "READY" ? (
                             <Button variant="secondary" size="sm" asChild>
-                              <Link href={`/quiz/${note.latestQuiz.id}`}>
+                              <Link href={`/quizzes/${note.latestQuiz.id}`}>
                                 <ExternalLink className="mr-2 h-4 w-4" />
                                 Open Latest Quiz
                               </Link>
@@ -945,11 +945,16 @@ function UploadContent() {
               <span className="text-muted-foreground/60">·</span>
               Balance: <strong>{creditBalance}</strong>
               {creditBalance < QUIZ_CREDIT_COST && (
-                <span className="text-destructive font-medium">Insufficient</span>
+                <span className="text-destructive font-medium">
+                  Insufficient
+                </span>
               )}
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setQuizDialogOpen(false)}>
+              <Button
+                variant="outline"
+                onClick={() => setQuizDialogOpen(false)}
+              >
                 Cancel
               </Button>
               <Button

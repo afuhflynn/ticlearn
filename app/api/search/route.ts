@@ -69,7 +69,7 @@ export async function GET(req: Request) {
           id: q.id,
           title: q.title,
           description: q.noteTitle,
-          url: `/quiz/${q.id}`,
+          url: `/quizzes/${q.id}`,
         })),
       );
     }
