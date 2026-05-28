@@ -284,7 +284,7 @@ export default function CommunityPage() {
                       attempts
                     </p>
                     <Button size="sm" asChild>
-                      <Link href={`/quiz/${quiz.id}`}>
+                      <Link href={`/quizzes/${quiz.id}`}>
                         <Play className="mr-2 h-4 w-4" />
                         Attempt Quiz
                       </Link>
