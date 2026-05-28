@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type QuestionStatus = "PENDING" | "APPROVED" | "REJECTED";
-type Paper3Section = "DATABASE" | "SPREADSHEET" | "PROGRAMMING";
+type Paper3Section = "A" | "B";
 type Paper3TaskType =
   | "ACCESS_TABLE"
   | "ACCESS_RELATIONSHIP"
@@ -81,23 +81,27 @@ export async function GET(req: Request) {
     const section = searchParams.get("section") as Paper3Section | null;
     const taskType = searchParams.get("taskType") as Paper3TaskType | null;
     const category = searchParams.get("category");
+    const source = searchParams.get("source");
+    const subject = searchParams.get("subject");
+    const search = searchParams.get("search");
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const skip = (page - 1) * limit;
 
-    const where: {
-      status?: QuestionStatus;
-      section?: Paper3Section;
-      taskType?: Paper3TaskType;
-      source?: {
-        category?: "DATABASE" | "SPREADSHEET" | "PROGRAMMING";
-      };
-    } = {};
-    if (status) where.status = status;
-    if (section) where.section = section;
-    if (taskType) where.taskType = taskType;
+    const where: Prisma.Paper3QuestionWhereInput = {};
+    if (status) where.status = status as QuestionStatus;
+    if (section) where.section = section as Paper3Section;
+    if (taskType) where.taskType = taskType as Paper3TaskType;
+    if (source) where.sourceId = source;
+    if (subject) where.source = { subject: subject as "ICT" | "COMPUTER_SCIENCE" };
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: "insensitive" } },
+        { questionNumber: { contains: search, mode: "insensitive" } },
+      ];
+    }
     if (category === "WEB_PROGRAMMING") {
-      where.taskType = "WEB_PROGRAMMING";
+      where.taskType = "WEB_PROGRAMMING" as Paper3TaskType;
     } else if (
       category &&
       ["DATABASE", "SPREADSHEET", "PROGRAMMING"].includes(category)
@@ -107,9 +111,9 @@ export async function GET(req: Request) {
       };
     }
 
-    const [questions, total] = await Promise.all([
+    const [questions, total, sources] = await Promise.all([
       prisma.paper3Question.findMany({
-        where: where as any,
+        where,
         skip,
         take: limit,
         orderBy: { createdAt: "desc" },
@@ -119,11 +123,17 @@ export async function GET(req: Request) {
           },
         },
       }),
-      prisma.paper3Question.count({ where: where as any }),
+      prisma.paper3Question.count({ where }),
+      prisma.paper3Source.findMany({
+        where: { status: "READY" },
+        select: { id: true, title: true },
+        orderBy: { title: "asc" },
+      }),
     ]);
 
     return NextResponse.json({
       questions,
+      sources,
       total,
       page,
       totalPages: Math.ceil(total / limit),

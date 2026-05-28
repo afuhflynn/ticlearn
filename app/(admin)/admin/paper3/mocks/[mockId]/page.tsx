@@ -269,19 +269,33 @@ function EditMockInner() {
             </p>
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium">Module (optional)</label>
+            <label className="text-sm font-medium">
+              Mock Group
+              <span className="text-xs text-muted-foreground ml-1">
+                (optional)
+              </span>
+            </label>
             <select
               value={moduleId}
               onChange={(e) => setModuleId(e.target.value)}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             >
-              <option value="">None</option>
-              {modules.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.title}
-                </option>
-              ))}
+              <option value="">No group (standalone)</option>
+              {modules.map((m) => {
+                const mod = modules.find((x) => x.id === m.id) as
+                  | { status?: string }
+                  | undefined;
+                return (
+                  <option key={m.id} value={m.id}>
+                    {m.title}
+                  </option>
+                );
+              })}
             </select>
+            <p className="text-xs text-muted-foreground">
+              Assigning this mock to a published + visible group makes it
+              accessible to students even if catalog visibility is off.
+            </p>
           </div>
         </div>
       </div>

@@ -134,12 +134,22 @@ function getPaper3Questions(params?: {
   section?: string;
   taskType?: string;
   category?: string;
+  source?: string;
+  subject?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
 }) {
   const searchParams = new URLSearchParams();
   if (params?.status) searchParams.set("status", params.status);
   if (params?.section) searchParams.set("section", params.section);
   if (params?.taskType) searchParams.set("taskType", params.taskType);
   if (params?.category) searchParams.set("category", params.category);
+  if (params?.source) searchParams.set("source", params.source);
+  if (params?.subject) searchParams.set("subject", params.subject);
+  if (params?.search) searchParams.set("search", params.search);
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
 
   return fetch(`/api/paper3/questions?${searchParams.toString()}`, {
     credentials: "include",

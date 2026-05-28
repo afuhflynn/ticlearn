@@ -2,14 +2,17 @@
 
 import {
   BarChart3,
+  ClipboardList,
   CreditCard,
   FileText,
   GraduationCap,
+  Layers,
   Link2,
   ListChecks,
   MessageCircle,
   School,
   Shield,
+  Sparkles,
   TrendingUp,
   Upload,
   Users,
@@ -42,8 +45,18 @@ const adminNavItems = [
     icon: FaMoneyBill1,
     label: "Payment Settings",
   },
+  { href: "/admin/platform-settings", icon: Shield, label: "Platform & Credits" },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
-  { href: "/admin/mocks/p1-p2", icon: School, label: "Manage Mocks" },
+];
+
+const paper12NavItems = [
+  { href: "/admin/upload", icon: Upload, label: "Upload Past Papers" },
+  { href: "/admin/blueprints", icon: ClipboardList, label: "Blueprints" },
+  {
+    href: "/admin/mocks/p1-p2",
+    icon: Sparkles,
+    label: "Mock Groups & Previews",
+  },
 ];
 
 const paper3NavItems = [
@@ -51,10 +64,21 @@ const paper3NavItems = [
   { href: "/admin/paper3/sources", icon: FileText, label: "Sources" },
   { href: "/admin/paper3/questions", icon: ListChecks, label: "Questions" },
   { href: "/admin/paper3/mocks", icon: GraduationCap, label: "Mock Exams" },
+  { href: "/admin/paper3/modules", icon: Layers, label: "Mock Groups" },
+  {
+    href: "/admin/paper3/analytics",
+    icon: TrendingUp,
+    label: "Analytics",
+  },
 ];
 
 export function AdminSidebar() {
   const pathname = usePathname();
+
+  const isActive = (href: string) => {
+    if (href === "/admin") return pathname === "/admin";
+    return pathname.startsWith(href);
+  };
 
   return (
     <Sidebar className="hidden md:flex max-h-screen" collapsible="icon">
@@ -78,7 +102,7 @@ export function AdminSidebar() {
             <SidebarMenu>
               {adminNavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={pathname === item.href}>
+                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
                     <a href={item.href} className="flex items-center gap-3">
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
@@ -91,15 +115,30 @@ export function AdminSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3">GCE Paper 3</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-3">Paper 1 &amp; 2</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {paper12NavItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                    <a href={item.href} className="flex items-center gap-3">
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="px-3">Paper 3</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {paper3NavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname.startsWith(item.href)}
-                  >
+                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
                     <a href={item.href} className="flex items-center gap-3">
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>

@@ -38,6 +38,12 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import {
   ArrowLeft,
   ClipboardList,
   History,
@@ -46,6 +52,9 @@ import {
   Trash2,
   Layers,
   GripVertical,
+  Eye,
+  EyeOff,
+  EyeIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { formatRelativeTime } from "@/lib/utils";
@@ -124,6 +133,7 @@ type AdminPreviewDetail = {
 
 export default function AdminPaper1Paper2MocksPage() {
   const { data: session, isPending: sessionLoading } = useSession();
+  const [activeTab, setActiveTab] = useState("preview");
 
   const [components, setComponents] = useState<PaperComponentOption[]>([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -562,509 +572,634 @@ export default function AdminPaper1Paper2MocksPage() {
   }
 
   const canConfigure = !optionsLoading && components.length > 0;
+  const visibleGroups = modules.filter((m) => m.visibleToStudents).length;
+  const totalItems = modules.reduce((acc, m) => acc + m.items.length, 0);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-8 py-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <Link
-            href="/admin"
-            className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Admin
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight flex flex-wrap items-center gap-2">
-            Paper 1 &amp; 2 — mocks
-            <Badge variant="secondary" className="font-normal">
-              GCE
-            </Badge>
-          </h1>
-          <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">
-            <strong>Preview</strong> builds a real timed session that is tagged as{" "}
-            <em>admin-only</em> — it will not appear under the student “Recent mocks” list.
-            Use <strong>mock groups</strong> to name bundles of published exams learners open
-            from Practice.
-          </p>
-        </div>
+    <div className="mx-auto max-w-4xl space-y-6 py-6">
+      {/* Header */}
+      <div>
+        <Link
+          href="/admin"
+          className="mb-2 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Admin
+        </Link>
+        <h1 className="text-2xl font-bold tracking-tight flex flex-wrap items-center gap-2">
+          Paper 1 &amp; 2 — Mock Groups &amp; Previews
+          <Badge variant="secondary" className="font-normal">
+            GCE
+          </Badge>
+        </h1>
+        <p className="text-muted-foreground mt-1 max-w-2xl text-sm leading-relaxed">
+          Generate admin-only previews, then drag them into groups to publish as
+          catalog exams for students.
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Generate preview (admin)</CardTitle>
-          <CardDescription>
-            Same generator as students, but sessions stay in your admin list below — not on the
-            learner dashboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {!canConfigure ? (
-            optionsLoading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                No PAPER components found.
-              </p>
-            )
-          ) : (
-            <>
-              <div className="space-y-2">
-                <Label>Subject paper</Label>
-                <Select value={componentId} onValueChange={setComponentId}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select paper" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-72">
-                    {components.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.examLevelName} · {c.programName} — {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-3">
-                <Label>Paper</Label>
-                <RadioGroup
-                  value={paper}
-                  onValueChange={(v) => setPaper(v as "PAPER_1" | "PAPER_2")}
-                  className="flex gap-6"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="PAPER_1" id="p1" />
-                    <Label htmlFor="p1">Paper 1 (MCQ)</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="PAPER_2" id="p2" />
-                    <Label htmlFor="p2">Paper 2 (structured)</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              <div className="space-y-3">
-                <Label>Scope</Label>
-                <RadioGroup
-                  value={scope}
-                  onValueChange={(v) =>
-                    setScope(v as "FULL_SYLLABUS" | "TOPICS")
-                  }
-                  className="flex gap-6"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="FULL_SYLLABUS" id="full" />
-                    <Label htmlFor="full">Full syllabus</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="TOPICS" id="top" />
-                    <Label htmlFor="top">Topics</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {scope === "TOPICS" && selectedComp && (
-                <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border p-3">
-                  <Label className="text-xs uppercase text-muted-foreground">
-                    Topics
-                  </Label>
-                  {selectedComp.topics.map((t) => (
-                    <label
-                      key={t.id}
-                      className="flex cursor-pointer items-center gap-2 text-sm"
-                    >
-                      <Checkbox
-                        checked={!!pickedTopics[t.id]}
-                        onCheckedChange={(c) => toggleTopic(t.id, c === true)}
-                      />
-                      {t.name}
-                    </label>
-                  ))}
-                </div>
-              )}
-
-              <Button
-                type="button"
-                onClick={runGenerateCustom}
-                disabled={creatingCustom}
-                className="gap-2"
-              >
-                {creatingCustom ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Plus className="h-4 w-4" />
-                )}
-                Generate preview
-              </Button>
-            </>
-          )}
-        </CardContent>
-      </Card>
-
-      <DragDropContext onDragEnd={handleDragEnd}>
+      {/* Summary bar */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
-              Admin preview sessions
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Previews
             </CardTitle>
-            <CardDescription>
-              Drag a row into a mock group below to publish that structure as a catalog exam.
-              Use <strong>View questions</strong> to inspect stems and keys (admin only — no timer).
-            </CardDescription>
           </CardHeader>
-          <CardContent>
-            {previewsLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : previews.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No admin previews yet.</p>
-            ) : (
-              <Droppable droppableId="admin-previews">
-                {(prevProvided) => (
-                  <ul
-                    ref={prevProvided.innerRef}
-                    {...prevProvided.droppableProps}
-                    className="divide-y rounded-lg border"
-                  >
-                    {previews.map((a, index) => (
-                      <Draggable
-                        key={a.id}
-                        draggableId={`preview-${a.id}`}
-                        index={index}
-                        isDragDisabled={attaching}
-                      >
-                        {(dragProvided, dragSnapshot) => (
-                          <li
-                            ref={dragProvided.innerRef}
-                            {...dragProvided.draggableProps}
-                            style={{
-                              ...dragProvided.draggableProps.style,
-                              opacity: dragSnapshot.isDragging ? 0.85 : 1,
-                            }}
-                            className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"
-                          >
-                            <div className="flex min-w-0 flex-1 items-start gap-2">
-                              <button
-                                type="button"
-                                className="mt-0.5 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-                                {...dragProvided.dragHandleProps}
-                                aria-label="Drag preview"
-                              >
-                                <GripVertical className="h-5 w-5 shrink-0" />
-                              </button>
-                              <div>
-                                <p className="font-medium leading-snug">{a.title}</p>
-                                <p className="text-muted-foreground text-xs">
-                                  {a.inProgress ? "In progress · " : ""}
-                                  {typeof a.durationMin === "number" ?
-                                    `${a.durationMin} min · `
-                                  : ""}
-                                  {a.totalMarks} marks ·{" "}
-                                  {formatRelativeTime(a.completedAt ?? a.startedAt)}
-                                </p>
-                              </div>
-                            </div>
-                            <Button
-                              size="sm"
-                              variant="secondary"
-                              type="button"
-                              onClick={() => void openPreviewModal(a.id)}
-                            >
-                              View questions
-                            </Button>
-                          </li>
-                        )}
-                      </Draggable>
-                    ))}
-                    {prevProvided.placeholder}
-                  </ul>
-                )}
-              </Droppable>
-            )}
+          <CardContent className="pb-3 px-4 pt-0">
+            <p className="text-2xl font-bold">{previews.length}</p>
           </CardContent>
         </Card>
-
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Layers className="h-5 w-5" />
-              Mock groups (student catalog)
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Groups
             </CardTitle>
-            <CardDescription>
-              Name a bundle, flip <strong>Show to students</strong> when ready. Drop preview
-              sessions onto a group or reorder exams with the handle.
-            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-              <div className="flex-1 space-y-2">
-                <Label>New group name</Label>
-                <Input
-                  value={newGroupTitle}
-                  onChange={(e) => setNewGroupTitle(e.target.value)}
-                  placeholder="e.g. November revision pack"
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={createGroup}
-                disabled={creatingGroup}
-                variant="secondary"
-              >
-                {creatingGroup ?
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                : "Create group"}
-              </Button>
-            </div>
+          <CardContent className="pb-3 px-4 pt-0">
+            <p className="text-2xl font-bold">{modules.length}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Visible to students
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3 px-4 pt-0">
+            <p className="text-2xl font-bold text-green-600">{visibleGroups}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total exams
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-3 px-4 pt-0">
+            <p className="text-2xl font-bold">{totalItems}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-            <p className="text-muted-foreground text-xs">
-              Advanced: full blueprint editor stays at{" "}
-              <Link
-                href="/admin/blueprints"
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                Exam blueprints
-              </Link>
-              .
-            </p>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="w-full justify-start">
+            <TabsTrigger value="preview" className="gap-2">
+              <History className="h-4 w-4" />
+              Generate &amp; Preview
+            </TabsTrigger>
+            <TabsTrigger value="groups" className="gap-2">
+              <Layers className="h-4 w-4" />
+              Mock Groups ({modules.length})
+            </TabsTrigger>
+          </TabsList>
 
-            {modulesLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-              </div>
-            ) : modules.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No groups yet.</p>
-            ) : (
-              <div className="space-y-4">
-                {modules.map((mod) => (
-                  <Collapsible key={mod.id} defaultOpen>
-                    <div className="rounded-lg border bg-card">
-                      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="font-semibold leading-tight">{mod.title}</p>
-                          {mod.description ?
-                            <p className="text-muted-foreground mt-1 text-sm">
-                              {mod.description}
-                            </p>
-                          : null}
+          {/* === TAB 1: Generate & Preview === */}
+          <TabsContent value="preview" className="space-y-6 mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Generate preview (admin only)</CardTitle>
+                <CardDescription>
+                  Build a real timed session tagged as <em>admin-only</em> — it
+                  will not appear on student dashboards. After generating, you
+                  can drag it into a mock group below to publish it.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {!canConfigure ? (
+                  optionsLoading ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      No PAPER components found.
+                    </p>
+                  )
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Subject paper</Label>
+                      <Select value={componentId} onValueChange={setComponentId}>
+                        <SelectTrigger className="w-full">
+                          <SelectValue placeholder="Select paper" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-72">
+                          {components.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.examLevelName} · {c.programName} — {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Paper</Label>
+                      <RadioGroup
+                        value={paper}
+                        onValueChange={(v) => setPaper(v as "PAPER_1" | "PAPER_2")}
+                        className="flex gap-6"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="PAPER_1" id="p1" />
+                          <Label htmlFor="p1">Paper 1 (MCQ)</Label>
                         </div>
-                        <div className="flex flex-wrap items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <Label className="text-xs text-muted-foreground">Visible</Label>
-                            <Switch
-                              checked={mod.visibleToStudents}
-                              onCheckedChange={(v) =>
-                                patchModule(mod.id, { visibleToStudents: v })
-                              }
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="PAPER_2" id="p2" />
+                          <Label htmlFor="p2">Paper 2 (structured)</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>Scope</Label>
+                      <RadioGroup
+                        value={scope}
+                        onValueChange={(v) =>
+                          setScope(v as "FULL_SYLLABUS" | "TOPICS")
+                        }
+                        className="flex gap-6"
+                      >
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="FULL_SYLLABUS" id="full" />
+                          <Label htmlFor="full">Full syllabus</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="TOPICS" id="top" />
+                          <Label htmlFor="top">Topics</Label>
+                        </div>
+                      </RadioGroup>
+                    </div>
+
+                    {scope === "TOPICS" && selectedComp && (
+                      <div className="max-h-48 space-y-2 overflow-y-auto rounded-lg border p-3">
+                        <Label className="text-xs uppercase text-muted-foreground">
+                          Topics
+                        </Label>
+                        {selectedComp.topics.map((t) => (
+                          <label
+                            key={t.id}
+                            className="flex cursor-pointer items-center gap-2 text-sm"
+                          >
+                            <Checkbox
+                              checked={!!pickedTopics[t.id]}
+                              onCheckedChange={(c) => toggleTopic(t.id, c === true)}
                             />
-                          </div>
-                          <CollapsibleTrigger asChild>
-                            <Button size="sm" variant="outline" type="button">
-                              <ClipboardList className="mr-1 h-4 w-4" />
-                              Add exams
-                            </Button>
-                          </CollapsibleTrigger>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="text-destructive"
-                            type="button"
-                            onClick={() => deleteModule(mod.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                            {t.name}
+                          </label>
+                        ))}
                       </div>
+                    )}
 
-                      <Droppable droppableId={`module-${mod.id}`}>
-                        {(dropProvided, dropSnapshot) => (
-                          <div
-                            ref={dropProvided.innerRef}
-                            {...dropProvided.droppableProps}
-                            className={`border-t px-4 py-3 ${
-                              dropSnapshot.isDraggingOver ?
-                                "bg-primary/10"
-                              : "bg-muted/20"
-                            }`}
+                    <Button
+                      type="button"
+                      onClick={runGenerateCustom}
+                      disabled={creatingCustom}
+                      className="gap-2"
+                    >
+                      {creatingCustom ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Plus className="h-4 w-4" />
+                      )}
+                      Generate preview
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Admin preview sessions
+                </CardTitle>
+                <CardDescription>
+                  Drag a row into a mock group (switch to the Groups tab) to
+                  publish that structure as a catalog exam. Use{" "}
+                  <strong>View questions</strong> to inspect stems and keys.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {previewsLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : previews.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    <p>No admin previews yet.</p>
+                    <p className="mt-1">
+                      Generate a preview above, then drag it into a mock group
+                      to publish.
+                    </p>
+                  </div>
+                ) : (
+                  <Droppable droppableId="admin-previews">
+                    {(prevProvided) => (
+                      <ul
+                        ref={prevProvided.innerRef}
+                        {...prevProvided.droppableProps}
+                        className="divide-y rounded-lg border"
+                      >
+                        {previews.map((a, index) => (
+                          <Draggable
+                            key={a.id}
+                            draggableId={`preview-${a.id}`}
+                            index={index}
+                            isDragDisabled={attaching}
                           >
-                            <p className="text-muted-foreground mb-2 text-xs">
-                              Drop previews here · drag rows to reorder
-                            </p>
-                            {mod.items.length === 0 ?
-                              <p className="text-muted-foreground py-2 text-sm">
-                                No exams yet — drop an admin preview above or use Add exams.
-                              </p>
-                            : mod.items.map((it, index) => (
-                                <Draggable
-                                  key={it.id}
-                                  draggableId={`item-${it.id}`}
-                                  index={index}
+                            {(dragProvided, dragSnapshot) => (
+                              <li
+                                ref={dragProvided.innerRef}
+                                {...dragProvided.draggableProps}
+                                style={{
+                                  ...dragProvided.draggableProps.style,
+                                  opacity: dragSnapshot.isDragging ? 0.85 : 1,
+                                }}
+                                className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"
+                              >
+                                <div className="flex min-w-0 flex-1 items-start gap-2">
+                                  <button
+                                    type="button"
+                                    className="mt-0.5 cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                                    {...dragProvided.dragHandleProps}
+                                    aria-label="Drag preview"
+                                  >
+                                    <GripVertical className="h-5 w-5 shrink-0" />
+                                  </button>
+                                  <div>
+                                    <p className="font-medium leading-snug">{a.title}</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      {a.inProgress ? "In progress · " : ""}
+                                      {typeof a.durationMin === "number" ?
+                                        `${a.durationMin} min · `
+                                      : ""}
+                                      {a.totalMarks} marks ·{" "}
+                                      {formatRelativeTime(a.completedAt ?? a.startedAt)}
+                                    </p>
+                                  </div>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  variant="secondary"
+                                  type="button"
+                                  onClick={() => void openPreviewModal(a.id)}
                                 >
-                                  {(dragProvided, dragSnapshot) => (
-                                    <div
-                                      ref={dragProvided.innerRef}
-                                      {...dragProvided.draggableProps}
-                                      style={{
-                                        ...dragProvided.draggableProps.style,
-                                        opacity: dragSnapshot.isDragging ? 0.9 : 1,
-                                      }}
-                                      className="mb-2 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm shadow-sm"
-                                    >
-                                      <button
-                                        type="button"
-                                        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-                                        {...dragProvided.dragHandleProps}
-                                        aria-label="Drag to reorder or move group"
-                                      >
-                                        <GripVertical className="h-4 w-4 shrink-0" />
-                                      </button>
-                                      <span className="min-w-0 flex-1 truncate">
-                                        <span className="font-medium">{it.blueprint.name}</span>
-                                        <span className="text-muted-foreground">
-                                          {" "}
-                                          · {it.blueprint.component.program.examLevel.name}{" "}
-                                          {it.blueprint.component.program.name} ·{" "}
-                                          {it.blueprint.durationMin} min ·{" "}
-                                          {it.blueprint.totalMarks} marks
-                                        </span>
-                                      </span>
-                                      <Button
-                                        type="button"
-                                        size="icon"
-                                        variant="ghost"
-                                        className="shrink-0 text-destructive"
-                                        onClick={() => removeItem(mod.id, it.id)}
-                                        aria-label="Remove from group"
-                                      >
-                                        <Trash2 className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </Draggable>
-                              ))
-                            }
-                            {dropProvided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
+                                  View questions
+                                </Button>
+                              </li>
+                            )}
+                          </Draggable>
+                        ))}
+                        {prevProvided.placeholder}
+                      </ul>
+                    )}
+                  </Droppable>
+                )}
+              </CardContent>
+            </Card>
 
-                      <CollapsibleContent>
-                        <div className="space-y-6 border-t px-4 py-4">
-                          <div className="space-y-3 rounded-lg border bg-background p-4">
-                            <p className="text-sm font-medium">Add a new timed exam</p>
-                            <div className="grid gap-3 sm:grid-cols-2">
-                              <div className="space-y-2 sm:col-span-2">
-                                <Label>Title</Label>
-                                <Input
-                                  value={examName}
-                                  onChange={(e) => setExamName(e.target.value)}
-                                  placeholder="Shown to students"
+            <p className="text-xs text-muted-foreground text-center">
+              Drag a preview row above, then{" "}
+              <button
+                type="button"
+                className="text-primary underline-offset-4 hover:underline"
+                onClick={() => setActiveTab("groups")}
+              >
+                switch to Mock Groups
+              </button>{" "}
+              to drop it into a group.
+            </p>
+          </TabsContent>
+
+          {/* === TAB 2: Mock Groups === */}
+          <TabsContent value="groups" className="space-y-6 mt-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Layers className="h-5 w-5" />
+                      Mock groups
+                    </CardTitle>
+                    <CardDescription>
+                      Groups bundle exams into named collections. Students see
+                      groups when <strong>Visible</strong> is toggled on.
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                  <div className="flex-1 space-y-2">
+                    <Label>New group name</Label>
+                    <Input
+                      value={newGroupTitle}
+                      onChange={(e) => setNewGroupTitle(e.target.value)}
+                      placeholder="e.g. November revision pack"
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    onClick={createGroup}
+                    disabled={creatingGroup}
+                    variant="secondary"
+                  >
+                    {creatingGroup ?
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    : "Create group"}
+                  </Button>
+                </div>
+
+                <p className="text-muted-foreground text-xs">
+                  Advanced: full blueprint editor at{" "}
+                  <Link
+                    href="/admin/blueprints"
+                    className="text-primary underline-offset-4 hover:underline"
+                  >
+                    Exam blueprints
+                  </Link>
+                  .
+                </p>
+
+                {modulesLoading ? (
+                  <div className="flex justify-center py-8">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  </div>
+                ) : modules.length === 0 ? (
+                  <div className="py-8 text-center text-sm text-muted-foreground">
+                    <p>No groups yet.</p>
+                    <p className="mt-1">
+                      Create a group above, then add exams by dropping a preview
+                      from the Generate tab or using the Add exams panel.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {modules.map((mod) => (
+                      <Collapsible key={mod.id} defaultOpen>
+                        <div className="rounded-lg border bg-card">
+                          <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="flex-1 min-w-0">
+                                <p className="font-semibold leading-tight">
+                                  {mod.title}
+                                </p>
+                                {mod.description ?
+                                  <p className="text-muted-foreground mt-1 text-sm">
+                                    {mod.description}
+                                  </p>
+                                : null}
+                              </div>
+                              {mod.visibleToStudents ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="shrink-0 gap-1"
+                                >
+                                  <EyeIcon className="h-3 w-3" />
+                                  Visible
+                                </Badge>
+                              ) : (
+                                <Badge
+                                  variant="outline"
+                                  className="shrink-0 gap-1 text-muted-foreground"
+                                >
+                                  <EyeOff className="h-3 w-3" />
+                                  Hidden
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-3">
+                              <div className="flex items-center gap-2">
+                                <Label className="text-xs text-muted-foreground whitespace-nowrap">
+                                  {mod.visibleToStudents ?
+                                    "Show to students"
+                                  : "Hide from students"}
+                                </Label>
+                                <Switch
+                                  checked={mod.visibleToStudents}
+                                  onCheckedChange={(v) =>
+                                    patchModule(mod.id, { visibleToStudents: v })
+                                  }
                                 />
                               </div>
-                              <div className="space-y-2">
-                                <Label>Subject paper</Label>
-                                <Select
-                                  value={examComponentId}
-                                  onValueChange={setExamComponentId}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-72">
-                                    {components.map((c) => (
-                                      <SelectItem key={c.id} value={c.id}>
-                                        {c.examLevelName} · {c.programName} — {c.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-2">
-                                <Label>Template</Label>
-                                <RadioGroup
-                                  value={examPaper}
-                                  onValueChange={(v) =>
-                                    setExamPaper(v as "PAPER_1" | "PAPER_2")
-                                  }
-                                  className="flex gap-4 pt-2"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="PAPER_1" id={`ep1-${mod.id}`} />
-                                    <Label htmlFor={`ep1-${mod.id}`}>Paper 1</Label>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    <RadioGroupItem value="PAPER_2" id={`ep2-${mod.id}`} />
-                                    <Label htmlFor={`ep2-${mod.id}`}>Paper 2</Label>
-                                  </div>
-                                </RadioGroup>
-                              </div>
-                            </div>
-                            <label className="flex cursor-pointer items-center gap-2 text-sm">
-                              <Checkbox
-                                checked={addToCatalogToo}
-                                onCheckedChange={(c) => setAddToCatalogToo(c === true)}
-                              />
-                              Also list under general &quot;More mocks&quot; (not only inside this
-                              group)
-                            </label>
-                            <Button
-                              type="button"
-                              size="sm"
-                              disabled={savingExam}
-                              onClick={() => void createExamInModule(mod.id)}
-                            >
-                              {savingExam && savingExamForModule === mod.id ?
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              : "Create and attach exam"}
-                            </Button>
-                          </div>
-
-                          <div className="space-y-3 rounded-lg border bg-background p-4">
-                            <p className="text-sm font-medium">Or link an existing blueprint</p>
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-                              <div className="flex-1 space-y-2">
-                                <Label>Blueprint</Label>
-                                <Select
-                                  value={pickBlueprintId}
-                                  onValueChange={setPickBlueprintId}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue placeholder="Select…" />
-                                  </SelectTrigger>
-                                  <SelectContent className="max-h-64">
-                                    {allBlueprints.map((b) => (
-                                      <SelectItem key={b.id} value={b.id}>
-                                        {b.name} ({b.component.program.name})
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              </div>
+                              <CollapsibleTrigger asChild>
+                                <Button size="sm" variant="outline" type="button">
+                                  <ClipboardList className="mr-1 h-4 w-4" />
+                                  {mod.items.length > 0
+                                    ? `${mod.items.length} exams`
+                                    : "Add exams"}
+                                </Button>
+                              </CollapsibleTrigger>
                               <Button
-                                type="button"
-                                variant="outline"
                                 size="sm"
-                                onClick={() => addExistingToModule(mod.id)}
-                                disabled={!pickBlueprintId}
+                                variant="ghost"
+                                className="text-destructive"
+                                type="button"
+                                onClick={() => deleteModule(mod.id)}
                               >
-                                Add to group
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
                           </div>
+
+                          <Droppable droppableId={`module-${mod.id}`}>
+                            {(dropProvided, dropSnapshot) => (
+                              <div
+                                ref={dropProvided.innerRef}
+                                {...dropProvided.droppableProps}
+                                className={`border-t px-4 py-3 ${
+                                  dropSnapshot.isDraggingOver ?
+                                    "bg-primary/10"
+                                  : "bg-muted/20"
+                                }`}
+                              >
+                                <p className="text-muted-foreground mb-2 text-xs">
+                                  Drop previews here · drag rows to reorder
+                                </p>
+                                {mod.items.length === 0 ?
+                                  <p className="text-muted-foreground py-2 text-sm">
+                                    No exams yet — drop an admin preview (from
+                                    the Generate tab) or use Add exams below.
+                                  </p>
+                                : mod.items.map((it, index) => (
+                                    <Draggable
+                                      key={it.id}
+                                      draggableId={`item-${it.id}`}
+                                      index={index}
+                                    >
+                                      {(dragProvided, dragSnapshot) => (
+                                        <div
+                                          ref={dragProvided.innerRef}
+                                          {...dragProvided.draggableProps}
+                                          style={{
+                                            ...dragProvided.draggableProps.style,
+                                            opacity: dragSnapshot.isDragging ? 0.9 : 1,
+                                          }}
+                                          className="mb-2 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm shadow-sm"
+                                        >
+                                          <button
+                                            type="button"
+                                            className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+                                            {...dragProvided.dragHandleProps}
+                                            aria-label="Drag to reorder or move group"
+                                          >
+                                            <GripVertical className="h-4 w-4 shrink-0" />
+                                          </button>
+                                          <span className="min-w-0 flex-1 truncate">
+                                            <span className="font-medium">{it.blueprint.name}</span>
+                                            <span className="text-muted-foreground">
+                                              {" "}
+                                              · {it.blueprint.component.program.examLevel.name}{" "}
+                                              {it.blueprint.component.program.name} ·{" "}
+                                              {it.blueprint.durationMin} min ·{" "}
+                                              {it.blueprint.totalMarks} marks
+                                            </span>
+                                          </span>
+                                          <Button
+                                            type="button"
+                                            size="icon"
+                                            variant="ghost"
+                                            className="shrink-0 text-destructive"
+                                            onClick={() => removeItem(mod.id, it.id)}
+                                            aria-label="Remove from group"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  ))
+                                }
+                                {dropProvided.placeholder}
+                              </div>
+                            )}
+                          </Droppable>
+
+                          <CollapsibleContent>
+                            <div className="space-y-6 border-t px-4 py-4">
+                              <div className="space-y-3 rounded-lg border bg-background p-4">
+                                <p className="text-sm font-medium">
+                                  Add a new timed exam
+                                </p>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                  <div className="space-y-2 sm:col-span-2">
+                                    <Label>Title</Label>
+                                    <Input
+                                      value={examName}
+                                      onChange={(e) => setExamName(e.target.value)}
+                                      placeholder="Shown to students"
+                                    />
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Subject paper</Label>
+                                    <Select
+                                      value={examComponentId}
+                                      onValueChange={setExamComponentId}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-72">
+                                        {components.map((c) => (
+                                          <SelectItem key={c.id} value={c.id}>
+                                            {c.examLevelName} · {c.programName} — {c.name}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <div className="space-y-2">
+                                    <Label>Template</Label>
+                                    <RadioGroup
+                                      value={examPaper}
+                                      onValueChange={(v) =>
+                                        setExamPaper(v as "PAPER_1" | "PAPER_2")
+                                      }
+                                      className="flex gap-4 pt-2"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <RadioGroupItem value="PAPER_1" id={`ep1-${mod.id}`} />
+                                        <Label htmlFor={`ep1-${mod.id}`}>Paper 1</Label>
+                                      </div>
+                                      <div className="flex items-center gap-2">
+                                        <RadioGroupItem value="PAPER_2" id={`ep2-${mod.id}`} />
+                                        <Label htmlFor={`ep2-${mod.id}`}>Paper 2</Label>
+                                      </div>
+                                    </RadioGroup>
+                                  </div>
+                                </div>
+                                <label className="flex cursor-pointer items-center gap-2 text-sm">
+                                  <Checkbox
+                                    checked={addToCatalogToo}
+                                    onCheckedChange={(c) => setAddToCatalogToo(c === true)}
+                                  />
+                                  Also list outside this group under &quot;More
+                                  mocks&quot; (independent catalog listing)
+                                </label>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  disabled={savingExam}
+                                  onClick={() => void createExamInModule(mod.id)}
+                                >
+                                  {savingExam && savingExamForModule === mod.id ?
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  : "Create and attach exam"}
+                                </Button>
+                              </div>
+
+                              <div className="space-y-3 rounded-lg border bg-background p-4">
+                                <p className="text-sm font-medium">
+                                  Or link an existing blueprint
+                                </p>
+                                <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                                  <div className="flex-1 space-y-2">
+                                    <Label>Blueprint</Label>
+                                    <Select
+                                      value={pickBlueprintId}
+                                      onValueChange={setPickBlueprintId}
+                                    >
+                                      <SelectTrigger>
+                                        <SelectValue placeholder="Select…" />
+                                      </SelectTrigger>
+                                      <SelectContent className="max-h-64">
+                                        {allBlueprints.map((b) => (
+                                          <SelectItem key={b.id} value={b.id}>
+                                            {b.name} ({b.component.program.name})
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => addExistingToModule(mod.id)}
+                                    disabled={!pickBlueprintId}
+                                  >
+                                    Add to group
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </CollapsibleContent>
                         </div>
-                      </CollapsibleContent>
-                    </div>
-                  </Collapsible>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      </Collapsible>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </DragDropContext>
 
+      {/* Preview dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="flex max-h-[min(90vh,calc(100vh-4rem))] max-w-3xl flex-col gap-0 overflow-hidden p-0">
           <DialogHeader className="shrink-0 border-b px-6 py-4 text-left">

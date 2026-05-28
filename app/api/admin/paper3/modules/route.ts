@@ -30,6 +30,18 @@ export async function GET() {
       orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
       include: {
         _count: { select: { mocks: true } },
+        mocks: {
+          select: {
+            id: true,
+            title: true,
+            subject: true,
+            status: true,
+            focusCategory: true,
+            timeLimit: true,
+            totalMarks: true,
+          },
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 
