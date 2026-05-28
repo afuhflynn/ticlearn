@@ -104,12 +104,12 @@ export default function Paper3MocksPage() {
           <div className="flex flex-wrap gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Status</Label>
-              <Select value={status} onValueChange={setStatus}>
+              <Select value={status} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Status</SelectItem>
+                  <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="PUBLISHED">Published</SelectItem>
                   <SelectItem value="DRAFT">Draft</SelectItem>
                   <SelectItem value="ARCHIVED">Archived</SelectItem>
@@ -119,12 +119,12 @@ export default function Paper3MocksPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Subject</Label>
-              <Select value={subject} onValueChange={setSubject}>
+              <Select value={subject} onValueChange={(v) => setSubject(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Subjects</SelectItem>
+                  <SelectItem value="all">All Subjects</SelectItem>
                   <SelectItem value="ICT">ICT</SelectItem>
                   <SelectItem value="COMPUTER_SCIENCE">
                     Computer Science
@@ -135,12 +135,12 @@ export default function Paper3MocksPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Mock Group</Label>
-              <Select value={moduleId} onValueChange={setModuleId}>
+              <Select value={moduleId} onValueChange={(v) => setModuleId(v === "all" ? "" : v)}>
                 <SelectTrigger className="w-44">
                   <SelectValue placeholder="All groups" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Groups</SelectItem>
+                  <SelectItem value="all">All Groups</SelectItem>
                   <SelectItem value="__none">No Group</SelectItem>
                   {modules.map((m) => (
                     <SelectItem key={m.id} value={m.id}>
