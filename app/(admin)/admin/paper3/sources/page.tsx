@@ -7,6 +7,7 @@ import {
   useProcessPaper3Source,
 } from "@/hooks";
 import { formatRelativeTime } from "@/lib/utils";
+import { ArrowLeft } from "lucide-react";
 
 export default function Paper3SourcesPage() {
   const { data, isLoading } = usePaper3Sources();
@@ -32,6 +33,13 @@ export default function Paper3SourcesPage() {
 
   return (
     <div className="container mx-auto py-8">
+      <Link
+        href="/admin/paper3/upload"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Upload
+      </Link>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Paper 3 Sources</h1>
         <Link

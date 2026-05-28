@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowLeft,
   BookOpen,
   FileText,
   FileType,
@@ -14,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -237,12 +239,19 @@ export default function Paper3UploadPage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/admin/paper3/sources"
+        className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Sources
+      </Link>
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <GraduationCap className="h-6 w-6" />
-            GCE Paper 3 Sources
+            Upload Source
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Upload exam papers to extract and review questions
@@ -360,22 +369,6 @@ export default function Paper3UploadPage() {
               </div>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label htmlFor="subject">Subject</Label>
-                <Input
-                  id="subject"
-                  placeholder="e.g. Biology"
-                  value={formData.subject}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      subject: e.target.value as typeof formData.subject,
-                    })
-                  }
-                />
-              </div>
-            </div>
           </CardContent>
           <CardContent className="space-y-4">
             {/* Form Fields */}
