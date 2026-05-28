@@ -295,10 +295,11 @@ export default function AnalyticsPage() {
         acc.push({ date: day, [m.metric]: m.autoValue });
       }
       return acc;
-    }, []);
+    }, [])
+    .sort((a, b) => new Date(a.date as string).getTime() - new Date(b.date as string).getTime());
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

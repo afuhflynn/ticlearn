@@ -780,3 +780,172 @@ export async function sendSubscriptionRejectedEmail({
 `;
   return sendEmail({ to: email, subject, html });
 }
+
+/* ------------------------------------------------------------------ */
+/*  Engagement campaign templates                                      */
+/* ------------------------------------------------------------------ */
+
+export type CampaignType =
+  | "re-engagement"
+  | "streak-risk"
+  | "onboarding-incomplete"
+  | "weak-topic-drill"
+  | "exam-countdown"
+  | "weekly-digest";
+
+export interface EngagementUserData {
+  name: string;
+  email: string;
+  streak: number;
+  daysSinceActive: number | null;
+  readiness: number | null;
+  weakestTopic: string | null;
+  weakestTopicScore: number | null;
+  strongestTopic: string | null;
+  daysUntilExam: number | null;
+  plan: string;
+  quizzesTaken: number;
+  profileSetUp: boolean;
+}
+
+export function buildEngagementEmail(
+  campaign: CampaignType,
+  user: EngagementUserData,
+): { subject: string; html: string } {
+  const safe = escapeHtml(user.name || "Student");
+
+  function shell(body: string) {
+    return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TiCLearn</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>${emailStyles}</style>
+</head>
+<body>
+<div class="container">
+<div class="card">
+<div class="header"><div class="logo">📚</div><h1>TiCLearn</h1></div>
+<div class="content">${body}</div>
+<div class="footer">
+<p>&copy; ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
+<p style="font-size:12px;color:#9ca3af;">
+  You received this because you have email notifications enabled in your settings.
+  <br><a href="https://ticlearn.ticsummit.org/settings">Unsubscribe or change preferences</a>
+</p>
+</div></div></div></body></html>`;
+  }
+
+  function cta(url: string, label: string) {
+    return '<a href="' + url + '" class="button" style="display:inline-block;text-align:center;">' + label + '</a>';
+  }
+
+  let subject: string;
+  let body: string;
+
+  switch (campaign) {
+    case "re-engagement": {
+      const topic = user.weakestTopic
+        ? 'Your weakest topic is <span class="highlight">' + escapeHtml(user.weakestTopic) + '</span> (' + user.weakestTopicScore + '%). A short quiz is all it takes to get back on track.'
+        : "A short quiz is all it takes to get back on track.";
+      subject = "We miss you, " + safe + "! 🎯";
+      body = `
+        <h2 style="color:#1f2937;">It's been a while, ${safe}!</h2>
+        <p>We noticed you haven't studied on TiCLearn in a while. Your exam goals are still waiting for you!</p>
+        <p>${topic}</p>
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/dashboard", "Resume Studying →")}</div>
+      `;
+      break;
+    }
+
+    case "streak-risk": {
+      const days = user.streak;
+      subject = "Don't lose your streak, " + safe + "! 🔥";
+      body = `
+        <h2 style="color:#1f2937;">Your ${days}-day streak is at risk!</h2>
+        <p>You're on a <span class="highlight">${days}-day streak</span> — one more day of practice and you'll hit ${days + 1}!</p>
+        <p>A 5-minute quiz is all it takes to keep the streak alive.</p>
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Keep Your Streak →")}</div>
+      `;
+      break;
+    }
+
+    case "onboarding-incomplete": {
+      subject = "Finish setting up your TiCLearn profile";
+      body = `
+        <h2 style="color:#1f2937;">Almost there, ${safe}!</h2>
+        <p>You've created your account but haven't finished setting up your study profile yet.</p>
+        <p>Tell us your subjects and exam date so we can personalize your study plan — quizzes, recommendations, and AI coaching tailored to <em>your</em> curriculum.</p>
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/onboarding", "Complete Setup →")}</div>
+      `;
+      break;
+    }
+
+    case "weak-topic-drill": {
+      const topic = escapeHtml(user.weakestTopic || "your studies");
+      subject = user.weakestTopic
+        ? "Let's ace " + topic + "! 💪"
+        : "Keep practicing, " + safe + "!";
+      body = `
+        <h2 style="color:#1f2937;">Time to level up, ${safe}!</h2>
+        ${user.weakestTopic ? '<p>Your weakest area is <span class="highlight">' + topic + '</span> (' + user.weakestTopicScore + '% mastery). Focused practice can bring that score up fast.</p>' : "<p>Keep up the great work! Regular practice is the key to exam success.</p>"}
+        ${user.strongestTopic ? '<p>Your strongest topic is <span class="highlight">' + escapeHtml(user.strongestTopic) + '</span> — great job!</p>' : ""}
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Take a Practice Quiz →")}</div>
+      `;
+      break;
+    }
+
+    case "exam-countdown": {
+      const days = user.daysUntilExam ?? 0;
+      const readiness = user.readiness !== null ? user.readiness + "%" : "not yet assessed";
+      subject = days + " days until your exam! 🕐";
+      body = `
+        <h2 style="color:#1f2937;">${days} days to go, ${safe}!</h2>
+        <p>Your current readiness: <span class="highlight">${readiness}</span></p>
+        ${user.weakestTopic ? '<p>Focus on <span class="highlight">' + escapeHtml(user.weakestTopic) + '</span> — it\'s your weakest area right now.</p>' : ""}
+        <p>Every session counts. Let's make these days count!</p>
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/dashboard", "Study Now →")}</div>
+      `;
+      break;
+    }
+
+    case "weekly-digest": {
+      subject = "Your weekly TiCLearn digest 📊";
+      body = `
+        <h2 style="color:#1f2937;">Here's your week, ${safe}!</h2>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin:24px 0;">
+          <div style="flex:1;min-width:120px;background:#f3e8ff;border-radius:12px;padding:16px;text-align:center;">
+            <p style="font-size:28px;font-weight:800;color:#7c3aed;margin:0;">${user.streak}</p>
+            <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Day Streak</p>
+          </div>
+          <div style="flex:1;min-width:120px;background:#dbeafe;border-radius:12px;padding:16px;text-align:center;">
+            <p style="font-size:28px;font-weight:800;color:#2563eb;margin:0;">${user.quizzesTaken}</p>
+            <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Quizzes</p>
+          </div>
+          <div style="flex:1;min-width:120px;background:#d1fae5;border-radius:12px;padding:16px;text-align:center;">
+            <p style="font-size:28px;font-weight:800;color:#059669;margin:0;">${user.readiness ?? "—"}</p>
+            <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Readiness</p>
+          </div>
+        </div>
+        ${user.weakestTopic ? '<p>Keep working on <span class="highlight">' + escapeHtml(user.weakestTopic) + '</span> to boost your score.</p>' : ""}
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Continue Practicing →")}</div>
+      `;
+      break;
+    }
+
+    default:
+      subject = "TiCLearn Update";
+      body = "<p>Stay on track with your studies.</p>";
+  }
+
+  return { subject, html: shell(body) };
+}
+
+export async function sendEngagementEmail(
+  to: string,
+  campaign: CampaignType,
+  user: EngagementUserData,
+) {
+  const { subject, html } = buildEngagementEmail(campaign, user);
+  return sendEmail({ to, subject, html });
+}
