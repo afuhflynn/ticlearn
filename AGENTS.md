@@ -141,3 +141,49 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 - `app/api/programs/route.ts`: programs API
 - `lib/readiness.ts`: 3-pillar readiness engine
 <!-- END:onboarding-rework -->
+
+<!-- BEGIN:ai-orchestration-rework -->
+# AI Orchestration & Performance — Implementation Summary
+
+## Goal
+Fix AI orchestration latency (model chain fallback, no timeouts, no caching) and route critical paths to OpenAI directly while keeping the multi-agent chain for background tasks.
+
+## Constraints & Preferences
+- Critical user-facing paths (chat, quiz gen, exam gen, grading) → OpenAI direct (gpt-5.5)
+- Background/async paths (Inngest jobs, short answer grading) → multi-agent chain fallback
+- 10s timeout on all AI SDK calls
+- Model health cache: working model (5 min TTL) + dead model (30s negative TTL)
+- Build must pass before commit
+
+## Progress
+### Done
+- Added working model cache (5 min TTL) + dead model cache (30s TTL) to orchestrator
+- Added 10s timeout on all AI SDK calls (generateObject, generateText, streamText)
+- Removed redundant health check from streamChat — try streamText directly with fallback
+- Chat route: tries OpenAI first in health check, falls back to chain; uses orchestrator model cache
+- Added `generateCritical()` and `generateTextCritical()` to orchestrator — calls openai("gpt-5.5") directly, no chain fallback, maxRetries: 1
+- lib/ai/index.ts: quiz gen, exam gen, grading → switched to generateCritical / generateTextCritical
+- paper3/chat route: switched from generate → generateCritical
+- revision-guides route: switched from generateTextWithFallback → generateTextCritical
+- Added top-level try/catch to paper3-exam-functions Inngest handler (marks attempt FAILED on error)
+- Added try/catch to gradeShortAnswer for graceful AI failure fallback
+- Removed dead code: createChatStream (index.ts), evaluateWithAI (evaluate.ts), unused imports
+
+## Key Decisions
+- Critical paths (user-facing, synchronous): OpenAI direct only — no fallback chain, no health check, maxRetries: 1
+- Background paths (Inngest, async): multi-agent chain [gpt → gemini → nemotron → mistral → deepseek] — failure handled gracefully
+- summarizeText stays on multi-agent chain (Inngest background)
+- Model cache uses global Map — not shared across instances but sufficient for single-instance deploys
+- AbortSignal.timeout not used (Node version constraints); use SDK's built-in `timeout` option instead
+- ProcessingStatus enum has no "ERROR" value — use "FAILED" instead
+
+## Relevant Files
+- `lib/ai/orchestrator.ts`: Core — model cache (working + dead), 10s timeout, generateCritical / generateTextCritical, tryCachedModel / reportModelSuccess / reportModelFailure
+- `lib/ai/index.ts`: Critical wrappers switched to generateCritical / generateTextCritical; summarizeText stays on generate
+- `app/api/ai/chat/route.ts`: OpenAI-first health check, uses orchestrator model cache, 10s timeout
+- `app/api/paper3/chat/route.ts`: Uses generateCritical instead of generate
+- `app/api/admin/revision-guides/route.ts`: Uses generateTextCritical instead of generateTextWithFallback
+- `lib/inngest/paper3-exam-functions.ts`: Top-level try/catch, marks FAILED on error
+- `lib/paper3/grade-short-answer.ts`: try/catch with graceful fallback
+- `lib/inngest/paper3-functions.ts`, `lib/inngest/question-ingest.ts`, `lib/mock-generator.ts`: Keep multi-agent chain (background)
+<!-- END:ai-orchestration-rework -->
