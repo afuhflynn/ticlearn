@@ -79,6 +79,21 @@ Respond with only the title, nothing else.`,
   return "New Chat";
 }
 
+function messagesContainImage(messages: UIMessage[]): boolean {
+  return messages.some((m) => {
+    if (!m.parts) return false;
+    return m.parts.some((p) => {
+      if (p.type !== "file") return false;
+      const filePart = p as {
+        mediaType?: string;
+        mimeType?: string;
+      };
+      const contentType = filePart.mediaType || filePart.mimeType || "";
+      return contentType.startsWith("image/");
+    });
+  });
+}
+
 function messageHasImage(parts: UIMessage["parts"]): string | null {
   for (const part of parts) {
     if (part.type === "file") {
@@ -536,13 +551,17 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
       }
     }
 
-    // Fall back to multi-agent chain
+    // Fall back to multimodal models (gpt, geminiFlash) when images present,
+    // otherwise use full chain.
     if (!workingModel) {
+      const hasImages = messagesContainImage(messages);
+      const fallbackModels = hasImages
+        ? [gpt, geminiFlash]
+        : (cached
+            ? chatConfig.chain.slice(chatConfig.chain.indexOf(cached.model))
+            : chatConfig.chain);
       const healthErrors: string[] = [];
-      const chainStart = cached
-        ? chatConfig.chain.slice(chatConfig.chain.indexOf(cached.model))
-        : chatConfig.chain;
-      for (const m of chainStart) {
+      for (const m of fallbackModels) {
         try {
           await generateText({
             model: m,
