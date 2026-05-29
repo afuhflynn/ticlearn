@@ -2,7 +2,7 @@ import {
   MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
   MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
 } from "@/constants";
-import { generate, generateTextWithFallback, OrchestratorError, streamChat } from "@/lib/ai/orchestrator";
+import { generate, generateTextWithFallback, OrchestratorError } from "@/lib/ai/orchestrator";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
 import {
@@ -807,32 +807,6 @@ export async function generateExamQuestions(
 
 export async function processNoteContent(content: string) {
   return summarizeText(content);
-}
-
-export async function createChatStream(
-  messages: { role: "user" | "assistant"; content: string }[],
-) {
-  const systemPrompt = `You are TiCLearn AI, an intelligent study assistant specialized in helping Cameroon GCE A-Level students.
-
-  Your expertise:
-  - Computer Science and ICT (GCE A-Level syllabus)
-  - Biology, Chemistry, Physics
-  - General academic tutoring
-
-  Guidelines:
-  - Be encouraging and supportive
-  - Explain concepts clearly
-  - Use examples from the Cameroon curriculum when relevant
-  - Stay focused on educational topics
-  - If asked about non-educational topics, politely redirect`;
-
-  const result = await streamChat({
-    task: "fast_chat",
-    system: systemPrompt,
-    messages: [...messages.slice(-10)],
-  });
-
-  return result.textStream;
 }
 
 function normalizeExtractedText(text: string) {

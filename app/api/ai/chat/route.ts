@@ -11,6 +11,11 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
+import {
+  tryCachedModel,
+  reportModelSuccess,
+  reportModelFailure,
+} from "@/lib/ai/orchestrator";
 import { getTaskConfig } from "@/lib/ai/registry";
 import { geminiFlash } from "@/lib/ai/instances";
 import { trackEvent, EVENTS } from "@/lib/kpi";
@@ -500,36 +505,48 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
 
     const tools = createChatTools({ userId: session.user.id });
 
-    // Health-check models first: streamText doesn't throw synchronously for API errors (e.g. 429 quota).
-    // A 429 from OpenAI would be lost to the response stream, never caught by try/catch.
-    let workingModel: LanguageModel | null = null;
-    const healthErrors: string[] = [];
-    for (const m of chatConfig.chain) {
-      try {
-        await generateText({
-          model: m,
-          prompt: ".",
-          maxOutputTokens: 1,
-          maxRetries: 0,
-        });
-        workingModel = m;
-        break;
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        healthErrors.push(`${modelName(m)}: ${msg}`);
-        console.warn(`[Chat] Health check failed for ${modelName(m)}: ${msg}`);
-      }
-    }
+    // streamText doesn't throw synchronously for API errors (e.g. 429 quota).
+    // Probe models first or use cached working model.
+    const cached = tryCachedModel("reasoning", chatConfig.chain);
+
+    let workingModel: LanguageModel | null = cached?.fromCache
+      ? cached.model
+      : null;
 
     if (!workingModel) {
-      console.error(
-        "[Chat] All models failed health check:",
-        healthErrors.join("; "),
-      );
-      return NextResponse.json(
-        { error: "No AI models available. Please try again later." },
-        { status: 503 },
-      );
+      const healthErrors: string[] = [];
+      const chainStart = cached
+        ? chatConfig.chain.slice(chatConfig.chain.indexOf(cached.model))
+        : chatConfig.chain;
+      for (const m of chainStart) {
+        try {
+          await generateText({
+            model: m,
+            prompt: ".",
+            maxOutputTokens: 1,
+            maxRetries: 0,
+            timeout: 10_000,
+          });
+          workingModel = m;
+          reportModelSuccess("reasoning", m);
+          break;
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : String(e);
+          healthErrors.push(`${modelName(m)}: ${msg}`);
+          reportModelFailure("reasoning", m);
+          console.warn(`[Chat] Health check failed for ${modelName(m)}: ${msg}`);
+        }
+      }
+      if (!workingModel) {
+        console.error(
+          "[Chat] All models failed health check:",
+          healthErrors.join("; "),
+        );
+        return NextResponse.json(
+          { error: "No AI models available. Please try again later." },
+          { status: 503 },
+        );
+      }
     }
 
     const result = streamText({
@@ -539,6 +556,7 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
       messages: modelMessages,
       stopWhen: stepCountIs(5),
       maxRetries: 0,
+      timeout: 10_000,
     });
 
     return result.toUIMessageStreamResponse({

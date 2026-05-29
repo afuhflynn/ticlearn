@@ -46,7 +46,8 @@ export const evaluatePaper3Exam = inngest.createFunction(
     const { attemptId, mockId, userId, examProfileId, answers, timeTaken } =
       event.data as EvaluateExamEvent;
 
-    await step.run("update-status-to-processing", async () => {
+    try {
+      await step.run("update-status-to-processing", async () => {
       await prisma.paper3MockAttempt.update({
         where: { id: attemptId },
         data: { processingStatus: "PROCESSING" },
@@ -400,6 +401,19 @@ Provide line-by-line explanations in a code comment style.`,
       pointsEarned,
       processingStatus: "COMPLETED",
     };
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`[Inngest] Paper 3 exam evaluation failed: ${msg}`, error);
+      try {
+        await prisma.paper3MockAttempt.update({
+          where: { id: attemptId },
+          data: { processingStatus: "FAILED" },
+        });
+      } catch {
+        // Non-critical; best-effort cleanup
+      }
+      return { success: false, error: msg, attemptId, processingStatus: "FAILED" };
+    }
   },
 );
 

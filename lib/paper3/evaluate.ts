@@ -1,7 +1,3 @@
-import { generateObject } from "ai";
-import { z } from "zod";
-import { generate } from "@/lib/ai/orchestrator";
-
 // Must match Prisma enum in lib/generated/prisma/enums.ts
 export type Paper3TaskType =
   | "ACCESS_TABLE"
@@ -1041,70 +1037,4 @@ switch (question.taskType) {
   }
 }
 
-export async function evaluateWithAI(
-  question: {
-    taskType: Paper3TaskType;
-    content: string;
-    expectedAnswer: string;
-    totalMarks: number;
-  },
-  userAnswer: string,
-): Promise<EvaluationResult> {
-  const prompt = `You are an expert GCE examiner. Evaluate the following student answer for a ${question.taskType} question.
 
-Question:
-${question.content}
-
-Expected Answer:
-${question.expectedAnswer}
-
-Student Answer:
-${userAnswer}
-
-Evaluate and provide:
-1. isCorrect: boolean
-2. marksEarned: number (0 to ${question.totalMarks})
-3. feedback: constructive feedback
-4. breakdown: specific criteria that were met or missed
-
-Use partial credit where appropriate.`;
-
-  const responseSchema = z.object({
-    isCorrect: z.boolean(),
-    marksEarned: z.number().min(0).max(question.totalMarks),
-    feedback: z.string(),
-    breakdown: z.array(
-      z.object({
-        criteria: z.string(),
-        marks: z.number(),
-        description: z.string(),
-      }),
-    ),
-  });
-
-  try {
-    const { object } = await generate({
-      task: "paper3_eval",
-      schema: responseSchema,
-      prompt,
-    });
-
-    return {
-      ...object,
-      totalMarks: question.totalMarks,
-      correctAnswer: question.expectedAnswer,
-      partialCredit:
-        object.marksEarned > 0 && object.marksEarned < question.totalMarks,
-    };
-  } catch {
-    return evaluateAnswer(
-      {
-        taskType: question.taskType,
-        expectedAnswer: question.expectedAnswer,
-        totalMarks: question.totalMarks,
-        partialCredit: true,
-      },
-      userAnswer,
-    );
-  }
-}
