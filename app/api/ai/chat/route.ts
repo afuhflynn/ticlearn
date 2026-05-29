@@ -4,19 +4,12 @@ import {
   generateText,
   stepCountIs,
   streamText,
-  type LanguageModel,
   type UIMessage,
 } from "ai";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
-import {
-  tryCachedModel,
-  reportModelSuccess,
-  reportModelFailure,
-} from "@/lib/ai/orchestrator";
-import { getTaskConfig } from "@/lib/ai/registry";
 import { geminiFlash, openai } from "@/lib/ai/instances";
 
 const gpt = openai("gpt-5.5");
@@ -39,59 +32,24 @@ import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 
 export const runtime = "nodejs";
 
-const chatConfig = getTaskConfig("reasoning");
-
-function modelName(model: LanguageModel): string {
-  try {
-    return (model as unknown as { modelId?: string }).modelId || String(model);
-  } catch {
-    return "unknown";
-  }
-}
-
 async function generateTitle(userMessage: string): Promise<string> {
-  const errors: string[] = [];
-  for (const m of chatConfig.chain) {
-    try {
-      const result = await generateText({
-        model: m,
-        maxRetries: 0,
-        prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
+  try {
+    const result = await generateText({
+      model: geminiFlash,
+      maxRetries: 0,
+      prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
 The title should be concise and capture the main topic.
 Do not use quotes or special characters in the title.
 
 User message: "${userMessage}"
 
 Respond with only the title, nothing else.`,
-      });
-
-      return result.text.trim().slice(0, 50);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      errors.push(`${modelName(m)}: ${msg}`);
-      console.warn(`[Chat] Title gen failed for ${modelName(m)}: ${msg}`);
-    }
-  }
-  console.error(
-    "[Chat] All models failed for title generation:",
-    errors.join("; "),
-  );
-  return "New Chat";
-}
-
-function messagesContainImage(messages: UIMessage[]): boolean {
-  return messages.some((m) => {
-    if (!m.parts) return false;
-    return m.parts.some((p) => {
-      if (p.type !== "file") return false;
-      const filePart = p as {
-        mediaType?: string;
-        mimeType?: string;
-      };
-      const contentType = filePart.mediaType || filePart.mimeType || "";
-      return contentType.startsWith("image/");
     });
-  });
+    return result.text.trim().slice(0, 50);
+  } catch (e) {
+    console.warn("[Chat] Title gen failed:", e);
+    return "New Chat";
+  }
 }
 
 function messageHasImage(parts: UIMessage["parts"]): string | null {
@@ -135,7 +93,7 @@ async function processImageQuestion(
 
     // Step 1: Extract question text from image
     const extraction = await generateObject({
-      model: geminiFlash,
+      model: gpt,
       schema: z.object({
         questionText: z.string(),
         isQuestion: z.boolean(),
@@ -168,7 +126,7 @@ async function processImageQuestion(
     const topicNames = allTopics.map((t) => t.name);
 
     const classification = await generateObject({
-      model: geminiFlash,
+      model: gpt,
       schema: z.object({
         topicIdx: z.number().optional(),
         isClassified: z.boolean(),
@@ -522,78 +480,8 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
 
     const tools = createChatTools({ userId: session.user.id });
 
-    // streamText doesn't throw synchronously for API errors (e.g. 429 quota).
-    // Prefer OpenAI (gpt) for critical chat; fall back to multi-agent chain.
-    let workingModel: LanguageModel | null = null;
-
-    // Try cached model first
-    const cached = tryCachedModel("reasoning", chatConfig.chain);
-    if (cached?.fromCache) {
-      workingModel = cached.model;
-    }
-
-    // If no cached model, try OpenAI directly
-    if (!workingModel) {
-      try {
-        await generateText({
-          model: gpt,
-          prompt: ".",
-          maxOutputTokens: 1,
-          maxRetries: 0,
-          timeout: 10_000,
-        });
-        workingModel = gpt;
-        reportModelSuccess("reasoning", gpt);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        reportModelFailure("reasoning", gpt);
-        console.warn(`[Chat] OpenAI health check failed: ${msg}`);
-      }
-    }
-
-    // Fall back to multimodal models (gpt, geminiFlash) when images present,
-    // otherwise use full chain.
-    if (!workingModel) {
-      const hasImages = messagesContainImage(messages);
-      const fallbackModels = hasImages
-        ? [gpt, geminiFlash]
-        : (cached
-            ? chatConfig.chain.slice(chatConfig.chain.indexOf(cached.model))
-            : chatConfig.chain);
-      const healthErrors: string[] = [];
-      for (const m of fallbackModels) {
-        try {
-          await generateText({
-            model: m,
-            prompt: ".",
-            maxOutputTokens: 1,
-            maxRetries: 0,
-            timeout: 10_000,
-          });
-          workingModel = m;
-          reportModelSuccess("reasoning", m);
-          break;
-        } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
-          healthErrors.push(`${modelName(m)}: ${msg}`);
-          reportModelFailure("reasoning", m);
-          console.warn(`[Chat] Health check failed for ${modelName(m)}: ${msg}`);
-        }
-      }
-      if (!workingModel) {
-        console.error(
-          "[Chat] All models failed health check:",
-          healthErrors.join("; "),
-        );
-        return NextResponse.json(
-          { error: "No AI models available. Please try again later." },
-          { status: 503 },
-        );
-      }
-    }
-
     const result = streamText({
-      model: workingModel,
+      model: gpt,
       system: systemPrompt,
       tools,
       messages: modelMessages,
@@ -604,36 +492,38 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
 
     return result.toUIMessageStreamResponse({
       onFinish: async ({ isAborted, responseMessage }) => {
-        if (isAborted) {
-          return;
-        }
+        try {
+          if (isAborted) return;
 
-        const assistantParts = normalizeStoredParts(responseMessage.parts);
-        const assistantContent = extractTextFromParts(assistantParts);
+          const assistantParts = normalizeStoredParts(responseMessage.parts);
+          const assistantContent = extractTextFromParts(assistantParts);
 
-        await saveMessage(
-          conversationId,
-          userId,
-          "assistant",
-          assistantContent,
-          assistantParts,
-        );
+          await saveMessage(
+            conversationId,
+            userId,
+            "assistant",
+            assistantContent,
+            assistantParts,
+          );
 
-        if (enforcement.aiTutor && tutorCost > 0) {
-          try {
-            const balance = await getUserCreditBalance(userId);
-            if (balance >= tutorCost) {
-              await spendCredits({
-                userId,
-                amount: tutorCost,
-                type: "AI_TUTOR_MESSAGE",
-                description: "TiC AI tutor message",
-                referenceId: userMsgRecord.id,
-              });
+          if (enforcement.aiTutor && tutorCost > 0) {
+            try {
+              const balance = await getUserCreditBalance(userId);
+              if (balance >= tutorCost) {
+                await spendCredits({
+                  userId,
+                  amount: tutorCost,
+                  type: "AI_TUTOR_MESSAGE",
+                  description: "TiC AI tutor message",
+                  referenceId: userMsgRecord.id,
+                });
+              }
+            } catch (err) {
+              console.error("[CHAT] Tutor credit debit failed:", err);
             }
-          } catch (err) {
-            console.error("[CHAT] Tutor credit debit failed:", err);
           }
+        } catch (err) {
+          console.error("[CHAT] onFinish failed:", err);
         }
       },
       originalMessages: messages,
