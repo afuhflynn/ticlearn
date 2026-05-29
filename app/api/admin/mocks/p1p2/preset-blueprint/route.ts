@@ -61,18 +61,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const alsoList =
-      moduleId && body.alsoListInPracticeCatalog === true ? true : false;
-    const visibleForStudents = moduleId
-      ? alsoList
-        ? body.visibleForStudents !== false
-        : false
-      : body.visibleForStudents !== false;
-    const visibleInCommunity = moduleId
-      ? alsoList
-        ? body.visibleInCommunity === true
-        : false
-      : body.visibleInCommunity === true;
+    const visibleForStudents = body.visibleForStudents !== false;
+    const visibleInCommunity = body.visibleInCommunity === true;
 
     try {
       const blueprint = await prisma.examBlueprint.create({

@@ -72,8 +72,21 @@ export async function POST(req: Request) {
     const allowedViaModule = !!inVisibleModule && hasProgramMatch;
 
     if (!matchesStudentSubjects && !allowedViaCommunity && !allowedViaModule) {
+      const details = [];
+      if (!hasProgramMatch) details.push("your profile does not include this subject");
+      if (blueprint.visibleForStudents && !hasProgramMatch) details.push("subject mismatch");
+      if (!blueprint.visibleForStudents && !blueprint.visibleInCommunity && !inVisibleModule) details.push("blueprint is not published");
+      const reason = details.length ? details.join("; ") : "unknown";
       return NextResponse.json(
-        { error: "This mock is not available for your program" },
+        {
+          error: `This mock is not available for your program (${reason}).`,
+          debug: {
+            visibleForStudents: blueprint.visibleForStudents,
+            visibleInCommunity: blueprint.visibleInCommunity,
+            hasProgramMatch,
+            inVisibleModule: !!inVisibleModule,
+          },
+        },
         { status: 403 },
       );
     }

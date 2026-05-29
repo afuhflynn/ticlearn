@@ -12,27 +12,50 @@ export async function GET() {
     const profileId = await getActiveProfileId(session.user.id);
     if (!profileId) return NextResponse.json({ error: "No active profile" }, { status: 400 });
 
-    // Get the profile's programs, then find blueprints for those programs' components
+    // Get the profile's programs, then find component IDs for those programs
     const profilePrograms = await prisma.examProfileProgram.findMany({
       where: { examProfileId: profileId },
       include: {
         program: {
-          include: {
-            components: {
-              include: {
-                blueprints: {
-                  where: { visibleForStudents: true },
-                  include: { sections: true },
-                },
-              },
-            },
-          },
+          select: { components: { select: { id: true } } },
         },
       },
     });
 
-    const blueprints = profilePrograms.flatMap(pp =>
-      pp.program.components.flatMap(c => c.blueprints),
+    const programComponentIds = new Set(
+      profilePrograms.flatMap((pp) => pp.program.components.map((c) => c.id)),
+    );
+
+    // 1. Blueprints explicitly made visible for students
+    const visibleBlueprints = await prisma.examBlueprint.findMany({
+      where: {
+        componentId: { in: [...programComponentIds] },
+        visibleForStudents: true,
+      },
+      include: { sections: { orderBy: { order: "asc" } } },
+    });
+
+    // 2. Also include blueprints that are in visible modules
+    //    (safety net for the common case where visibleForStudents wasn't toggled)
+    const moduleLinkedBlueprints = await prisma.examBlueprint.findMany({
+      where: {
+        componentId: { in: [...programComponentIds] },
+        visibleForStudents: false,
+        paper12ModuleItems: {
+          some: { module: { visibleToStudents: true } },
+        },
+      },
+      include: { sections: { orderBy: { order: "asc" } } },
+    });
+
+    // Merge, dedup by id
+    const seen = new Set<string>();
+    const blueprints = [...visibleBlueprints, ...moduleLinkedBlueprints].filter(
+      (bp) => {
+        if (seen.has(bp.id)) return false;
+        seen.add(bp.id);
+        return true;
+      },
     );
 
     return NextResponse.json({ blueprints });

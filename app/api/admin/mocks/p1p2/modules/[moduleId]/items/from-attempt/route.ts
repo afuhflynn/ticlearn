@@ -101,7 +101,7 @@ export async function POST(req: Request, ctx: RouteCtx) {
         description: `Created from admin preview · ${new Date().toISOString().slice(0, 10)}`,
         totalMarks: payload.totalMarks,
         durationMin: payload.durationMin,
-        visibleForStudents: false,
+        visibleForStudents: true,
         visibleInCommunity: false,
         sections: {
           create: payload.sections.map((sec, i) => ({
