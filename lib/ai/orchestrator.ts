@@ -7,6 +7,9 @@ import {
 import type { z } from "zod";
 import { getCached, setCached } from "./cache";
 import { getTaskConfig } from "./registry";
+import { openai } from "./instances";
+
+const gpt = openai("gpt-5.5");
 
 // ── Model health cache ──────────────────────────────────────────────────────
 const MODEL_CACHE_TTL = 5 * 60 * 1000;
@@ -318,6 +321,52 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
 }
 
 export { OrchestratorError };
+
+// ── Critical-path functions (OpenAI direct, no fallback chain) ─────────────
+
+export async function generateCritical<T>(
+  opts: GenerateOptions<T>,
+): Promise<{ object: T }> {
+  const cacheKey = opts.prompt ?? JSON.stringify(opts.messages);
+  const config = getTaskConfig(opts.task);
+
+  if (config.cacheTtlMs && config.cacheTtlMs > 0) {
+    const cached = getCached(opts.task, cacheKey);
+    if (cached) {
+      return { object: cached as T };
+    }
+  }
+
+  const result = await generateObject({
+    model: gpt,
+    schema: opts.schema,
+    prompt: opts.prompt,
+    messages: opts.messages as never,
+    system: opts.system,
+    providerOptions: { google: { structuredOutputs: false } as never },
+    timeout: TIMEOUT_MS,
+    maxRetries: 1,
+    ...(opts.modelOptions as Record<string, unknown>),
+  });
+
+  if (config.cacheTtlMs && config.cacheTtlMs > 0) {
+    setCached(opts.task, cacheKey, result.object, config.cacheTtlMs);
+  }
+
+  return { object: result.object };
+}
+
+export async function generateTextCritical(opts: TextGenOptions) {
+  return generateText({
+    model: gpt,
+    prompt: opts.prompt,
+    messages: opts.messages as never,
+    system: opts.system,
+    timeout: TIMEOUT_MS,
+    maxRetries: 1,
+    ...(opts.modelOptions as Record<string, unknown>),
+  });
+}
 
 /** Re-exported for use by the chat route (which does its own streamText). */
 export function tryCachedModel(

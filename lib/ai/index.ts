@@ -2,7 +2,7 @@ import {
   MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
   MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
 } from "@/constants";
-import { generate, generateTextWithFallback, OrchestratorError } from "@/lib/ai/orchestrator";
+import { generate, generateCritical, generateTextCritical } from "@/lib/ai/orchestrator";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
 import {
@@ -493,7 +493,7 @@ export async function generateQuizFromNote(
   });
 
   try {
-    const { object } = await generate({
+    const { object } = await generateCritical({
       task: "quiz_gen",
       schema,
       prompt,
@@ -509,11 +509,7 @@ export async function generateQuizFromNote(
 
     return questions;
   } catch (error) {
-    if (error instanceof OrchestratorError) {
-      console.error("[AI] Quiz generation failed — model errors:", error.modelErrors);
-    } else {
-      console.error("[AI] Quiz generation failed:", error);
-    }
+    console.error("[AI] Quiz generation failed:", error);
     return [];
   }
 }
@@ -521,8 +517,8 @@ export async function generateQuizFromNote(
 interface NoteContext {
   id: string;
   title: string;
-  extractedText: string;
   subject: string;
+  extractedText: string | null;
 }
 
 export async function generateQuizFromWeakAreas(
@@ -595,7 +591,7 @@ Rules:
   });
 
   try {
-    const { object } = await generate({
+    const { object } = await generateCritical({
       task: "quiz_gen",
       schema,
       prompt,
@@ -609,11 +605,7 @@ Rules:
 
     return questions;
   } catch (error) {
-    if (error instanceof OrchestratorError) {
-      console.error("[AI] Quiz generation from weak areas failed — model errors:", error.modelErrors);
-    } else {
-      console.error("[AI] Quiz generation from weak areas failed:", error);
-    }
+    console.error("[AI] Quiz generation from weak areas failed:", error);
     return [];
   }
 }
@@ -694,7 +686,7 @@ export async function generateQuizFromTopic(
   });
 
   try {
-    const { object } = await generate({
+    const { object } = await generateCritical({
       task: "quiz_gen",
       schema,
       prompt,
@@ -704,11 +696,7 @@ export async function generateQuizFromTopic(
 
     return questions;
   } catch (error) {
-    if (error instanceof OrchestratorError) {
-      console.error("[AI] Default quiz generation failed — model errors:", error.modelErrors);
-    } else {
-      console.error("[AI] Default quiz generation failed:", error);
-    }
+    console.error("[AI] Default quiz generation failed:", error);
     return [];
   }
 }
@@ -729,7 +717,7 @@ export async function gradeOpenAnswer(
   2. Feedback on the answer
   3. Key points the user missed`;
 
-  const { text } = await generateTextWithFallback({
+  const { text } = await generateTextCritical({
     task: "grading",
     prompt,
   });
@@ -755,7 +743,7 @@ Provide a brief explanation (2-3 sentences) explaining:
 2. Why the correct answer is right
 3. A tip to remember this concept`;
 
-  const { text } = await generateTextWithFallback({
+  const { text } = await generateTextCritical({
     task: "reasoning",
     prompt,
   });
@@ -788,7 +776,7 @@ export async function generateExamQuestions(
   });
 
   try {
-    const { object } = await generate({
+    const { object } = await generateCritical({
       task: "exam_gen",
       schema,
       prompt,
@@ -796,11 +784,7 @@ export async function generateExamQuestions(
 
     return normalizeGeneratedQuestions(object.questions);
   } catch (error) {
-    if (error instanceof OrchestratorError) {
-      console.error("Exam generation error — model errors:", error.modelErrors);
-    } else {
-      console.error("Exam generation error:", error);
-    }
+    console.error("Exam generation error:", error);
     return [];
   }
 }

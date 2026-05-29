@@ -1,9 +1,8 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateText } from "ai";
 import { auth } from "@/lib/auth";
-import { generateTextWithFallback } from "@/lib/ai/orchestrator";
+import { generateTextCritical } from "@/lib/ai/orchestrator";
 import { buildPaper3SourceContextBlock } from "@/lib/paper3/exam-context";
 import {
   examSystemPreamble,
@@ -89,7 +88,7 @@ export async function POST(req: Request) {
       customNotes: data.notes,
     });
 
-    const result = await generateTextWithFallback({
+    const result = await generateTextCritical({
       task: "summarize",
       system: examSystemPreamble,
       prompt,

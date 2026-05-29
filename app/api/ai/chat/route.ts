@@ -17,7 +17,9 @@ import {
   reportModelFailure,
 } from "@/lib/ai/orchestrator";
 import { getTaskConfig } from "@/lib/ai/registry";
-import { geminiFlash } from "@/lib/ai/instances";
+import { geminiFlash, openai } from "@/lib/ai/instances";
+
+const gpt = openai("gpt-5.5");
 import { trackEvent, EVENTS } from "@/lib/kpi";
 import {
   extractTextFromParts,
@@ -506,13 +508,35 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
     const tools = createChatTools({ userId: session.user.id });
 
     // streamText doesn't throw synchronously for API errors (e.g. 429 quota).
-    // Probe models first or use cached working model.
+    // Prefer OpenAI (gpt) for critical chat; fall back to multi-agent chain.
+    let workingModel: LanguageModel | null = null;
+
+    // Try cached model first
     const cached = tryCachedModel("reasoning", chatConfig.chain);
+    if (cached?.fromCache) {
+      workingModel = cached.model;
+    }
 
-    let workingModel: LanguageModel | null = cached?.fromCache
-      ? cached.model
-      : null;
+    // If no cached model, try OpenAI directly
+    if (!workingModel) {
+      try {
+        await generateText({
+          model: gpt,
+          prompt: ".",
+          maxOutputTokens: 1,
+          maxRetries: 0,
+          timeout: 10_000,
+        });
+        workingModel = gpt;
+        reportModelSuccess("reasoning", gpt);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        reportModelFailure("reasoning", gpt);
+        console.warn(`[Chat] OpenAI health check failed: ${msg}`);
+      }
+    }
 
+    // Fall back to multi-agent chain
     if (!workingModel) {
       const healthErrors: string[] = [];
       const chainStart = cached

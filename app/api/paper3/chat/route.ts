@@ -10,7 +10,7 @@ import {
   getPlatformSettings,
 } from "@/lib/platform-settings";
 import { getUserCreditBalance, spendCredits } from "@/lib/credits";
-import { generate } from "@/lib/ai/orchestrator";
+import { generateCritical } from "@/lib/ai/orchestrator";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -170,7 +170,7 @@ User's latest message: ${messages[messages.length - 1]?.content || ""}
 
 Respond as TiC with helpful guidance. Keep responses focused and educational.`;
 
-    const result = await generate({
+    const result = await generateCritical({
       task: "reasoning",
       schema: responseSchema,
       prompt,
