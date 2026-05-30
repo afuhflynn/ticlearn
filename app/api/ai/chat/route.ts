@@ -10,9 +10,9 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
-import { openai } from "@/lib/ai/instances";
+import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 
-const gpt = openai("gpt-5.5");
 import { trackEvent, EVENTS } from "@/lib/kpi";
 import {
   extractTextFromParts,
@@ -32,10 +32,13 @@ import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 
 export const runtime = "nodejs";
 
+const gpt = openai("gpt-5.2-chat-latest");
+const gemini = google("gemini-2.5-flash-lite");
+
 async function generateTitle(userMessage: string): Promise<string> {
   try {
     const result = await generateText({
-      model: gpt,
+      model: gemini,
       maxRetries: 0,
       prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
 The title should be concise and capture the main topic.
