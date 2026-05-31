@@ -1,6 +1,5 @@
 import {
   convertToModelMessages,
-  generateObject,
   generateText,
   stepCountIs,
   streamText,
@@ -22,8 +21,6 @@ import { getChatResetWindow } from "@/lib/chat-usage";
 import { prisma } from "@/lib/prisma";
 import { getActiveProfileId } from "@/lib/exam-profile";
 import { computeReadiness } from "@/lib/readiness";
-import crypto from "crypto";
-import { z } from "zod";
 import {
   creditEnforcementEffective,
   getPlatformSettings,
@@ -52,122 +49,6 @@ Respond with only the title, nothing else.`,
   } catch (e) {
     console.warn("[Chat] Title gen failed:", e);
     return "New Chat";
-  }
-}
-
-function messageHasImage(parts: UIMessage["parts"]): string | null {
-  for (const part of parts) {
-    if (part.type === "file") {
-      const filePart = part as {
-        mediaType?: string;
-        mimeType?: string;
-        url?: string;
-        data?: string;
-      };
-      const contentType = filePart.mediaType || filePart.mimeType || "";
-      if (contentType.startsWith("image/")) {
-        return filePart.data || filePart.url || null;
-      }
-    }
-  }
-  return null;
-}
-
-async function processImageQuestion(
-  imageUrl: string,
-  userId: string,
-  conversationId: string,
-) {
-  try {
-    const profileId = await getActiveProfileId(userId);
-    if (!profileId) return;
-
-    const profile = await prisma.examProfile.findUnique({
-      where: { id: profileId },
-      include: {
-        programs: {
-          include: {
-            program: { include: { components: { include: { topics: true } } } },
-          },
-        },
-      },
-    });
-    if (!profile) return;
-
-    // Step 1: Extract question text from image
-    const extraction = await generateObject({
-      model: gpt,
-      schema: z.object({
-        questionText: z.string(),
-        isQuestion: z.boolean(),
-      }),
-      system:
-        "Extract the exam question text from this image. If it's not a question, mark isQuestion as false.",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image_url" as const, image_url: { url: imageUrl } },
-            {
-              type: "text" as const,
-              text: "Extract the question from this image.",
-            },
-          ],
-        } as never,
-      ],
-    });
-
-    if (!extraction.object.isQuestion || !extraction.object.questionText)
-      return;
-
-    const text = extraction.object.questionText.substring(0, 2000);
-
-    // Step 2: Detect topic
-    const allTopics = profile.programs.flatMap((p) =>
-      p.program.components.flatMap((c) => c.topics),
-    );
-    const topicNames = allTopics.map((t) => t.name);
-
-    const classification = await generateObject({
-      model: gpt,
-      schema: z.object({
-        topicIdx: z.number().optional(),
-        isClassified: z.boolean(),
-      }),
-      system: `Classify this question into one of these topics: ${topicNames.join(", ")}. Return the index (0-based) of the best matching topic.`,
-      prompt: `Question: ${text.substring(0, 500)}`,
-    });
-
-    const matchedTopic = classification.object.isClassified
-      ? allTopics[classification.object.topicIdx ?? -1]
-      : null;
-
-    // Step 3: Save to Question table
-    const hash = crypto
-      .createHash("sha256")
-      .update(text.toLowerCase().trim())
-      .digest("hex");
-
-    const existing = await prisma.question.findFirst({
-      where: { text: { startsWith: text.substring(0, 100) } },
-    });
-
-    if (!existing) {
-      await prisma.question.create({
-        data: {
-          componentId:
-            matchedTopic?.componentId ??
-            profile.programs[0]?.program.components[0]?.id ??
-            "",
-          topicId: matchedTopic?.id ?? null,
-          text,
-          type: "STRUCTURED",
-          sourceType: "USER_UPLOADED",
-        },
-      });
-    }
-  } catch (e) {
-    console.error("Image processing error:", e);
   }
 }
 
@@ -368,14 +249,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // If user message contains an image, process and store it
-    const imageUrl = messageHasImage(latestUserMessage.parts || []);
-    if (imageUrl) {
-      processImageQuestion(imageUrl, userId, conversationId).catch(
-        console.error,
-      );
-    }
-
     const userStats = await prisma.userStats.findUnique({
       where: { userId },
     });
@@ -489,11 +362,15 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
       tools,
       messages: modelMessages,
       stopWhen: stepCountIs(5),
-      maxRetries: 0,
-      timeout: 10_000,
+      maxRetries: 1,
+      timeout: { totalMs: 120_000, stepMs: 60_000, chunkMs: 10_000 },
     });
 
     return result.toUIMessageStreamResponse({
+      onError: (err) => {
+        console.error("[Chat] stream error:", err);
+        return "Failed to generate response.";
+      },
       onFinish: async ({ isAborted, responseMessage }) => {
         try {
           if (isAborted) return;

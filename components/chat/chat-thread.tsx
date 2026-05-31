@@ -47,6 +47,12 @@ function ConversationSession({
     }),
     experimental_throttle: 50,
     onFinish: ({ messages: updatedMessages, isError }) => {
+      if (isError) {
+        toast.error("TiC could not finish that response.");
+        queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+        return;
+      }
+
       queryClient.setQueryData(
         queryKeys.chatConversation(conversationId),
         (
@@ -87,10 +93,6 @@ function ConversationSession({
 
       queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
       queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-
-      if (isError) {
-        toast.error("TiC could not finish that response.");
-      }
     },
     onError: (chatError) => {
       toast.error(chatError.message || "Failed to send message");
