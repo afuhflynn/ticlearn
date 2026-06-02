@@ -1,3 +1,4 @@
+import { openai } from "@ai-sdk/openai";
 import {
   convertToModelMessages,
   generateText,
@@ -9,34 +10,31 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
-import { openai } from "@ai-sdk/openai";
-import { google } from "@ai-sdk/google";
-
-import { trackEvent, EVENTS } from "@/lib/kpi";
 import {
   extractTextFromParts,
   normalizeStoredParts,
 } from "@/lib/chat-messages";
 import { getChatResetWindow } from "@/lib/chat-usage";
-import { prisma } from "@/lib/prisma";
+import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 import { getActiveProfileId } from "@/lib/exam-profile";
-import { computeReadiness } from "@/lib/readiness";
+import { EVENTS, trackEvent } from "@/lib/kpi";
 import {
   creditEnforcementEffective,
   getPlatformSettings,
 } from "@/lib/platform-settings";
-import { getUserCreditBalance, spendCredits } from "@/lib/credits";
+import { prisma } from "@/lib/prisma";
+import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
-const gpt = openai("gpt-5.2-chat-latest");
-const gemini = google("gemini-2.5-flash-lite");
+const gpt = openai.responses("gpt-5.5");
 
 async function generateTitle(userMessage: string): Promise<string> {
   try {
     const result = await generateText({
-      model: gemini,
+      model: gpt,
       maxRetries: 0,
+      timeout: 10_000,
       prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
 The title should be concise and capture the main topic.
 Do not use quotes or special characters in the title.

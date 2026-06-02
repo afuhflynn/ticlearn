@@ -1,21 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
-import { useSession } from "@/lib/auth-client";
+import { Camera, Loader2, Lock, Mail, Save, User } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useSettings, useUpdateSettings, useUpdateProfile } from "@/hooks";
-import {
-  User,
-  Mail,
-  Lock,
-  Bell,
-  Upload,
-  Loader2,
-  Save,
-  Camera,
-  CheckCircle,
-  AlertCircle,
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,16 +16,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { toast } from "sonner";
-
-interface UserSettings {
-  name: string;
-  email: string;
-  image: string | null;
-  emailNotifications: boolean;
-  pushNotifications: boolean;
-}
+import { useSettings, useUpdateProfile, useUpdateSettings } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
+import { useUploadThing } from "@/lib/uploadthing";
 
 export default function SettingsPage() {
   const { data: session, isPending: sessionLoading } = useSession();
@@ -47,7 +29,6 @@ export default function SettingsPage() {
   const updateProfileMutation = useUpdateProfile();
   const updateSettingsMutation = useUpdateSettings();
 
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -62,6 +43,13 @@ export default function SettingsPage() {
 
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [pushNotifications, setPushNotifications] = useState(true);
+
+  const { startUpload } = useUploadThing("profileImage", {
+    onUploadError: (err) => {
+      toast.error(`Upload failed: ${err.message}`);
+      setIsUploading(false);
+    },
+  });
 
   useEffect(() => {
     if (!sessionLoading && !session?.user) {
@@ -80,7 +68,6 @@ export default function SettingsPage() {
     if (settings) {
       setEmailNotifications(settings.emailNotifications ?? true);
       setPushNotifications(settings.pushNotifications ?? true);
-      setIsLoading(false);
     }
   }, [settings]);
 
@@ -95,7 +82,9 @@ export default function SettingsPage() {
       await updateProfileMutation.mutateAsync({ name });
       toast.success("Profile updated!");
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to update profile");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update profile",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -145,32 +134,35 @@ export default function SettingsPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please choose an image file");
+      return;
+    }
+
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
+      const uploaded = await startUpload([file]);
+      const uploadedFile = uploaded?.[0];
 
-      const response = await fetch("/api/upload/profile", {
-        method: "POST",
-        body: formData,
-      });
-      const data = await response.json();
-
-      if (data.url) {
-        setImage(data.url);
-        await updateProfileMutation.mutateAsync({ image: data.url });
+      if (uploadedFile?.url) {
+        setImage(uploadedFile.url);
+        await updateProfileMutation.mutateAsync({ image: uploadedFile.url });
         toast.success("Profile photo updated!");
       } else {
-        toast.error(data.error || "Failed to upload image");
+        toast.error("Failed to upload image");
       }
     } catch {
       toast.error("Failed to upload image");
     } finally {
       setIsUploading(false);
+      e.target.value = "";
     }
   };
 
-  const handleNotificationChange = async (key: "emailNotifications" | "pushNotifications", value: boolean) => {
+  const handleNotificationChange = async (
+    key: "emailNotifications" | "pushNotifications",
+    value: boolean,
+  ) => {
     if (key === "emailNotifications") {
       setEmailNotifications(value);
     } else {

@@ -1,24 +1,17 @@
 "use client";
 
-import {
-  BarChart3,
-  FileText,
-  ImageIcon,
-  Sparkles,
-  Zap,
-  Shapes,
-} from "lucide-react";
 import type { FileUIPart } from "ai";
+import { BarChart3, FileText, ImageIcon, Shapes, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
+import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { useUsage } from "@/hooks";
 import { useCreateConversation } from "@/hooks/useChat";
+import { useSession } from "@/lib/auth-client";
 import { ChatComposer } from "./chat-composer";
 import { CHAT_SUGGESTIONS, QUICK_ACTIONS } from "./constants";
 import { storePendingChatMessage } from "./pending-message";
-import { useSession } from "@/lib/auth-client";
 
 const actionIcons = {
   notes: FileText,
@@ -60,14 +53,19 @@ export function ChatLanding() {
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-8 md:py-12">
-        <div className="space-y-3 text-center">
-          <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">
-            Hello {session?.user.name.split(" ")[0]}, what's on your mind?
+      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-8 md:py-12">
+        <div className="space-y-4 text-center">
+          <div className="mx-auto inline-flex items-center rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
+            TiC study cockpit · notes, mocks, images, documents, progress
+          </div>
+          <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-5xl">
+            Hello {session?.user.name.split(" ")[0]}, let's turn confusion into
+            a study move.
           </h1>
           <p className="mx-auto max-w-2xl text-sm text-muted-foreground md:text-base">
-            Start a conversation and TiC will pull the right tools when you ask
-            about your own learning data. Upload images or documents to analyze.
+            Ask from your learning data, attach a past-paper image, drop a PDF
+            or DOCX, and TiC will explain, quiz, plan, or debrief like a focused
+            GCE tutor.
           </p>
         </div>
 
@@ -84,7 +82,7 @@ export function ChatLanding() {
           />
         </div>
 
-        <div className="mx-auto grid w-full max-w-3xl grid-cols-2 gap-2 md:grid-cols-4 md:gap-3">
+        <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {QUICK_ACTIONS.map((action) => {
             const Icon = actionIcons[action.icon];
             return (
@@ -92,11 +90,13 @@ export function ChatLanding() {
                 key={action.title}
                 type="button"
                 onClick={() => startConversation(action.prompt)}
-                className="flex flex-col items-center gap-1.5 rounded-xl border bg-card p-3 text-center transition-all hover:border-primary/50 hover:bg-accent active:scale-[0.97]"
+                className="flex min-h-32 flex-col items-start gap-2 rounded-2xl border bg-card/80 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-accent active:scale-[0.98]"
               >
-                <Icon className="h-5 w-5 text-primary" />
-                <span className="text-xs font-medium">{action.title}</span>
-                <span className="line-clamp-2 text-[10px] text-muted-foreground leading-tight">
+                <span className="rounded-xl bg-primary/10 p-2 text-primary">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <span className="text-sm font-semibold">{action.title}</span>
+                <span className="line-clamp-3 text-xs text-muted-foreground leading-relaxed">
                   {action.description}
                 </span>
               </button>
@@ -114,9 +114,9 @@ export function ChatLanding() {
           ))}
         </Suggestions>
 
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Attach images & PDFs
+            <Zap className="h-3 w-3" /> Images, PDFs, DOCX, text & CSV
           </span>
           <span className="inline-flex items-center gap-1">
             <Zap className="h-3 w-3" /> Web search enabled

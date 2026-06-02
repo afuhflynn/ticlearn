@@ -226,16 +226,28 @@ export interface PlanLimits {
   canAccessCommunity: boolean;
   canAccessLeaderboard: boolean;
   canAccessGCE: boolean;
+  paper3ExamLimit: number;
+  paper3RetakeLimit: number;
+  paper3AIExamMessages: number;
+  canViewCorrectAnswers: boolean;
+  canAccessPaper3AI: boolean;
+  canShareResults: boolean;
 }
 
 export const PLAN_LIMITS: Record<Exclude<Plan, "PREMIUM">, PlanLimits> = {
   STARTER: {
     pdfUploads: 10,
     quizGenerations: 20,
-    aiTutorMessages: -1,
+    aiTutorMessages: 50,
     canAccessCommunity: true,
     canAccessLeaderboard: true,
     canAccessGCE: true,
+    paper3ExamLimit: 3,
+    paper3RetakeLimit: 0,
+    paper3AIExamMessages: 4,
+    canViewCorrectAnswers: false,
+    canAccessPaper3AI: false,
+    canShareResults: false,
   },
   STANDARD: {
     pdfUploads: 30,
@@ -244,6 +256,12 @@ export const PLAN_LIMITS: Record<Exclude<Plan, "PREMIUM">, PlanLimits> = {
     canAccessCommunity: true,
     canAccessLeaderboard: true,
     canAccessGCE: true,
+    paper3ExamLimit: -1,
+    paper3RetakeLimit: 0,
+    paper3AIExamMessages: -1,
+    canViewCorrectAnswers: true,
+    canAccessPaper3AI: true,
+    canShareResults: true,
   },
   PRO: {
     pdfUploads: -1,
@@ -252,6 +270,12 @@ export const PLAN_LIMITS: Record<Exclude<Plan, "PREMIUM">, PlanLimits> = {
     canAccessCommunity: true,
     canAccessLeaderboard: true,
     canAccessGCE: true,
+    paper3ExamLimit: -1,
+    paper3RetakeLimit: -1,
+    paper3AIExamMessages: -1,
+    canViewCorrectAnswers: true,
+    canAccessPaper3AI: true,
+    canShareResults: true,
   },
 };
 
@@ -262,6 +286,12 @@ export const PREMIUM_LIMITS: PlanLimits = {
   canAccessCommunity: true,
   canAccessLeaderboard: true,
   canAccessGCE: true,
+  paper3ExamLimit: -1,
+  paper3RetakeLimit: -1,
+  paper3AIExamMessages: -1,
+  canViewCorrectAnswers: true,
+  canAccessPaper3AI: true,
+  canShareResults: true,
 };
 
 export const FREE_LIMITS: PlanLimits = {
@@ -271,6 +301,12 @@ export const FREE_LIMITS: PlanLimits = {
   canAccessCommunity: false,
   canAccessLeaderboard: true,
   canAccessGCE: false,
+  paper3ExamLimit: 1,
+  paper3RetakeLimit: 0,
+  paper3AIExamMessages: 4,
+  canViewCorrectAnswers: false,
+  canAccessPaper3AI: false,
+  canShareResults: false,
 };
 
 // ===========================================
