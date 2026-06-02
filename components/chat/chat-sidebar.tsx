@@ -1,17 +1,41 @@
 "use client";
 
-import { Loader2, MoreHorizontal, Plus, Search, Trash2 } from "lucide-react";
+import {
+  BookOpen,
+  Copy,
+  Gauge,
+  History,
+  Loader2,
+  MoreHorizontal,
+  Pencil,
+  Plus,
+  Search,
+  Trash2,
+  UploadCloud,
+} from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
@@ -30,9 +54,9 @@ import {
   useChatConversations,
   useCreateConversation,
   useDeleteConversation,
+  useUpdateConversation,
 } from "@/hooks/useChat";
 import { ChatUsageCard } from "./chat-usage-card";
-import Image from "next/image";
 
 function formatGroupLabel(date: Date): string {
   const now = new Date();
@@ -54,13 +78,23 @@ type Conversation = {
   updatedAt: string;
 };
 
+const workspaceLinks = [
+  { href: "/dashboard", label: "Dashboard", icon: Gauge },
+  { href: "/practice", label: "Practice", icon: BookOpen },
+  { href: "/upload", label: "Upload notes", icon: UploadCloud },
+  { href: "/practice/history", label: "Attempts", icon: History },
+];
+
 export function ChatSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { conversations, isLoading } = useChatConversations();
   const createConversation = useCreateConversation();
+  const updateConversation = useUpdateConversation();
   const deleteConversation = useDeleteConversation();
   const [searchQuery, setSearchQuery] = useState("");
+  const [renameTarget, setRenameTarget] = useState<Conversation | null>(null);
+  const [renameTitle, setRenameTitle] = useState("");
 
   const handleCreateConversation = async () => {
     try {
@@ -69,6 +103,35 @@ export function ChatSidebar() {
     } catch {
       toast.error("Failed to create conversation");
     }
+  };
+
+  const openRenameDialog = (conversation: Conversation) => {
+    setRenameTarget(conversation);
+    setRenameTitle(conversation.title);
+  };
+
+  const handleRenameConversation = async () => {
+    if (!renameTarget) return;
+    const title = renameTitle.trim();
+    if (!title) {
+      toast.error("Conversation title cannot be empty");
+      return;
+    }
+
+    try {
+      await updateConversation.mutateAsync({ id: renameTarget.id, title });
+      toast.success("Conversation renamed");
+      setRenameTarget(null);
+      setRenameTitle("");
+    } catch {
+      toast.error("Failed to rename conversation");
+    }
+  };
+
+  const handleCopyLink = async (conversationId: string) => {
+    const url = `${window.location.origin}/chat/${conversationId}`;
+    await navigator.clipboard.writeText(url);
+    toast.success("Conversation link copied");
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
@@ -86,148 +149,231 @@ export function ChatSidebar() {
   const filteredAndGrouped = useMemo(() => {
     const q = searchQuery.toLowerCase().trim();
     const filtered: Conversation[] = q
-      ? conversations.filter((c: Conversation) =>
-          c.title.toLowerCase().includes(q),
+      ? conversations.filter((conversation: Conversation) =>
+          conversation.title.toLowerCase().includes(q),
         )
       : conversations;
 
     const groups: Record<string, Conversation[]> = {};
-    for (const conv of filtered) {
+    for (const conversation of filtered) {
       const label = formatGroupLabel(
-        new Date(conv.updatedAt || conv.createdAt),
+        new Date(conversation.updatedAt || conversation.createdAt),
       );
-      if (!groups[label]) groups[label] = [];
-      groups[label].push(conv);
+      groups[label] = groups[label] ?? [];
+      groups[label].push(conversation);
     }
 
     const order = ["Today", "Yesterday", "This Week", "This Month", "Older"];
     return order
-      .filter((l) => groups[l])
-      .map((l) => ({ label: l, conversations: groups[l] }));
+      .filter((label) => groups[label])
+      .map((label) => ({ label, conversations: groups[label] }));
   }, [conversations, searchQuery]);
 
   return (
-    <Sidebar collapsible="offcanvas" variant="sidebar">
-      <SidebarHeader className="border-b px-3 py-[1.2rem]">
-        <div className="flex items-center justify-between gap-2">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <Image
-              src="/icons/favicon-32x32.png"
-              alt="TiCLearn Logo"
-              width={32}
-              height={32}
-              className="h-8 w-8 text-primary"
-            />
-            <span className="text-xl font-bold">TiC</span>
-          </Link>
-          <Button
-            onClick={handleCreateConversation}
-            size="sm"
-            variant="secondary"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New chat
-          </Button>
-        </div>
-      </SidebarHeader>
-
-      <SidebarContent>
-        <div className="px-3 pb-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search conversations..."
-              className="w-full rounded-lg border bg-background py-1.5 pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
-            />
+    <>
+      <Sidebar collapsible="offcanvas" variant="sidebar">
+        <SidebarHeader className="border-b px-3 py-4">
+          <div className="flex items-center justify-between gap-2">
+            <Link href="/dashboard" className="flex items-center gap-2">
+              <Image
+                src="/icons/favicon-32x32.png"
+                alt="TiCLearn Logo"
+                width={32}
+                height={32}
+                className="h-8 w-8 text-primary"
+              />
+              <span className="text-xl font-bold">TiC</span>
+            </Link>
+            <Button
+              onClick={handleCreateConversation}
+              size="sm"
+              variant="secondary"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New
+            </Button>
           </div>
-        </div>
 
-        {isLoading ? (
-          <div className="flex items-center gap-2 px-5 py-3 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span>Loading chats...</span>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            {workspaceLinks.map((item) => {
+              const Icon = item.icon;
+              return (
+                <Button
+                  asChild
+                  className="justify-start gap-2 rounded-xl text-xs"
+                  key={item.href}
+                  size="sm"
+                  variant={
+                    pathname.startsWith(item.href) ? "secondary" : "ghost"
+                  }
+                >
+                  <Link href={item.href}>
+                    <Icon className="h-3.5 w-3.5" />
+                    {item.label}
+                  </Link>
+                </Button>
+              );
+            })}
           </div>
-        ) : conversations.length === 0 ? (
-          <p className="px-5 py-3 text-sm text-muted-foreground">
-            No conversations yet.
-          </p>
-        ) : (
-          <ScrollArea className="flex-1">
-            {filteredAndGrouped.length === 0 && searchQuery ? (
-              <p className="px-5 py-3 text-sm text-muted-foreground">
-                No conversations matching "{searchQuery}"
-              </p>
-            ) : (
-              filteredAndGrouped.map((group) => (
-                <SidebarGroup key={group.label}>
-                  <SidebarGroupLabel className="px-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
-                    {group.label}
-                  </SidebarGroupLabel>
-                  <SidebarGroupContent>
-                    <SidebarMenu className="px-2">
-                      {group.conversations.map((conv) => (
-                        <SidebarMenuItem
-                          key={conv.id}
-                          className="group flex items-center gap-1.5 pr-1 w-full relative"
-                        >
-                          <SidebarMenuButton
-                            asChild
-                            className="flex-1 line-clamp-1"
-                            isActive={pathname === `/chat/${conv.id}`}
-                          >
-                            <Link
-                              href={`/chat/${conv.id}`}
-                              className="w-full line-clamp-1"
+        </SidebarHeader>
+
+        <SidebarContent>
+          <div className="px-3 py-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search chats..."
+                className="w-full rounded-xl border bg-background py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
+              />
+            </div>
+          </div>
+
+          {isLoading ? (
+            <div className="flex items-center gap-2 px-5 py-3 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>Loading chats...</span>
+            </div>
+          ) : conversations.length === 0 ? (
+            <p className="px-5 py-3 text-sm text-muted-foreground">
+              No conversations yet.
+            </p>
+          ) : (
+            <ScrollArea className="flex-1">
+              {filteredAndGrouped.length === 0 && searchQuery ? (
+                <p className="px-5 py-3 text-sm text-muted-foreground">
+                  No conversations matching “{searchQuery}”
+                </p>
+              ) : (
+                filteredAndGrouped.map((group) => (
+                  <SidebarGroup key={group.label}>
+                    <SidebarGroupLabel className="px-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                      {group.label}
+                    </SidebarGroupLabel>
+                    <SidebarGroupContent>
+                      <SidebarMenu className="px-2">
+                        {group.conversations.map((conversation) => {
+                          const active =
+                            pathname === `/chat/${conversation.id}`;
+                          return (
+                            <SidebarMenuItem
+                              key={conversation.id}
+                              className="group/menu-item flex w-full items-center gap-1 rounded-xl px-1"
                             >
-                              {conv.title}
-                            </Link>
-                          </SidebarMenuButton>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                className="h-7 w-7 hidden group-hover:block absolute top-1/2 right-2 -translate-y-1/2"
-                                size="icon"
-                                variant="ghost"
+                              <SidebarMenuButton
+                                asChild
+                                className="min-w-0 flex-1 rounded-xl"
+                                isActive={active}
                               >
-                                <MoreHorizontal className="h-3.5 w-3.5" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => toast.info("Rename coming soon")}
-                              >
-                                Rename
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive focus:text-destructive"
-                                disabled={deleteConversation.isPending}
-                                onClick={() =>
-                                  handleDeleteConversation(conv.id)
-                                }
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" />
-                                Delete
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </SidebarMenuItem>
-                      ))}
-                    </SidebarMenu>
-                  </SidebarGroupContent>
-                </SidebarGroup>
-              ))
-            )}
-          </ScrollArea>
-        )}
-      </SidebarContent>
+                                <Link
+                                  href={`/chat/${conversation.id}`}
+                                  className="min-w-0 truncate"
+                                >
+                                  {conversation.title}
+                                </Link>
+                              </SidebarMenuButton>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    aria-label={`Actions for ${conversation.title}`}
+                                    className="h-7 w-7 shrink-0 opacity-80 transition-opacity md:opacity-0 md:group-hover/menu-item:opacity-100"
+                                    size="icon"
+                                    variant="ghost"
+                                  >
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent
+                                  align="end"
+                                  className="w-44"
+                                >
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      openRenameDialog(conversation)
+                                    }
+                                  >
+                                    <Pencil className="mr-2 h-3.5 w-3.5" />
+                                    Rename
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      handleCopyLink(conversation.id)
+                                    }
+                                  >
+                                    <Copy className="mr-2 h-3.5 w-3.5" />
+                                    Copy link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    disabled={deleteConversation.isPending}
+                                    onClick={() =>
+                                      handleDeleteConversation(conversation.id)
+                                    }
+                                  >
+                                    <Trash2 className="mr-2 h-3.5 w-3.5" />
+                                    Delete
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </SidebarMenuItem>
+                          );
+                        })}
+                      </SidebarMenu>
+                    </SidebarGroupContent>
+                  </SidebarGroup>
+                ))
+              )}
+            </ScrollArea>
+          )}
+        </SidebarContent>
 
-      <SidebarFooter className="border-t p-3">
-        <ChatUsageCard compact />
-      </SidebarFooter>
-      <SidebarRail />
-    </Sidebar>
+        <SidebarFooter className="border-t p-3">
+          <ChatUsageCard compact />
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+
+      <Dialog
+        open={!!renameTarget}
+        onOpenChange={(open) => !open && setRenameTarget(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename conversation</DialogTitle>
+            <DialogDescription>
+              Give this thread a short title so it is easier to find later.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="conversation-title">Title</Label>
+            <Input
+              id="conversation-title"
+              value={renameTitle}
+              onChange={(event) => setRenameTitle(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleRenameConversation();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setRenameTarget(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameConversation}
+              disabled={updateConversation.isPending}
+            >
+              {updateConversation.isPending ? "Saving..." : "Save title"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

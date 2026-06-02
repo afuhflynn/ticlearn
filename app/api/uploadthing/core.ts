@@ -92,6 +92,10 @@ export const ourFileRouter = {
       maxFileSize: "16MB",
       maxFileCount: 5,
     },
+    "text/plain": { maxFileSize: "4MB", maxFileCount: 5 },
+    "text/markdown": { maxFileSize: "4MB", maxFileCount: 5 },
+    "text/csv": { maxFileSize: "4MB", maxFileCount: 5 },
+    "application/json": { maxFileSize: "4MB", maxFileCount: 5 },
   })
     .middleware(async () => {
       const session = await auth.api.getSession({

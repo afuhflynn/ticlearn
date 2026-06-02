@@ -1,11 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
-import { toast } from "sonner";
 import type { FileUIPart } from "ai";
+import { useCallback, useState } from "react";
+import { toast } from "sonner";
 import {
   Attachment,
   type AttachmentData,
+  AttachmentInfo,
   AttachmentPreview,
   AttachmentRemove,
   Attachments,
@@ -17,31 +18,40 @@ import {
   PromptInputActionMenu,
   PromptInputActionMenuContent,
   PromptInputActionMenuTrigger,
+  PromptInputAttachments,
   PromptInputBody,
   PromptInputFooter,
   PromptInputHeader,
   PromptInputSubmit,
   PromptInputTextarea,
   PromptInputTools,
+  usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
 import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
 function AttachmentItem({
   attachment,
-  onRemove,
+  uploadProgress,
 }: {
   attachment: AttachmentData;
-  onRemove: (id: string) => void;
+  uploadProgress: number | null;
 }) {
-  const handleRemove = useCallback(() => {
-    onRemove(attachment.id);
-  }, [attachment.id, onRemove]);
+  const { remove } = usePromptInputAttachments();
 
   return (
-    <Attachment data={attachment} onRemove={handleRemove}>
+    <Attachment data={attachment} onRemove={() => remove(attachment.id)}>
       <AttachmentPreview />
+      <AttachmentInfo className="pr-6" showMediaType />
       <AttachmentRemove />
+      {uploadProgress !== null ? (
+        <span className="absolute inset-x-0 bottom-0 h-0.5 overflow-hidden rounded-full bg-primary/10">
+          <span
+            className="block h-full bg-primary transition-all"
+            style={{ width: `${uploadProgress}%` }}
+          />
+        </span>
+      ) : null}
     </Attachment>
   );
 }
@@ -60,12 +70,17 @@ export function ChatComposer({
   className?: string;
 }) {
   const [text, setText] = useState("");
-  const [attachments, setAttachments] = useState<AttachmentData[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   const { startUpload } = useUploadThing("chatUploader", {
     onUploadError: (err) => {
       toast.error(`Upload failed: ${err.message}`);
+      setUploading(false);
+      setUploadProgress(null);
+    },
+    onUploadProgress: (progress) => {
+      setUploadProgress(progress);
     },
   });
 
@@ -75,10 +90,6 @@ export function ChatComposer({
     },
     [],
   );
-
-  const handleAttachmentRemove = useCallback((id: string) => {
-    setAttachments((current) => current.filter((item) => item.id !== id));
-  }, []);
 
   const handleTextareaKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -98,11 +109,6 @@ export function ChatComposer({
     [],
   );
 
-  const isSubmitDisabled = useMemo(() => {
-    if (disabled || uploading) return true;
-    return !(text.trim() || attachments.length > 0) || status === "streaming";
-  }, [attachments.length, disabled, status, text, uploading]);
-
   const handleSubmit = useCallback(
     async (message: PromptInputMessage) => {
       if (!(message.text?.trim() || message.files?.length)) return;
@@ -117,7 +123,8 @@ export function ChatComposer({
             const resp = await fetch(f.url);
             const blob = await resp.blob();
             const fileExt = f.filename?.split(".").pop() || "bin";
-            const mimeType = f.mediaType || blob.type || "application/octet-stream";
+            const mimeType =
+              f.mediaType || blob.type || "application/octet-stream";
             rawFiles.push(
               new File([blob], f.filename || `file.${fileExt}`, {
                 type: mimeType,
@@ -128,11 +135,13 @@ export function ChatComposer({
 
         if (rawFiles.length > 0) {
           setUploading(true);
+          setUploadProgress(1);
           try {
             const uploaded = await startUpload(rawFiles);
             if (!uploaded || uploaded.length === 0) {
               toast.error("No files were uploaded");
               setUploading(false);
+              setUploadProgress(null);
               return;
             }
 
@@ -141,45 +150,56 @@ export function ChatComposer({
               mediaType:
                 rawFiles.find(
                   (rf) =>
-                    u.name === rf.name || u.url.includes(encodeURIComponent(rf.name)),
+                    u.name === rf.name ||
+                    u.url.includes(encodeURIComponent(rf.name)),
                 )?.type || "application/octet-stream",
               filename: u.name,
               url: u.url,
             }));
 
-            const nonBlobFiles = files.filter((f) => !f.url.startsWith("blob:"));
+            const nonBlobFiles = files.filter(
+              (f) => !f.url.startsWith("blob:"),
+            );
             files = [...nonBlobFiles, ...utFiles];
           } catch {
             toast.error("Failed to upload files");
             setUploading(false);
+            setUploadProgress(null);
             return;
           }
           setUploading(false);
+          setUploadProgress(null);
         }
       }
 
       await onSubmit({ text: message.text || "", files });
       setText("");
-      setAttachments([]);
     },
     [onSubmit, startUpload],
   );
 
   return (
     <div className={cn("space-y-2", className)}>
-      <PromptInput globalDrop multiple onSubmit={handleSubmit}>
+      <PromptInput
+        accept="image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown,text/csv,application/json"
+        globalDrop
+        maxFiles={10}
+        maxFileSize={16 * 1024 * 1024}
+        multiple
+        onError={(err) => toast.error(err.message)}
+        onSubmit={handleSubmit}
+      >
         <PromptInputHeader>
-          {attachments.length > 0 && (
-            <Attachments variant="inline">
-              {attachments.map((attachment) => (
+          <PromptInputAttachments>
+            {(attachment) => (
+              <Attachments variant="inline">
                 <AttachmentItem
                   attachment={attachment}
-                  key={attachment.id}
-                  onRemove={handleAttachmentRemove}
+                  uploadProgress={uploading ? (uploadProgress ?? 8) : null}
                 />
-              ))}
-            </Attachments>
-          )}
+              </Attachments>
+            )}
+          </PromptInputAttachments>
         </PromptInputHeader>
         <PromptInputBody>
           <PromptInputTextarea
@@ -203,7 +223,10 @@ export function ChatComposer({
               </PromptInputActionMenuContent>
             </PromptInputActionMenu>
           </PromptInputTools>
-          <PromptInputSubmit disabled={isSubmitDisabled} status={uploading ? "submitted" : status} />
+          <PromptInputSubmit
+            disabled={disabled || uploading || status === "streaming"}
+            status={uploading ? "submitted" : status}
+          />
         </PromptInputFooter>
       </PromptInput>
       {uploading ? (

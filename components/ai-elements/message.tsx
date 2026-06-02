@@ -1,14 +1,6 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
-import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { cn } from "@/lib/utils";
+import { createMathPlugin } from "@streamdown/math";
 import type { FileUIPart, UIMessage } from "ai";
 import {
   ChevronLeftIcon,
@@ -19,7 +11,15 @@ import {
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import { createMathPlugin } from "@streamdown/math";
+import { Button } from "@/components/ui/button";
+import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import "katex/dist/katex.min.css";
 import { normalizeMathNotation } from "@/lib/math-format";
 
@@ -32,8 +32,10 @@ export type MessageProps = HTMLAttributes<HTMLDivElement> & {
 export const Message = ({ className, from, ...props }: MessageProps) => (
   <div
     className={cn(
-      "group flex w-full max-w-[95%] flex-col gap-2",
-      from === "user" ? "is-user ml-auto justify-end" : "is-assistant",
+      "group flex w-full flex-col gap-2",
+      from === "user"
+        ? "is-user ml-auto max-w-[88%] justify-end md:max-w-[78%]"
+        : "is-assistant max-w-3xl",
       className,
     )}
     {...props}
@@ -49,9 +51,9 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-lg group-[.is-user]:bg-secondary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-foreground",
-      "group-[.is-assistant]:text-foreground",
+      "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm shadow-sm",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-br-md group-[.is-user]:bg-primary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-primary-foreground",
+      "group-[.is-assistant]:rounded-2xl group-[.is-assistant]:rounded-tl-md group-[.is-assistant]:border group-[.is-assistant]:bg-card/80 group-[.is-assistant]:px-4 group-[.is-assistant]:py-3 group-[.is-assistant]:text-foreground",
       className,
     )}
     {...props}
@@ -314,7 +316,7 @@ export const MessageResponse = memo(
       mode="static"
       plugins={{ math: mathPlugin }}
       className={cn(
-        "size-full max-w-none text-sm leading-7 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+        "size-full max-w-none wrap-break-word text-sm leading-7 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         "[&_h1]:mt-6 [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight",
         "[&_h2]:mt-5 [&_h2]:mb-2.5 [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:tracking-tight",
         "[&_h3]:mt-4 [&_h3]:mb-2 [&_h3]:text-lg [&_h3]:font-semibold",
@@ -326,14 +328,16 @@ export const MessageResponse = memo(
         "[&_table]:my-4 [&_table]:w-full [&_table]:border-collapse [&_table]:text-sm",
         "[&_th]:border [&_th]:border-border [&_th]:bg-muted/50 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-medium",
         "[&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2",
-        "[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:bg-muted/40 [&_pre]:p-3",
-        "[&_code]:rounded [&_code]:bg-muted/50 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em]",
+        "[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:bg-muted/60 [&_pre]:p-3",
+        "[&_code]:rounded [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em]",
         "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
         className,
       )}
       {...props}
     >
-      {typeof children === "string" ? normalizeMathNotation(children) : children}
+      {typeof children === "string"
+        ? normalizeMathNotation(children)
+        : children}
     </Streamdown>
   ),
   (prevProps, nextProps) => prevProps.children === nextProps.children,
@@ -369,6 +373,7 @@ export function MessageAttachment({
     >
       {isImage ? (
         <>
+          {/* biome-ignore lint/performance/noImgElement: Message attachments may come from arbitrary user-provided URLs. */}
           <img
             alt={filename || "attachment"}
             className="size-full object-cover"

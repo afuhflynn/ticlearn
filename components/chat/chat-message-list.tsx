@@ -7,6 +7,9 @@ import {
   type ToolUIPart,
   type UIMessage,
 } from "ai";
+import { CheckIcon, CopyIcon, FileIcon, FileTextIcon } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import {
   Conversation,
   ConversationContent,
@@ -39,9 +42,6 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { cn } from "@/lib/utils";
-import { CheckIcon, CopyIcon, FileIcon, FileTextIcon, ImageIcon } from "lucide-react";
-import { toast } from "sonner";
-import { useState } from "react";
 
 function normalizeMarkdownForDisplay(content: string) {
   if (!content) return content;
@@ -154,44 +154,52 @@ function ToolParts({ parts }: { parts: UIMessage["parts"] }) {
 
 function FileParts({ parts }: { parts: UIMessage["parts"] }) {
   const fileParts = parts.filter(
-    (p): p is { type: "file"; mediaType: string; filename?: string; url: string } =>
-      p.type === "file" && "url" in p,
+    (
+      p,
+    ): p is {
+      type: "file";
+      mediaType: string;
+      filename?: string;
+      url: string;
+    } => p.type === "file" && "url" in p,
   );
 
   if (fileParts.length === 0) return null;
 
   return (
     <div className="mb-3 flex flex-wrap gap-2">
-      {fileParts.map((part, i) => {
+      {fileParts.map((part) => {
         const isImage = part.mediaType?.startsWith("image/");
+        const key = `${part.url}-${part.filename ?? "file"}`;
 
         if (isImage) {
           return (
             <a
-              key={i}
+              key={key}
               href={part.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group relative overflow-hidden rounded-lg border"
+              className="group relative overflow-hidden rounded-xl border bg-card shadow-sm"
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {/* biome-ignore lint/performance/noImgElement: Chat attachments use arbitrary signed/external URLs that cannot be preconfigured for next/image. */}
               <img
                 alt={part.filename || "Attached image"}
                 src={part.url}
-                className="h-24 w-24 object-cover transition-opacity group-hover:opacity-80"
+                className="h-28 w-28 object-cover transition-opacity group-hover:opacity-80"
               />
             </a>
           );
         }
 
-        const Icon = part.mediaType === "application/pdf" ? FileTextIcon : FileIcon;
+        const Icon =
+          part.mediaType === "application/pdf" ? FileTextIcon : FileIcon;
         return (
           <a
-            key={i}
+            key={key}
             href={part.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs hover:bg-muted/50"
+            className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-xs shadow-sm hover:bg-muted/50"
           >
             <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span className="max-w-32 truncate">{part.filename || "File"}</span>
@@ -233,6 +241,15 @@ function MessageBody({ message }: { message: UIMessage }) {
 
   return (
     <>
+      {message.role === "assistant" ? (
+        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
+            TiC
+          </span>
+          Study assistant
+        </div>
+      ) : null}
+
       <FileParts parts={message.parts} />
 
       {sourceParts.length > 0 ? (
@@ -259,9 +276,13 @@ function MessageBody({ message }: { message: UIMessage }) {
 
       {text.trim() || toolSummary ? (
         <MessageContent>
-          <MessageResponse>{normalizedText.trim() || toolSummary}</MessageResponse>
+          <MessageResponse>
+            {normalizedText.trim() || toolSummary}
+          </MessageResponse>
         </MessageContent>
       ) : null}
+
+      <ToolParts parts={message.parts} />
 
       {message.role === "assistant" && (
         <MessageActions className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">

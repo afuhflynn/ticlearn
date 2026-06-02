@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
 import { Loader2 } from "lucide-react";
-import { useEffect, useMemo, useRef, useCallback } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { useCheckLimit, useUsage } from "@/hooks";
@@ -34,10 +34,6 @@ function ConversationSession({
   const queryClient = useQueryClient();
   const { allowed: canChat } = useCheckLimit("chat");
   const { chatDailyUsage } = useUsage();
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const observerRef = useRef<IntersectionObserver | null>(null);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
   const { messages, sendMessage, status, error } = useChat<UIMessage>({
     id: conversationId,
     messages: initialMessages,
@@ -129,7 +125,7 @@ function ConversationSession({
 
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1" ref={scrollRef}>
+      <div className="min-h-0 flex-1 bg-gradient-to-b from-background via-background to-muted/20">
         <ChatMessageList
           emptyState={
             <div className="px-4 py-10 text-center text-muted-foreground">
@@ -137,12 +133,13 @@ function ConversationSession({
             </div>
           }
           messages={messages}
+          className="mx-auto max-w-3xl"
           status={status}
         />
       </div>
 
-      <div className="border-t px-4 py-4 md:px-6">
-        <Suggestions className="mb-4 flex flex-wrap gap-2">
+      <div className="border-t bg-background/95 px-4 py-4 backdrop-blur md:px-6">
+        <Suggestions className="mx-auto mb-4 flex max-w-3xl flex-wrap gap-2">
           {CHAT_SUGGESTIONS.map((suggestion) => (
             <Suggestion
               key={suggestion}
@@ -164,6 +161,7 @@ function ConversationSession({
               files: message.files as FileUIPart[],
             });
           }}
+          className="mx-auto max-w-3xl"
           status={status}
         />
       </div>

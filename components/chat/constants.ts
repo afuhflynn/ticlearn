@@ -1,36 +1,39 @@
+export const PENDING_CHAT_MESSAGE_PREFIX = "ticlearn-pending-chat";
+
 export const CHAT_SUGGESTIONS = [
-  "What notes do I have right now?",
-  "Summarize my latest Biology note",
-  "Show my recent quiz attempts",
-  "What is my study progress this week?",
-  "Help me revise quadratic equations",
+  "Explain my weakest topic like I am revising tonight",
+  "Turn this uploaded question into a step-by-step solution",
+  "Build a 7-day study sprint from my progress",
+  "Quiz me from my notes with exam-style questions",
 ];
 
 export const QUICK_ACTIONS = [
   {
-    title: "Browse Notes",
-    description: "Find and review your uploaded study notes",
-    prompt: "Show me all my notes",
-    icon: "notes" as const,
-  },
-  {
-    title: "Study Progress",
-    description: "Check your weekly stats and streaks",
-    prompt: "What is my study progress this week?",
+    title: "Study cockpit",
+    description: "Plan today from readiness, streaks, and weak topics.",
+    prompt:
+      "Look at my current study progress and build a focused plan for today. Prioritize my weakest topics and include one quick win.",
     icon: "progress" as const,
   },
   {
-    title: "Practice Quiz",
-    description: "Generate a quiz from any topic",
-    prompt: "Create a quiz for me to practice",
-    icon: "quiz" as const,
-  },
-  {
-    title: "Upload Image",
-    description: "Send a photo of a question to solve",
-    prompt: "Help me solve this question",
+    title: "Past-paper lens",
+    description: "Upload a question image or PDF and unpack it.",
+    prompt:
+      "I am going to attach a past-paper question. Read it, identify the topic, explain the solution, and show what examiners expect.",
     icon: "image" as const,
   },
+  {
+    title: "Note transformer",
+    description: "Convert notes into flashcards, summaries, or quizzes.",
+    prompt:
+      "Use my uploaded note or my note library to create a concise summary, 10 flashcards, and 5 exam-style questions.",
+    icon: "notes" as const,
+  },
+  {
+    title: "Mock debrief",
+    description: "Review mistakes and decide what to do next.",
+    prompt:
+      "Analyze my recent mock or quiz performance and give me a mistake debrief with next actions.",
+    icon: "quiz" as const,
+  },
 ];
-
-export const PENDING_CHAT_MESSAGE_PREFIX = "ticlearn.chat.pending";

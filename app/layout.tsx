@@ -1,33 +1,16 @@
-import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
-import { Plus_Jakarta_Sans, Lora, IBM_Plex_Mono } from "next/font/google";
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
+import { Analytics } from "@vercel/analytics/next";
+import type { Metadata } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
-import { QueryProvider } from "@/providers/QueryProvider";
-import { Toaster } from "@/components/ui/sonner";
-import { extractRouterConfig } from "uploadthing/server";
-import { ourFileRouter } from "./api/uploadthing/core";
-import { ThemeProvider } from "@/components/theme-provider";
 import { Suspense } from "react";
-import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
+import { extractRouterConfig } from "uploadthing/server";
 import { ReferralProcessor } from "@/components/referral-processor";
-
-const plusJakarta = Plus_Jakarta_Sans({
-  variable: "--font-sans",
-  subsets: ["latin"],
-});
-
-const lora = Lora({
-  variable: "--font-serif",
-  subsets: ["latin"],
-});
-
-const ibmMono = IBM_Plex_Mono({
-  variable: "--font-mono",
-  weight: ["400", "500", "600"],
-  subsets: ["latin"],
-});
+import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "@/components/ui/sonner";
+import { QueryProvider } from "@/providers/QueryProvider";
+import { ourFileRouter } from "./api/uploadthing/core";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ticlearn.ticsummit.org"),
@@ -97,11 +80,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${plusJakarta.variable} ${lora.variable} ${ibmMono.variable} ${ibmMono.className} h-full antialiased`}
-    >
+    <html lang="en" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <OrganizationSchema />
         <NuqsAdapter>
