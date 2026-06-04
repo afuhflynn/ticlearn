@@ -3,26 +3,30 @@
 import {
   ArrowRight,
   BarChart3,
-  BookOpen,
   BotMessageSquare,
   ChevronDown,
-  ChevronLeft,
   ChevronRight,
-  CreditCard,
+  Crown,
+  ClipboardCheck,
+  Coins,
+  Flame,
   GraduationCap,
+  HeartHandshake,
+  LayoutDashboard,
   Link2,
-  ListTodo,
-  LucideLayoutDashboard,
   MessageCircle,
   NotebookPen,
+  ScrollText,
   Settings,
+  Sparkles,
+  Target,
   Trophy,
   Upload,
   Users,
-  Coins,
+  FileStack,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -34,94 +38,46 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import { Card, CardContent, CardFooter, CardTitle } from "../ui/card";
-import { useCredits, usePlan } from "@/hooks";
-import Image from "next/image";
-
-interface NavSection {
-  id: string;
-  label: string;
-  defaultOpen?: boolean;
-  items: NavItem[];
-}
+import { useCredits, usePlan, useUsage, useUserStats } from "@/hooks";
 
 interface NavItem {
   href: string;
   label: string;
   icon: React.ElementType;
-  paid?: boolean;
+  badge?: string;
 }
 
-const mainNavItems: NavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LucideLayoutDashboard },
-  { href: "/practice/mock", label: "GCE mocks", icon: NotebookPen },
+const studyNav: NavItem[] = [
+  { href: "/practice/mock", label: "GCE Paper 1 & 2", icon: FileStack },
+  { href: "/practice", label: "AcePaper 3", icon: ScrollText },
   { href: "/upload", label: "Upload Notes", icon: Upload },
-  { href: "/quizzes", label: "My Quizzes", icon: ListTodo },
+  { href: "/quizzes", label: "My Quizzes", icon: ClipboardCheck },
   { href: "/progress", label: "Progress", icon: BarChart3 },
-  { href: "/chat", label: "TiC", icon: BotMessageSquare },
-  // Will become paid maybe later
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy, paid: false },
 ];
 
-const learningNavItems: NavItem[] = [
-  // { href: "/gce-exams", label: "GCE Exams", icon: BookOpen, paid: true },
-  // Will reuire payment later
-  { href: "/practice", label: "AcePaper 3", icon: GraduationCap, paid: false },
+const discoverNav: NavItem[] = [
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+  { href: "/community", label: "Community", icon: Users },
 ];
 
-const communityNavItems: NavItem[] = [
-  { href: "/community", label: "Community", icon: Users, paid: true },
-];
-
-const accountNavItems: NavItem[] = [
-  { href: "/feedback", label: "Feedback", icon: MessageCircle },
+const accountNav: NavItem[] = [
+  { href: "/subscription", label: "Subscription", icon: Crown },
   { href: "/affiliate", label: "Affiliate", icon: Link2 },
+  { href: "/feedback", label: "Feedback", icon: MessageCircle },
   { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/subscription", label: "Subscription", icon: CreditCard },
 ];
 
-const adminNavItems: NavItem[] = [
-  { href: "/admin", label: "Dashboard", icon: LucideLayoutDashboard },
-  { href: "/admin/users", label: "Manage Users", icon: Settings },
-];
-
-const navSections: NavSection[] = [
-  {
-    id: "getting-started",
-    label: "Getting Started",
-    defaultOpen: true,
-    items: mainNavItems,
-  },
-  {
-    id: "learning",
-    label: "My Learning",
-    defaultOpen: true,
-    items: learningNavItems,
-  },
-  {
-    id: "connect",
-    label: "Connect",
-    defaultOpen: false,
-    items: communityNavItems,
-  },
-  {
-    id: "account",
-    label: "My Account",
-    defaultOpen: false,
-    items: accountNavItems,
-  },
-  {
-    id: "admin",
-    label: "Admin Panel",
-    defaultOpen: false,
-    items: adminNavItems,
-  },
+const adminNav: NavItem[] = [
+  { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/users", label: "Manage Users", icon: Users },
 ];
 
 export function AppSidebar() {
@@ -130,22 +86,47 @@ export function AppSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<
     Record<string, boolean>
-  >(() => {
-    const initial: Record<string, boolean> = {};
-    navSections.forEach((section) => {
-      initial[section.id] = section.defaultOpen ?? false;
-    });
-    return initial;
-  });
+  >({ account: false, admin: false });
 
   const userRole = (session?.user as { role?: string })?.role;
   const isAdmin = userRole === "ADMIN";
+  const userName = session?.user?.name || "Learner";
+  const userInitial = userName.charAt(0).toUpperCase();
 
-  const { isLoading, plan } = usePlan();
+  const { isLoading: planLoading, plan } = usePlan();
   const { data: creditsData, isPending: creditsPending } = useCredits();
+  const { usage } = useUsage();
+  const { stats, isLoading: statsLoading } = useUserStats();
+
+  const [readiness, setReadiness] = useState<{
+    readiness: number;
+    daysUntilExam: number | null;
+  } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/readiness")
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d.needsAssessment) {
+          setReadiness({
+            readiness: d.readiness,
+            daysUntilExam: d.daysUntilExam,
+          });
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   const creditBalance = creditsData?.balance ?? 0;
   const showCreditsTopUp =
     !creditsPending && typeof creditsData?.balance === "number" && creditBalance > 0;
+  const isPaid = plan === "STANDARD" || plan === "PREMIUM";
+  const streak = stats?.currentStreak ?? 0;
+  const totalPoints = stats?.totalPoints ?? 0;
+  const aiMessagesUsed = usage?.chatDailyUsage?.used ?? 0;
+  const aiMessagesLimit = usage?.chatDailyUsage?.limit ?? 8;
+  const aiMessagesRemaining = Math.max(0, aiMessagesLimit - aiMessagesUsed);
+  const isPremium = plan === "PREMIUM";
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) => ({
@@ -154,138 +135,301 @@ export function AppSidebar() {
     }));
   };
 
+  const isActive = (href: string) => {
+    if (href === "/practice/mock") {
+      return pathname === "/practice/mock" || pathname.startsWith("/practice/mock/");
+    }
+    if (href === "/practice") {
+      return pathname === "/practice" || pathname.startsWith("/practice/");
+    }
+    if (href === "/admin") {
+      return pathname.startsWith("/admin");
+    }
+    return pathname === href;
+  };
+
   const NavContent = () => (
     <>
-      <SidebarHeader className="border-b px-4 py-5">
-        <Link href="/" className="flex items-center gap-2">
-          <Image
-            src="/icons/favicon-32x32.png"
-            alt="TiCLearn Logo"
-            width={32}
-            height={32}
-            className="h-8 w-8 text-primary"
-          />
-          <span className="text-xl font-bold">TiCLearn</span>
-        </Link>
+      <SidebarHeader className="border-b px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Avatar className="h-9 w-9">
+              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+                {userInitial}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold leading-tight">
+                Hi, {userName.split(" ")[0]}
+              </p>
+              {!statsLoading && streak > 0 && (
+                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <Flame className="h-3 w-3 text-orange-500" />
+                  <span>{streak}-day streak</span>
+                  <span className="mx-1">·</span>
+                  <span className="tabular-nums">{totalPoints} pts</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        {!planLoading && plan && (
+          <div className="mt-2.5 flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
+            <div className="flex items-center gap-1.5 text-xs font-medium">
+              {isPremium ? (
+                <Crown className="h-3.5 w-3.5 text-amber-500" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span>{plan === "PREMIUM" ? "Premium" : plan === "STANDARD" ? "Standard" : plan === "STARTER" ? "Starter" : "Free"}</span>
+            </div>
+            {readiness && (
+              <>
+                <span className="text-muted-foreground/40">|</span>
+                <div className="flex items-center gap-1 text-xs">
+                  <Target className="h-3 w-3 text-muted-foreground" />
+                  <span className={cn(
+                    "tabular-nums font-medium",
+                    readiness.readiness >= 70 ? "text-green-600" :
+                    readiness.readiness >= 40 ? "text-amber-600" :
+                    "text-red-600"
+                  )}>
+                    {readiness.readiness}%
+                  </span>
+                </div>
+              </>
+            )}
+            {readiness?.daysUntilExam && (
+              <>
+                <span className="text-muted-foreground/40">|</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
+                  {readiness.daysUntilExam}d
+                </span>
+              </>
+            )}
+          </div>
+        )}
       </SidebarHeader>
 
       <SidebarContent>
-        {navSections.map((section) => {
-          if (section.id === "admin" && !isAdmin) return null;
-
-          const isExpanded = expandedSections[section.id] ?? false;
-          // const SectionIcon = section.icon;
-
-          return (
-            <SidebarGroup key={section.id}>
-              <SidebarGroupLabel
-                className="px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-muted/50 rounded-md transition-colors"
-                onClick={() => toggleSection(section.id)}
-              >
-                <div className="flex items-center gap-2">
-                  {/* <SectionIcon className="h-4 w-4" /> */}
-                  <span className="text-sm font-medium">{section.label}</span>
-                </div>
-                {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                )}
-              </SidebarGroupLabel>
-              {isExpanded && (
-                <SidebarGroupContent className="pl-2">
-                  <SidebarMenu>
-                    {section.items.map((item) => {
-                      const isActive =
-                        section.id === "admin"
-                          ? pathname.startsWith(item.href)
-                          : item.href === "/practice/mock"
-                            ? pathname === "/practice/mock" ||
-                              pathname.startsWith("/practice/mock/")
-                            : pathname === item.href;
-
-                      return (
-                        <SidebarMenuItem key={item.href}>
-                          <SidebarMenuButton asChild isActive={isActive}>
-                            <Link
-                              href={
-                                item.paid && !isAdmin
-                                  ? "/subscription"
-                                  : item.href
-                              }
-                              className={cn(
-                                "flex items-center gap-3",
-                                item.paid && !isAdmin && "opacity-70",
-                              )}
-                            >
-                              <item.icon className="h-4 w-4" />
-                              <span>{item.label}</span>
-                              {item.paid && !isAdmin && (
-                                <span className="ml-auto text-xs text-muted-foreground">
-                                  PRO
-                                </span>
-                              )}
-                            </Link>
-                          </SidebarMenuButton>
-                        </SidebarMenuItem>
-                      );
-                    })}
-                  </SidebarMenu>
-                </SidebarGroupContent>
+        {/* ⚡ TiC AI Tutor — Hero Item */}
+        <div className="px-3 pt-3 pb-1">
+          <Link
+            href="/chat"
+            className={cn(
+              "group relative flex items-center gap-3 rounded-xl border px-4 py-3 transition-all",
+              isActive("/chat")
+                ? "border-primary bg-primary text-primary-foreground shadow-sm"
+                : "border-primary/20 bg-gradient-to-br from-primary/5 via-primary/[0.03] to-transparent hover:border-primary/40 hover:from-primary/10 hover:to-primary/5",
+            )}
+          >
+            <div className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+              isActive("/chat") ? "bg-primary-foreground/15" : "bg-primary/10 group-hover:bg-primary/15",
+            )}>
+              <BotMessageSquare className={cn(
+                "h-4.5 w-4.5",
+                isActive("/chat") ? "text-primary-foreground" : "text-primary",
+              )} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className={cn(
+                "text-sm font-semibold leading-tight",
+                isActive("/chat") ? "text-primary-foreground" : "text-foreground",
+              )}>
+                TiC AI Tutor
+              </p>
+              {!isPremium && (
+                <p className={cn(
+                  "mt-0.5 text-xs leading-tight",
+                  isActive("/chat") ? "text-primary-foreground/75" : "text-muted-foreground",
+                )}>
+                  {aiMessagesRemaining > 0
+                    ? `${aiMessagesRemaining} messages today`
+                    : "No messages left"}
+                </p>
               )}
-            </SidebarGroup>
-          );
-        })}
+            </div>
+            <ArrowRight className={cn(
+              "h-4 w-4 shrink-0 opacity-0 -translate-x-1 transition-all",
+              isActive("/chat") ? "text-primary-foreground" : "text-muted-foreground",
+              "group-hover:opacity-100 group-hover:translate-x-0",
+            )} />
+          </Link>
+        </div>
+
+        {/* Study */}
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
+                  <Link href="/dashboard">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              {studyNav.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel
+            className="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+            onClick={() => toggleSection("discover")}
+          >
+            <div className="flex items-center gap-2">
+              <HeartHandshake className="h-3.5 w-3.5" />
+              <span>Discover</span>
+            </div>
+            {expandedSections.discover !== false ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+          </SidebarGroupLabel>
+          {(expandedSections.discover !== false) && (
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {discoverNav.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                      <Link href={item.href}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel
+            className="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+            onClick={() => toggleSection("account")}
+          >
+            <div className="flex items-center gap-2">
+              <Settings className="h-3.5 w-3.5" />
+              <span>Account</span>
+            </div>
+            {expandedSections.account ? (
+              <ChevronDown className="h-3.5 w-3.5" />
+            ) : (
+              <ChevronRight className="h-3.5 w-3.5" />
+            )}
+          </SidebarGroupLabel>
+          {expandedSections.account && (
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {accountNav.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                      <Link href={item.href}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.label}</span>
+                        {item.href === "/subscription" && plan && !planLoading && (
+                          <SidebarMenuBadge>
+                            {plan === "PREMIUM" ? "Premium" : "Free"}
+                          </SidebarMenuBadge>
+                        )}
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          )}
+        </SidebarGroup>
+
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel
+              className="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
+              onClick={() => toggleSection("admin")}
+            >
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="h-3.5 w-3.5" />
+                <span>Admin</span>
+              </div>
+              {expandedSections.admin ? (
+                <ChevronDown className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronRight className="h-3.5 w-3.5" />
+              )}
+            </SidebarGroupLabel>
+            {expandedSections.admin && (
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {adminNav.map((item) => (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                        <Link href={item.href}>
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            )}
+          </SidebarGroup>
+        )}
       </SidebarContent>
 
-      {!isPending && !isLoading && !isAdmin && (
-        <SidebarFooter className="border-t p-4">
-          {plan && plan !== "STANDARD" && plan !== "PREMIUM" && (
-            showCreditsTopUp ?
-              <Card className="border-primary/20 bg-primary/5 max-w-full!">
-                <CardContent className="space-y-3">
-                  <CardTitle className="flex items-center gap-2 font-bold text-left text-base">
-                    <Coins className="text-primary size-5 shrink-0" aria-hidden />
-                    Buy more credits
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    You have{" "}
-                    <span className="text-foreground font-semibold tabular-nums">
-                      {creditBalance.toLocaleString()}
-                    </span>{" "}
-                    credits—top up anytime for mocks and paid practice.
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button asChild className="w-full">
-                    <Link href="/subscription#credits-top-up">
-                      Top up credits
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            : (
-              <Card className="border-primary/20 bg-primary/5 max-w-full!">
-                <CardContent className="space-y-3">
-                  <CardTitle className="font-bold text-left">
-                    Upgrade to Premium
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Unlock unlimited notes, quizzes, and access to GCE exams
-                  </p>
-                </CardContent>
-                <CardFooter>
-                  <Button asChild className="w-full">
-                    <Link href="/subscription">
-                      View Plans
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardFooter>
-              </Card>
-            )
-          )}
+      {!isPending && !planLoading && !isAdmin && (
+        <SidebarFooter className="border-t p-3">
+          {!isPaid ? (
+            <Link
+              href="/subscription"
+              className="group flex items-center gap-3 rounded-lg border border-primary/20 bg-gradient-to-r from-primary/5 to-primary/[0.02] px-3 py-2.5 transition-all hover:border-primary/40 hover:from-primary/10"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-tight">
+                  {showCreditsTopUp ? `${creditBalance.toLocaleString()} credits` : "Upgrade plan"}
+                </p>
+                <p className="mt-0.5 text-xs leading-tight text-muted-foreground">
+                  {showCreditsTopUp ? "Top up anytime" : "Unlock unlimited practice"}
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />
+            </Link>
+          ) : showCreditsTopUp ? (
+            <Link
+              href="/subscription#credits-top-up"
+              className="group flex items-center gap-3 rounded-lg border border-transparent bg-muted/50 px-3 py-2.5 transition-all hover:bg-muted"
+            >
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted-foreground/10">
+                <Coins className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium leading-tight">
+                  {creditBalance.toLocaleString()} credits
+                </p>
+                <p className="mt-0.5 text-xs leading-tight text-muted-foreground">
+                  Buy more
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />
+            </Link>
+          ) : null}
         </SidebarFooter>
       )}
     </>
@@ -293,12 +437,10 @@ export function AppSidebar() {
 
   return (
     <>
-      {/* Desktop Sidebar */}
       <Sidebar className="hidden md:flex" collapsible="icon">
         <NavContent />
       </Sidebar>
 
-      {/* Mobile Sidebar */}
       <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
         <SheetTrigger asChild className="md:hidden">
           <Button
@@ -306,7 +448,7 @@ export function AppSidebar() {
             size="icon"
             className="fixed top-3 left-3 z-50"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <NotebookPen className="h-5 w-5" />
           </Button>
         </SheetTrigger>
         <SheetContent side="left" className="w-72 p-0">
