@@ -17,12 +17,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "What is TiCLearn?",
     answer:
-      "TiCLearn is an AI-powered study platform designed specifically for Cameroonian GCE A-Level students. It helps you transform notes into quizzes, prepare for exams with AI-generated mock tests, and track your progress over time with leaderboards.",
+      "TiCLearn is an AI-powered study platform designed specifically for Cameroonian GCE and TVEE students across all levels (A-Level, O-Level, Commercial/TVEE, and HND). It helps you transform notes into quizzes, prepare for exams with AI-generated mock tests, and track your progress over time with leaderboards.",
   },
   {
     question: "How does TiCLearn help with GCE A-Level preparation?",
     answer:
-      "TiCLearn offers comprehensive GCE A-Level preparation through AI-generated quizzes from your notes, mock exam simulations for subjects like Computer Science and ICT, a 24/7 AI tutor (TiC) for instant help, and progress tracking with leaderboards to keep you motivated.",
+      "TiCLearn offers comprehensive exam preparation through AI-generated quizzes from your notes, mock exam simulations for subjects like Computer Science, ICT, Biology, Physics, Chemistry, Mathematics, Economics, and more, a 24/7 AI tutor (TiC) for instant help, and progress tracking with leaderboards to keep you motivated.",
   },
   {
     question: "Is TiCLearn free to use?",
@@ -32,7 +32,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Which GCE A-Level subjects does TiCLearn cover?",
     answer:
-      "TiCLearn covers all major GCE A-Level subjects including Computer Science (0795), ICT (0796), Mathematics (0765), Further Mathematics (0775), Biology (0710), Chemistry (0715), Physics (0780), Economics (0725), and more. We're continuously adding more subjects based on the Cameroon GCE syllabus.",
+      "TiCLearn covers all major GCE A-Level subjects (Computer Science, ICT, Biology, Chemistry, Physics, Mathematics, Further Mathematics, Economics, Accounting, History, Geography, English, French, and more), GCE O-Level subjects, TVEE Commercial specialties (Accounting, Marketing, Secretarial Administration, Home Economics, Taxation, Tourism Management), and HND programmes. We're continuously expanding based on the Cameroon national curriculum.",
   },
   {
     question: "How is TiCLearn different from other study platforms?",

@@ -909,6 +909,24 @@ enum MockCreationContext {
 enum ExamSubject {
   CS
   ICT
+  BIO
+  CHEM
+  PHY
+  PMM
+  PMS
+  FM
+  FSN
+  GEOL
+  ENG
+  LIT
+  FRENCH
+  SBE_FR
+  HIST
+  GEOG
+  RS
+  PHIL
+  ECONS
+  ACCT
 }
 
 enum ExamMode {

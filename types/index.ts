@@ -135,10 +135,15 @@ export interface QuizGenerationOptions {
 // Exam Types
 // ===========================================
 
+export type ALevelSubject =
+  | "CS" | "ICT" | "BIO" | "CHEM" | "PHY" | "PMM" | "PMS" | "FM"
+  | "FSN" | "GEOL" | "ENG" | "LIT" | "FRENCH" | "SBE_FR" | "HIST"
+  | "GEOG" | "RS" | "PHIL" | "ECONS" | "ACCT";
+
 export interface ExamSessionWithRelations {
   id: string;
   userId: string;
-  subject: "CS" | "ICT";
+  subject: ALevelSubject;
   subjectLabel: string;
   mode: "MOCK" | "SIMULATION";
   topic: string;
@@ -169,7 +174,7 @@ export interface ExamAnswer {
 }
 
 export interface ExamGenerationOptions {
-  subject: "CS" | "ICT";
+  subject: ALevelSubject;
   topic: string;
   mode: "MOCK" | "SIMULATION";
   questionCount: number;

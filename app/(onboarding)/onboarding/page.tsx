@@ -63,6 +63,10 @@ function levelSubtitle(code: string): string {
       return "Upper Sixth - Advanced Level general certificate";
     case "GCE_OL":
       return "Form 5 - Ordinary Level general certificate";
+    case "GCE_AL_COMMERCIAL":
+      return "Upper Sixth - TVEE Advanced Level commercial certificate";
+    case "GCE_OL_COMMERCIAL":
+      return "Form 5 - TVEE Intermediate Level commercial certificate";
     case "HND":
       return "Higher National Diploma - specialised programme";
     default:
@@ -110,7 +114,14 @@ export default function OnboardingPage() {
   const isHND = store.examLevelId
     ? levels.find((l) => l.id === store.examLevelId)?.code === "HND"
     : false;
+  const isALCommercial = store.examLevelId
+    ? levels.find((l) => l.id === store.examLevelId)?.code === "GCE_AL_COMMERCIAL"
+    : false;
+  const isOLCommercial = store.examLevelId
+    ? levels.find((l) => l.id === store.examLevelId)?.code === "GCE_OL_COMMERCIAL"
+    : false;
   const isMultiSelect = isGCEAlevel || isGCEOlevel;
+  const isSingleSelect = isHND || isALCommercial || isOLCommercial;
 
   useEffect(() => {
     if (!session) return;
@@ -375,7 +386,7 @@ export default function OnboardingPage() {
       case 4:
         return store.studyHoursPerWeek !== null;
       case 5:
-        return phoneDigits.length >= 9;
+        return true;
       default:
         return false;
     }
@@ -443,6 +454,8 @@ export default function OnboardingPage() {
                   <p className="text-base font-semibold">
                     {level.code === "GCE_AL" && "🎓 "}
                     {level.code === "GCE_OL" && "📚 "}
+                    {level.code === "GCE_AL_COMMERCIAL" && "💼 "}
+                    {level.code === "GCE_OL_COMMERCIAL" && "📋 "}
                     {level.code === "HND" && "🛠️ "}
                     {level.name}
                   </p>
@@ -460,11 +473,11 @@ export default function OnboardingPage() {
           <div className="space-y-6">
             <div className="text-center">
               <h1 className="text-xl font-bold">
-                {isHND ? "Select your specialty" : "Select your subjects"}
+                {isSingleSelect ? "Select your specialty" : "Select your subjects"}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                {isHND
-                  ? "Choose your HND programme."
+                {isSingleSelect
+                  ? "Choose your programme."
                   : isMultiSelect
                     ? "Choose the subjects you are preparing for."
                     : "Choose your subject."}
@@ -485,7 +498,7 @@ export default function OnboardingPage() {
                     key={prog.id}
                     type="button"
                     onClick={() => {
-                      if (isHND) {
+                      if (isSingleSelect) {
                         store.setProgramIds([prog.id]);
                       } else {
                         const newIds = selected

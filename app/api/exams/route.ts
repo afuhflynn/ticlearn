@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { getSubjectLabel } from "@/lib/subject-labels";
 import { generateExamQuestions } from "@/lib/ai";
 
 type JsonData = Record<string, unknown> | unknown[];
@@ -61,8 +62,8 @@ export async function POST(req: Request) {
     const exam = await prisma.examSession.create({
       data: {
         userId: session.user.id,
-        subject: subject as "CS" | "ICT",
-        subjectLabel: subject === "CS" ? "Computer Science" : "ICT",
+        subject: subject as any,
+        subjectLabel: getSubjectLabel(subject),
         mode: mode || "MOCK",
         topic,
         timeLimit: 7200,

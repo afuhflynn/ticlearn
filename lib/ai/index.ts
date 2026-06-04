@@ -3,6 +3,7 @@ import {
   MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
 } from "@/constants";
 import { generate, generateCritical, generateTextCritical } from "@/lib/ai/orchestrator";
+import { getSubjectLabel } from "@/lib/subject-labels";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
 import {
@@ -756,7 +757,7 @@ export async function generateExamQuestions(
   topic: string,
   questionCount: number,
 ) {
-  const subjectName = subject === "CS" ? "Computer Science" : "ICT";
+  const subjectName = getSubjectLabel(subject);
 
   const prompt = `You are an exam generator for GCE A-Level ${subjectName}.
 
