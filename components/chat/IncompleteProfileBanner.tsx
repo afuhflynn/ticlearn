@@ -4,9 +4,27 @@ import { AlertTriangle, ArrowRight, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
+const LS_KEY = "incomplete-profile-banner-dismissed-at";
+const COOLDOWN_MS = 90 * 24 * 60 * 60 * 1000;
+
+function isDismissedWithinCooldown(): boolean {
+  if (typeof window === "undefined") return false;
+  const stored = localStorage.getItem(LS_KEY);
+  if (!stored) return false;
+  const dismissedAt = parseInt(stored, 10);
+  if (isNaN(dismissedAt)) return false;
+  return Date.now() - dismissedAt < COOLDOWN_MS;
+}
+
+function markDismissed(): void {
+  try {
+    localStorage.setItem(LS_KEY, String(Date.now()));
+  } catch {}
+}
+
 export function IncompleteProfileBanner() {
   const router = useRouter();
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(isDismissedWithinCooldown());
   const [needsAssessment, setNeedsAssessment] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -18,6 +36,11 @@ export function IncompleteProfileBanner() {
 
   if (dismissed || needsAssessment === null) return null;
   if (!needsAssessment) return null;
+
+  const handleDismiss = () => {
+    markDismissed();
+    setDismissed(true);
+  };
 
   return (
     <div className="mx-4 mt-2 flex items-start gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-3 text-xs">
@@ -38,7 +61,7 @@ export function IncompleteProfileBanner() {
         </button>
       </div>
       <button
-        onClick={() => setDismissed(true)}
+        onClick={handleDismiss}
         className="shrink-0 rounded-lg p-1 text-blue-500 hover:bg-blue-100 hover:text-blue-700"
       >
         <X className="h-3.5 w-3.5" />

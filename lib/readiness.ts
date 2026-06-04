@@ -30,7 +30,7 @@ export async function computeReadiness(
     }),
     prisma.examProfile.findUnique({
       where: { id: examProfileId },
-      select: { examDate: true },
+      select: { examDate: true, onboardingCompleted: true },
     }),
   ]);
 
@@ -42,7 +42,7 @@ export async function computeReadiness(
       strongestTopic: null,
       programReadiness: [],
       topicReadiness: [],
-      needsAssessment: true,
+      needsAssessment: !profile?.onboardingCompleted,
       highRisk: false,
       daysUntilExam: null,
     };
