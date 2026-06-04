@@ -95,7 +95,7 @@ export function AppSidebar() {
 
   const { isLoading: planLoading, plan } = usePlan();
   const { data: creditsData, isPending: creditsPending } = useCredits();
-  const { usage } = useUsage();
+  const { usage, chatDailyUsage } = useUsage();
   const { stats, isLoading: statsLoading } = useUserStats();
 
   const [readiness, setReadiness] = useState<{
@@ -123,8 +123,8 @@ export function AppSidebar() {
   const isPaid = plan === "STANDARD" || plan === "PREMIUM";
   const streak = stats?.currentStreak ?? 0;
   const totalPoints = stats?.totalPoints ?? 0;
-  const aiMessagesUsed = usage?.chatDailyUsage?.used ?? 0;
-  const aiMessagesLimit = usage?.chatDailyUsage?.limit ?? 8;
+  const aiMessagesUsed = chatDailyUsage?.used ?? 0;
+  const aiMessagesLimit = chatDailyUsage?.limit ?? 8;
   const aiMessagesRemaining = Math.max(0, aiMessagesLimit - aiMessagesUsed);
   const isPremium = plan === "PREMIUM";
 
