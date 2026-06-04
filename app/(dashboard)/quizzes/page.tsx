@@ -35,7 +35,7 @@ export default function QuizzesPage() {
   const deleteQuiz = useDeleteQuiz();
 
   const hasGeneratingQuiz = (quizzes as QuizListItem[])?.some(
-    (q) => q.status === "GENERATING"
+    (q) => q.status === "GENERATING",
   );
 
   const prevQuizStatuses = useRef<Map<string, string>>(new Map());
@@ -148,7 +148,7 @@ export default function QuizzesPage() {
                   <div className="flex gap-2">
                     {quiz.status === "READY" ? (
                       <Button size="sm" asChild>
-                        <Link href={`/quiz/${quiz.id}`}>
+                        <Link href={`/quizzes/${quiz.id}`}>
                           <Play className="mr-1 h-4 w-4" />
                           Start
                         </Link>
