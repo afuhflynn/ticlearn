@@ -57,6 +57,8 @@ function getTypeBadgeVariant(type: string) {
       return "destructive";
     case "FEATURE":
       return "secondary";
+    case "CHAT":
+      return "default";
     default:
       return "outline";
   }
@@ -148,9 +150,8 @@ export default function AdminFeedbackPage() {
               <SelectContent>
                 <SelectItem value="ALL">All Status</SelectItem>
                 <SelectItem value="OPEN">Open</SelectItem>
-                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+                <SelectItem value="IN_REVIEW">In Progress</SelectItem>
                 <SelectItem value="RESOLVED">Resolved</SelectItem>
-                <SelectItem value="CLOSED">Closed</SelectItem>
               </SelectContent>
             </Select>
             <Select
@@ -166,6 +167,7 @@ export default function AdminFeedbackPage() {
               <SelectContent>
                 <SelectItem value="ALL">All Types</SelectItem>
                 <SelectItem value="EXAM">Exam Feedback</SelectItem>
+                <SelectItem value="CHAT">Chat Rating</SelectItem>
                 <SelectItem value="BUG">Bug Report</SelectItem>
                 <SelectItem value="FEATURE">Feature Request</SelectItem>
                 <SelectItem value="GENERAL">General</SelectItem>
@@ -186,7 +188,7 @@ export default function AdminFeedbackPage() {
                     <TableHead>User</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Rating</TableHead>
-                    <TableHead>Exam</TableHead>
+                    <TableHead>Exam / Chat</TableHead>
                     <TableHead>Message</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Date</TableHead>
@@ -227,7 +229,14 @@ export default function AdminFeedbackPage() {
                           <StarRating rating={fb.rating} />
                         </TableCell>
                         <TableCell>
-                          {fb.mockId ? (
+                          {fb.type === "CHAT" && "conversationId" in fb && fb.conversationId ? (
+                            <Link
+                              href={`/chat/${fb.conversationId}`}
+                              className="text-sm text-blue-600 hover:underline"
+                            >
+                              View Chat
+                            </Link>
+                          ) : fb.mockId ? (
                             <Link
                               href={`/practice/exam/${fb.mockId}`}
                               className="text-sm text-blue-600 hover:underline"
@@ -253,11 +262,10 @@ export default function AdminFeedbackPage() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="OPEN">Open</SelectItem>
-                              <SelectItem value="IN_PROGRESS">
+                              <SelectItem value="IN_REVIEW">
                                 In Progress
                               </SelectItem>
                               <SelectItem value="RESOLVED">Resolved</SelectItem>
-                              <SelectItem value="CLOSED">Closed</SelectItem>
                             </SelectContent>
                           </Select>
                         </TableCell>

@@ -634,17 +634,19 @@ model Feedback {
   isFlagged Boolean        @default(false) @map("is_flagged")
   isUrgent  Boolean        @default(false) @map("is_urgent")
   adminNote String?        @map("admin_note") @db.Text
-  attemptId String?        @map("attempt_id")
-  mockId    String?        @map("mock_id")
-  rating    Int?           @default(0) @map("rating")
-  createdAt DateTime       @default(now())
-  updatedAt DateTime       @updatedAt
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attemptId      String?        @map("attempt_id")
+  mockId         String?        @map("mock_id")
+  conversationId String?        @map("conversation_id")
+  rating         Int?           @default(0) @map("rating")
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
   @@index([type])
   @@index([attemptId])
+  @@index([conversationId])
   @@map("feedbacks")
 }
 
@@ -938,6 +940,7 @@ enum FeedbackType {
   FEATURE
   GENERAL
   EXAM
+  CHAT
 }
 
 enum FeedbackStatus {

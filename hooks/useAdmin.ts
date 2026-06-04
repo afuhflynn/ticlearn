@@ -112,6 +112,7 @@ export function useAdminFeedback(
       createdAt: string;
       attemptId: string | null;
       mockId: string | null;
+      conversationId: string | null;
       rating: number | null;
     }[],
     total: data?.total ?? 0,

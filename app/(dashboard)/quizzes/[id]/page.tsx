@@ -26,6 +26,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuiz, useQuizAttempts, useSubmitQuizAttempt } from "@/hooks";
+import { QuizFeedbackPrompt } from "@/components/feedback/QuizFeedbackPrompt";
 import { useSession } from "@/lib/auth-client";
 
 type QuizQuestion = {
@@ -424,6 +425,8 @@ export default function QuizPlayerPage() {
               </div>
             </CardContent>
           </Card>
+
+          <QuizFeedbackPrompt quizId={quiz.id} />
 
           <div className="space-y-4">
             {questions.map((question, index) => {

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { trackEvent, EVENTS } from "@/lib/kpi";
+import { notifyAllAdminsOfFeedback } from "@/lib/email/send";
 
 export async function POST(req: Request) {
   try {
@@ -52,6 +54,17 @@ export async function POST(req: Request) {
         status: "OPEN",
       },
     });
+
+    trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, { type: "EXAM" }).catch(() => {});
+
+    notifyAllAdminsOfFeedback({
+      userName: session.user.name || "User",
+      userEmail: session.user.email,
+      type: "EXAM",
+      subject: `Exam Feedback${mockId ? ` - ${mockId}` : ""}`,
+      message: message || "No message",
+      rating: rating ?? null,
+    }).catch(() => {});
 
     return NextResponse.json({ feedback, success: true });
   } catch (error) {

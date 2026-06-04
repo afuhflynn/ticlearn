@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { trackEvent, EVENTS } from "@/lib/kpi";
+import { notifyAllAdminsOfFeedback } from "@/lib/email/send";
 
 export async function GET() {
   try {
@@ -39,9 +40,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { type, subject, message, isFlagged } = await req.json();
+    const { type, subject, message, isFlagged, conversationId, rating } = await req.json();
 
-    if (!type || !subject || !message) {
+    if (!type || !message) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 },
@@ -54,15 +55,26 @@ export async function POST(req: Request) {
         userEmail: session.user.email,
         userName: session.user.name || "User",
         type,
-        subject,
+        subject: subject || `${type} Feedback`,
         message,
         isFlagged: isFlagged || false,
         isUrgent: false,
         status: "OPEN",
+        conversationId: conversationId || null,
+        rating: rating ?? 0,
       },
     });
 
     trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, { type, subject }).catch(() => {});
+
+    notifyAllAdminsOfFeedback({
+      userName: session.user.name || "User",
+      userEmail: session.user.email,
+      type,
+      subject: subject || `${type} Feedback`,
+      message,
+      rating: rating ?? null,
+    }).catch(() => {});
 
     return NextResponse.json({ feedback, success: true });
   } catch (error) {

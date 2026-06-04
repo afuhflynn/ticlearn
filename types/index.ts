@@ -318,13 +318,17 @@ export interface FeedbackWithUser {
   userId: string;
   userEmail: string;
   userName: string;
-  type: "BUG" | "FEATURE" | "GENERAL";
+  type: "BUG" | "FEATURE" | "GENERAL" | "EXAM" | "CHAT";
   subject: string;
   message: string;
   status: "OPEN" | "IN_REVIEW" | "RESOLVED";
   isFlagged: boolean;
   isUrgent: boolean;
   adminNote: string | null;
+  attemptId: string | null;
+  mockId: string | null;
+  conversationId: string | null;
+  rating: number | null;
   createdAt: Date;
   updatedAt: Date;
   user?: SafeUser;

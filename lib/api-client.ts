@@ -384,8 +384,43 @@ export const api = {
     },
 
     feedback: {
-      create: (data: { type: string; subject: string; message: string }) =>
+      create: (data: {
+        type: string;
+        subject: string;
+        message: string;
+        isFlagged?: boolean;
+        conversationId?: string;
+        rating?: number;
+      }) =>
         apiRequest<{ feedback: Feedback }>("/feedback", {
+          method: "POST",
+          body: data,
+        }),
+      createChatRating: (data: {
+        conversationId: string;
+        rating: number;
+        message: string;
+        comment?: string;
+      }) =>
+        apiRequest<{ feedback: Feedback }>("/feedback", {
+          method: "POST",
+          body: {
+            type: "CHAT",
+            subject: "Chat Rating",
+            message: data.comment
+              ? `Last user message:\n${data.message}\n\nComment:\n${data.comment}`
+              : `Last user message:\n${data.message}`,
+            conversationId: data.conversationId,
+            rating: data.rating,
+          },
+        }),
+      createExam: (data: {
+        message?: string;
+        rating?: number;
+        attemptId?: string;
+        mockId?: string;
+      }) =>
+        apiRequest<{ feedback: Feedback }>("/feedback/exam", {
           method: "POST",
           body: data,
         }),

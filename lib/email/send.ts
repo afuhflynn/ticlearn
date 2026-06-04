@@ -577,6 +577,73 @@ export async function sendAdminPaymentAlert({
   return sendEmail({ to: adminEmail, subject, html });
 }
 
+export async function sendAdminFeedbackAlert({
+  adminEmail,
+  userName,
+  userEmail,
+  type,
+  subject,
+  message,
+  rating,
+}: {
+  adminEmail: string;
+  userName: string;
+  userEmail: string;
+  type: string;
+  subject: string;
+  message: string;
+  rating?: number | null;
+}) {
+  const safeName = escapeHtml(userName || "A user");
+  const safeEmail = escapeHtml(userEmail);
+  const safeSubject = escapeHtml(subject || "No subject");
+  const safeMessage = escapeHtml(message || "No message").slice(0, 500);
+  const typeLabel = { BUG: "🐛 Bug Report", FEATURE: "💡 Feature Request", GENERAL: "💬 General Feedback", EXAM: "📝 Exam Feedback", CHAT: "💬 Chat Rating" }[type] || type;
+  const ratingHtml = rating !== undefined && rating !== null
+    ? `<p><strong>Rating:</strong> ${rating > 0 ? "👍 Thumbs Up" : "👎 Thumbs Down"}</p>`
+    : "";
+  const subjectLine = `📬 New Feedback: ${typeLabel} - ${safeName}`;
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
+      <h2 style="color: #7c3aed;">New Feedback Received!</h2>
+      <p><strong>From:</strong> ${safeName} (${safeEmail})</p>
+      <p><strong>Type:</strong> ${typeLabel}</p>
+      <p><strong>Subject:</strong> ${safeSubject}</p>
+      ${ratingHtml}
+      <hr />
+      <h3 style="font-size: 14px; color: #666;">Message Preview:</h3>
+      <p style="background: #f5f5f5; padding: 12px; border-radius: 6px; font-size: 13px; line-height: 1.5;">${safeMessage}</p>
+      <hr />
+      <p style="font-size: 12px; color: #999;">
+        <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://ticlearn.ticsummit.org"}/admin/feedback" style="color: #7c3aed;">View in Admin Panel</a>
+      </p>
+      <p style="font-size: 12px; color: #999;">Sent from TiCLearn Feedback System</p>
+    </div>
+  `;
+  return sendEmail({ to: adminEmail, subject: subjectLine, html });
+}
+
+export async function notifyAllAdminsOfFeedback(params: {
+  userName: string;
+  userEmail: string;
+  type: string;
+  subject: string;
+  message: string;
+  rating?: number | null;
+}) {
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { email: true },
+  });
+  const adminEmails = new Set(admins.map((a) => a.email));
+  if (process.env.ADMIN_EMAIL) adminEmails.add(process.env.ADMIN_EMAIL);
+
+  const promises = Array.from(adminEmails).map((email) =>
+    sendAdminFeedbackAlert({ adminEmail: email, ...params }),
+  );
+  await Promise.allSettled(promises);
+}
+
 export async function sendPlatformUpdateEmail({
   email,
   name,
