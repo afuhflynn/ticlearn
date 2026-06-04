@@ -3,42 +3,42 @@
 // ===========================================
 
 import { privateAxios, publicAxios } from "@/config/axios.config";
+import type {
+  AdminStats,
+  AffiliateData,
+  AffiliateDetail,
+  AttemptPreview,
+  ChatConversation,
+  ChatConversationWithMessages,
+  ChatMessage,
+  ContactFormData,
+  ContactResponse,
+  CreateAffiliateParams,
+  ExamSession,
+  Feedback,
+  FeedbackData,
+  LeaderboardEntry,
+  NotePreview,
+  NoteSummary,
+  NoteWithRelations,
+  PaymentSettingsData,
+  Post,
+  Quiz,
+  QuizPreview,
+  Subscription,
+  SubscriptionData,
+  UsageData,
+  UserDetail,
+  UserProfile,
+  UserSettings,
+  UserStats,
+  UserSummary,
+} from "@/types";
 import {
   Affiliate,
   AffiliateClick,
   AffiliateEarning,
 } from "./generated/prisma/client";
-import {
-  CreateAffiliateParams,
-  NoteSummary,
-  NoteWithRelations,
-  PaymentSettingsData,
-  UsageData,
-  UserSettings,
-  Post,
-  AffiliateData,
-  Feedback,
-  ExamSession,
-  UserStats,
-  LeaderboardEntry,
-  ChatConversation,
-  ChatConversationWithMessages,
-  Subscription,
-  Quiz,
-  UserProfile,
-  ChatMessage,
-  UserSummary,
-  UserDetail,
-  NotePreview,
-  QuizPreview,
-  AttemptPreview,
-  FeedbackData,
-  SubscriptionData,
-  AffiliateDetail,
-  AdminStats,
-  ContactFormData,
-  ContactResponse,
-} from "@/types";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -239,7 +239,13 @@ export const api = {
         ),
       getMessages: (id: string, cursor?: string | null, limit = 30) =>
         apiRequest<{
-          conversation: { id: string; title: string; createdAt: string; updatedAt: string; summary: string | null };
+          conversation: {
+            id: string;
+            title: string;
+            createdAt: string;
+            updatedAt: string;
+            summary: string | null;
+          };
           messages: ChatMessage[];
           nextCursor: string | null;
         }>(
@@ -249,7 +255,10 @@ export const api = {
     },
 
     subscription: () =>
-      apiRequest<{ subscription: Subscription | null; previousPlan: string | null }>("/subscription/me", {
+      apiRequest<{
+        subscription: Subscription | null;
+        previousPlan: string | null;
+      }>("/subscription/me", {
         method: "GET",
       }),
 
@@ -702,6 +711,8 @@ export const api = {
           from?: string;
           to?: string;
           tab?: string;
+          granularity?: string;
+          metric?: string;
           page?: number;
           limit?: number;
           sort?: string;
@@ -712,6 +723,8 @@ export const api = {
           if (params?.from) sp.set("from", params.from);
           if (params?.to) sp.set("to", params.to);
           if (params?.tab) sp.set("tab", params.tab);
+          if (params?.granularity) sp.set("granularity", params.granularity);
+          if (params?.metric) sp.set("metric", params.metric);
           if (params?.page) sp.set("page", String(params.page));
           if (params?.limit) sp.set("limit", String(params.limit));
           if (params?.sort) sp.set("sort", params.sort);

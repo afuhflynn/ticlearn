@@ -1,5 +1,5 @@
-import { api } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
 import { queryKeys } from "@/lib/query-keys";
 
 interface MetricsParams {
@@ -7,6 +7,7 @@ interface MetricsParams {
   to?: string;
   tab?: string;
   granularity?: string;
+  metric?: string;
   page?: number;
   limit?: number;
   sort?: string;

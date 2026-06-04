@@ -1,15 +1,15 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
-  computeDailyMetrics,
-  computeCohortRetention,
-  computeMasteryMetrics,
-  computeSubjectDistribution,
-  computeMRR,
   computeActivationFunnel,
+  computeCohortRetention,
+  computeDailyMetrics,
+  computeMasteryMetrics,
+  computeMRR,
+  computeSubjectDistribution,
 } from "@/lib/kpi";
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
   try {
@@ -25,8 +25,7 @@ export async function GET(req: Request) {
       new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
         .toISOString()
         .split("T")[0];
-    const to =
-      searchParams.get("to") || new Date().toISOString().split("T")[0];
+    const to = searchParams.get("to") || new Date().toISOString().split("T")[0];
     const tab = searchParams.get("tab") || "overview";
     const granularity = searchParams.get("granularity") || "daily";
     const page = parseInt(searchParams.get("page") || "1");
@@ -42,7 +41,9 @@ export async function GET(req: Request) {
     const [totalUsers, activeSubsAgg, todayEvents, dausAgg, mrrData] =
       await Promise.all([
         prisma.user.count({ where: { role: "USER" } }),
-        prisma.subscription.count({ where: { status: "ACTIVE", user: { role: "USER" } } }),
+        prisma.subscription.count({
+          where: { status: "ACTIVE", user: { role: "USER" } },
+        }),
         prisma.kpiEvent.count({
           where: {
             user: { role: "USER" },
@@ -68,9 +69,7 @@ export async function GET(req: Request) {
     const paidUsers = activeSubsAgg;
     const daus = dausAgg.length;
     const conversionRate =
-      totalUsers > 0
-        ? Math.round((paidUsers / totalUsers) * 10000) / 100
-        : 0;
+      totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 10000) / 100 : 0;
 
     const summary = {
       totalUsers,
@@ -82,11 +81,18 @@ export async function GET(req: Request) {
       todayEvents,
     };
 
+    const metric = searchParams.get("metric") || "";
+
     // Build metric filter
-    const metricFilter: { date?: { gte: Date; lte: Date }; metric?: { contains: string } } = {
+    const metricFilter: {
+      date?: { gte: Date; lte: Date };
+      metric?: string | { contains: string };
+    } = {
       date: { gte: fromDate, lte: toDate },
     };
-    if (search) {
+    if (metric && metric !== "all") {
+      metricFilter.metric = metric;
+    } else if (search) {
       metricFilter.metric = { contains: search };
     }
 
@@ -112,21 +118,29 @@ export async function GET(req: Request) {
       const grouped = new Map<string, Map<string, number>>();
       for (const row of allRows) {
         const d = new Date(row.date);
-        const key = granularity === "monthly"
-          ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
-          : `${d.getFullYear()}`;
-        const dateKey = granularity === "monthly"
-          ? `${key}-01`
-          : `${key}-01-01`;
+        const key =
+          granularity === "monthly"
+            ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+            : `${d.getFullYear()}`;
+        const dateKey =
+          granularity === "monthly" ? `${key}-01` : `${key}-01-01`;
         if (!grouped.has(dateKey)) grouped.set(dateKey, new Map());
         const metricMap = grouped.get(dateKey)!;
-        metricMap.set(row.metric, (metricMap.get(row.metric) ?? 0) + (row.autoValue ?? 0));
+        metricMap.set(
+          row.metric,
+          (metricMap.get(row.metric) ?? 0) + (row.autoValue ?? 0),
+        );
       }
 
       const aggregated: Array<Record<string, unknown>> = [];
       for (const [dateKey, metricMap] of grouped) {
         for (const [metric, value] of metricMap) {
-          aggregated.push({ id: `${dateKey}-${metric}`, date: dateKey, metric, autoValue: value });
+          aggregated.push({
+            id: `${dateKey}-${metric}`,
+            date: dateKey,
+            metric,
+            autoValue: value,
+          });
         }
       }
 
@@ -148,31 +162,47 @@ export async function GET(req: Request) {
 
       total = aggregated.length;
       const start = (page - 1) * limit;
-      metrics = aggregated.slice(start, start + limit);
+      metrics =
+        tab === "data" ? aggregated.slice(start, start + limit) : aggregated;
     } else {
-      // Daily granularity — existing behavior
-      let metricsQuery = prisma.dailyMetric.findMany({
-        where: metricFilter,
-        orderBy: [{ date: sort === "date" ? order : "asc" }, sort !== "date" && sort !== "metric"
-          ? { metric: "asc" }
-          : ({} as any)],
-        skip: (page - 1) * limit,
-        take: limit,
-      });
-
-      if (sort === "value") {
+      // Daily granularity
+      let metricsQuery: any;
+      if (tab === "data") {
         metricsQuery = prisma.dailyMetric.findMany({
           where: metricFilter,
-          orderBy: [{ autoValue: order === "asc" ? "asc" : "desc" }],
+          orderBy: [
+            { date: sort === "date" ? order : "asc" },
+            sort !== "date" && sort !== "metric"
+              ? { metric: "asc" }
+              : ({} as any),
+          ],
           skip: (page - 1) * limit,
           take: limit,
         });
-      } else if (sort === "metric") {
+
+        if (sort === "value") {
+          metricsQuery = prisma.dailyMetric.findMany({
+            where: metricFilter,
+            orderBy: [{ autoValue: order === "asc" ? "asc" : "desc" }],
+            skip: (page - 1) * limit,
+            take: limit,
+          });
+        } else if (sort === "metric") {
+          metricsQuery = prisma.dailyMetric.findMany({
+            where: metricFilter,
+            orderBy: [
+              { metric: order === "asc" ? "asc" : "desc" },
+              { date: "desc" },
+            ],
+            skip: (page - 1) * limit,
+            take: limit,
+          });
+        }
+      } else {
+        // For non-data tabs (charts), we want all metrics sorted by date ascending.
         metricsQuery = prisma.dailyMetric.findMany({
           where: metricFilter,
-          orderBy: [{ metric: order === "asc" ? "asc" : "desc" }, { date: "desc" }],
-          skip: (page - 1) * limit,
-          take: limit,
+          orderBy: [{ date: "asc" }],
         });
       }
 
