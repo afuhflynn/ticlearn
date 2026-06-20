@@ -1,5 +1,5 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export function useAdminStats() {
   const { data, isLoading, error, refetch } = useQuery({
@@ -90,6 +90,91 @@ export function useDeleteAdminUser() {
     mutationFn: (id: string) => api.mutations.admin.users.delete(id),
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
+  });
+}
+
+export type AdminPlanUser = {
+  id: string;
+  name: string | null;
+  email: string;
+  image: string | null;
+  role: string;
+  createdAt: string;
+  activeProfileId: string | null;
+  onboardingCompleted: boolean | null;
+  onboardingSkipped: boolean | null;
+  onboardingStep: number | null;
+  examYear: number | null;
+  examDate: string | null;
+  phoneCountryCode: string | null;
+  phoneNumber: string | null;
+  programs: Array<{
+    id: string;
+    name: string;
+    code: string;
+    level: string;
+    confidence: number | null;
+  }>;
+  currentPlan: string;
+  subscription: null | {
+    id: string;
+    plan: string;
+    status: string;
+    amount: number;
+    activatedAt: string | null;
+    createdAt: string;
+    fapshiTransId: string | null;
+  };
+  notesCount: number;
+  quizzesCount: number;
+  attemptsCount: number;
+  paper3AttemptsCount: number;
+};
+
+export function useAdminPlanUsers(
+  params: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    role?: string;
+    onboardingStatus?: string;
+    plan?: string;
+    subscriptionStatus?: string;
+    sortBy?: string;
+    sortOrder?: string;
+  } = {},
+) {
+  const { data, isLoading, error, refetch, isFetching } = useQuery({
+    queryKey: ["admin", "plan-upgrades", params],
+    queryFn: () => api.mutations.admin.planUpgrades.getAll(params),
+  });
+
+  return {
+    users: (data?.users ?? []) as AdminPlanUser[],
+    total: data?.total ?? 0,
+    page: data?.page ?? 1,
+    limit: data?.limit ?? params.limit ?? 20,
+    totalPages: data?.totalPages ?? 1,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  };
+}
+
+export function useUpdateAdminUserPlan() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: { userId: string; plan: string; reason?: string }) =>
+      api.mutations.admin.planUpgrades.updatePlan(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "plan-upgrades"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["subscription"] });
+      queryClient.invalidateQueries({ queryKey: ["plan"] });
+      queryClient.invalidateQueries({ queryKey: ["usage"] });
+    },
   });
 }
 

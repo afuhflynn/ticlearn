@@ -10,13 +10,13 @@ import {
   Link2,
   ListChecks,
   MessageCircle,
-  School,
   Shield,
   Sparkles,
   TrendingUp,
   Upload,
   Users,
 } from "lucide-react";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { FaMoneyBill1 } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import Image from "next/image";
 
 const adminNavItems = [
   { href: "/admin", icon: BarChart3, label: "Dashboard" },
@@ -40,12 +39,17 @@ const adminNavItems = [
   { href: "/admin/users", icon: Users, label: "Users" },
   { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
+  { href: "/admin/plan-upgrades", icon: Sparkles, label: "Plan Upgrades" },
   {
     href: "/admin/payment-settings",
     icon: FaMoneyBill1,
     label: "Payment Settings",
   },
-  { href: "/admin/platform-settings", icon: Shield, label: "Platform & Credits" },
+  {
+    href: "/admin/platform-settings",
+    icon: Shield,
+    label: "Platform & Credits",
+  },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
 ];
 
@@ -115,7 +119,9 @@ export function AdminSidebar() {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="px-3">Paper 1 &amp; 2</SidebarGroupLabel>
+          <SidebarGroupLabel className="px-3">
+            Paper 1 &amp; 2
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {paper12NavItems.map((item) => (
