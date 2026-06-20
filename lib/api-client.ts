@@ -34,11 +34,6 @@ import type {
   UserStats,
   UserSummary,
 } from "@/types";
-import {
-  Affiliate,
-  AffiliateClick,
-  AffiliateEarning,
-} from "./generated/prisma/client";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -621,6 +616,52 @@ export const api = {
             method: "POST",
             body: { search },
           }),
+      },
+
+      // Plan Upgrades
+      planUpgrades: {
+        getAll: (
+          params: {
+            page?: number;
+            limit?: number;
+            search?: string;
+            role?: string;
+            onboardingStatus?: string;
+            plan?: string;
+            subscriptionStatus?: string;
+            sortBy?: string;
+            sortOrder?: string;
+          } = {},
+        ) => {
+          const searchParams = new URLSearchParams();
+          if (params.page) searchParams.set("page", params.page.toString());
+          if (params.limit) searchParams.set("limit", params.limit.toString());
+          if (params.search) searchParams.set("search", params.search);
+          if (params.role) searchParams.set("role", params.role);
+          if (params.onboardingStatus) {
+            searchParams.set("onboardingStatus", params.onboardingStatus);
+          }
+          if (params.plan) searchParams.set("plan", params.plan);
+          if (params.subscriptionStatus) {
+            searchParams.set("subscriptionStatus", params.subscriptionStatus);
+          }
+          if (params.sortBy) searchParams.set("sortBy", params.sortBy);
+          if (params.sortOrder) searchParams.set("sortOrder", params.sortOrder);
+          return apiRequest<{
+            users: unknown[];
+            total: number;
+            page: number;
+            limit: number;
+            totalPages: number;
+          }>(`/admin/plan-upgrades?${searchParams.toString()}`, {
+            method: "GET",
+          });
+        },
+        updatePlan: (data: { userId: string; plan: string; reason?: string }) =>
+          apiRequest<{ success: boolean; user: unknown }>(
+            "/admin/plan-upgrades",
+            { method: "PATCH", body: data },
+          ),
       },
       // Feedback
       feedback: {

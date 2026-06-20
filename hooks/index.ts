@@ -3,6 +3,7 @@ export {
   useAdminAffiliate,
   useAdminAffiliates,
   useAdminFeedback,
+  useAdminPlanUsers,
   useAdminStats,
   useAdminSubscriptions,
   useAdminUser,
@@ -19,6 +20,7 @@ export {
   useUpdateAdminFeedback,
   useUpdateAdminSubscription,
   useUpdateAdminUser,
+  useUpdateAdminUserPlan,
 } from "./useAdmin";
 export {
   useAdminMetrics,
