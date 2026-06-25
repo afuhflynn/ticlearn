@@ -216,7 +216,7 @@ Use this as the repo entrypoint before changing product behavior.
   - increments usage before streaming the model response
   - converts `UIMessage[]` with `convertToModelMessages`
   - returns `toUIMessageStreamResponse()` for `useChat`
-  - uses `streamText` with `openai("gpt-5.2-chat-latest")`
+  - uses `streamText` with `google("gemini-2.5-flash")`
 
 ### Subscription / Payments
 

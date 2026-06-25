@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { google } from "@ai-sdk/google";
 import {
   convertToModelMessages,
   generateText,
@@ -27,12 +27,12 @@ import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
-const gpt = openai.responses("gpt-5.5");
+const gemini = google("gemini-2.5-flash");
 
 async function generateTitle(userMessage: string): Promise<string> {
   try {
     const result = await generateText({
-      model: gpt,
+      model: gemini,
       maxRetries: 0,
       timeout: 10_000,
       prompt: `Generate a short (max 50 characters), descriptive title for this conversation based on the user's first message.
@@ -355,7 +355,7 @@ NOTE: Our url is: ${process.env.NEXT_PUBLIC_APP_URL} - Use it well don't invent 
     const tools = createChatTools({ userId: session.user.id });
 
     const result = streamText({
-      model: gpt,
+      model: gemini,
       system: systemPrompt,
       tools,
       messages: modelMessages,

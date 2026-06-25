@@ -1,5 +1,5 @@
 import type { LanguageModel } from "ai";
-import { openai } from "./instances";
+import { google } from "./instances";
 
 export interface TaskConfig {
   chain: LanguageModel[];
@@ -8,60 +8,60 @@ export interface TaskConfig {
   cacheTtlMs?: number;
 }
 
-const gpt = openai("gpt-5.5");
+const gemini = google("gemini-2.5-flash");
 
 export const taskRegistry: Record<string, TaskConfig> = {
   reasoning: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: true,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   fast_chat: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   quiz_gen: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   exam_gen: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_gen: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_eval: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,
   },
 
   summarize: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 30 * 24 * 60 * 60 * 1000,
   },
 
   grading: {
-    chain: [gpt],
+    chain: [gemini],
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,
