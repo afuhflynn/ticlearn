@@ -1,2 +1,2 @@
-import { openai } from "@ai-sdk/openai";
-export { openai };
+import { google } from "@ai-sdk/google";
+export { google };

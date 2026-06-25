@@ -68,7 +68,7 @@ Implement comprehensive Paper 3 exam system with subscription-based monetization
 ## Critical Context
 - Prisma migration was skipped (used db:push); created manual migration to fix drift
 - ProcessingStatus enum values needed manual SQL fix (enum existed but had no values)
-- AiModel changed from "gpt-5.1-chat-latest" to "gpt-5.4" in evaluate.ts and chat route
+- AiModel changed from "[previous model]" to "[previous mdel]" in evaluate.ts and chat route
 - Fullscreen requestFullscreen() must be called inside user gesture (click handler), not useEffect
 
 ## Relevant Files
@@ -99,7 +99,7 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 - GCE = multi-select subjects (soft cap 4), HND = single-select specialty
 - Mobile-first: large tap targets, no hover-only interactions
 - Post-onboarding: AI context includes level, programs, exam date, baselines, weakest program
-- Use `gpt-5.5`, Prisma migrations, pnpm
+- Use `gemini-2.5-flash`, Prisma migrations, pnpm
 
 ## Progress
 ### Done
@@ -149,7 +149,7 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 Fix AI orchestration latency (model chain fallback, no timeouts, no caching) and route critical paths to OpenAI directly while keeping the multi-agent chain for background tasks.
 
 ## Constraints & Preferences
-- Critical user-facing paths (chat, quiz gen, exam gen, grading) → OpenAI direct (gpt-5.5)
+- Critical user-facing paths (chat, quiz gen, exam gen, grading) → OpenAI direct (gemini-2.5-flash)
 - Background/async paths (Inngest jobs, short answer grading) → multi-agent chain fallback
 - 10s timeout on all AI SDK calls
 - Model health cache: working model (5 min TTL) + dead model (30s negative TTL)
@@ -161,7 +161,7 @@ Fix AI orchestration latency (model chain fallback, no timeouts, no caching) and
 - Added 10s timeout on all AI SDK calls (generateObject, generateText, streamText)
 - Removed redundant health check from streamChat — try streamText directly with fallback
 - Chat route: tries OpenAI first in health check, falls back to chain; uses orchestrator model cache
-- Added `generateCritical()` and `generateTextCritical()` to orchestrator — calls openai("gpt-5.5") directly, no chain fallback, maxRetries: 1
+- Added `generateCritical()` and `generateTextCritical()` to orchestrator — calls openai("gemini-2.5-flash") directly, no chain fallback, maxRetries: 1
 - lib/ai/index.ts: quiz gen, exam gen, grading → switched to generateCritical / generateTextCritical
 - paper3/chat route: switched from generate → generateCritical
 - revision-guides route: switched from generateTextWithFallback → generateTextCritical

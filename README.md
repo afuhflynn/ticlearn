@@ -112,7 +112,7 @@ See [`.env.example`](./.env.example) for the complete list with setup instructio
 | `BETTER_AUTH_SECRET` | Yes | Auth secret (generate with `openssl rand -hex 64`) |
 | `BETTER_AUTH_URL` | Yes | Auth callback URL |
 | `NEXT_PUBLIC_APP_URL` | Yes | Public app URL |
-| `OPENAI_API_KEY` | AI features | OpenAI API key |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | AI features | Google Gemini API key (get from https://aistudio.google.com/apikey) |
 | `GOOGLE_CLIENT_ID` | Google auth | Google OAuth client ID |
 | `GOOGLE_CLIENT_SECRET` | Google auth | Google OAuth client secret |
 | `UPLOADTHING_TOKEN` | File uploads | UploadThing API token |

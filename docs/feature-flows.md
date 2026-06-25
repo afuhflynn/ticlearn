@@ -167,7 +167,7 @@ This document traces how the main product behaviors move through pages, hooks, c
 - Applies chat limits
 - Increments `totalChats`
 - Converts incoming `UIMessage[]` with `convertToModelMessages`
-- Streams result from `openai("gpt-5.2-chat-latest")`
+- Streams result from `google("gemini-2.5-flash")`
 - Returns `toUIMessageStreamResponse()` so the client can use SDK-native streaming/state handling
 
 ### Notes

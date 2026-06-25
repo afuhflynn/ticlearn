@@ -400,13 +400,13 @@ When you see existing drift:
 - When changing Prisma schema, always create a migration: `pnpm db:migrate --name <migration-name>`
 - Review migrations before applying to ensure they are correct.
 
-## 28. AI Models: Use gpt-5.5 for All AI Operations
+## 28. AI Models: Use gemini-2.5-flash for All AI Operations
 
-- All AI-powered features MUST use `gpt-5.5` model.
-- GPT-5.5 handles text and vision natively — no separate vision model needed.
+- All AI-powered features MUST use `gemini-2.5-flash` model.
+- Gemini 2.5 Flash handles text, vision, code, and reasoning natively.
 - This applies to ALL AI operations: chat, evaluation, processing, generation.
-- Do NOT use `gpt-4o`, `gpt-5.4`, `gpt-5.2-chat-latest`, or any earlier model.
-- Override only if gpt-5.5 is unavailable in your OpenAI organization.
+- Do NOT use `gpt-5.5`, `gpt-4o`, or any OpenAI model.
+- Override only if gemini-2.5-flash is unavailable in your Google AI account.
 
 ## 29. Biome Is The Linter And Formatter
 

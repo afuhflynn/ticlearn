@@ -2,9 +2,9 @@ import { generateObject, generateText, streamText } from "ai";
 import type { z } from "zod";
 import { getCached, setCached } from "./cache";
 import { getTaskConfig } from "./registry";
-import { openai } from "./instances";
+import { google } from "./instances";
 
-const gpt = openai("gpt-5.5");
+const gemini = google("gemini-2.5-flash");
 const TIMEOUT_MS = 10_000;
 
 export interface GenerateOptions<T> {
@@ -61,12 +61,11 @@ export async function generate<T>(
   }
 
   const result = await generateObject({
-    model: gpt,
+    model: gemini,
     schema: opts.schema,
     prompt: opts.prompt,
     messages: opts.messages as never,
     system: opts.system,
-    providerOptions: { google: { structuredOutputs: false } as never },
     timeout: TIMEOUT_MS,
     maxRetries: 1,
     ...(opts.modelOptions as Record<string, unknown>),
@@ -81,7 +80,7 @@ export async function generate<T>(
 
 export async function streamChat(opts: StreamChatOptions) {
   return streamText({
-    model: gpt,
+    model: gemini,
     system: opts.system,
     messages: opts.messages as never,
     tools: opts.tools as never,
@@ -93,7 +92,7 @@ export async function streamChat(opts: StreamChatOptions) {
 
 export async function generateTextWithFallback(opts: TextGenOptions) {
   return generateText({
-    model: gpt,
+    model: gemini,
     prompt: opts.prompt,
     messages: opts.messages as never,
     system: opts.system,
@@ -119,12 +118,11 @@ export async function generateCritical<T>(
   }
 
   const result = await generateObject({
-    model: gpt,
+    model: gemini,
     schema: opts.schema,
     prompt: opts.prompt,
     messages: opts.messages as never,
     system: opts.system,
-    providerOptions: { google: { structuredOutputs: false } as never },
     timeout: TIMEOUT_MS,
     maxRetries: 1,
     ...(opts.modelOptions as Record<string, unknown>),
@@ -139,7 +137,7 @@ export async function generateCritical<T>(
 
 export async function generateTextCritical(opts: TextGenOptions) {
   return generateText({
-    model: gpt,
+    model: gemini,
     prompt: opts.prompt,
     messages: opts.messages as never,
     system: opts.system,
