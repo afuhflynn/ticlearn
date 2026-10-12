@@ -118,7 +118,7 @@ export const processNote = inngest.createFunction(
       }
 
       console.log("[Inngest] Generating summary...");
-      const summaryResult = await summarizeText(extractedText);
+      const summaryResult = await summarizeText(extractedText, note.userId);
 
       console.log("[Inngest] Updating note in database...");
       await prisma.note.update({
@@ -204,6 +204,7 @@ export const generateQuiz = inngest.createFunction(
           questionCount: questionCount || 10,
           questionTypes: questionTypes || "MIXED",
         },
+        note.userId,
       );
 
       console.log(
@@ -294,6 +295,7 @@ export const generateQuizFromWeakAreas = inngest.createFunction(
           questionCount: questionCount || 10,
           readinessScore: readinessScore || 0,
         },
+        userId,
       );
 
       console.log(
@@ -739,10 +741,14 @@ export const generateDefaultQuiz = inngest.createFunction(
           `[Inngest] Generating quiz for topic: ${topic} with ${questionTypes} questions`,
         );
 
-        const questions = await generateQuizFromTopic(topic, {
-          questionCount: questionsPerQuiz,
-          questionTypes,
-        });
+        const questions = await generateQuizFromTopic(
+          topic,
+          {
+            questionCount: questionsPerQuiz,
+            questionTypes,
+          },
+          userId,
+        );
 
         if (questions.length === 0) {
           console.error(

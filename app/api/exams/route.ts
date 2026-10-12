@@ -55,6 +55,7 @@ export async function POST(req: Request) {
       subject,
       topic,
       questionCount || 50,
+      session.user.id,
     );
 
     const exam = await prisma.examSession.create({

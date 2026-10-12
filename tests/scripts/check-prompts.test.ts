@@ -102,4 +102,47 @@ describe("scripts/check-prompts.mjs (covers: AC-1, spec enforcement)", () => {
       expect(result.output).toContain("check-probe-legacy.ts");
     });
   });
+
+  it("passes on the clean tree with provider imports confined", () => {
+    const result = runCheck();
+    expect(result.output).toContain(
+      "provider imports flow through lib/ai/instances.ts",
+    );
+  });
+});
+
+describe("scripts/check-prompts.mjs provider import gate (covers: AC-8)", () => {
+  it("flags a direct Gemini import that would bypass the chain", () => {
+    withProbe(
+      "check-probe-provider.ts",
+      'import { google } from "@ai-sdk/google";\nexport const g = google("x");\n',
+      () => {
+        const result = runCheck();
+        expect(result.status).toBe(1);
+        expect(result.output).toContain("check-probe-provider.ts");
+      },
+    );
+  });
+
+  it("flags a direct OpenAI compatible import outside the one home", () => {
+    withProbe(
+      "check-probe-provider.ts",
+      'import { createOpenAICompatible } from "@ai-sdk/openai-compatible";\nexport const p = createOpenAICompatible({ name: "x" });\n',
+      () => {
+        const result = runCheck();
+        expect(result.status).toBe(1);
+        expect(result.output).toContain("check-probe-provider.ts");
+      },
+    );
+  });
+
+  it("allows an unrelated package import with no provider name in it", () => {
+    withProbe(
+      "check-probe-clean.ts",
+      'import { z } from "zod";\nexport const s = z.string();\n',
+      () => {
+        expect(runCheck().status).toBe(0);
+      },
+    );
+  });
 });

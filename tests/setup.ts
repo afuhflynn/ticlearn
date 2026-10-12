@@ -1,6 +1,10 @@
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
+// The AI layer refuses to build a provider without a key. Tests never make a
+// real call, so a placeholder keeps that guard honest instead of stubbed out.
+process.env.OPENROUTER_API_KEY ??= "test-openrouter-key";
+
 Object.defineProperty(globalThis, "crypto", {
   value: {
     randomUUID: () => "test-uuid-" + Math.random().toString(36).slice(2),
@@ -108,8 +112,29 @@ vi.mock("@/lib/prisma", () => ({
     paper3Question: { findMany: vi.fn() },
     paper3QuestionAttempt: { findMany: vi.fn() },
     paper3UserStats: { findFirst: vi.fn() },
+    platformSettings: { findUnique: vi.fn(async () => null) },
+    aiModelHealth: {
+      findMany: vi.fn(async () => []),
+      findUnique: vi.fn(async () => null),
+      upsert: vi.fn(async () => ({})),
+    },
+    aiUsageEvent: {
+      create: vi.fn(async () => ({})),
+      findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => null),
+      count: vi.fn(async () => 0),
+      aggregate: vi.fn(async () => ({
+        _sum: { costXaf: null, promptTokens: null, completionTokens: null },
+        _count: { id: 0 },
+      })),
+      groupBy: vi.fn(async () => []),
+    },
     $transaction: vi.fn(async (fn: any) => fn({})),
   },
+}));
+
+vi.mock("@/lib/rate-limit", () => ({
+  limit: vi.fn(async () => null),
 }));
 
 vi.mock("@/lib/auth", () => ({

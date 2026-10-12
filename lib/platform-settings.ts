@@ -30,6 +30,8 @@ export type PlatformSettingsSnapshot = Pick<
   | "creditCostMultiplierPremium"
   | "creditCostMultiplierPro"
   | "useAceShortAnswerGrading"
+  | "usdToXafRate"
+  | "aiFusionAllow"
 >;
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
@@ -55,6 +57,8 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostMultiplierPremium: 0.4,
   creditCostMultiplierPro: 0.4,
   useAceShortAnswerGrading: true,
+  usdToXafRate: 650,
+  aiFusionAllow: false,
 };
 
 export type CreditEnforcementEffective = {
@@ -133,6 +137,8 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
     creditCostMultiplierPremium: settings.creditCostMultiplierPremium,
     creditCostMultiplierPro: settings.creditCostMultiplierPro,
     useAceShortAnswerGrading: settings.useAceShortAnswerGrading,
+    usdToXafRate: settings.usdToXafRate,
+    aiFusionAllow: settings.aiFusionAllow,
   };
 }
 

@@ -1,5 +1,6 @@
 import type { LanguageModel } from "ai";
-import { google } from "./instances";
+import { DEFAULT_CHAIN } from "./chain";
+import { openrouter } from "./instances";
 
 export interface TaskConfig {
   chain: LanguageModel[];
@@ -8,63 +9,69 @@ export interface TaskConfig {
   cacheTtlMs?: number;
 }
 
-const gemini = google("gemini-2.5-flash");
+function chainModels(): LanguageModel[] {
+  return DEFAULT_CHAIN.map((id) => openrouter()(id));
+}
 
 /** Models a prompt file header may name. Owned here so loader and jobs agree. */
-export const MODEL_ALLOWLIST: string[] = ["gemini-2.5-flash"];
+export const MODEL_ALLOWLIST: string[] = [
+  ...DEFAULT_CHAIN,
+  "gemini-2.5-flash",
+  "openrouter/fusion",
+];
 
 export const taskRegistry: Record<string, TaskConfig> = {
   reasoning: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: true,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   fast_chat: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   quiz_gen: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   exam_gen: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_gen: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   paper3_eval: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,
   },
 
   summarize: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 30 * 24 * 60 * 60 * 1000,
   },
 
   grading: {
-    chain: [gemini],
+    chain: chainModels(),
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 0,

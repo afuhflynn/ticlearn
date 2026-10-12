@@ -106,7 +106,11 @@ export async function POST(req: Request) {
       );
     }
 
-    const mock = await generateMockFromBlueprint(blueprintId, profileId);
+    const mock = await generateMockFromBlueprint(
+      blueprintId,
+      profileId,
+      session.user.id,
+    );
 
     return NextResponse.json({ mock });
   } catch (error) {
