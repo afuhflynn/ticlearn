@@ -180,6 +180,7 @@ export async function POST(req: Request) {
       task: "reasoning",
       schema: responseSchema,
       prompt,
+      userId: session.user.id,
       ...promptCallFields(promptSettings),
     });
 

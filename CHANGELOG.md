@@ -7,7 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+1. **AI model chain through OpenRouter** (see spec 0003): every AI task now routes through OpenRouter behind an ordered chain of twelve models across eight labs, replacing the single hardcoded Gemini model. A request falls through to the next model when one fails, inside a shared 10s budget for object calls and a separate 120s budget for chat, which can run up to five tool steps.
+2. **Circuit breaker** — a Postgres backed breaker (`ai_model_health`) skips a model after three transport faults and lets exactly one probe back in after a 2 minute cool down, so a dead lab is never retried on every request. Only transport faults trip it; a schema mismatch, a bad request, an auth or credit error fails fast without touching the breaker. State is shared across instances and fails open to the head if the read fails.
+3. **Per student AI cost in XAF** — every served call writes an `ai_usage_events` row with the serving model, task, tokens, USD cost, and whole XAF at the rate in effect at the time. `GET /api/me/ai-usage` returns a signed in student's daily totals in Africa/Douala time; `GET /api/admin/ai-usage` returns totals split by model and task, admin only. Admin work with no student in scope, such as revision guides and question bank ingest, stays anonymous by design.
+4. **Gated Fusion research** — an opt in `runFusionResearch` path for rare high value deep research, off by default, admin only, with its own cost guard and its own task tag so consensus spend never hides inside tutoring. Everyday quiz, exam, chat, and marking never touch it.
+
+### Fixed
+
+- **Streaming fallback was dead code**: `streamText` returns before the provider is called and reports failure through `onError`, never as a throw, so the fallback loop around it could never fire. Chat, the only streaming surface, showed no fallback at all and wrote no cost row for a failed stream. The walk now reads the first text token before committing to a model, so a dead head is abandoned for the next one, and a failed stream records the transport failure plus a zero cost row.
+- **Chat answers truncated mid sentence**: the chat route's stream budget had been cut from 120s to 10s while still running a five step tool loop. Streaming has its own budget again.
+- **Per student XAF totals inflated**: rounding every ledger row up to a whole franc meant ten calls at 0.39 XAF each reported 10 XAF instead of 4. Rows stay whole francs per the money rule; totals now sum the precise USD and convert once.
+- **A tripped model could be stranded**: the breaker's probe release was skipped on the fail fast path, so one schema or 4xx fault after a cool down left that model permanently skipped in that process while other instances kept probing it.
+- **A failed probe reopened a dead model**: a model whose cool down probe failed was marked healthy, flooding full traffic back at it until three more faults re tripped it. It now stays open with only its trip time reset.
+- **A single unavailable model killed the request**: any 4xx failed fast, so a model scoped 403 or 404 ended the whole chain instead of falling through. Fail fast is now limited to request scoped statuses.
+- **Application bugs tripped the breaker**: unclassified errors counted as transport faults and could park a healthy model while hiding the real error behind a friendly message. They are now logged loudly and never trip it.
+- **Chat titles were unattributed**: title generation wrote anonymous cost rows, so per student totals under reported real spend.
+
 ### Security
+
+- **Missing provider key fails loudly**: an unset `OPENROUTER_API_KEY` now raises a clear server side error instead of surfacing a raw provider 401 to students. `USD_TO_XAF_RATE` is read for real rather than documented but unused.
+- **AI usage read scoping**: `GET /api/me/ai-usage` returns 401 without a session and queries only that student's rows; `GET /api/admin/ai-usage` returns 401 without a session and 403 for any non admin, so a student can never read another student's or the platform's spend. Both validate their query parameters, paginate, and are rate limited.
 
 - **Payment webhook hardening** — Fapshi webhook now fails closed when `FAPSHI_WEBHOOK_SECRET` is unset (returns 503), uses constant-time comparison for secret validation, and implements replay protection via `fapshi_trans_id` unique index on `affiliate_earnings`. FAILED→SUCCESSFUL sequences with the same transaction ID are allowed; duplicate SUCCESSFUL replays are idempotent.
 
@@ -50,6 +71,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 3. **Exam mock difficulty fix**: mock generation returned 500 because the prompt never named the difficulty scale the schema requires. The prompt file now rates difficulty 1 to 5, verified live with no rebuild.
 4. **Verify fixture seed**: dev only `scripts/seed-verify-fixture.ts` creates a verified admin user with credits, exam profile, visible blueprint, and READY note for end to end AI drives. Refuses production.
 5. **Test infrastructure**: suite at 49 passing, incl. loader conformance, orchestrator cache plus trace, and check script CLI suites.
+6. **Provider import gate** — `pnpm prompts:check` now fails when any file outside `lib/ai/instances.ts` imports `@ai-sdk/google`, `@ai-sdk/openai`, or `@ai-sdk/openai-compatible` directly, so no AI call can quietly bypass the chain and its breaker.
+7. **Chain test suite** — 237 tests across 13 files. Covers chain order and override parsing, error classification (schema vs transport vs fail fast), breaker trip, cool down, probe single flight and the failed probe staying open, XAF math, ledger attribution, the chain walk on object and stream paths, the Fusion gate, and both usage routes with their 401 and 403 cases. A static guard fails if an AI helper accepts or forwards a student id without it reaching the ledger, which is the bug that made per student cost read empty.
 
 - **Type safety** — `lib/env.ts` split into Edge/Node validation with Zod schemas. `lib/require-admin.ts` shared admin guard. `lib/ai/tool-policy.ts` typed `wrapTool` with policy sets. `lib/rate-limit.ts` typed bucket configs and security event logging.
 

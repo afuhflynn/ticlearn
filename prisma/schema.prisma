@@ -70,6 +70,7 @@ model User {
   revisionGuides         RevisionGuide[]         @relation("RevisionGuideAuthor")
   kpiEvents              KpiEvent[]
   engagementLogs         EngagementLog[]
+  aiUsageEvents          AiUsageEvent[]          @relation("AiUsageEvents")
 
   @@map("users")
 }
@@ -1081,10 +1082,52 @@ model PlatformSettings {
   /// Prefer ace-3 style AI short-answer marking for text-heavy Paper 3 items.
   useAceShortAnswerGrading Boolean @default(true) @map("use_ace_short_answer_grading")
 
+  /// USD to XAF rate used for AI cost math. Copied onto each usage row at write time.
+  usdToXafRate Int @default(650) @map("usd_to_xaf_rate")
+  /// Fusion path gate. Off by default, admin only with cost cap when on.
+  aiFusionAllow Boolean @default(false) @map("ai_fusion_allow")
+
   updatedAt DateTime @updatedAt @map("updated_at")
   createdAt DateTime @default(now()) @map("created_at")
 
   @@map("platform_settings")
+}
+
+// ===========================================
+// AI model chain (spec 0003)
+// ===========================================
+
+model AiModelHealth {
+  id        String    @id @default(cuid())
+  modelId   String    @unique @map("model_id")
+  status    String    @default("healthy") @map("status")
+  failCount Int       @default(0) @map("fail_count")
+  trippedAt DateTime? @map("tripped_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  @@map("ai_model_health")
+}
+
+model AiUsageEvent {
+  id               String   @id @default(cuid())
+  userId           String?  @map("user_id")
+  user             User?    @relation("AiUsageEvents", fields: [userId], references: [id], onDelete: SetNull)
+  task             String   @map("task")
+  modelId          String   @map("model_id")
+  promptTokens     Int      @default(0) @map("prompt_tokens")
+  completionTokens Int      @default(0) @map("completion_tokens")
+  costUsd          Float    @default(0) @map("cost_usd")
+  costXaf          Int      @default(0) @map("cost_xaf")
+  usdToXafRate     Int      @default(650) @map("usd_to_xaf_rate")
+  latencyMs        Int      @default(0) @map("latency_ms")
+  errorCode        String?  @map("error_code")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId, createdAt])
+  @@index([modelId, createdAt])
+  @@index([task, createdAt])
+  @@map("ai_usage_events")
 }
 
 enum RevisionGuideFocus {

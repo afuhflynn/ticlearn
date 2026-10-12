@@ -1,13 +1,7 @@
-import { google } from "@ai-sdk/google";
-import {
-  convertToModelMessages,
-  generateText,
-  stepCountIs,
-  streamText,
-  type UIMessage,
-} from "ai";
+import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { generateTextWithFallback, streamChat } from "@/lib/ai/orchestrator";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
 import {
@@ -29,18 +23,18 @@ import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
-const gemini = google("gemini-2.5-flash");
-
-async function generateTitle(userMessage: string): Promise<string> {
+async function generateTitle(
+  userMessage: string,
+  userId?: string | null,
+): Promise<string> {
   try {
     const prompt = await getPromptOrFallback("chat", "chat_title", {
       userMessage,
     });
-    const result = await generateText({
-      model: gemini,
-      maxRetries: 0,
-      timeout: 10_000,
+    const result = await generateTextWithFallback({
+      task: "fast_chat",
       prompt,
+      userId: userId ?? null,
     });
     return result.text.trim().slice(0, 50) || "New Chat";
   } catch (e) {
@@ -266,7 +260,7 @@ export async function POST(req: Request) {
       conversation.title === "New Chat"
     ) {
       try {
-        const newTitle = await generateTitle(userContent);
+        const newTitle = await generateTitle(userContent, userId);
         await prisma.chatConversation.update({
           where: { id: conversationId },
           data: { title: newTitle },
@@ -352,16 +346,17 @@ Use this profile to personalize study recommendations, focus on weakest topics, 
 
     const tools = createChatTools({ userId: session.user.id });
 
-    const result = streamText({
-      model: gemini,
+    const result = await streamChat({
+      task: "reasoning",
       system: systemPrompt,
       tools,
       messages: modelMessages,
-      stopWhen: stepCountIs(5),
-      maxRetries: 1,
-      temperature: promptSettings.heat,
-      maxOutputTokens: promptSettings.cap,
-      timeout: { totalMs: 120_000, stepMs: 60_000, chunkMs: 10_000 },
+      userId: session.user.id,
+      modelOptions: {
+        stopWhen: stepCountIs(5),
+        temperature: promptSettings.heat,
+        maxOutputTokens: promptSettings.cap,
+      },
     });
 
     return result.toUIMessageStreamResponse({

@@ -1,4 +1,3 @@
-import { generateObject } from "ai";
 import { z } from "zod";
 import { generate } from "@/lib/ai/orchestrator";
 import type { Prisma } from "@/lib/generated/prisma/client";
@@ -142,6 +141,7 @@ export const evaluatePaper3Exam = inngest.createFunction(
                 modelAnswer: mq.question.expectedAnswer,
                 studentAnswer: userAnswer,
                 maxMarks: mq.marks,
+                userId,
               });
 
               result = {

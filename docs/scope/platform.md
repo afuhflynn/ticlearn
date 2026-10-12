@@ -44,12 +44,25 @@ Every AI prompt is an inline template literal in about ten files. Move them all 
 
 (basis: research/chat-experience.md §14 and research/web-search-tooling.md §6 both landed on the same front matter shape, so it is designed once and reused)
 
-### 4. AI model chain through OpenRouter · needs a decision · GA
-Today every AI task hardcodes one Gemini model and there is no fallback. Route through OpenRouter and build an ordered chain of at least six models across frontier and open weight labs, with a circuit breaker so a dead model is never retried, and a per request deadline.
+### 4. AI model chain through OpenRouter · GA
+Today every AI task hardcoded one Gemini model and there is no fallback. Routed through OpenRouter with an ordered chain of twelve models across frontier and open weight labs, a circuit breaker so a dead model is never retried, and a per request deadline.
 **Done when:** a forced failure on the head of the chain falls through to the next model within the deadline, a dead model is skipped for a cool down window, schema failures do not trip the breaker, and per student AI cost is measurable in XAF.
-- [ ] Design it (spec): `/solution-architect AI model chain`
+- [x] Design it (spec): [0003](../specs/0003-ai-model-chain/index.md) · code in `lib/ai/` (`chain.ts`, `breaker.ts`, `usage.ts`, `pricing.ts`, `fusion.ts`, `orchestrator.ts`)
+- [x] Build it: /feature-build AI model chain through OpenRouter
+  - [x] Chain plus breaker plus deadline (covers AC-1, AC-2, AC-3, AC-5)
+  - [x] Usage ledger plus XAF reads (covers AC-4)
+  - [x] Streaming plus all down plus Paper3 cutover (covers AC-6, AC-7, AC-8)
+- [x] Verify it: /verify-release AI model chain through OpenRouter (PASS 2026-10-12 run 3: all eight AC met with evidence after the review blockers were fixed. Run 1 and run 2 both passed, but run 2's AC-6 evidence was invalid and run 3 re proved it against a lazy stream mock matching the real SDK, plus a live streaming check)
+- [x] Test it: /test-engineer AI model chain through OpenRouter (231 passed 2026-10-12: nine new files covering chain order and error classification, breaker trip and probe, XAF math, ledger attribution, the chain walk, the Fusion gate, both usage routes, plus the AC-4 wiring regression guard and the provider import gate)
+- [x] Review it (fresh model): /peer-review AI model chain through OpenRouter (BLOCKED 2026-10-12: 3 blockers, 11 majors, 11 minors, 5 nits; three blockers independently confirmed on the streaming path, the probe leak on the fail fast path, and the chat timeout cut from 120s to 10s; findings in `docs/reviews/2026-10-12-ai-model-chain.md`)
+- [x] Document it: /tech-writer AI model chain through OpenRouter (changelog entry under Unreleased: Added for the chain, breaker, per student XAF and Fusion, Fixed for the eight defects the review surfaced, Security for the key check and route scoping, Developer Experience for the provider import gate and the test suite)
 
 (basis: research/stack-and-storage.md §3 · three Google and Anthropic models fail together, so the chain must span labs)
+- Shipped twelve ids across eight labs rather than six, verified live against the OpenRouter catalog with zero expiry dates, head `google/gemini-3.7-flash` after research found `google/gemini-2.5-flash` expires 2026-10-20.
+- Review returned BLOCKED (2026-10-12): 3 blockers, 11 majors. All three blockers fixed and re verified in run 3: streaming fallback had been dead code because `streamText` returns lazily and reports failure through `onError` rather than throwing, so the walk now gates on the first text token; the probe no longer leaks on the fail fast path; chat streaming got its own 120 second budget again. Of the majors, the failed probe no longer marks a model healthy, fail fast is limited to request scoped statuses, unclassified errors no longer trip the breaker, chat titles are attributed, per row XAF rounding no longer inflates student totals, and `USD_TO_XAF_RATE` plus the missing key check are now live. The remaining majors are tracked in `docs/reviews/2026-10-12-ai-model-chain.md`.
+- Schema landed via `db:push`, not a migration file, because pre existing drift on `affiliate_earnings` blocks `pnpm db:migrate` in this database. The written migration is still owed.
+- No migration file means a fresh environment cannot build these two tables from migrations alone; worth resolving before deploy.
+- Budget rule changed during the build and is now settled in code but not yet in the spec: an even split of the 10 second budget gives each of twelve models under a second, so each object attempt uses the time left up to a six second cap, and streaming uses its own 120 second budget for the five step tool loop. The spec's Key invariants still say an even split, and it still prescribes rounding XAF per ledger row, which is what inflated totals before run 3. Both spec lines want a `/solution-architect AI model chain` pass.
 
 ### 7. Design system and UI toolkit convention · needs a decision · GA
 The tokens and the rounded radius are a real asset every kit would replace, so keep them. Document a rule: shadcn and AI Elements are the default, components are owned locally and customised, and a new primitive is built only where shadcn genuinely lacks one. Also switch the shadcn base off the slowing Radix fork and record which of the twenty three unused AI Elements come in.

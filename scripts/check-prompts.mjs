@@ -18,7 +18,23 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PROMPTS_DIR = path.join(ROOT, "prompts");
 const CODE_DIRS = ["lib", "app", "components", "hooks"];
 const SKIP_DIRS = ["lib/prompts", "tests"];
-const MODEL_ALLOWLIST = ["gemini-2.5-flash"];
+const MODEL_ALLOWLIST = [
+  "google/gemini-3.7-flash",
+  "google/gemini-2.5-flash",
+  "openai/gpt-5-nano",
+  "deepseek/deepseek-v4.1-flash",
+  "anthropic/claude-haiku-5.5",
+  "z-ai/glm-4.7-flash",
+  "openai/gpt-5-mini",
+  "google/gemini-3.8-flash",
+  "anthropic/claude-haiku-4.5",
+  "openai/gpt-oss-120b",
+  "meta-llama/llama-3.3-70b-instruct",
+  "mistralai/mistral-medium-3.1",
+  "x-ai/grok-4.7",
+  "gemini-2.5-flash",
+  "openrouter/fusion",
+];
 
 let failures = 0;
 const fail = (msg) => {
@@ -117,7 +133,8 @@ for (const dir of CODE_DIRS) {
     eachLiteral(stripComments(text), (name, literal) => {
       if (flagged || !NAME_HINT.test(name)) return;
       const inner = literal.slice(1, -1);
-      if (inner.length > LONG_LITERAL) flagged = `${rel} (${name}, ${inner.length} chars)`;
+      if (inner.length > LONG_LITERAL)
+        flagged = `${rel} (${name}, ${inner.length} chars)`;
     });
     if (flagged) offenders.push(flagged);
   }
@@ -126,6 +143,32 @@ if (offenders.length > 0) {
   fail(`inline prompt text in:\n  - ${offenders.join("\n  - ")}`);
 } else {
   console.log("[prompts:check] no inline prompt text in code");
+}
+
+// 3. OpenRouter only: provider imports live in lib/ai/instances.ts alone.
+const PROVIDER_RE =
+  /from\s+["']@ai-sdk\/(google|openai|openai-compatible)["']/g;
+const providerOffenders = [];
+for (const dir of CODE_DIRS) {
+  const root = path.join(ROOT, dir);
+  if (!fs.existsSync(root)) continue;
+  for (const file of walk(root)) {
+    const rel = path.relative(ROOT, file);
+    if (!/\.(ts|tsx)$/.test(file)) continue;
+    if (rel === "lib/ai/instances.ts") continue;
+    const text = fs.readFileSync(file, "utf8");
+    PROVIDER_RE.lastIndex = 0;
+    if (PROVIDER_RE.test(text)) providerOffenders.push(rel);
+  }
+}
+if (providerOffenders.length > 0) {
+  fail(
+    `direct provider import outside lib/ai/instances.ts:\n  - ${providerOffenders.join("\n  - ")}`,
+  );
+} else {
+  console.log(
+    "[prompts:check] provider imports flow through lib/ai/instances.ts",
+  );
 }
 
 if (failures > 0) {

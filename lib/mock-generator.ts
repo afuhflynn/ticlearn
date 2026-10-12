@@ -1,4 +1,3 @@
-import { generateObject } from "ai";
 import { z } from "zod";
 import { generate } from "@/lib/ai/orchestrator";
 import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
@@ -139,6 +138,7 @@ function toSessionQuestionPayload(q: SelectedQuestion): MockSessionQuestion {
 export async function generateMockFromBlueprint(
   blueprintId: string,
   examProfileId: string,
+  userId?: string | null,
 ) {
   const blueprint = await prisma.examBlueprint.findUnique({
     where: { id: blueprintId },
@@ -155,6 +155,8 @@ export async function generateMockFromBlueprint(
     const { questions, mode } = await generateSectionQuestions(
       blueprint.componentId,
       section,
+      undefined,
+      userId,
     );
 
     if (questions.length === 0) {
@@ -240,6 +242,7 @@ async function generateSectionQuestions(
   componentId: string,
   section: SectionConfig,
   opts?: { topicIds?: string[] },
+  userId?: string | null,
 ) {
   const topicClause =
     opts?.topicIds && opts.topicIds.length > 0
@@ -283,6 +286,7 @@ async function generateSectionQuestions(
       componentId,
       section,
       aiNeeded,
+      userId,
     );
 
     return {
@@ -295,7 +299,12 @@ async function generateSectionQuestions(
   }
 
   // RESEARCH mode - AI generates all
-  const aiQuestions = await generateAIQuestions(componentId, section, needed);
+  const aiQuestions = await generateAIQuestions(
+    componentId,
+    section,
+    needed,
+    userId,
+  );
   return { questions: aiQuestions, mode: "RESEARCH" as const };
 }
 
@@ -335,6 +344,7 @@ async function generateAIQuestions(
   componentId: string,
   section: SectionConfig,
   count: number,
+  userId?: string | null,
 ) {
   const component = await prisma.component.findUnique({
     where: { id: componentId },
@@ -365,6 +375,7 @@ async function generateAIQuestions(
     );
     const result = await generate({
       task: "exam_gen",
+      userId,
       ...promptCallFields(settings),
       schema: z.object({
         questions: z.array(
@@ -431,6 +442,7 @@ async function generateAIQuestions(
   );
   const result = await generate({
     task: "exam_gen",
+    userId,
     ...promptCallFields(settings),
     schema: z.object({
       questions: z.array(

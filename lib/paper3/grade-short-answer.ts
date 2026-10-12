@@ -12,8 +12,9 @@ export async function gradeShortAnswer(params: {
   modelAnswer: string;
   studentAnswer: string;
   maxMarks: number;
+  userId?: string | null;
 }): Promise<{ marksAwarded: number; feedback: string }> {
-  const { prompt, modelAnswer, studentAnswer, maxMarks } = params;
+  const { prompt, modelAnswer, studentAnswer, maxMarks, userId } = params;
 
   try {
     const { text: system } = await getPrompt(
@@ -35,6 +36,7 @@ export async function gradeShortAnswer(params: {
       schema: resultSchema,
       system,
       prompt: userPrompt,
+      userId,
       ...promptCallFields(settings),
     });
 

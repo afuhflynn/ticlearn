@@ -50,6 +50,7 @@ export async function POST(req: Request) {
           question.question,
           answer.answer,
           question.correctAnswer,
+          session.user.id,
         );
 
         const scoreMatch = gradingResult.match(/(\d{1,3})/);
@@ -65,6 +66,7 @@ export async function POST(req: Request) {
             answer.answer,
             question.correctAnswer,
             question.options,
+            session.user.id,
           );
           explanation =
             `${question.explanation ?? ""}\n\n${aiExplanation}`.trim();

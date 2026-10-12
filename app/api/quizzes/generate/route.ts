@@ -136,10 +136,14 @@ export async function POST(req: Request) {
 
     console.log(`[API] Calling quiz generation AI...`);
 
-    const generatedQuestions = await generateQuizFromNote(note.extractedText, {
-      questionCount: resolvedQuestionCount,
-      questionTypes: resolvedQuestionTypes,
-    });
+    const generatedQuestions = await generateQuizFromNote(
+      note.extractedText,
+      {
+        questionCount: resolvedQuestionCount,
+        questionTypes: resolvedQuestionTypes,
+      },
+      session.user.id,
+    );
 
     console.log(`[API] AI returned ${generatedQuestions.length} questions`);
 

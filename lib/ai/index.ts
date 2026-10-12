@@ -425,6 +425,7 @@ async function getFileFetchCandidates(
 
 export async function summarizeText(
   content: string,
+  userId?: string | null,
 ): Promise<{ summary: string; topics: string[]; keyPoints: string[] }> {
   const schema = z.object({
     summary: z.string().min(1),
@@ -443,6 +444,7 @@ export async function summarizeText(
     schema,
     prompt,
     ...promptCallFields(settings),
+    userId,
   });
 
   return {
@@ -458,6 +460,7 @@ export async function generateQuizFromNote(
     questionCount: number;
     questionTypes: "MCQ" | "OPEN" | "MIXED";
   },
+  userId?: string | null,
 ) {
   console.log(
     `[AI] Generating quiz with ${options.questionCount} questions, type: ${options.questionTypes}`,
@@ -491,6 +494,7 @@ export async function generateQuizFromNote(
       schema,
       prompt,
       ...promptCallFields(settings),
+      userId,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -522,6 +526,7 @@ export async function generateQuizFromWeakAreas(
     questionCount: number;
     readinessScore: number;
   },
+  userId?: string | null,
 ) {
   console.log(
     `[AI] Generating quiz from weak areas with ${options.questionCount} questions`,
@@ -568,6 +573,7 @@ export async function generateQuizFromWeakAreas(
       schema,
       prompt,
       ...promptCallFields(settings),
+      userId,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -619,6 +625,7 @@ export async function generateQuizFromTopic(
     questionCount: number;
     questionTypes: "MCQ" | "OPEN" | "MIXED";
   },
+  userId?: string | null,
 ) {
   console.log(`[AI] Generating default quiz for topic: ${topic}`);
 
@@ -651,6 +658,7 @@ export async function generateQuizFromTopic(
       schema,
       prompt,
       ...promptCallFields(settings),
+      userId,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -666,6 +674,7 @@ export async function gradeOpenAnswer(
   question: string,
   userAnswer: string,
   correctAnswer: string,
+  userId?: string | null,
 ) {
   const { text: prompt, settings } = await getPrompt(
     "grade",
@@ -681,6 +690,7 @@ export async function gradeOpenAnswer(
     task: "grading",
     prompt,
     ...promptCallFields(settings),
+    userId,
   });
 
   return text;
@@ -691,6 +701,7 @@ export async function explainMCQAnswer(
   userAnswer: string,
   correctAnswer: string,
   options: string[],
+  userId?: string | null,
 ) {
   const { text: prompt, settings } = await getPrompt(
     "grade",
@@ -707,6 +718,7 @@ export async function explainMCQAnswer(
     task: "reasoning",
     prompt,
     ...promptCallFields(settings),
+    userId,
   });
 
   return text;
@@ -716,6 +728,7 @@ export async function generateExamQuestions(
   subject: string,
   topic: string,
   questionCount: number,
+  userId?: string | null,
 ) {
   const subjectName = getSubjectLabel(subject);
 
@@ -735,6 +748,7 @@ export async function generateExamQuestions(
       schema,
       prompt,
       ...promptCallFields(settings),
+      userId,
     });
 
     return normalizeGeneratedQuestions(object.questions);
@@ -744,8 +758,11 @@ export async function generateExamQuestions(
   }
 }
 
-export async function processNoteContent(content: string) {
-  return summarizeText(content);
+export async function processNoteContent(
+  content: string,
+  userId?: string | null,
+) {
+  return summarizeText(content, userId);
 }
 
 function normalizeExtractedText(text: string) {

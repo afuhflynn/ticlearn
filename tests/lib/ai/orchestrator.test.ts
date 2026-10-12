@@ -167,7 +167,14 @@ describe("orchestrator prompt trace logs (covers: spec standard traceability)", 
 
   it("logs the ref on the text and chat paths too", async () => {
     vi.mocked(generateText).mockResolvedValue({ text: "t" } as never);
-    vi.mocked(streamText).mockReturnValue({ chunks: [] } as never);
+    vi.mocked(streamText).mockReturnValue({
+      textStream: {
+        // eslint-disable-next-line require-yield
+        async *[Symbol.asyncIterator]() {
+          yield "hi";
+        },
+      },
+    } as never);
     const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     try {
       await generateTextWithFallback({
