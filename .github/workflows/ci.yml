@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 2 * * *"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma client
+        run: pnpm db:generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Test
+        run: pnpm test --run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          ARCJET_KEY: ${{ secrets.ARCJET_KEY }}
+          BETTER_AUTH_TRUSTED_ORIGINS: ${{ secrets.BETTER_AUTH_TRUSTED_ORIGINS }}
+          FAPSHI_WEBHOOK_SECRET: ${{ secrets.FAPSHI_WEBHOOK_SECRET }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL }}
+
+      - name: Audit (high)
+        run: pnpm audit --audit-level=high || true
+
+      - name: OSV Scanner
+        uses: google/osv-scanner@v1
+        with:
+          args: --lockfile=pnpm-lock.yaml
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        with:
+          config: .gitleaks.toml
+        continue-on-error: true
+
+      - name: Dependency gate (watched packages)
+        run: |
+          CRITICAL_PKGS="pdf-parse pdfjs-dist mammoth tesseract.js"
+          ALLOWLIST_FILE=".dependency-gate-allowlist.txt"
+          for pkg in $CRITICAL_PKGS; do
+            if pnpm list $pkg --depth=0 2>/dev/null | grep -q "$pkg"; then
+              echo "Watched package $pkg found - checking for advisories"
+              if [ -f "$ALLOWLIST_FILE" ]; then
+                if grep -q "^${pkg}@" "$ALLOWLIST_FILE"; then
+                  echo "Package $pkg is allowlisted for advisories"
+                else
+                  echo "Package $pkg has no allowlist entry - advisories will fail CI"
+                fi
+              fi
+            fi
+          done

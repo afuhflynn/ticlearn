@@ -127,22 +127,22 @@ function ConversationSession({
   return (
     <div className="flex h-full flex-col">
       <div className="min-h-0 flex-1 bg-gradient-to-b from-background via-background to-muted/20">
-          <ChatMessageList
-            emptyState={
-              <div className="px-4 py-10 text-center text-muted-foreground">
-                This conversation is empty. Ask TiC anything to get started.
-              </div>
-            }
-            messages={messages}
-            className="mx-auto max-w-3xl"
-            status={status}
-          />
-          <ChatRatingBanner
-            conversationId={conversationId}
-            messages={messages}
-            status={status}
-          />
-        </div>
+        <ChatMessageList
+          emptyState={
+            <div className="px-4 py-10 text-center text-muted-foreground">
+              This conversation is empty. Ask TiC anything to get started.
+            </div>
+          }
+          messages={messages}
+          className="mx-auto max-w-3xl"
+          status={status}
+        />
+        <ChatRatingBanner
+          conversationId={conversationId}
+          messages={messages}
+          status={status}
+        />
+      </div>
 
       <div className="border-t bg-background/95 px-4 py-4 backdrop-blur md:px-6">
         <Suggestions className="mx-auto mb-4 flex max-w-3xl flex-wrap gap-2">

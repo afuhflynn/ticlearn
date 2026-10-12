@@ -119,7 +119,9 @@ export function AppSidebar() {
 
   const creditBalance = creditsData?.balance ?? 0;
   const showCreditsTopUp =
-    !creditsPending && typeof creditsData?.balance === "number" && creditBalance > 0;
+    !creditsPending &&
+    typeof creditsData?.balance === "number" &&
+    creditBalance > 0;
   const isPaid = plan === "STANDARD" || plan === "PREMIUM";
   const streak = stats?.currentStreak ?? 0;
   const totalPoints = stats?.totalPoints ?? 0;
@@ -137,7 +139,9 @@ export function AppSidebar() {
 
   const isActive = (href: string) => {
     if (href === "/practice/mock") {
-      return pathname === "/practice/mock" || pathname.startsWith("/practice/mock/");
+      return (
+        pathname === "/practice/mock" || pathname.startsWith("/practice/mock/")
+      );
     }
     if (href === "/practice") {
       return pathname === "/practice" || pathname.startsWith("/practice/");
@@ -181,19 +185,31 @@ export function AppSidebar() {
               ) : (
                 <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
               )}
-              <span>{plan === "PREMIUM" ? "Premium" : plan === "STANDARD" ? "Standard" : plan === "STARTER" ? "Starter" : "Free"}</span>
+              <span>
+                {plan === "PREMIUM"
+                  ? "Premium"
+                  : plan === "STANDARD"
+                    ? "Standard"
+                    : plan === "STARTER"
+                      ? "Starter"
+                      : "Free"}
+              </span>
             </div>
             {readiness && (
               <>
                 <span className="text-muted-foreground/40">|</span>
                 <div className="flex items-center gap-1 text-xs">
                   <Target className="h-3 w-3 text-muted-foreground" />
-                  <span className={cn(
-                    "tabular-nums font-medium",
-                    readiness.readiness >= 70 ? "text-green-600" :
-                    readiness.readiness >= 40 ? "text-amber-600" :
-                    "text-red-600"
-                  )}>
+                  <span
+                    className={cn(
+                      "tabular-nums font-medium",
+                      readiness.readiness >= 70
+                        ? "text-green-600"
+                        : readiness.readiness >= 40
+                          ? "text-amber-600"
+                          : "text-red-600",
+                    )}
+                  >
                     {readiness.readiness}%
                   </span>
                 </div>
@@ -223,38 +239,58 @@ export function AppSidebar() {
                 : "border-primary/20 bg-gradient-to-br from-primary/5 via-primary/[0.03] to-transparent hover:border-primary/40 hover:from-primary/10 hover:to-primary/5",
             )}
           >
-            <div className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-              isActive("/chat") ? "bg-primary-foreground/15" : "bg-primary/10 group-hover:bg-primary/15",
-            )}>
-              <BotMessageSquare className={cn(
-                "h-4.5 w-4.5",
-                isActive("/chat") ? "text-primary-foreground" : "text-primary",
-              )} />
+            <div
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
+                isActive("/chat")
+                  ? "bg-primary-foreground/15"
+                  : "bg-primary/10 group-hover:bg-primary/15",
+              )}
+            >
+              <BotMessageSquare
+                className={cn(
+                  "h-4.5 w-4.5",
+                  isActive("/chat")
+                    ? "text-primary-foreground"
+                    : "text-primary",
+                )}
+              />
             </div>
             <div className="min-w-0 flex-1">
-              <p className={cn(
-                "text-sm font-semibold leading-tight",
-                isActive("/chat") ? "text-primary-foreground" : "text-foreground",
-              )}>
+              <p
+                className={cn(
+                  "text-sm font-semibold leading-tight",
+                  isActive("/chat")
+                    ? "text-primary-foreground"
+                    : "text-foreground",
+                )}
+              >
                 TiC AI Tutor
               </p>
               {!isPremium && (
-                <p className={cn(
-                  "mt-0.5 text-xs leading-tight",
-                  isActive("/chat") ? "text-primary-foreground/75" : "text-muted-foreground",
-                )}>
+                <p
+                  className={cn(
+                    "mt-0.5 text-xs leading-tight",
+                    isActive("/chat")
+                      ? "text-primary-foreground/75"
+                      : "text-muted-foreground",
+                  )}
+                >
                   {aiMessagesRemaining > 0
                     ? `${aiMessagesRemaining} messages today`
                     : "No messages left"}
                 </p>
               )}
             </div>
-            <ArrowRight className={cn(
-              "h-4 w-4 shrink-0 opacity-0 -translate-x-1 transition-all",
-              isActive("/chat") ? "text-primary-foreground" : "text-muted-foreground",
-              "group-hover:opacity-100 group-hover:translate-x-0",
-            )} />
+            <ArrowRight
+              className={cn(
+                "h-4 w-4 shrink-0 opacity-0 -translate-x-1 transition-all",
+                isActive("/chat")
+                  ? "text-primary-foreground"
+                  : "text-muted-foreground",
+                "group-hover:opacity-100 group-hover:translate-x-0",
+              )}
+            />
           </Link>
         </div>
 
@@ -299,7 +335,7 @@ export function AppSidebar() {
               <ChevronRight className="h-3.5 w-3.5" />
             )}
           </SidebarGroupLabel>
-          {(expandedSections.discover !== false) && (
+          {expandedSections.discover !== false && (
             <SidebarGroupContent>
               <SidebarMenu>
                 {discoverNav.map((item) => (
@@ -341,11 +377,13 @@ export function AppSidebar() {
                       <Link href={item.href}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.label}</span>
-                        {item.href === "/subscription" && plan && !planLoading && (
-                          <SidebarMenuBadge>
-                            {plan === "PREMIUM" ? "Premium" : "Free"}
-                          </SidebarMenuBadge>
-                        )}
+                        {item.href === "/subscription" &&
+                          plan &&
+                          !planLoading && (
+                            <SidebarMenuBadge>
+                              {plan === "PREMIUM" ? "Premium" : "Free"}
+                            </SidebarMenuBadge>
+                          )}
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -403,10 +441,14 @@ export function AppSidebar() {
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium leading-tight">
-                  {showCreditsTopUp ? `${creditBalance.toLocaleString()} credits` : "Upgrade plan"}
+                  {showCreditsTopUp
+                    ? `${creditBalance.toLocaleString()} credits`
+                    : "Upgrade plan"}
                 </p>
                 <p className="mt-0.5 text-xs leading-tight text-muted-foreground">
-                  {showCreditsTopUp ? "Top up anytime" : "Unlock unlimited practice"}
+                  {showCreditsTopUp
+                    ? "Top up anytime"
+                    : "Unlock unlimited practice"}
                 </p>
               </div>
               <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />

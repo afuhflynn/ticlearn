@@ -28,7 +28,9 @@ export async function GET() {
       },
     });
 
-    const levelIds = [...new Set(profilePrograms.map((p) => p.program.examLevelId))];
+    const levelIds = [
+      ...new Set(profilePrograms.map((p) => p.program.examLevelId)),
+    ];
 
     if (levelIds.length === 0) {
       return NextResponse.json({ components: [] });

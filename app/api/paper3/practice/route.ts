@@ -2,7 +2,10 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getUserPaper3Subjects, getSubjectAllowedTaskTypes } from "@/lib/paper3/subject-tasks";
+import {
+  getUserPaper3Subjects,
+  getSubjectAllowedTaskTypes,
+} from "@/lib/paper3/subject-tasks";
 
 const ALL_TASK_TYPES = [
   "EXCEL_FORMULA",
@@ -59,7 +62,10 @@ export async function GET(req: Request) {
     const userSubjects = await getUserPaper3Subjects(session.user.id);
     const allowedTaskTypes = getSubjectAllowedTaskTypes(userSubjects);
     if (allowedTaskTypes) {
-      if (where.taskType && !allowedTaskTypes.includes(where.taskType as string)) {
+      if (
+        where.taskType &&
+        !allowedTaskTypes.includes(where.taskType as string)
+      ) {
         return NextResponse.json({ questions: [] });
       }
       if (!where.taskType) {

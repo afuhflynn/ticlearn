@@ -40,7 +40,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { type, subject, message, isFlagged, conversationId, rating } = await req.json();
+    const { type, subject, message, isFlagged, conversationId, rating } =
+      await req.json();
 
     if (!type || !message) {
       return NextResponse.json(
@@ -65,7 +66,10 @@ export async function POST(req: Request) {
       },
     });
 
-    trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, { type, subject }).catch(() => {});
+    trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, {
+      type,
+      subject,
+    }).catch(() => {});
 
     notifyAllAdminsOfFeedback({
       userName: session.user.name || "User",

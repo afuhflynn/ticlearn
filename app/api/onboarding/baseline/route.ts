@@ -16,17 +16,26 @@ export async function POST(req: Request) {
     try {
       body = await req.json();
     } catch {
-      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid JSON payload" },
+        { status: 400 },
+      );
     }
 
     if (!body || typeof body !== "object") {
-      return NextResponse.json({ error: "Request body is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Request body is required" },
+        { status: 400 },
+      );
     }
 
     const { baselines } = body as { baselines?: unknown };
 
     if (!Array.isArray(baselines) || baselines.length === 0) {
-      return NextResponse.json({ error: "baselines array is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "baselines array is required" },
+        { status: 400 },
+      );
     }
 
     if (baselines.length > MAX_BASELINES) {
@@ -64,11 +73,17 @@ export async function POST(req: Request) {
     const validated: Array<{ topicId: string; confidence: number }> = [];
     for (const item of baselines) {
       if (!item || typeof item !== "object") {
-        return NextResponse.json({ error: "Each baseline must be an object" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Each baseline must be an object" },
+          { status: 400 },
+        );
       }
       const b = item as Record<string, unknown>;
       if (typeof b.topicId !== "string" || !b.topicId) {
-        return NextResponse.json({ error: "Each baseline must have a non-empty topicId" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Each baseline must have a non-empty topicId" },
+          { status: 400 },
+        );
       }
       const confidence = Number(b.confidence);
       if (!Number.isFinite(confidence) || confidence < 1 || confidence > 5) {
@@ -102,6 +117,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Onboarding baseline error:", error);
-    return NextResponse.json({ error: "Failed to save baselines" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to save baselines" },
+      { status: 500 },
+    );
   }
 }

@@ -24,7 +24,8 @@ import { ArrowLeft, Loader2, Plus, Search } from "lucide-react";
 import { useState } from "react";
 
 const STATUS_COLORS: Record<string, string> = {
-  PUBLISHED: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
+  PUBLISHED:
+    "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400",
   DRAFT: "bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400",
   ARCHIVED: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400",
 };
@@ -34,9 +35,7 @@ export default function Paper3MocksPage() {
   const [status, setStatus] = useState("");
   const [moduleId, setModuleId] = useState("");
   const [search, setSearch] = useState("");
-  const [modules, setModules] = useState<
-    { id: string; title: string }[]
-  >([]);
+  const [modules, setModules] = useState<{ id: string; title: string }[]>([]);
   const [modulesLoaded, setModulesLoaded] = useState(false);
 
   const { data, isLoading } = usePaper3Mocks({
@@ -104,7 +103,10 @@ export default function Paper3MocksPage() {
           <div className="flex flex-wrap gap-3">
             <div className="space-y-1">
               <Label className="text-xs">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v === "all" ? "" : v)}>
+              <Select
+                value={status}
+                onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+              >
                 <SelectTrigger className="w-32">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -119,7 +121,10 @@ export default function Paper3MocksPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Subject</Label>
-              <Select value={subject} onValueChange={(v) => setSubject(v === "all" ? "" : v)}>
+              <Select
+                value={subject}
+                onValueChange={(v) => setSubject(v === "all" ? "" : v)}
+              >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
@@ -135,7 +140,10 @@ export default function Paper3MocksPage() {
 
             <div className="space-y-1">
               <Label className="text-xs">Mock Group</Label>
-              <Select value={moduleId} onValueChange={(v) => setModuleId(v === "all" ? "" : v)}>
+              <Select
+                value={moduleId}
+                onValueChange={(v) => setModuleId(v === "all" ? "" : v)}
+              >
                 <SelectTrigger className="w-44">
                   <SelectValue placeholder="All groups" />
                 </SelectTrigger>

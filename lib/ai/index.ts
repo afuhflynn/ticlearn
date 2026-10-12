@@ -2,7 +2,11 @@ import {
   MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
   MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
 } from "@/constants";
-import { generate, generateCritical, generateTextCritical } from "@/lib/ai/orchestrator";
+import {
+  generate,
+  generateCritical,
+  generateTextCritical,
+} from "@/lib/ai/orchestrator";
 import { getSubjectLabel } from "@/lib/subject-labels";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
@@ -66,7 +70,11 @@ export async function extractTextFromPDF(
         }
 
         const arrayBuffer = await response.arrayBuffer();
-        console.log("[PDF] Array buffer size:", arrayBuffer.byteLength, "bytes");
+        console.log(
+          "[PDF] Array buffer size:",
+          arrayBuffer.byteLength,
+          "bytes",
+        );
 
         const pdfData = new Uint8Array(arrayBuffer);
 
@@ -112,7 +120,10 @@ export async function extractTextFromPDF(
           await loadingTask.destroy();
         }
       } catch (error) {
-        console.warn(`[PDF Extraction] Attempt ${attempt + 1} failed for URL ${pdfUrl}:`, error);
+        console.warn(
+          `[PDF Extraction] Attempt ${attempt + 1} failed for URL ${pdfUrl}:`,
+          error,
+        );
       }
     }
 

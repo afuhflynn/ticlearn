@@ -55,7 +55,8 @@ export async function GET(
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       const leaderboard: LeaderboardEntry[] = stats.map((stat, index) => {
-        const recencyBonus = stat.mockExamsTaken > 0 ? 0.1 * Math.min(stat.mockExamsTaken, 5) : 0;
+        const recencyBonus =
+          stat.mockExamsTaken > 0 ? 0.1 * Math.min(stat.mockExamsTaken, 5) : 0;
         const adjustedScore = Math.min(stat.avgScore + recencyBonus, 100);
 
         return {
@@ -102,7 +103,11 @@ export async function GET(
 
     const [attempts, total, currentUserAttempt] = await Promise.all([
       prisma.paper3MockAttempt.findMany({
-        where: { mockId, status: "COMPLETED", user: { role: { not: "ADMIN" } } },
+        where: {
+          mockId,
+          status: "COMPLETED",
+          user: { role: { not: "ADMIN" } },
+        },
         skip,
         take: limit,
         orderBy: [{ score: "desc" }, { timeTaken: "asc" }],
@@ -113,10 +118,19 @@ export async function GET(
         },
       }),
       prisma.paper3MockAttempt.count({
-        where: { mockId, status: "COMPLETED", user: { role: { not: "ADMIN" } } },
+        where: {
+          mockId,
+          status: "COMPLETED",
+          user: { role: { not: "ADMIN" } },
+        },
       }),
       prisma.paper3MockAttempt.findFirst({
-        where: { mockId, userId: session.user.id, status: "COMPLETED", user: { role: { not: "ADMIN" } } },
+        where: {
+          mockId,
+          userId: session.user.id,
+          status: "COMPLETED",
+          user: { role: { not: "ADMIN" } },
+        },
         orderBy: [{ score: "desc" }, { timeTaken: "asc" }],
       }),
     ]);

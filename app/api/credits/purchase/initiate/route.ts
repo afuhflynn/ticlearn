@@ -50,7 +50,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const creditsPromised = creditsFromXaf(amountXaf, settings.creditsPer1000Xaf);
+    const creditsPromised = creditsFromXaf(
+      amountXaf,
+      settings.creditsPer1000Xaf,
+    );
     if (creditsPromised < 1) {
       return NextResponse.json(
         {

@@ -15,7 +15,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ sources });
   } catch (error) {
     console.error("Exam sources GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch exam sources" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch exam sources" },
+      { status: 500 },
+    );
   }
 }
 
@@ -24,7 +27,10 @@ export async function POST(req: Request) {
     const { componentId, year, sessionName } = await req.json();
 
     if (!componentId || !year || !sessionName) {
-      return NextResponse.json({ error: "componentId, year, and sessionName are required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "componentId, year, and sessionName are required" },
+        { status: 400 },
+      );
     }
 
     const source = await prisma.examSource.upsert({
@@ -36,6 +42,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ source });
   } catch (error) {
     console.error("Exam sources POST error:", error);
-    return NextResponse.json({ error: "Failed to create exam source" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create exam source" },
+      { status: 500 },
+    );
   }
 }

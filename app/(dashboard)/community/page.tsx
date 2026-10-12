@@ -102,9 +102,7 @@ export default function CommunityPage() {
   const [selectedSubject, setSelectedSubject] = useState("All");
   const [newPostContent, setNewPostContent] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [featuredMocks, setFeaturedMocks] = useState<CommunityBlueprint[]>(
-    [],
-  );
+  const [featuredMocks, setFeaturedMocks] = useState<CommunityBlueprint[]>([]);
   const [featuredMocksLoading, setFeaturedMocksLoading] = useState(true);
   const [startingMockId, setStartingMockId] = useState<string | null>(null);
 
@@ -183,7 +181,10 @@ export default function CommunityPage() {
       {isGuest && (
         <div className="rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 p-4 text-center text-sm">
           You're browsing as a guest.{" "}
-          <Link href="/sign-in" className="font-medium text-primary underline underline-offset-4">
+          <Link
+            href="/sign-in"
+            className="font-medium text-primary underline underline-offset-4"
+          >
             Sign in
           </Link>{" "}
           to create posts, like content, and start mocks.
@@ -242,9 +243,7 @@ export default function CommunityPage() {
                         {s.name}: {s.questionCount} × {s.questionType}
                       </li>
                     ))}
-                    {bp.sections.length > 3 ? (
-                      <li>+ more sections…</li>
-                    ) : null}
+                    {bp.sections.length > 3 ? <li>+ more sections…</li> : null}
                   </ul>
                   {!isGuest && (
                     <Button
@@ -426,7 +425,11 @@ export default function CommunityPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => isGuest ? router.push("/sign-in") : handleLike(post.id)}
+                        onClick={() =>
+                          isGuest
+                            ? router.push("/sign-in")
+                            : handleLike(post.id)
+                        }
                       >
                         <Heart
                           className={`h-4 w-4 mr-1 ${

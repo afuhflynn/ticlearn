@@ -9,10 +9,7 @@ export function canStudentAccessPublishedMock(
   },
   userSubjectCodes: Paper3Subject[],
 ): boolean {
-  if (
-    userSubjectCodes.length > 0 &&
-    !userSubjectCodes.includes(mock.subject)
-  ) {
+  if (userSubjectCodes.length > 0 && !userSubjectCodes.includes(mock.subject)) {
     return false;
   }
 

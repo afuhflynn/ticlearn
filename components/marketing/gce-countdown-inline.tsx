@@ -40,11 +40,12 @@ export function GceCountdownInline({ initial, className, emphasis }: Props) {
       <span
         className={cn(
           "tabular-nums text-foreground",
-          emphasis ? "text-xl font-semibold tracking-tight sm:text-2xl" : "font-medium",
+          emphasis
+            ? "text-xl font-semibold tracking-tight sm:text-2xl"
+            : "font-medium",
         )}
       >
-        {parts.days}d · {String(parts.hours).padStart(2, "0")}
-        :
+        {parts.days}d · {String(parts.hours).padStart(2, "0")}:
         {String(parts.minutes).padStart(2, "0")}:
         {String(parts.seconds).padStart(2, "0")}
       </span>

@@ -206,9 +206,7 @@ export default function AdminFeedbackPage() {
                     filteredFeedbacks.map((fb) => (
                       <TableRow
                         key={fb.id}
-                        className={
-                          fb.type === "EXAM" ? "bg-purple-50/50" : ""
-                        }
+                        className={fb.type === "EXAM" ? "bg-purple-50/50" : ""}
                       >
                         <TableCell>
                           <div>
@@ -229,7 +227,9 @@ export default function AdminFeedbackPage() {
                           <StarRating rating={fb.rating} />
                         </TableCell>
                         <TableCell>
-                          {fb.type === "CHAT" && "conversationId" in fb && fb.conversationId ? (
+                          {fb.type === "CHAT" &&
+                          "conversationId" in fb &&
+                          fb.conversationId ? (
                             <Link
                               href={`/chat/${fb.conversationId}`}
                               className="text-sm text-blue-600 hover:underline"

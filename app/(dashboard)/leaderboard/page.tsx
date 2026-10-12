@@ -9,7 +9,11 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useLeaderboard, usePaper3Leaderboard, useGlobalPaper3Leaderboard } from "@/hooks";
+import {
+  useLeaderboard,
+  usePaper3Leaderboard,
+  useGlobalPaper3Leaderboard,
+} from "@/hooks";
 
 type LeaderboardTab = "quiz" | "paper3-exam" | "paper3-global";
 
@@ -19,12 +23,17 @@ export default function LeaderboardPage() {
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [activeTab, setActiveTab] = useState<LeaderboardTab>("quiz");
-  
+
   const mockId = searchParams.get("mockId");
   const questionId = searchParams.get("questionId");
-  
-  const { data: paper3ExamData, isLoading: paper3ExamLoading } = usePaper3Leaderboard(mockId || "", page, 20);
-  const { data: paper3GlobalData, isLoading: paper3GlobalLoading, refetch: refetchGlobal } = useGlobalPaper3Leaderboard(page, 20);
+
+  const { data: paper3ExamData, isLoading: paper3ExamLoading } =
+    usePaper3Leaderboard(mockId || "", page, 20);
+  const {
+    data: paper3GlobalData,
+    isLoading: paper3GlobalLoading,
+    refetch: refetchGlobal,
+  } = useGlobalPaper3Leaderboard(page, 20);
   const quizData = useLeaderboard(page, 20);
 
   const getRankIcon = (rank: number) => {
@@ -43,13 +52,9 @@ export default function LeaderboardPage() {
           : "hover:bg-muted/30"
       }`}
     >
-      <div className="w-8 flex justify-center">
-        {getRankIcon(entry.rank)}
-      </div>
+      <div className="w-8 flex justify-center">{getRankIcon(entry.rank)}</div>
       <Avatar>
-        <AvatarFallback>
-          {entry.userName?.charAt(0) || "U"}
-        </AvatarFallback>
+        <AvatarFallback>{entry.userName?.charAt(0) || "U"}</AvatarFallback>
       </Avatar>
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate">{entry.userName}</p>
@@ -59,17 +64,23 @@ export default function LeaderboardPage() {
           </p>
         ) : activeTab === "quiz" ? (
           <p className="text-sm text-muted-foreground">
-            {entry.quizzesTaken || 0} quizzes • {entry.currentStreak || 0} day streak
+            {entry.quizzesTaken || 0} quizzes • {entry.currentStreak || 0} day
+            streak
           </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            {entry.timeTaken ? `${Math.floor(entry.timeTaken / 60)}m` : '--'} • Score: {entry.score}%
+            {entry.timeTaken ? `${Math.floor(entry.timeTaken / 60)}m` : "--"} •
+            Score: {entry.score}%
           </p>
         )}
       </div>
       <div className="text-right shrink-0">
         <p className="font-bold text-lg">
-          {isGlobal ? entry.totalPoints : activeTab === "quiz" ? entry.totalPoints : `${entry.score}%`}
+          {isGlobal
+            ? entry.totalPoints
+            : activeTab === "quiz"
+              ? entry.totalPoints
+              : `${entry.score}%`}
         </p>
         <p className="text-xs text-muted-foreground">
           {isGlobal ? "points" : activeTab === "quiz" ? "points" : "score"}
@@ -84,12 +95,11 @@ export default function LeaderboardPage() {
       <div>
         <p className="font-medium text-lg">No rankings yet</p>
         <p className="text-sm text-muted-foreground">
-          {isGlobal 
+          {isGlobal
             ? "Complete Paper 3 exams to appear on the global leaderboard"
             : activeTab === "quiz"
-            ? "Complete quizzes to appear on the leaderboard"
-            : "Be the first to complete this exam!"
-          }
+              ? "Complete quizzes to appear on the leaderboard"
+              : "Be the first to complete this exam!"}
         </p>
       </div>
       {!isGlobal && activeTab === "quiz" && (
@@ -100,7 +110,7 @@ export default function LeaderboardPage() {
     </div>
   );
 
-  const renderPagination = (totalPages: number) => (
+  const renderPagination = (totalPages: number) =>
     totalPages > 1 && (
       <div className="flex justify-center gap-2 mt-4">
         <Button
@@ -123,8 +133,7 @@ export default function LeaderboardPage() {
           Next
         </Button>
       </div>
-    )
-  );
+    );
 
   if (sessionPending) {
     return (
@@ -160,7 +169,10 @@ export default function LeaderboardPage() {
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as LeaderboardTab)}>
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as LeaderboardTab)}
+      >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="quiz" className="gap-2">
             <FileText className="h-4 w-4" />
@@ -195,23 +207,29 @@ export default function LeaderboardPage() {
                       <div className="flex items-center justify-between">
                         <div>
                           <p className="font-medium">Your Ranking</p>
-                          <p className="text-sm text-muted-foreground">Keep learning to climb!</p>
+                          <p className="text-sm text-muted-foreground">
+                            Keep learning to climb!
+                          </p>
                         </div>
                         <div className="flex items-center gap-2">
                           <Trophy className="h-5 w-5 text-primary" />
-                          <span className="text-xl font-bold">#{quizCurrentRank}</span>
+                          <span className="text-xl font-bold">
+                            #{quizCurrentRank}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 )}
-                
+
                 {quizLeaderboard.length === 0 ? (
                   renderEmptyState()
                 ) : (
                   <>
                     <div className="space-y-3">
-                      {quizLeaderboard.map((entry: any) => renderLeaderboardEntry(entry, false))}
+                      {quizLeaderboard.map((entry: any) =>
+                        renderLeaderboardEntry(entry, false),
+                      )}
                     </div>
                     {renderPagination(quizData.totalPages || 1)}
                   </>
@@ -241,11 +259,15 @@ export default function LeaderboardPage() {
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="font-medium">Your Ranking</p>
-                            <p className="text-sm text-muted-foreground">Keep practicing to climb!</p>
+                            <p className="text-sm text-muted-foreground">
+                              Keep practicing to climb!
+                            </p>
                           </div>
                           <div className="flex items-center gap-2">
                             <Trophy className="h-5 w-5 text-primary" />
-                            <span className="text-xl font-bold">#{paper3ExamCurrentRank}</span>
+                            <span className="text-xl font-bold">
+                              #{paper3ExamCurrentRank}
+                            </span>
                           </div>
                         </div>
                       </CardContent>
@@ -257,7 +279,9 @@ export default function LeaderboardPage() {
                   ) : (
                     <>
                       <div className="space-y-3">
-                        {paper3ExamLeaderboard.map((entry: any) => renderLeaderboardEntry(entry, false))}
+                        {paper3ExamLeaderboard.map((entry: any) =>
+                          renderLeaderboardEntry(entry, false),
+                        )}
                       </div>
                       {renderPagination(paper3ExamData?.totalPages || 1)}
                     </>
@@ -273,7 +297,10 @@ export default function LeaderboardPage() {
                 <p className="text-sm text-muted-foreground mt-1">
                   Take a Paper 3 exam and come back to see your ranking
                 </p>
-                <Button className="mt-4" onClick={() => router.push("/practice")}>
+                <Button
+                  className="mt-4"
+                  onClick={() => router.push("/practice")}
+                >
                   Go to Practice
                 </Button>
               </CardContent>
@@ -296,7 +323,11 @@ export default function LeaderboardPage() {
                     <Globe className="h-5 w-5" />
                     Global Paper 3 Rankings
                   </CardTitle>
-                  <Button variant="ghost" size="sm" onClick={() => refetchGlobal()}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => refetchGlobal()}
+                  >
                     Refresh
                   </Button>
                 </div>
@@ -317,7 +348,9 @@ export default function LeaderboardPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <Trophy className="h-5 w-5 text-primary" />
-                          <span className="text-xl font-bold">#{paper3GlobalCurrentRank}</span>
+                          <span className="text-xl font-bold">
+                            #{paper3GlobalCurrentRank}
+                          </span>
                         </div>
                       </div>
                     </CardContent>
@@ -329,7 +362,9 @@ export default function LeaderboardPage() {
                 ) : (
                   <>
                     <div className="space-y-3">
-                      {paper3GlobalLeaderboard.map((entry: any) => renderLeaderboardEntry(entry, true))}
+                      {paper3GlobalLeaderboard.map((entry: any) =>
+                        renderLeaderboardEntry(entry, true),
+                      )}
                     </div>
                     {renderPagination(paper3GlobalData?.totalPages || 1)}
                   </>

@@ -7,7 +7,14 @@ import { usePaper3MyAttempts, useStartPaper3MockExam } from "@/hooks";
 import { formatRelativeTime } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Clock, Trophy, ArrowRight, RotateCcw } from "lucide-react";
+import {
+  CheckCircle,
+  XCircle,
+  Clock,
+  Trophy,
+  ArrowRight,
+  RotateCcw,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function PracticeHistoryPage() {
@@ -54,7 +61,9 @@ export default function PracticeHistoryPage() {
     <div className="container mx-auto max-w-4xl px-4 py-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold">My Exam History</h1>
-        <p className="text-gray-500">View your past exam attempts and results</p>
+        <p className="text-gray-500">
+          View your past exam attempts and results
+        </p>
       </div>
 
       {grouped.length === 0 ? (
@@ -73,7 +82,9 @@ export default function PracticeHistoryPage() {
             <Card key={mockGroup.mockId}>
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-center">
-                  <CardTitle className="text-lg">{mockGroup.mockTitle}</CardTitle>
+                  <CardTitle className="text-lg">
+                    {mockGroup.mockTitle}
+                  </CardTitle>
                   <span className="text-xs text-gray-500">
                     {mockGroup.mockSubject}
                   </span>
@@ -82,8 +93,10 @@ export default function PracticeHistoryPage() {
               <CardContent>
                 <div className="space-y-3">
                   {mockGroup.attempts
-                    .sort((a: any, b: any) => 
-                      new Date(b.completedAt).getTime() - new Date(a.completedAt).getTime()
+                    .sort(
+                      (a: any, b: any) =>
+                        new Date(b.completedAt).getTime() -
+                        new Date(a.completedAt).getTime(),
                     )
                     .map((attempt: any, index: number) => (
                       <div
@@ -120,7 +133,9 @@ export default function PracticeHistoryPage() {
                                     mockId: mockGroup.mockId,
                                   });
                                   if (res.attempt) {
-                                    router.push(`/practice/exam/${mockGroup.mockId}`);
+                                    router.push(
+                                      `/practice/exam/${mockGroup.mockId}`,
+                                    );
                                   }
                                 } catch (error) {
                                   console.error("Failed to start exam:", error);
@@ -142,27 +157,25 @@ export default function PracticeHistoryPage() {
       )}
 
       {totalPages > 1 && (
-        (
-          <div className="flex justify-center gap-2 mt-6">
-            <Button
-              variant="outline"
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-            >
-              Previous
-            </Button>
-            <span className="py-2">
-              Page {page} of {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        )
+        <div className="flex justify-center gap-2 mt-6">
+          <Button
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage((p) => p - 1)}
+          >
+            Previous
+          </Button>
+          <span className="py-2">
+            Page {page} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage((p) => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
       )}
     </div>
   );

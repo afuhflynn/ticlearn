@@ -37,11 +37,14 @@ function parseStoredPracticeResults(results: unknown): {
   return { sections, perQuestion };
 }
 
-export async function GET(_req: Request, {
-  params,
-}: {
-  params: Promise<{ attemptId: string }>;
-}) {
+export async function GET(
+  _req: Request,
+  {
+    params,
+  }: {
+    params: Promise<{ attemptId: string }>;
+  },
+) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user)
@@ -69,7 +72,8 @@ export async function GET(_req: Request, {
       },
     });
 
-    if (!attempt) return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
+    if (!attempt)
+      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
 
     if (attempt.examProfileId !== profileId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -95,28 +99,27 @@ export async function GET(_req: Request, {
 
     const parsedResults = parseStoredPracticeResults(attempt.results);
 
-    const perQuestionReview: MockReviewPerQuestionRow[] | null =
-      graded?.perQuestion?.length ?
-        graded.perQuestion
-      : parsedResults.perQuestion?.length ?
-        parsedResults.perQuestion
-      : null;
+    const perQuestionReview: MockReviewPerQuestionRow[] | null = graded
+      ?.perQuestion?.length
+      ? graded.perQuestion
+      : parsedResults.perQuestion?.length
+        ? parsedResults.perQuestion
+        : null;
 
-    const sectionRollup =
-      graded?.sectionRows?.length ?
-        graded.sectionRows
+    const sectionRollup = graded?.sectionRows?.length
+      ? graded.sectionRows
       : parsedResults.sections;
 
     const review =
-      completed && perQuestionReview && perQuestionReview.length > 0 ?
-        {
-          perQuestion: perQuestionReview,
-          sectionSummary:
-            Array.isArray(sectionRollup) && sectionRollup.length > 0 ?
-              sectionRollup
-            : null,
-        }
-      : null;
+      completed && perQuestionReview && perQuestionReview.length > 0
+        ? {
+            perQuestion: perQuestionReview,
+            sectionSummary:
+              Array.isArray(sectionRollup) && sectionRollup.length > 0
+                ? sectionRollup
+                : null,
+          }
+        : null;
 
     if (sessionPayload) {
       return NextResponse.json({
@@ -134,38 +137,34 @@ export async function GET(_req: Request, {
           totalMarks: sessionPayload.totalMarks,
         },
         sections: sanitizeSessionPayloadForExaminee(sessionPayload).sections,
-        answers:
-          answersData as Record<
-            string,
-            string
-          >,
+        answers: answersData as Record<string, string>,
         review,
       });
     }
 
     const blueprint =
-      attempt.blueprintId != null ?
-        await prisma.examBlueprint.findUnique({
-          where: { id: attempt.blueprintId },
-          select: {
-            name: true,
-            durationMin: true,
-            totalMarks: true,
-            sections: {
-              orderBy: { order: "asc" },
-              select: {
-                name: true,
-                questionCount: true,
-                totalMarks: true,
-                questionType: true,
-                answerRule: true,
-                marksPerQuestion: true,
-                order: true,
+      attempt.blueprintId != null
+        ? await prisma.examBlueprint.findUnique({
+            where: { id: attempt.blueprintId },
+            select: {
+              name: true,
+              durationMin: true,
+              totalMarks: true,
+              sections: {
+                orderBy: { order: "asc" },
+                select: {
+                  name: true,
+                  questionCount: true,
+                  totalMarks: true,
+                  questionType: true,
+                  answerRule: true,
+                  marksPerQuestion: true,
+                  order: true,
+                },
               },
             },
-          },
-        })
-      : null;
+          })
+        : null;
 
     if (blueprint) {
       return NextResponse.json({
@@ -205,7 +204,9 @@ export async function GET(_req: Request, {
     }
 
     return NextResponse.json(
-      { error: "This mock session could not be loaded (missing syllabus data)." },
+      {
+        error: "This mock session could not be loaded (missing syllabus data).",
+      },
       { status: 409 },
     );
   } catch (error) {

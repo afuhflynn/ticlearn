@@ -77,7 +77,9 @@ export function creditEnforcementEffective(
 }
 
 /** Quiz generation debits when practice enforcement is on and quiz cost is positive. */
-export function quizCreditsRequired(settings: PlatformSettingsSnapshot): boolean {
+export function quizCreditsRequired(
+  settings: PlatformSettingsSnapshot,
+): boolean {
   const e = creditEnforcementEffective(settings);
   return e.practice && settings.creditCostQuizGeneration > 0;
 }

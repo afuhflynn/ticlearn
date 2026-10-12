@@ -13,9 +13,9 @@ const IDLE_DELAY = 3000;
 function getLastUserMessage(messages: UIMessage[]): string {
   for (let i = messages.length - 1; i >= 0; i--) {
     if (messages[i].role === "user") {
-      const textParts = messages[i].parts?.filter(
-        (p) => p.type === "text",
-      ) as { text: string }[] | undefined;
+      const textParts = messages[i].parts?.filter((p) => p.type === "text") as
+        | { text: string }[]
+        | undefined;
       if (textParts && textParts.length > 0) {
         return textParts.map((p) => p.text).join("\n");
       }

@@ -3,9 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  parseStoredSessionPayload,
-} from "@/lib/mock-session-payload";
+import { parseStoredSessionPayload } from "@/lib/mock-session-payload";
 import type { QuestionType } from "@/lib/generated/prisma/enums";
 
 const bodySchema = z.object({
@@ -69,7 +67,10 @@ export async function POST(req: Request, ctx: RouteCtx) {
     });
 
     if (!attempt) {
-      return NextResponse.json({ error: "Preview attempt not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Preview attempt not found" },
+        { status: 404 },
+      );
     }
 
     const payload = parseStoredSessionPayload(attempt.sessionPayload);

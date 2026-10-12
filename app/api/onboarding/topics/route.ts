@@ -14,7 +14,10 @@ export async function GET(req: Request) {
     const programId = searchParams.get("programId");
 
     if (!programId) {
-      return NextResponse.json({ error: "programId is required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "programId is required" },
+        { status: 400 },
+      );
     }
 
     const components = await prisma.component.findMany({
@@ -28,6 +31,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ components });
   } catch (error) {
     console.error("Onboarding topics error:", error);
-    return NextResponse.json({ error: "Failed to fetch topics" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch topics" },
+      { status: 500 },
+    );
   }
 }

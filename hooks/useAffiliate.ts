@@ -24,10 +24,7 @@ export function useUpdateAffiliate() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      momoNumber?: string;
-      momoName?: string;
-    }) => {
+    mutationFn: async (data: { momoNumber?: string; momoName?: string }) => {
       const result = await api.mutations.affiliate.update(data);
       return result;
     },

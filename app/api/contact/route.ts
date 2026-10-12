@@ -1,16 +1,40 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { limit } from "@/lib/rate-limit";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   subject: z.string().min(5, "Subject must be at least 5 characters"),
   message: z.string().min(20, "Message must be at least 20 characters"),
+  website: z.string().optional(),
 });
 
+function escapeHtml(text: string): string {
+  const map: Record<string, string> = {
+    "&": "&",
+    "<": "<",
+    ">": ">",
+    '"': "",
+    "'": "&#039;",
+  };
+  return text.replace(/[&<>"']/g, (char) => map[char] || char);
+}
+
 export async function POST(request: NextRequest) {
+  const rateLimitResponse = await limit("contact", request);
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const body = await request.json();
+
+    if (body.website && body.website.trim() !== "") {
+      return NextResponse.json({
+        success: true,
+        message: "Message sent successfully",
+      });
+    }
+
     const { name, email, subject, message } = contactSchema.parse(body);
 
     const adminEmail = process.env.ADMIN_EMAIL;
@@ -20,6 +44,11 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
+
+    const safeName = escapeHtml(name);
+    const safeEmail = escapeHtml(email);
+    const safeSubject = escapeHtml(subject);
+    const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
 
     const { sendEmail } = await import("@/lib/email/send");
     const html = `
@@ -51,19 +80,19 @@ export async function POST(request: NextRequest) {
       <div class="content">
         <div class="field">
           <div class="field-label">Name</div>
-          <div class="field-value">${name}</div>
+          <div class="field-value">${safeName}</div>
         </div>
         <div class="field">
           <div class="field-label">Email</div>
-          <div class="field-value">${email}</div>
+          <div class="field-value">${safeEmail}</div>
         </div>
         <div class="field">
           <div class="field-label">Subject</div>
-          <div class="field-value">${subject}</div>
+          <div class="field-value">${safeSubject}</div>
         </div>
         <div class="field">
           <div class="field-label">Message</div>
-          <div class="message-box">${message.replace(/\n/g, "<br>")}</div>
+          <div class="message-box">${safeMessage}</div>
         </div>
       </div>
     </div>
@@ -74,7 +103,7 @@ export async function POST(request: NextRequest) {
 
     await sendEmail({
       to: adminEmail,
-      subject: `[TiCLearn Contact] ${subject}`,
+      subject: `[TiCLearn Contact] ${safeSubject}`,
       html,
     });
 

@@ -18,9 +18,5 @@ export function PlanBadge() {
     );
   }
 
-  return (
-    <Badge variant="outline">
-      Free
-    </Badge>
-  );
+  return <Badge variant="outline">Free</Badge>;
 }

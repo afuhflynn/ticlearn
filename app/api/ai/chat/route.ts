@@ -24,6 +24,7 @@ import {
 } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 import { computeReadiness } from "@/lib/readiness";
+import { limit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -85,6 +86,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const nextReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+    });
+    const rateLimitResponse = await limit("ai", nextReq as any);
+    if (rateLimitResponse) return rateLimitResponse;
+
     const body = (await req.json()) as {
       messages?: UIMessage[];
     };
@@ -97,6 +105,29 @@ export async function POST(req: Request) {
         { error: "Messages array is required" },
         { status: 400 },
       );
+    }
+
+    if (messages.length > 50) {
+      return NextResponse.json(
+        { error: "Too many messages (max 50)" },
+        { status: 400 },
+      );
+    }
+
+    for (const message of messages) {
+      if (message.parts && Array.isArray(message.parts)) {
+        for (const part of message.parts) {
+          if (part && typeof part === "object" && "text" in part) {
+            const text = (part as { text?: unknown }).text;
+            if (typeof text === "string" && text.length > 8000) {
+              return NextResponse.json(
+                { error: "Message too long (max 8000 characters)" },
+                { status: 400 },
+              );
+            }
+          }
+        }
+      }
     }
 
     const userId = session.user.id;

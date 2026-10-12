@@ -24,12 +24,17 @@ export async function POST(req: Request) {
     });
 
     if (!invite) {
-      return NextResponse.json({ error: "Invalid invitation" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid invitation" },
+        { status: 400 },
+      );
     }
 
     if (invite.status !== "PENDING") {
       return NextResponse.json(
-        { error: `This invitation has already been ${invite.status.toLowerCase()}` },
+        {
+          error: `This invitation has already been ${invite.status.toLowerCase()}`,
+        },
         { status: 400 },
       );
     }
@@ -39,7 +44,10 @@ export async function POST(req: Request) {
         where: { id: invite.id },
         data: { status: "EXPIRED" },
       });
-      return NextResponse.json({ error: "Invitation expired" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invitation expired" },
+        { status: 400 },
+      );
     }
 
     if (invite.email !== session.user.email) {

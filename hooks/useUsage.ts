@@ -83,7 +83,8 @@ export function useUsage(): UseUsageResult {
   const isPending = currentStatus === "PENDING";
   const isPaid = currentStatus === "ACTIVE" && data?.plan !== "FREE";
 
-  const displayPlan = isPending && data?.previousPlan ? data.previousPlan : data?.plan || "FREE";
+  const displayPlan =
+    isPending && data?.previousPlan ? data.previousPlan : data?.plan || "FREE";
 
   const defaultLimits: PlanLimits = {
     pdfUploads: 2,
@@ -202,12 +203,22 @@ export function useCanAccess(
   }
 }
 
-export function useCheckLimit(feature: "upload" | "quiz" | "chat" | "paper3Exam"): {
+export function useCheckLimit(
+  feature: "upload" | "quiz" | "chat" | "paper3Exam",
+): {
   allowed: boolean;
   remaining: number;
   limit: number;
 } {
-  const { limits, usage, canUpload, canGenerateQuiz, canUseAIChat, canTakePaper3Exam, paper3Usage } = useUsage();
+  const {
+    limits,
+    usage,
+    canUpload,
+    canGenerateQuiz,
+    canUseAIChat,
+    canTakePaper3Exam,
+    paper3Usage,
+  } = useUsage();
 
   switch (feature) {
     case "upload": {

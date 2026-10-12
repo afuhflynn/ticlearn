@@ -19,7 +19,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | F | Leaderboard and community | Carried over | existing |
 | G | Mobile money payments | Carried over | existing |
 | 1 | Codebase audit and project conventions | Foundation | planned |
-| 2 | Security and integrity hardening | Foundation | planned |
+| 2 | Security and integrity hardening | Foundation | in-progress |
 | 3 | Prompt registry | Foundation | planned |
 | 4 | AI model chain through OpenRouter | Foundation | planned |
 | 5 | Delete GCE content, repoint the data model | Foundation | planned |
@@ -31,10 +31,17 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Background work moved to Inngest | Foundation | planned |
 | 12 | Caching and cold start speed | Foundation | planned |
 | 13 | Email system rebuild | Foundation | planned |
+| 34 | Rendering strategy and streaming boundaries | Foundation | planned |
+| 35 | Loading states and perceived speed | Foundation | planned |
 | 14 | Landing page rebuild | Slice 1 | planned |
 | 15 | Public page set | Slice 1 | planned |
 | 16 | Onboarding | Slice 1 | planned |
 | 17 | Pricing page | Slice 1 | planned |
+| 36 | Technical SEO foundation | Slice 1 | planned |
+| 37 | Public course and faculty catalogue | Slice 1 | planned |
+| 38 | Public guides and study content | Slice 1 | planned |
+| 39 | GEO and AI answer readiness | Slice 1 | planned |
+| 40 | Metadata and sharing cards | Slice 1 | planned |
 | 18 | Chat interface rebuild | Slice 2 | planned |
 | 19 | Web search tooling | Slice 2 | planned |
 | 20 | Tool controls and course skills | Slice 2 | planned |
@@ -56,10 +63,10 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 Each epic is one file with its own feature sections.
 
-- **[Platform](platform.md)** · 14 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
+- **[Platform](platform.md)** · 16 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email, and how every route renders. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
 - **[Carried over](carried-over.md)** · 7 features · what already exists in the codebase, enrolled for context only.
 - **[Pivot](pivot.md)** · 2 features, Foundations · removing the secondary school product and generalising the parts worth keeping.
-- **[Market](market.md)** · 4 features, Slice 1 · the landing page, the public pages, onboarding and pricing. What a stranger sees and what a new student does in the first two minutes.
+- **[Market](market.md)** · 9 features, Slice 1 · the landing page, the public pages, onboarding and pricing. What a stranger sees and what a new student does in the first two minutes. Plus the search surface: the public course catalogue, the technical SEO foundation, public guides, and readiness for AI answer engines.
 - **[Tutor](tutor.md)** · 3 features, Slice 2 · the chat interface, the web search tool and the controls students get over it.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
 - **[Exam](exam.md)** · 2 features, Slice 4 · the timed runner and the graded result review.
@@ -67,8 +74,8 @@ Each epic is one file with its own feature sections.
 
 ## Phasing in one line each
 
-- **Foundations** · nothing that ships to a student until the holes are closed and the ground is set. Security first, because twenty findings would let someone take money, read another student's notes, or see an answer key before an exam.
-- **Slice 1, first ten minutes** · a stranger lands, understands, signs up, and knows what the product is for, without uploading anything.
+- **Foundations** · nothing that ships to a student until the holes are closed and the ground is set. Security first, because twenty findings would let someone take money, read another student's notes, or see an answer key before an exam. Rendering last in the foundations, because every route needs a decision about how it paints and today two layouts block the whole page on a database call.
+- **Slice 1, first ten minutes** · a stranger lands, understands, signs up, and knows what the product is for, without uploading anything. And finds us on a search result, and gets a useful answer from an AI assistant.
 - **Slice 2, the tutor** · the chat works at the speed a student expects, with thinking and tool use disclosed the way ChatGPT does it, and web search behind a toggle.
 - **Slice 3, notes and quizzes** · the student uploads their own notes and turns them into practice. This is the killer loop the product is built around.
 - **Slice 4, exams** · timed practice with AI grading and written feedback.
@@ -87,7 +94,7 @@ Out of scope for the current build pass, kept so the plan stays honest. Each is 
 
 ## Research
 
-Nine research documents sit in [`docs/research/`](../research/README.md). They hold the evidence behind the recommendations here and behind each feature. Read the one that covers your feature before designing it.
+Ten research documents sit in [`docs/research/`](../research/README.md). They hold the evidence behind the recommendations here and behind each feature. Read the one that covers your feature before designing it.
 
 ## Legend
 

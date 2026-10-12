@@ -136,9 +136,26 @@ export interface QuizGenerationOptions {
 // ===========================================
 
 export type ALevelSubject =
-  | "CS" | "ICT" | "BIO" | "CHEM" | "PHY" | "PMM" | "PMS" | "FM"
-  | "FSN" | "GEOL" | "ENG" | "LIT" | "FRENCH" | "SBE_FR" | "HIST"
-  | "GEOG" | "RS" | "PHIL" | "ECONS" | "ACCT";
+  | "CS"
+  | "ICT"
+  | "BIO"
+  | "CHEM"
+  | "PHY"
+  | "PMM"
+  | "PMS"
+  | "FM"
+  | "FSN"
+  | "GEOL"
+  | "ENG"
+  | "LIT"
+  | "FRENCH"
+  | "SBE_FR"
+  | "HIST"
+  | "GEOG"
+  | "RS"
+  | "PHIL"
+  | "ECONS"
+  | "ACCT";
 
 export interface ExamSessionWithRelations {
   id: string;

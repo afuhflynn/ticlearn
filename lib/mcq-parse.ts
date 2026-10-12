@@ -34,9 +34,7 @@ export function extractMcqFromPlainText(full: string): ParsedMcq | null {
   const answerMatch = trimmed.match(
     /(?:^|\n)\s*(?:correct|answer|key)\s*[:\u2013\-]\s*([A-Da-d])\b/im,
   );
-  const correctOption = answerMatch
-    ? answerMatch[1].toUpperCase()
-    : undefined;
+  const correctOption = answerMatch ? answerMatch[1].toUpperCase() : undefined;
 
   let stem = stemLines.join("\n").trim();
   stem = stem

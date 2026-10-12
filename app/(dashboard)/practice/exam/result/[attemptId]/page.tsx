@@ -881,13 +881,19 @@ export default function ExamResultPage() {
                             </p>
                             {detailedResult?.feedbackMd ? (
                               <div className="prose prose-sm max-w-full wrap-break-word">
-                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkMath]}
+                                  rehypePlugins={[rehypeKatex]}
+                                >
                                   {detailedResult.feedbackMd}
                                 </ReactMarkdown>
                               </div>
                             ) : result.feedbackMd ? (
                               <div className="prose prose-sm max-w-full wrap-break-word">
-                                <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                                <ReactMarkdown
+                                  remarkPlugins={[remarkMath]}
+                                  rehypePlugins={[rehypeKatex]}
+                                >
                                   {result.feedbackMd}
                                 </ReactMarkdown>
                               </div>

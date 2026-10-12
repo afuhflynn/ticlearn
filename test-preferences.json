@@ -1,0 +1,14 @@
+{
+  "tool": "vitest",
+  "gate": null,
+  "additionalTools": [
+    "@testing-library/react",
+    "@testing-library/user-event",
+    "@testing-library/jest-dom",
+    "jsdom"
+  ],
+  "e2eTool": "playwright",
+  "testDir": "tests",
+  "filePattern": "*.test.ts",
+  "packageManager": "pnpm"
+}

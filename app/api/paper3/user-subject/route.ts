@@ -1,7 +1,10 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { getUserPaper3Subjects, SUBJECT_CATEGORIES } from "@/lib/paper3/subject-tasks";
+import {
+  getUserPaper3Subjects,
+  SUBJECT_CATEGORIES,
+} from "@/lib/paper3/subject-tasks";
 
 export async function GET() {
   try {
@@ -15,9 +18,16 @@ export async function GET() {
 
     const subjects = await getUserPaper3Subjects(session.user.id);
 
-    const allowedCategories = subjects.length > 0
-      ? subjects.flatMap((s) => SUBJECT_CATEGORIES[s])
-      : ["MIXED", "DATABASE", "SPREADSHEET", "PROGRAMMING", "WEB_PROGRAMMING"];
+    const allowedCategories =
+      subjects.length > 0
+        ? subjects.flatMap((s) => SUBJECT_CATEGORIES[s])
+        : [
+            "MIXED",
+            "DATABASE",
+            "SPREADSHEET",
+            "PROGRAMMING",
+            "WEB_PROGRAMMING",
+          ];
 
     const uniqueCategories = [...new Set(allowedCategories)];
 

@@ -170,8 +170,7 @@ export async function generateMockFromBlueprint(
     const orderedQuestions = shuffleArrayCopy(questions);
 
     const sumMarks =
-      orderedQuestions.reduce((s, q) => s + q.marks, 0) ||
-      section.totalMarks;
+      orderedQuestions.reduce((s, q) => s + q.marks, 0) || section.totalMarks;
 
     sessionSections.push({
       name: section.name,
@@ -288,9 +287,7 @@ async function generateSectionQuestions(
 
     return {
       questions: [
-        ...stored.map((q) =>
-          selectedFromDbQuestion(q, section, needed),
-        ),
+        ...stored.map((q) => selectedFromDbQuestion(q, section, needed)),
         ...aiQuestions,
       ],
       mode: "HYBRID" as const,
@@ -348,7 +345,8 @@ async function generateAIQuestions(
   const levelLabel = "Cameroon GCE A-Level";
 
   const marksEach =
-    section.marksPerQuestion ?? Math.ceil(section.totalMarks / Math.max(count, 1));
+    section.marksPerQuestion ??
+    Math.ceil(section.totalMarks / Math.max(count, 1));
 
   if (section.questionType === "MCQ") {
     const result = await generate({

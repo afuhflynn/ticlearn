@@ -475,7 +475,9 @@ export default function QuizPlayerPage() {
                           }`}
                         >
                           <MathMarkdown
-                            content={answer?.userAnswer || "No answer submitted"}
+                            content={
+                              answer?.userAnswer || "No answer submitted"
+                            }
                           />
                         </div>
                       </div>
@@ -487,7 +489,9 @@ export default function QuizPlayerPage() {
                         </p>
                         <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:bg-green-950">
                           <div className="break-words text-sm text-green-700 dark:text-green-300">
-                            <MathMarkdown content={answer?.correctAnswer || ""} />
+                            <MathMarkdown
+                              content={answer?.correctAnswer || ""}
+                            />
                           </div>
                         </div>
                       </div>
@@ -499,7 +503,9 @@ export default function QuizPlayerPage() {
                         </p>
                         <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:bg-green-950">
                           <div className="break-words text-sm text-green-700 dark:text-green-300">
-                            <MathMarkdown content={answer?.correctAnswer || ""} />
+                            <MathMarkdown
+                              content={answer?.correctAnswer || ""}
+                            />
                           </div>
                         </div>
                       </div>
@@ -508,7 +514,10 @@ export default function QuizPlayerPage() {
                       <p className="mb-1 text-sm font-medium">Explanation</p>
                       <div className="overflow-x-auto rounded-lg bg-muted p-3 text-sm text-muted-foreground">
                         <div className="max-w-full break-words [&_*]:break-words">
-                          <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                          <ReactMarkdown
+                            remarkPlugins={[remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
+                          >
                             {answer?.explanation || "No explanation available."}
                           </ReactMarkdown>
                         </div>

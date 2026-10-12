@@ -55,7 +55,9 @@ export async function POST(req: Request) {
       },
     });
 
-    trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, { type: "EXAM" }).catch(() => {});
+    trackEvent(session.user.id, EVENTS.FEEDBACK_SUBMITTED, {
+      type: "EXAM",
+    }).catch(() => {});
 
     notifyAllAdminsOfFeedback({
       userName: session.user.name || "User",

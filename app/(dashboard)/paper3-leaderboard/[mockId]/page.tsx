@@ -71,62 +71,72 @@ export default function Paper3LeaderboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {leaderboard.map((entry: { userId: string; rank: number; score: number; userImage?: string; userName?: string; currentUserRank: number; timeTaken?: number }) => (
-                    <tr
-                      key={entry.userId}
-                      className={`${
-                        currentUserRank === entry.rank ? "bg-primary/5" : ""
-                      }`}
-                    >
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-                            entry.rank <= 3
-                              ? getRankStyle(entry.rank)
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          {entry.rank}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          {entry.userImage ? (
-                            <Image
-                              src={entry.userImage}
-                              alt=""
-                              className="w-8 h-8 rounded-full"
-                            />
-                          ) : (
-                            <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
-                              {entry.userName?.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-                          <span className="font-medium truncate max-w-[150px] md:max-w-none">
-                            {entry.userName}
+                  {leaderboard.map(
+                    (entry: {
+                      userId: string;
+                      rank: number;
+                      score: number;
+                      userImage?: string;
+                      userName?: string;
+                      currentUserRank: number;
+                      timeTaken?: number;
+                    }) => (
+                      <tr
+                        key={entry.userId}
+                        className={`${
+                          currentUserRank === entry.rank ? "bg-primary/5" : ""
+                        }`}
+                      >
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+                              entry.rank <= 3
+                                ? getRankStyle(entry.rank)
+                                : "bg-gray-100"
+                            }`}
+                          >
+                            {entry.rank}
                           </span>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span
-                          className={`font-bold ${
-                            entry.score >= 80
-                              ? "text-green-600"
-                              : entry.score >= 60
-                                ? "text-yellow-600"
-                                : "text-red-600"
-                          }`}
-                        >
-                          {Math.round(entry.score)}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right text-sm text-gray-500">
-                        {entry.timeTaken
-                          ? `${Math.floor(entry.timeTaken / 60)}m ${entry.timeTaken % 60}s`
-                          : "-"}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {entry.userImage ? (
+                              <Image
+                                src={entry.userImage}
+                                alt=""
+                                className="w-8 h-8 rounded-full"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center text-sm">
+                                {entry.userName?.charAt(0).toUpperCase()}
+                              </div>
+                            )}
+                            <span className="font-medium truncate max-w-[150px] md:max-w-none">
+                              {entry.userName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <span
+                            className={`font-bold ${
+                              entry.score >= 80
+                                ? "text-green-600"
+                                : entry.score >= 60
+                                  ? "text-yellow-600"
+                                  : "text-red-600"
+                            }`}
+                          >
+                            {Math.round(entry.score)}%
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm text-gray-500">
+                          {entry.timeTaken
+                            ? `${Math.floor(entry.timeTaken / 60)}m ${entry.timeTaken % 60}s`
+                            : "-"}
+                        </td>
+                      </tr>
+                    ),
+                  )}
                 </tbody>
               </table>
             </div>

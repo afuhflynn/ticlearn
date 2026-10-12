@@ -151,10 +151,16 @@ export default function BlueprintsPage() {
                     <Switch
                       id={`student-${bp.id}`}
                       checked={bp.visibleForStudents !== false}
-                      onCheckedChange={(v) => patchVisibility(bp.id, { visibleForStudents: v })}
+                      onCheckedChange={(v) =>
+                        patchVisibility(bp.id, { visibleForStudents: v })
+                      }
                       aria-labelledby={`student-${bp.id}-label`}
                     />
-                    <Label id={`student-${bp.id}-label`} htmlFor={`student-${bp.id}`} className="cursor-pointer text-sm font-medium">
+                    <Label
+                      id={`student-${bp.id}-label`}
+                      htmlFor={`student-${bp.id}`}
+                      className="cursor-pointer text-sm font-medium"
+                    >
                       Students (Practice mocks)
                     </Label>
                   </div>
@@ -162,10 +168,16 @@ export default function BlueprintsPage() {
                     <Switch
                       id={`community-${bp.id}`}
                       checked={bp.visibleInCommunity === true}
-                      onCheckedChange={(v) => patchVisibility(bp.id, { visibleInCommunity: v })}
+                      onCheckedChange={(v) =>
+                        patchVisibility(bp.id, { visibleInCommunity: v })
+                      }
                       aria-labelledby={`community-${bp.id}-label`}
                     />
-                    <Label id={`community-${bp.id}-label`} htmlFor={`community-${bp.id}`} className="cursor-pointer text-sm font-medium">
+                    <Label
+                      id={`community-${bp.id}-label`}
+                      htmlFor={`community-${bp.id}`}
+                      className="cursor-pointer text-sm font-medium"
+                    >
                       Community
                     </Label>
                   </div>

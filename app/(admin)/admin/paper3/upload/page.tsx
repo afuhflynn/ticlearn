@@ -368,7 +368,6 @@ export default function Paper3UploadPage() {
                 </Button>
               </div>
             ) : null}
-
           </CardContent>
           <CardContent className="space-y-4">
             {/* Form Fields */}
@@ -614,13 +613,18 @@ export default function Paper3UploadPage() {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {(source.status === "ERROR" || source.status === "READY") && (
+                    {(source.status === "ERROR" ||
+                      source.status === "READY") && (
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleRetry(source.id)}
                         disabled={processSource.isPending}
-                        title={source.status === "READY" ? "Re-process to generate new questions" : "Retry failed processing"}
+                        title={
+                          source.status === "READY"
+                            ? "Re-process to generate new questions"
+                            : "Retry failed processing"
+                        }
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>

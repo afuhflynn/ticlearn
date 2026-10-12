@@ -3,7 +3,10 @@
  * (landing page, etc.).
  */
 
-import type { BlueprintSection, ExamBlueprint } from "@/lib/generated/prisma/client";
+import type {
+  BlueprintSection,
+  ExamBlueprint,
+} from "@/lib/generated/prisma/client";
 
 type ComponentForPublic = {
   name: string;
@@ -34,11 +37,7 @@ export function summarizePaperStyle(questionTypes: string[]) {
   if (questionTypes.length === 0) return "Mixed" as const;
   const set = new Set(questionTypes);
   if (set.size === 1 && set.has("MCQ")) return "MCQ" as const;
-  if (
-    set.has("STRUCTURED") ||
-    set.has("ESSAY") ||
-    set.has("OPEN")
-  )
+  if (set.has("STRUCTURED") || set.has("ESSAY") || set.has("OPEN"))
     return "Structured" as const;
   return "Mixed" as const;
 }

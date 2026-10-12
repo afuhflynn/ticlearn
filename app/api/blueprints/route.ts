@@ -7,10 +7,12 @@ import { getActiveProfileId } from "@/lib/exam-profile";
 export async function GET() {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const profileId = await getActiveProfileId(session.user.id);
-    if (!profileId) return NextResponse.json({ error: "No active profile" }, { status: 400 });
+    if (!profileId)
+      return NextResponse.json({ error: "No active profile" }, { status: 400 });
 
     // Get the profile's programs, then find component IDs for those programs
     const profilePrograms = await prisma.examProfileProgram.findMany({
@@ -61,6 +63,9 @@ export async function GET() {
     return NextResponse.json({ blueprints });
   } catch (error) {
     console.error("Blueprints GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch blueprints" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch blueprints" },
+      { status: 500 },
+    );
   }
 }

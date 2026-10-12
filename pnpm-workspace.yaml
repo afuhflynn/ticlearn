@@ -14,3 +14,4 @@ onlyBuiltDependencies:
   - protobufjs
   - sharp
   - tesseract.js
+minimumReleaseAge: 4320

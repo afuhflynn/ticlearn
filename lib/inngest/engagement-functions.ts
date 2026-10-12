@@ -180,7 +180,10 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
     let totalSent = 0;
     let totalSkipped = 0;
     let totalErrors = 0;
-    const results: Record<string, { sent: number; skipped: number; errors: number }> = {};
+    const results: Record<
+      string,
+      { sent: number; skipped: number; errors: number }
+    > = {};
 
     for (const { campaign, label, findUsers } of campaignPipeline) {
       console.log(`[Inngest] Processing campaign: ${label} (${campaign})`);
@@ -227,10 +230,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
           }
         }
       } catch (err) {
-        console.error(
-          `[Inngest]   Campaign ${campaign} query failed:`,
-          err,
-        );
+        console.error(`[Inngest]   Campaign ${campaign} query failed:`, err);
         errors.push("query_error");
       }
 

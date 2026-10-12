@@ -240,7 +240,12 @@ export default function Paper3ModulesPage() {
                       Go to a mock&apos;s edit page and select this group from
                       the &ldquo;Module&rdquo; dropdown.
                     </p>
-                    <Button variant="outline" size="sm" className="mt-3" asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3"
+                      asChild
+                    >
                       <Link href="/admin/paper3/mocks">
                         Browse mocks to assign
                       </Link>

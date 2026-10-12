@@ -115,10 +115,12 @@ export default function OnboardingPage() {
     ? levels.find((l) => l.id === store.examLevelId)?.code === "HND"
     : false;
   const isALCommercial = store.examLevelId
-    ? levels.find((l) => l.id === store.examLevelId)?.code === "GCE_AL_COMMERCIAL"
+    ? levels.find((l) => l.id === store.examLevelId)?.code ===
+      "GCE_AL_COMMERCIAL"
     : false;
   const isOLCommercial = store.examLevelId
-    ? levels.find((l) => l.id === store.examLevelId)?.code === "GCE_OL_COMMERCIAL"
+    ? levels.find((l) => l.id === store.examLevelId)?.code ===
+      "GCE_OL_COMMERCIAL"
     : false;
   const isMultiSelect = isGCEAlevel || isGCEOlevel;
   const isSingleSelect = isHND || isALCommercial || isOLCommercial;
@@ -473,7 +475,9 @@ export default function OnboardingPage() {
           <div className="space-y-6">
             <div className="text-center">
               <h1 className="text-xl font-bold">
-                {isSingleSelect ? "Select your specialty" : "Select your subjects"}
+                {isSingleSelect
+                  ? "Select your specialty"
+                  : "Select your subjects"}
               </h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 {isSingleSelect
@@ -574,9 +578,11 @@ export default function OnboardingPage() {
                     (opt.value === "nextyear" &&
                       store.examYear === 2027 &&
                       !store.examDate) ||
-                    (opt.value === "unsure" &&
-                      !store.examYear &&
-                      !store.examDate)
+                    (
+                      opt.value === "unsure" &&
+                        !store.examYear &&
+                        !store.examDate
+                    )
                       ? "border-primary bg-primary/5"
                       : "border-border hover:border-primary/50"
                   }`}

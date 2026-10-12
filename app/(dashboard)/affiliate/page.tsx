@@ -56,7 +56,7 @@ export default function AffiliatePage() {
     }
   }, [affiliateData]);
 
-const handleSaveDetails = async () => {
+  const handleSaveDetails = async () => {
     if (!momoNumber || !momoName) {
       toast.error("Please fill in all fields");
       return;
@@ -69,7 +69,9 @@ const handleSaveDetails = async () => {
         momoName,
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to save details");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to save details",
+      );
     } finally {
       setIsSaving(false);
     }
@@ -84,7 +86,9 @@ const handleSaveDetails = async () => {
     try {
       await requestPayoutMutation.mutateAsync();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to request payout");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to request payout",
+      );
     }
   };
 
@@ -240,7 +244,8 @@ const handleSaveDetails = async () => {
       </Card>
 
       {/* Your Referrals */}
-      {affiliateData?.referredUsers && affiliateData.referredUsers.length > 0 ? (
+      {affiliateData?.referredUsers &&
+      affiliateData.referredUsers.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Your Referrals</CardTitle>
@@ -292,7 +297,9 @@ const handleSaveDetails = async () => {
       ) : null}
 
       {/* Earnings History */}
-      {affiliateData?.earnings && Array.isArray(affiliateData.earnings) && affiliateData.earnings.length > 0 ? (
+      {affiliateData?.earnings &&
+      Array.isArray(affiliateData.earnings) &&
+      affiliateData.earnings.length > 0 ? (
         <Card>
           <CardHeader>
             <CardTitle>Earnings History</CardTitle>

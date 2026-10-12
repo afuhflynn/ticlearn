@@ -68,9 +68,12 @@ export default function PricingPage() {
 
   useEffect(() => {
     if (session) {
-      api.queries.subscription().then((data) => {
-        setSubscription(data.subscription ?? null);
-      }).catch(() => {});
+      api.queries
+        .subscription()
+        .then((data) => {
+          setSubscription(data.subscription ?? null);
+        })
+        .catch(() => {});
     }
   }, [session]);
 
@@ -105,9 +108,12 @@ export default function PricingPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-12 px-4">
       <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold tracking-tight">Simple, Transparent Pricing</h1>
+        <h1 className="text-4xl font-bold tracking-tight">
+          Simple, Transparent Pricing
+        </h1>
         <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Start free. Upgrade when you're ready to take your preparation seriously.
+          Start free. Upgrade when you're ready to take your preparation
+          seriously.
         </p>
       </div>
 
@@ -136,7 +142,9 @@ export default function PricingPage() {
                   {plan.period && (
                     <span className="text-muted-foreground">{plan.period}</span>
                   )}
-                  <span className="ml-2 text-sm text-muted-foreground">FCFA</span>
+                  <span className="ml-2 text-sm text-muted-foreground">
+                    FCFA
+                  </span>
                 </div>
               </CardHeader>
               <CardContent className="flex-1">
@@ -164,7 +172,11 @@ export default function PricingPage() {
                     onClick={() => handleSubscribe(plan.priceKey)}
                     disabled={loading}
                   >
-                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+                    {loading ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CreditCard className="mr-2 h-4 w-4" />
+                    )}
                     {plan.cta}
                   </Button>
                 )}
@@ -175,7 +187,10 @@ export default function PricingPage() {
       </div>
 
       <div className="text-center text-sm text-muted-foreground max-w-lg mx-auto">
-        <p>Pay with MTN Mobile Money or Orange Money via Fapshi. All prices in FCFA.</p>
+        <p>
+          Pay with MTN Mobile Money or Orange Money via Fapshi. All prices in
+          FCFA.
+        </p>
         <p className="mt-1">Cancel anytime. No long-term contracts.</p>
       </div>
     </div>

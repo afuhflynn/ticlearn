@@ -3,7 +3,13 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowRight, BookOpen, GraduationCap, Layers, MessageCircle } from "lucide-react";
+import {
+  ArrowRight,
+  BookOpen,
+  GraduationCap,
+  Layers,
+  MessageCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -62,30 +68,44 @@ function MockCatalogCard({
         <span className="mt-1.5 line-clamp-2 text-base font-bold leading-snug sm:text-lg">
           {bp.subjectLabel}
         </span>
-        <span className="mt-1 line-clamp-1 text-xs opacity-95 sm:text-sm">{bp.name}</span>
+        <span className="mt-1 line-clamp-1 text-xs opacity-95 sm:text-sm">
+          {bp.name}
+        </span>
       </div>
 
       <CardContent className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
         <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
-          <span className="bg-muted rounded-full px-2.5 py-0.5 font-medium">{bp.componentName}</span>
-          <span className="bg-muted rounded-full px-2.5 py-0.5">{bp.durationMin} min</span>
-          <span className="bg-muted rounded-full px-2.5 py-0.5 tabular-nums">{bp.totalMarks} marks</span>
+          <span className="bg-muted rounded-full px-2.5 py-0.5 font-medium">
+            {bp.componentName}
+          </span>
+          <span className="bg-muted rounded-full px-2.5 py-0.5">
+            {bp.durationMin} min
+          </span>
+          <span className="bg-muted rounded-full px-2.5 py-0.5 tabular-nums">
+            {bp.totalMarks} marks
+          </span>
         </div>
-        <h3 className="text-foreground line-clamp-2 font-semibold leading-snug">{bp.name}</h3>
-        {bp.description ?
+        <h3 className="text-foreground line-clamp-2 font-semibold leading-snug">
+          {bp.name}
+        </h3>
+        {bp.description ? (
           <p className="text-muted-foreground line-clamp-3 flex-1 text-sm leading-relaxed">
             {bp.description}
           </p>
-        : (
+        ) : (
           <p className="text-muted-foreground flex-1 text-sm italic opacity-80">
             Timed practice for {bp.programName}.
           </p>
         )}
         <div className="flex items-center gap-2 border-t border-border pt-3">
           <Avatar className="size-8 border border-border">
-            <AvatarFallback className="bg-muted text-[10px] font-semibold">TL</AvatarFallback>
+            <AvatarFallback className="bg-muted text-[10px] font-semibold">
+              TL
+            </AvatarFallback>
           </Avatar>
-          <span className="text-xs font-medium text-muted-foreground">TiCLearn</span>
+          <span className="text-xs font-medium text-muted-foreground">
+            TiCLearn
+          </span>
         </div>
         <Button
           variant="outline"
@@ -176,13 +196,17 @@ export function LandingHero({ countdown }: LandingHeroProps) {
       })),
     ])
       .then(([mRes, bRes]) => {
-        const mods = mRes.ok && Array.isArray(mRes.json?.modules) ? mRes.json.modules : [];
+        const mods =
+          mRes.ok && Array.isArray(mRes.json?.modules) ? mRes.json.modules : [];
         const bps =
-          bRes.ok && Array.isArray(bRes.json?.blueprints) ? bRes.json.blueprints : [];
+          bRes.ok && Array.isArray(bRes.json?.blueprints)
+            ? bRes.json.blueprints
+            : [];
         setMockModules(mods as PublicMockModule[]);
         setBlueprints(bps as PublicBlueprintCard[]);
         const modulesFailed = !mRes.ok || !Array.isArray(mRes.json?.modules);
-        const blueprintsFailed = !bRes.ok || !Array.isArray(bRes.json?.blueprints);
+        const blueprintsFailed =
+          !bRes.ok || !Array.isArray(bRes.json?.blueprints);
         setCatalogError(modulesFailed && blueprintsFailed);
       })
       .catch(() => {
@@ -233,8 +257,8 @@ export function LandingHero({ countdown }: LandingHeroProps) {
             </span>
           </h1>
           <p className="text-muted-foreground mx-auto mt-4 max-w-xl text-pretty text-[15px] leading-relaxed sm:text-base">
-            Search to study with TiC, or jump into a real timed mock below—the same catalog
-            students see after sign-in.
+            Search to study with TiC, or jump into a real timed mock below—the
+            same catalog students see after sign-in.
           </p>
 
           <form
@@ -273,10 +297,16 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                 className="flex items-center gap-3 text-left sm:text-center"
               >
                 <span className="border-border bg-muted/50 flex size-10 shrink-0 items-center justify-center rounded-full border">
-                  <Icon className="text-foreground size-[1.1rem]" strokeWidth={1.5} aria-hidden />
+                  <Icon
+                    className="text-foreground size-[1.1rem]"
+                    strokeWidth={1.5}
+                    aria-hidden
+                  />
                 </span>
                 <div className="min-w-0 leading-tight">
-                  <p className="text-foreground text-sm font-semibold">{line}</p>
+                  <p className="text-foreground text-sm font-semibold">
+                    {line}
+                  </p>
                   <p className="text-muted-foreground text-xs">{sub}</p>
                 </div>
               </div>
@@ -320,11 +350,11 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                   Mocks open to students
                 </h2>
                 <p className="text-muted-foreground mt-1 max-w-lg text-sm leading-relaxed">
-                  Curated mock groups your school enables for learners, plus other
-                  student-visible papers from the catalog.
+                  Curated mock groups your school enables for learners, plus
+                  other student-visible papers from the catalog.
                 </p>
               </div>
-              {session?.user ?
+              {session?.user ? (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -336,7 +366,7 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                     <ArrowRight className="size-4" />
                   </Link>
                 </Button>
-              : (
+              ) : (
                 <Button
                   type="button"
                   variant="ghost"
@@ -350,9 +380,9 @@ export function LandingHero({ countdown }: LandingHeroProps) {
               )}
             </div>
 
-            {catalogLoading ?
+            {catalogLoading ? (
               <ModuleGroupsSkeleton />
-            : catalogError ?
+            ) : catalogError ? (
               <p className="text-muted-foreground text-center text-sm">
                 Could not load the mock catalog.{" "}
                 <button
@@ -363,16 +393,19 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                   Retry
                 </button>
               </p>
-            : mockModules.length === 0 && orphanBlueprints.length === 0 ?
+            ) : mockModules.length === 0 && orphanBlueprints.length === 0 ? (
               <p className="text-muted-foreground text-center text-sm leading-relaxed">
-                No published mock groups or papers yet—ask your admin to mark bundles and
-                blueprints as visible to students, or{" "}
-                <Link href="/sign-up" className="text-foreground font-medium underline-offset-4 hover:underline">
+                No published mock groups or papers yet—ask your admin to mark
+                bundles and blueprints as visible to students, or{" "}
+                <Link
+                  href="/sign-up"
+                  className="text-foreground font-medium underline-offset-4 hover:underline"
+                >
                   sign up
                 </Link>{" "}
                 to use bespoke generation.
               </p>
-            : (
+            ) : (
               <div className="space-y-12">
                 {mockModules.map((mod) => (
                   <section
@@ -388,13 +421,14 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                         <h3 className="text-foreground text-lg font-semibold tracking-tight sm:text-xl">
                           {mod.title}
                         </h3>
-                        {mod.description ?
+                        {mod.description ? (
                           <p className="text-muted-foreground mt-1 max-w-3xl text-sm leading-relaxed">
                             {mod.description}
                           </p>
-                        : null}
+                        ) : null}
                         <p className="text-muted-foreground/90 mt-2 text-xs font-medium">
-                          School mock group · same order as Practice → Mock exams
+                          School mock group · same order as Practice → Mock
+                          exams
                         </p>
                       </div>
                     </div>
@@ -411,13 +445,13 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                   </section>
                 ))}
 
-                {orphanBlueprints.length > 0 ?
+                {orphanBlueprints.length > 0 ? (
                   <div>
-                    {mockModules.length > 0 ?
+                    {mockModules.length > 0 ? (
                       <h3 className="text-foreground mb-5 text-lg font-semibold tracking-tight">
                         More practice papers
                       </h3>
-                    : null}
+                    ) : null}
                     <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4 lg:gap-6">
                       {orphanBlueprints.map((bp) => (
                         <MockCatalogCard
@@ -429,7 +463,7 @@ export function LandingHero({ countdown }: LandingHeroProps) {
                       ))}
                     </div>
                   </div>
-                : null}
+                ) : null}
               </div>
             )}
           </div>

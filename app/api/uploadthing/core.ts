@@ -86,7 +86,7 @@ export const ourFileRouter = {
     }),
 
   chatUploader: f({
-    image: { maxFileSize: "8MB", maxFileCount: 10 },
+    image: { maxFileSize: "8MB", maxFileCount: 4 },
     pdf: { maxFileSize: "16MB", maxFileCount: 5 },
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
       maxFileSize: "16MB",

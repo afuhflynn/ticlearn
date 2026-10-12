@@ -634,135 +634,136 @@ export default function AdminAffiliatesPage() {
             <div className="flex h-64 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-) : (
-              <>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Partner</TableHead>
-                      <TableHead>Code</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Clicks/Conv.</TableHead>
-                      <TableHead>Earnings</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                {affiliates?.map((affiliate) => (
-                  <TableRow key={affiliate.id}>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-medium">
-                          {affiliate.userName}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {affiliate.userEmail}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
-                          {affiliate.code}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() =>
-                            copyToClipboard(
-                              `https://ticlearn.com/sign-up?ref=${affiliate.code}`,
-                            )
-                          }
-                        >
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={
-                          affiliate.status === "ACTIVE"
-                            ? "default"
-                            : "secondary"
-                        }
-                      >
-                        {affiliate.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm">
-                          {affiliate.totalClicks || 0} clicks
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {affiliate.totalConversions || 0} conversions
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold">
-                          {(affiliate.totalEarnings || 0).toLocaleString()} XAF
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {(affiliate.pendingEarnings || 0).toLocaleString()}{" "}
-                          pending
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            className="gap-2 cursor-pointer"
-                            onClick={() => handleViewDetails(affiliate.id)}
-                          >
-                            <Eye className="h-4 w-4" />
-                            View Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="gap-2 cursor-pointer"
-                            onClick={() => handlePayEarnings(affiliate.id)}
-                          >
-                            <DollarSign className="h-4 w-4" />
-                            Pay Earnings
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="gap-2 cursor-pointer"
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Partner</TableHead>
+                    <TableHead>Code</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Clicks/Conv.</TableHead>
+                    <TableHead>Earnings</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {affiliates?.map((affiliate) => (
+                    <TableRow key={affiliate.id}>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium">
+                            {affiliate.userName}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {affiliate.userEmail}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <code className="bg-muted px-1.5 py-0.5 rounded text-xs font-mono">
+                            {affiliate.code}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6"
                             onClick={() =>
-                              handleSuspendActivate(
-                                affiliate.id,
-                                affiliate.status,
+                              copyToClipboard(
+                                `https://ticlearn.com/sign-up?ref=${affiliate.code}`,
                               )
                             }
                           >
-                            {affiliate.status === "ACTIVE" ? (
-                              <>
-                                <AlertCircle className="h-4 w-4" />
-                                Suspend Partner
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-4 w-4" />
-                                Activate Partner
-                              </>
-                            )}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            affiliate.status === "ACTIVE"
+                              ? "default"
+                              : "secondary"
+                          }
+                        >
+                          {affiliate.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-sm">
+                            {affiliate.totalClicks || 0} clicks
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {affiliate.totalConversions || 0} conversions
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-semibold">
+                            {(affiliate.totalEarnings || 0).toLocaleString()}{" "}
+                            XAF
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {(affiliate.pendingEarnings || 0).toLocaleString()}{" "}
+                            pending
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
+                              onClick={() => handleViewDetails(affiliate.id)}
+                            >
+                              <Eye className="h-4 w-4" />
+                              View Details
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
+                              onClick={() => handlePayEarnings(affiliate.id)}
+                            >
+                              <DollarSign className="h-4 w-4" />
+                              Pay Earnings
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
+                              onClick={() =>
+                                handleSuspendActivate(
+                                  affiliate.id,
+                                  affiliate.status,
+                                )
+                              }
+                            >
+                              {affiliate.status === "ACTIVE" ? (
+                                <>
+                                  <AlertCircle className="h-4 w-4" />
+                                  Suspend Partner
+                                </>
+                              ) : (
+                                <>
+                                  <CheckCircle className="h-4 w-4" />
+                                  Activate Partner
+                                </>
+                              )}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
               <div className="flex justify-center gap-2 mt-4">
                 <Button

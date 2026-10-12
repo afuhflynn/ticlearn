@@ -64,12 +64,18 @@ function getCameroonGrade(score: number): string {
 
 function getGradeDescription(grade: string): string {
   switch (grade) {
-    case "A": return "Excellent";
-    case "B": return "Very Good";
-    case "C": return "Good";
-    case "D": return "Satisfactory";
-    case "E": return "Pass";
-    default: return "Needs Improvement";
+    case "A":
+      return "Excellent";
+    case "B":
+      return "Very Good";
+    case "C":
+      return "Good";
+    case "D":
+      return "Satisfactory";
+    case "E":
+      return "Pass";
+    default:
+      return "Needs Improvement";
   }
 }
 
@@ -100,26 +106,37 @@ export default async function SharedResultPage({ params }: ResultPageProps) {
         <div className="text-center mb-8">
           {attempt.user.image && (
             <div className="mb-4">
-              <img 
-                src={attempt.user.image} 
+              <img
+                src={attempt.user.image}
                 alt={attempt.user.name || "User"}
                 className="w-20 h-20 rounded-full mx-auto object-cover border-4 border-white shadow-lg"
               />
             </div>
           )}
           <h1 className="text-2xl font-bold">{attempt.user.name}</h1>
-          <p className="text-gray-500 mt-1">
-            Completed {attempt.mock.title}
-          </p>
+          <p className="text-gray-500 mt-1">Completed {attempt.mock.title}</p>
         </div>
 
         <div className={`rounded-2xl p-8 ${getScoreBgColor(attempt.score)}`}>
           <div className="text-center">
             <div className="relative w-32 h-32 mx-auto mb-4">
               <svg className="w-full h-full" viewBox="0 0 100 100">
-                <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="6" opacity="0.2" />
                 <circle
-                  cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="6"
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
+                  opacity="0.2"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r="45"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="6"
                   strokeDasharray={`${attempt.score * 2.83} 283`}
                   strokeLinecap="round"
                   className={getScoreColor(attempt.score)}
@@ -127,20 +144,28 @@ export default async function SharedResultPage({ params }: ResultPageProps) {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className={`text-4xl font-bold ${getScoreColor(attempt.score)}`}>
+                <span
+                  className={`text-4xl font-bold ${getScoreColor(attempt.score)}`}
+                >
                   {grade}
                 </span>
-                <span className="text-xs text-gray-600">{gradeDescription}</span>
+                <span className="text-xs text-gray-600">
+                  {gradeDescription}
+                </span>
               </div>
             </div>
 
             <div className="grid grid-cols-3 gap-4 mt-6">
               <div className="text-center">
-                <p className="text-2xl font-bold">{Math.round(attempt.score)}%</p>
+                <p className="text-2xl font-bold">
+                  {Math.round(attempt.score)}%
+                </p>
                 <p className="text-sm text-gray-600">Score</p>
               </div>
               <div className="text-center">
-                <p className="text-2xl font-bold">{correctCount}/{totalQuestions}</p>
+                <p className="text-2xl font-bold">
+                  {correctCount}/{totalQuestions}
+                </p>
                 <p className="text-sm text-gray-600">Correct</p>
               </div>
               <div className="text-center">

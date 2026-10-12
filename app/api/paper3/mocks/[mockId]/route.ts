@@ -22,7 +22,10 @@ const updateMockSchema = z.object({
   timeLimit: z.number().int().min(30).max(180).optional(),
   status: z.enum(["DRAFT", "PUBLISHED", "ARCHIVED"]).optional(),
   totalMarks: z.number().int().min(1).optional(),
-  questionIds: z.array(z.string()).min(1, "At least one question required").optional(),
+  questionIds: z
+    .array(z.string())
+    .min(1, "At least one question required")
+    .optional(),
   moduleId: z.union([z.string().min(1), z.null()]).optional(),
   visibleToAllStudents: z.boolean().optional(),
 });
@@ -123,9 +126,11 @@ export async function PUT(
 
     const updateData: Record<string, unknown> = {};
     if (data.title !== undefined) updateData.title = data.title;
-    if (data.description !== undefined) updateData.description = data.description;
+    if (data.description !== undefined)
+      updateData.description = data.description;
     if (data.subject !== undefined) updateData.subject = data.subject;
-    if (data.focusCategory !== undefined) updateData.focusCategory = data.focusCategory;
+    if (data.focusCategory !== undefined)
+      updateData.focusCategory = data.focusCategory;
     if (data.timeLimit !== undefined) updateData.timeLimit = data.timeLimit;
     if (data.status !== undefined) updateData.status = data.status;
     if (data.totalMarks !== undefined) updateData.totalMarks = data.totalMarks;
@@ -162,7 +167,8 @@ export async function PUT(
         );
       }
 
-      const totalMarks = data.totalMarks ?? questions.reduce((sum, q) => sum + q.marks, 0);
+      const totalMarks =
+        data.totalMarks ?? questions.reduce((sum, q) => sum + q.marks, 0);
 
       const mock = await prisma.$transaction(async (tx) => {
         await tx.paper3MockQuestion.deleteMany({ where: { mockId } });

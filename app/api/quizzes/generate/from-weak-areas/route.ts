@@ -8,7 +8,11 @@ import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
-import { getEffectiveCreditCost, spendCredits, grantCredits } from "@/lib/credits";
+import {
+  getEffectiveCreditCost,
+  spendCredits,
+  grantCredits,
+} from "@/lib/credits";
 
 const generateFromWeakAreasSchema = z.object({
   questionCount: z.number().int().min(5).max(50).optional(),
@@ -28,7 +32,12 @@ export async function POST(req: Request) {
     }
 
     const body = generateFromWeakAreasSchema.parse(await req.json());
-    const { questionCount = 10, timed = false, timeLimit, isPublic = false } = body;
+    const {
+      questionCount = 10,
+      timed = false,
+      timeLimit,
+      isPublic = false,
+    } = body;
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -109,7 +118,10 @@ export async function POST(req: Request) {
 
     if (notes.length === 0) {
       return NextResponse.json(
-        { error: "No processed notes found. Upload notes first to generate quizzes from weak areas." },
+        {
+          error:
+            "No processed notes found. Upload notes first to generate quizzes from weak areas.",
+        },
         { status: 400 },
       );
     }
@@ -129,7 +141,7 @@ export async function POST(req: Request) {
           source: "weak-areas",
           weakConcepts: weakConcepts,
           readinessScore: readinessScore,
-          notesUsed: notes.map(n => n.id),
+          notesUsed: notes.map((n) => n.id),
         },
       },
     });
@@ -151,7 +163,7 @@ export async function POST(req: Request) {
           quizId: quiz.id,
           userId: session.user.id,
           weakConcepts: weakConcepts,
-          notes: notes.map(n => ({
+          notes: notes.map((n) => ({
             id: n.id,
             title: n.title,
             extractedText: n.extractedText,
@@ -171,10 +183,14 @@ export async function POST(req: Request) {
             userId: session.user.id,
             amount: quizCost,
             type: "BONUS",
-            description: "Refund: quiz generation from weak areas failed to start",
+            description:
+              "Refund: quiz generation from weak areas failed to start",
           });
         } catch (refundErr) {
-          console.error("Failed to refund credits after Inngest failure:", refundErr);
+          console.error(
+            "Failed to refund credits after Inngest failure:",
+            refundErr,
+          );
         }
       }
     }

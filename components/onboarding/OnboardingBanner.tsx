@@ -46,9 +46,7 @@ export function OnboardingBanner() {
     <div className="mb-4 flex items-start gap-3 rounded-xl border-2 border-amber-200 bg-amber-50 p-4 text-sm">
       <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
       <div className="flex-1">
-        <p className="font-medium text-amber-800">
-          Your profile is incomplete
-        </p>
+        <p className="font-medium text-amber-800">Your profile is incomplete</p>
         <p className="mt-1 text-amber-700">
           You skipped the setup process. Complete it to unlock personalised
           study plans, topic recommendations, and readiness tracking.

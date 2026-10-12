@@ -98,7 +98,10 @@ export async function DELETE(req: Request) {
     const id = searchParams.get("id");
 
     if (!id) {
-      return NextResponse.json({ error: "Question ID required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Question ID required" },
+        { status: 400 },
+      );
     }
 
     await prisma.question.delete({ where: { id } });

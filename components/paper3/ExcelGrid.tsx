@@ -72,12 +72,14 @@ export function ExcelGrid({
               <tr key={rowIdx}>
                 {/* Row number */}
                 {showRowNumbers && (
-                  <td className={cn(
-                    "w-10 h-10 border border-gray-400 font-mono text-center px-4",
-                    rowIdx === isHeaderRow
-                      ? "bg-gray-300 text-gray-700 font-semibold"
-                      : "bg-gray-200 text-gray-600",
-                  )}>
+                  <td
+                    className={cn(
+                      "w-10 h-10 border border-gray-400 font-mono text-center px-4",
+                      rowIdx === isHeaderRow
+                        ? "bg-gray-300 text-gray-700 font-semibold"
+                        : "bg-gray-200 text-gray-600",
+                    )}
+                  >
                     {rowIdx + 1}
                   </td>
                 )}

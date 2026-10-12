@@ -1,0 +1,13 @@
+# Dependency Gate Allowlist
+# This file lists packages that are allowed to have advisories without failing the CI
+# Each line should contain a package name, optionally followed by a version constraint
+# Format: package-name@version-range  OR  package-name
+
+# Example allowlist entries (remove these comments and add actual entries as needed):
+# pdf-parse@^2.4.5
+# pdfjs-dist@^4.10.38
+# mammoth@^1.12.0
+# tesseract.js@^7.0.0
+
+# Currently no advisories are allowlisted - all high/critical advisories will fail CI
+# Add entries here only after security review and documented justification

@@ -29,7 +29,13 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     const conversation = await prisma.chatConversation.findFirst({
       where: { id, userId: session.user.id },
-      select: { id: true, title: true, createdAt: true, updatedAt: true, summary: true },
+      select: {
+        id: true,
+        title: true,
+        createdAt: true,
+        updatedAt: true,
+        summary: true,
+      },
     });
 
     if (!conversation) {
@@ -55,16 +61,16 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     const hasMore = messages.length > limit;
     const pageMessages = hasMore ? messages.slice(0, limit) : messages;
-    const nextCursor = hasMore ? pageMessages[pageMessages.length - 1]?.id : null;
+    const nextCursor = hasMore
+      ? pageMessages[pageMessages.length - 1]?.id
+      : null;
 
     return NextResponse.json({
       conversation,
-      messages: pageMessages
-        .reverse()
-        .map((message) => ({
-          ...message,
-          parts: normalizeStoredParts(message.parts, message.content),
-        })),
+      messages: pageMessages.reverse().map((message) => ({
+        ...message,
+        parts: normalizeStoredParts(message.parts, message.content),
+      })),
       nextCursor,
     });
   } catch (error) {

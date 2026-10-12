@@ -20,8 +20,6 @@ import {
 import {
   processPaper3Source,
   generatePaper3Mock,
-  harvestNoteKnowledge,
-  harvestPaper3Knowledge,
   ingestQuestions,
 } from "@/lib/inngest";
 import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
@@ -49,8 +47,6 @@ export const { GET, POST, PUT } = serve({
     processPaper3Source,
     generatePaper3Mock,
     evaluatePaper3Exam,
-    harvestNoteKnowledge,
-    harvestPaper3Knowledge,
     ingestQuestions,
     computeDailyMetricsJob,
     dispatchEngagementCampaigns,

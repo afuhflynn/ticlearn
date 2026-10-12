@@ -19,7 +19,9 @@ export async function GET(_req: Request) {
     const attemptWhere = profileId ? { examProfileId: profileId } : { userId };
 
     let stats = profileId
-      ? await prisma.paper3UserStats.findFirst({ where: { examProfileId: profileId } })
+      ? await prisma.paper3UserStats.findFirst({
+          where: { examProfileId: profileId },
+        })
       : await prisma.paper3UserStats.findFirst({ where: { userId } });
 
     if (!stats) {

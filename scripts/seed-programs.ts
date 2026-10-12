@@ -3,8 +3,12 @@ import { prisma } from "../lib/prisma";
 async function main() {
   console.log("Seeding comprehensive program data...");
 
-  const gceOL = await prisma.examLevel.findUnique({ where: { code: "GCE_OL" } });
-  const gceAL = await prisma.examLevel.findUnique({ where: { code: "GCE_AL" } });
+  const gceOL = await prisma.examLevel.findUnique({
+    where: { code: "GCE_OL" },
+  });
+  const gceAL = await prisma.examLevel.findUnique({
+    where: { code: "GCE_AL" },
+  });
   const hnd = await prisma.examLevel.findUnique({ where: { code: "HND" } });
 
   if (!gceOL || !gceAL || !hnd) {
@@ -117,5 +121,8 @@ async function main() {
 }
 
 main()
-  .catch((e) => { console.error("Seed failed:", e); process.exitCode = 1; })
+  .catch((e) => {
+    console.error("Seed failed:", e);
+    process.exitCode = 1;
+  })
   .finally(() => prisma.$disconnect());

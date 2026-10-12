@@ -48,6 +48,9 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Readiness error:", error);
-    return NextResponse.json({ error: "Failed to compute readiness" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to compute readiness" },
+      { status: 500 },
+    );
   }
 }

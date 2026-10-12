@@ -36,9 +36,15 @@ export function normalizeGeneratedQuestions(
         explanation: question.explanation.trim(),
         options: question.options.map((o) => o.trim()).filter(Boolean),
       };
-      if (normalized.type === "MCQ" && normalized.options.length !== 4) return null;
+      if (normalized.type === "MCQ" && normalized.options.length !== 4)
+        return null;
       if (normalized.type === "OPEN") normalized.options = [];
-      if (!normalized.question || !normalized.correctAnswer || !normalized.explanation) return null;
+      if (
+        !normalized.question ||
+        !normalized.correctAnswer ||
+        !normalized.explanation
+      )
+        return null;
       return normalized;
     })
     .filter((q): q is z.infer<typeof generatedQuestionSchema> => q !== null);

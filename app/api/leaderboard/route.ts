@@ -49,12 +49,13 @@ export async function GET(req: Request) {
         ...profileFilter,
         user: { role: { not: "ADMIN" } },
         totalPoints: {
-          gt: (
-            await prisma.userStats.findFirst({
-              where: { userId: session.user.id },
-              select: { totalPoints: true },
-            })
-          )?.totalPoints || 0,
+          gt:
+            (
+              await prisma.userStats.findFirst({
+                where: { userId: session.user.id },
+                select: { totalPoints: true },
+              })
+            )?.totalPoints || 0,
         },
       },
     });

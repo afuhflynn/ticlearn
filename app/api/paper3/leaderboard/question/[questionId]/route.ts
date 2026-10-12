@@ -40,7 +40,11 @@ export async function GET(
       where: { questionId },
       skip,
       take: limit,
-      orderBy: [{ score: "desc" }, { marksEarned: "desc" }, { createdAt: "asc" }],
+      orderBy: [
+        { score: "desc" },
+        { marksEarned: "desc" },
+        { createdAt: "asc" },
+      ],
     });
 
     const total = await prisma.paper3QuestionAttempt.count({

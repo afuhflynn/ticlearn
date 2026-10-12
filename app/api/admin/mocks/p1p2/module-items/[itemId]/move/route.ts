@@ -39,7 +39,10 @@ export async function POST(req: Request, ctx: RouteCtx) {
       select: { id: true },
     });
     if (!targetMod) {
-      return NextResponse.json({ error: "Target group not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Target group not found" },
+        { status: 404 },
+      );
     }
 
     const sourceModuleId = item.moduleId;
@@ -127,9 +130,6 @@ export async function POST(req: Request, ctx: RouteCtx) {
       );
     }
     console.error("P1P2 module item move error:", error);
-    return NextResponse.json(
-      { error: "Could not move item" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Could not move item" }, { status: 500 });
   }
 }

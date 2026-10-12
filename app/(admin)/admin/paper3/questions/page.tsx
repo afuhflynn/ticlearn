@@ -166,13 +166,11 @@ export default function Paper3QuestionsPage() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Sources</SelectItem>
-                  {data?.sources?.map(
-                    (s: { id: string; title: string }) => (
-                      <SelectItem key={s.id} value={s.id}>
-                        {s.title}
-                      </SelectItem>
-                    ),
-                  )}
+                  {data?.sources?.map((s: { id: string; title: string }) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.title}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -184,9 +182,7 @@ export default function Paper3QuestionsPage() {
                 <Input
                   placeholder="Search title or question number..."
                   value={filter.search}
-                  onChange={(e) =>
-                    handleFilterChange("search", e.target.value)
-                  }
+                  onChange={(e) => handleFilterChange("search", e.target.value)}
                   className="pl-8"
                 />
               </div>

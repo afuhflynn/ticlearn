@@ -62,9 +62,6 @@ export async function PATCH(req: Request, ctx: RouteCtx) {
       );
     }
     console.error("P1P2 module items reorder error:", error);
-    return NextResponse.json(
-      { error: "Could not reorder" },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: "Could not reorder" }, { status: 500 });
   }
 }

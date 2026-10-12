@@ -107,7 +107,9 @@ export default function AdminUsersPage() {
       toast.success("User role updated successfully");
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : "Failed to update role");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to update role",
+      );
     },
   });
 
@@ -132,7 +134,9 @@ export default function AdminUsersPage() {
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["admin", "invites"] });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Failed to send invitation");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to send invitation",
+      );
     } finally {
       setIsInviting(false);
     }
@@ -167,7 +171,8 @@ export default function AdminUsersPage() {
               <DialogHeader>
                 <DialogTitle>Invite New Administrator</DialogTitle>
                 <DialogDescription>
-                  Send an invitation email to join the TiCLearn admin team. They will receive a link to accept the invite.
+                  Send an invitation email to join the TiCLearn admin team. They
+                  will receive a link to accept the invite.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
@@ -203,47 +208,53 @@ export default function AdminUsersPage() {
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader>
-              <div className="flex items-center justify-between flex-wrap gap-3">
-                <CardTitle>Platform Users</CardTitle>
-                <div className="flex items-center gap-2">
-                  <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
-                    <SelectTrigger className="w-32">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USER">Users</SelectItem>
-                      <SelectItem value="ADMIN">Admins</SelectItem>
-                      <SelectItem value="all">All</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select
-                    value={onboardingFilter}
-                    onValueChange={(v) => {
-                      setOnboardingFilter(v);
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-40">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All onboarding</SelectItem>
-                      <SelectItem value="completed">Completed</SelectItem>
-                      <SelectItem value="not_completed">Incomplete</SelectItem>
-                      <SelectItem value="skipped">Skipped</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <div className="relative w-64">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search users..."
-                      className="pl-8"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                    />
-                  </div>
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <CardTitle>Platform Users</CardTitle>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={roleFilter}
+                  onValueChange={(v) => {
+                    setRoleFilter(v);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-32">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USER">Users</SelectItem>
+                    <SelectItem value="ADMIN">Admins</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select
+                  value={onboardingFilter}
+                  onValueChange={(v) => {
+                    setOnboardingFilter(v);
+                    setPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All onboarding</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="not_completed">Incomplete</SelectItem>
+                    <SelectItem value="skipped">Skipped</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="relative w-64">
+                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search users..."
+                    className="pl-8"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
                 </div>
               </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="mb-6 flex gap-6">
@@ -267,106 +278,117 @@ export default function AdminUsersPage() {
                       <TableHead>Phone</TableHead>
                       <TableHead>Joined</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users?.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-medium">{user.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {user.email}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant={user.role === "ADMIN" ? "destructive" : "secondary"}
-                          className="gap-1"
-                        >
-                          {user.role === "ADMIN" && <Shield className="h-3 w-3" />}
-                          {user.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {!user.activeProfileId ? (
-                          <Badge variant="outline">No profile</Badge>
-                        ) : user.onboardingSkipped ? (
-                          <Badge variant="secondary">Skipped</Badge>
-                        ) : user.onboardingCompleted ? (
-                          <Badge>Completed</Badge>
-                        ) : (
-                          <Badge variant="outline">Incomplete</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm font-mono">
-                        {user.phoneNumber
-                          ? `${user.phoneCountryCode ?? "+237"} ${user.phoneNumber}`
-                          : "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground text-sm">
-                        {format(new Date(user.createdAt), "MMM d, yyyy 'at' h:mm a")}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              className="gap-2 cursor-pointer"
-                              onClick={() => handleToggleRole(user.id, user.role)}
-                            >
-                              {user.role === "ADMIN" ? (
-                                <>
-                                  <UserX className="h-4 w-4" />
-                                  Demote to User
-                                </>
-                              ) : (
-                                <>
-                                  <UserCheck className="h-4 w-4" />
-                                  Promote to Admin
-                                </>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="gap-2 cursor-pointer text-destructive">
-                              <X className="h-4 w-4" />
-                              Delete Account
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-</Table>
+                  </TableHeader>
+                  <TableBody>
+                    {users?.map((user) => (
+                      <TableRow key={user.id}>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-medium">{user.name}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {user.email}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              user.role === "ADMIN"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                            className="gap-1"
+                          >
+                            {user.role === "ADMIN" && (
+                              <Shield className="h-3 w-3" />
+                            )}
+                            {user.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {!user.activeProfileId ? (
+                            <Badge variant="outline">No profile</Badge>
+                          ) : user.onboardingSkipped ? (
+                            <Badge variant="secondary">Skipped</Badge>
+                          ) : user.onboardingCompleted ? (
+                            <Badge>Completed</Badge>
+                          ) : (
+                            <Badge variant="outline">Incomplete</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm font-mono">
+                          {user.phoneNumber
+                            ? `${user.phoneCountryCode ?? "+237"} ${user.phoneNumber}`
+                            : "—"}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {format(
+                            new Date(user.createdAt),
+                            "MMM d, yyyy 'at' h:mm a",
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="gap-2 cursor-pointer"
+                                onClick={() =>
+                                  handleToggleRole(user.id, user.role)
+                                }
+                              >
+                                {user.role === "ADMIN" ? (
+                                  <>
+                                    <UserX className="h-4 w-4" />
+                                    Demote to User
+                                  </>
+                                ) : (
+                                  <>
+                                    <UserCheck className="h-4 w-4" />
+                                    Promote to Admin
+                                  </>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="gap-2 cursor-pointer text-destructive">
+                                <X className="h-4 w-4" />
+                                Delete Account
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
 
-              <div className="flex justify-center gap-2 mt-4">
-                <Button
-                  variant="outline"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Previous
-                </Button>
-                <span className="py-2">
-                  Page {page} of {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Next
-                </Button>
-              </div>
-            </>
-          )}
+                <div className="flex justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={() => setPage((p) => p - 1)}
+                  >
+                    Previous
+                  </Button>
+                  <span className="py-2">
+                    Page {page} of {totalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    disabled={page === totalPages}
+                    onClick={() => setPage((p) => p + 1)}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </>
+            )}
           </CardContent>
         </Card>
 
@@ -389,26 +411,38 @@ export default function AdminUsersPage() {
                     No pending invitations
                   </div>
                 ) : (
-                  invitesData?.invites?.map((invite: { id: string; email: string; status: string; expiresAt: string }) => (
-                    <div
-                      key={invite.id}
-                      className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
-                    >
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium leading-none">
-                          {invite.email}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {invite.status} • Exp: {format(new Date(invite.expiresAt), "MMM d")}
-                        </p>
-                      </div>
-                      <Badge 
-                        variant={invite.status === "PENDING" ? "outline" : "secondary"}
+                  invitesData?.invites?.map(
+                    (invite: {
+                      id: string;
+                      email: string;
+                      status: string;
+                      expiresAt: string;
+                    }) => (
+                      <div
+                        key={invite.id}
+                        className="flex items-center justify-between border-b pb-4 last:border-0 last:pb-0"
                       >
-                        {invite.status}
-                      </Badge>
-                    </div>
-                  ))
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium leading-none">
+                            {invite.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {invite.status} • Exp:{" "}
+                            {format(new Date(invite.expiresAt), "MMM d")}
+                          </p>
+                        </div>
+                        <Badge
+                          variant={
+                            invite.status === "PENDING"
+                              ? "outline"
+                              : "secondary"
+                          }
+                        >
+                          {invite.status}
+                        </Badge>
+                      </div>
+                    ),
+                  )
                 )}
               </div>
             )}

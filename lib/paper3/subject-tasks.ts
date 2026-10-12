@@ -15,16 +15,17 @@ export const SUBJECT_TASK_TYPES: Record<Paper3Subject, string[]> = {
     "ALGORITHM_PSEUDOCODE",
     "INPUT_FIELD",
   ],
-  ICT: [
-    "EXCEL_FORMULA",
-    "EXCEL_GRID",
-    "WEB_PROGRAMMING",
-    "INPUT_FIELD",
-  ],
+  ICT: ["EXCEL_FORMULA", "EXCEL_GRID", "WEB_PROGRAMMING", "INPUT_FIELD"],
 };
 
 export const SUBJECT_CATEGORIES: Record<Paper3Subject, string[]> = {
-  COMPUTER_SCIENCE: ["MIXED", "DATABASE", "SPREADSHEET", "PROGRAMMING", "WEB_PROGRAMMING"],
+  COMPUTER_SCIENCE: [
+    "MIXED",
+    "DATABASE",
+    "SPREADSHEET",
+    "PROGRAMMING",
+    "WEB_PROGRAMMING",
+  ],
   ICT: ["MIXED", "SPREADSHEET", "WEB_PROGRAMMING"],
 };
 
@@ -33,7 +34,9 @@ export const PROGRAM_CODE_TO_SUBJECT: Record<string, Paper3Subject> = {
   ICT: "ICT",
 };
 
-export async function getUserPaper3Subjects(userId: string): Promise<Paper3Subject[]> {
+export async function getUserPaper3Subjects(
+  userId: string,
+): Promise<Paper3Subject[]> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: {
@@ -71,7 +74,9 @@ export async function getUserPaper3Subjects(userId: string): Promise<Paper3Subje
   return subjects;
 }
 
-export function getSubjectAllowedTaskTypes(subjects: Paper3Subject[]): string[] | null {
+export function getSubjectAllowedTaskTypes(
+  subjects: Paper3Subject[],
+): string[] | null {
   if (subjects.length === 0) return null;
   const allowed = new Set<string>();
   for (const s of subjects) {

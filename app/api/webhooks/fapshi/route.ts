@@ -9,6 +9,8 @@ import {
 } from "@/lib/email/send";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
+import { webhookSecret } from "@/lib/env";
+import crypto from "crypto";
 
 const PLAN_LABELS: Record<string, string> = {
   STARTER: "Starter Plan",
@@ -24,16 +26,50 @@ const PLAN_PRICES: Record<string, number> = {
 
 const COMMISSION_RATE = 0.2;
 
+function constantTimeCompare(a: string, b: string): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+function logSecurityEvent(event: string, data: Record<string, unknown>): void {
+  console.log(
+    JSON.stringify({
+      event,
+      ...data,
+      timestamp: new Date().toISOString(),
+    }),
+  );
+}
+
 export async function POST(req: Request) {
   try {
     const headersList = await headers();
     const authHeader = headersList.get("Authorization");
 
-    if (
-      !authHeader ||
-      authHeader !== `Bearer ${process.env.FAPSHI_WEBHOOK_SECRET}`
-    ) {
-      console.error("Unauthorized webhook attempt");
+    const secret = webhookSecret;
+    if (!secret) {
+      logSecurityEvent("webhook_rejected", {
+        route: "/api/webhooks/fapshi",
+        reason: "webhook_secret_unset",
+      });
+      return NextResponse.json(
+        { error: "Webhook not configured" },
+        { status: 503 },
+      );
+    }
+
+    const expectedAuth = `Bearer ${secret}`;
+    if (!authHeader || !constantTimeCompare(authHeader, expectedAuth)) {
+      logSecurityEvent("webhook_rejected", {
+        route: "/api/webhooks/fapshi",
+        reason: "invalid_secret",
+      });
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -47,9 +83,42 @@ export async function POST(req: Request) {
       );
     }
 
-    // --- Credit top-up (pay-as-you-go): externalId is prefixed ---
+    const existingSubscription = await prisma.subscription.findFirst({
+      where: { fapshiTransId: transId },
+    });
+
+    const existingCreditOrder = await prisma.creditPurchaseOrder.findFirst({
+      where: { fapshiTransId: transId },
+    });
+
+    const existingAffiliateEarning = await prisma.affiliateEarning.findFirst({
+      where: { fapshiTransId: transId },
+    });
+
+    const isReplay =
+      existingSubscription || existingCreditOrder || existingAffiliateEarning;
+
+    if (isReplay) {
+      if (
+        existingSubscription?.status === "ACTIVE" &&
+        status === "SUCCESSFUL"
+      ) {
+        return NextResponse.json({ success: true }, { status: 200 });
+      }
+      if (
+        existingSubscription?.status === "FAILED" &&
+        status === "SUCCESSFUL"
+      ) {
+        // Allow FAILED then SUCCESSFUL sequence
+      } else {
+        return NextResponse.json({ success: true }, { status: 200 });
+      }
+    }
+
     if (externalId.startsWith(CREDIT_PURCHASE_EXTERNAL_ID_PREFIX)) {
-      const orderId = externalId.slice(CREDIT_PURCHASE_EXTERNAL_ID_PREFIX.length);
+      const orderId = externalId.slice(
+        CREDIT_PURCHASE_EXTERNAL_ID_PREFIX.length,
+      );
 
       const order = await prisma.creditPurchaseOrder.findUnique({
         where: { id: orderId },
@@ -74,13 +143,14 @@ export async function POST(req: Request) {
         where: { id: order.userId },
       });
       if (user?.email && status === "SUCCESSFUL") {
-        console.log(`Credit purchase webhook ${result.credited ? "credited" : "processed"} for ${user.email}`);
+        console.log(
+          `Credit purchase webhook ${result.credited ? "credited" : "processed"} for ${user.email}`,
+        );
       }
 
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
-    // --- Subscription payment (legacy externalId = Subscription.id) ---
     const sub = await prisma.subscription.findUnique({
       where: { id: externalId },
       include: { user: true },
@@ -125,7 +195,10 @@ export async function POST(req: Request) {
         }),
       ]);
 
-      trackEvent(sub.userId, EVENTS.SUBSCRIPTION_ACTIVATED, { plan: sub.plan, amount: planPrice }).catch(() => {});
+      trackEvent(sub.userId, EVENTS.SUBSCRIPTION_ACTIVATED, {
+        plan: sub.plan,
+        amount: planPrice,
+      }).catch(() => {});
 
       if (sub.user.referredBy) {
         const affiliate = await prisma.affiliate.findUnique({
@@ -143,6 +216,7 @@ export async function POST(req: Request) {
               amount: planPrice,
               commission: commission,
               status: "PENDING",
+              fapshiTransId: transId,
             },
           });
 

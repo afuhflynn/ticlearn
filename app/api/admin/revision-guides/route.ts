@@ -27,8 +27,6 @@ const generateSchema = z.object({
   subject: z.enum(["ICT", "COMPUTER_SCIENCE"]).optional(),
 });
 
-
-
 async function requireAdmin() {
   const session = await auth.api.getSession({ headers: await headers() });
   if (!session?.user) return null;
