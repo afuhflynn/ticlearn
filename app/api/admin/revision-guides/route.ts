@@ -1,15 +1,16 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
 import { generateTextCritical } from "@/lib/ai/orchestrator";
+import { auth } from "@/lib/auth";
 import { buildPaper3SourceContextBlock } from "@/lib/paper3/exam-context";
 import {
-  examSystemPreamble,
-  revisionGuideUserPrompt,
+  getExamSystemPreamble,
   type RevisionGuideEmphasis,
+  revisionGuideUserPrompt,
 } from "@/lib/paper3/prompts";
 import { prisma } from "@/lib/prisma";
+import { promptCallFields } from "@/lib/prompts/loader";
 
 const generateSchema = z.object({
   emphasis: z.enum([
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
       subject: data.subject,
     });
 
-    const prompt = revisionGuideUserPrompt({
+    const { text: prompt, settings } = await revisionGuideUserPrompt({
       emphasis: data.emphasis as RevisionGuideEmphasis,
       pastPaperContext,
       customNotes: data.notes,
@@ -88,9 +89,9 @@ export async function POST(req: Request) {
 
     const result = await generateTextCritical({
       task: "summarize",
-      system: examSystemPreamble,
+      system: await getExamSystemPreamble(),
       prompt,
-      modelOptions: { temperature: 0.35 },
+      ...promptCallFields(settings),
     });
 
     const markdown = result.text.trim();

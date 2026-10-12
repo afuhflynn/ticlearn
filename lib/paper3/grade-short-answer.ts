@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { generate } from "@/lib/ai/orchestrator";
+import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
 
 const resultSchema = z.object({
   marks_awarded: z.number().int(),
@@ -15,12 +16,26 @@ export async function gradeShortAnswer(params: {
   const { prompt, modelAnswer, studentAnswer, maxMarks } = params;
 
   try {
+    const { text: system } = await getPrompt(
+      "paper3",
+      "grade_short_answer_system",
+      { maxMarks },
+    );
+    const { text: userPrompt, settings } = await getPrompt(
+      "paper3",
+      "grade_short_answer",
+      {
+        question: prompt,
+        modelAnswer,
+        studentAnswer: studentAnswer || "(empty)",
+      },
+    );
     const { object } = await generate({
       task: "grading",
       schema: resultSchema,
-      system: `You mark GCE Computer Science / ICT Paper 3 short answers. Be fair: minor spelling or spacing differences should not reduce marks if the idea is correct. Award partial credit when appropriate. Maximum marks for this item is ${maxMarks}. marks_awarded must be an integer from 0 to ${maxMarks}.`,
-      prompt: `Question:\n${prompt}\n\nOfficial model answer (guideline):\n${modelAnswer}\n\nStudent answer:\n${studentAnswer || "(empty)"}`,
-      modelOptions: { temperature: 0.2 },
+      system,
+      prompt: userPrompt,
+      ...promptCallFields(settings),
     });
 
     let marks = object.marks_awarded;

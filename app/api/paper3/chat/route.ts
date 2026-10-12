@@ -1,16 +1,17 @@
-import { headers } from "next/headers";
 import crypto from "crypto";
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { generateCritical } from "@/lib/ai/orchestrator";
+import { auth } from "@/lib/auth";
+import { getUserCreditBalance, spendCredits } from "@/lib/credits";
 import { getActiveProfileId } from "@/lib/exam-profile";
 import {
   creditEnforcementEffective,
   getPlatformSettings,
 } from "@/lib/platform-settings";
-import { getUserCreditBalance, spendCredits } from "@/lib/credits";
-import { generateCritical } from "@/lib/ai/orchestrator";
+import { prisma } from "@/lib/prisma";
+import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -116,57 +117,45 @@ export async function POST(req: Request) {
       response: z.string(),
     });
 
-    let systemPrompt = "";
+    let systemSection = "";
 
     if (currentQuestion) {
       const taskTypeHint = getTaskTypeHint(currentQuestion.question.taskType);
 
-      systemPrompt = `You are TiC, an expert GCE Paper 3 tutor helping a student review their exam.
-
-## Current Question
-**Q${currentQuestion.question.questionNumber}: ${currentQuestion.question.title}**
-Task Type: ${currentQuestion.question.taskType}
-Marks: ${currentQuestion.marks}
-
-**Question Content:**
-${currentQuestion.question.contentMd || currentQuestion.question.content}
-
-${
-  currentResult
-    ? `**Student's Result:** ${currentResult.isCorrect ? "Correct" : "Incorrect"} (${currentResult.marksEarned}/${currentResult.totalMarks} marks)
-**Feedback:** ${currentResult.feedback || "No feedback available"}`
-    : ""
-}
-
-${taskTypeHint}
-
-${currentQuestion.question.concepts?.length ? `**Concepts:** ${currentQuestion.question.concepts.join(", ")}` : ""}
-
-Provide specific hints related to this question. Guide the student toward understanding the concept without giving away the exact answer.`;
+      const { text } = await getPrompt("paper3", "exam_review_question", {
+        questionNumber: currentQuestion.question.questionNumber,
+        title: currentQuestion.question.title,
+        taskType: currentQuestion.question.taskType,
+        marks: currentQuestion.marks,
+        content:
+          currentQuestion.question.contentMd ||
+          currentQuestion.question.content,
+        resultBlock: currentResult
+          ? `**Student's Result:** ${currentResult.isCorrect ? "Correct" : "Incorrect"} (${currentResult.marksEarned}/${currentResult.totalMarks} marks)\n**Feedback:** ${currentResult.feedback || "No feedback available"}`
+          : "",
+        taskHint: taskTypeHint,
+        conceptsBlock: currentQuestion.question.concepts?.length
+          ? `**Concepts:** ${currentQuestion.question.concepts.join(", ")}`
+          : "",
+      });
+      systemSection = text;
     } else {
-      systemPrompt = `You are TiC, an expert GCE Paper 3 tutor helping a student review their exam results.
-
-## Exam Summary: ${attempt.mock.title}
-- **Subject:** ${attempt.mock.subject}
-- **Total Score:** ${Math.round(attempt.score)}%
-- **Questions Correct:** ${examSummary.correctCount}/${examSummary.totalQuestions}
-- **Questions to Review:** ${examSummary.wrongCount}
-
-${
-  resultsSummary.length > 0
-    ? `## Question-by-Question Results
-${resultsSummary.map((r) => `- Q${r.questionNumber}: ${r.isCorrect ? "✅" : "❌"} (${r.marksEarned}/${r.totalMarks}) - ${r.title.slice(0, 50)}...`).join("\n")}`
-    : ""
-}
-
-${
-  currentResult?.feedbackMd
-    ? `\n## AI Feedback
-${currentResult.feedbackMd}`
-    : ""
-}
-
-Provide encouraging and educational guidance. Help the student understand what they did well and where they can improve.`;
+      const { text } = await getPrompt("paper3", "exam_review_summary", {
+        mockTitle: attempt.mock.title,
+        subject: attempt.mock.subject,
+        score: Math.round(attempt.score),
+        correctCount: examSummary.correctCount,
+        totalQuestions: examSummary.totalQuestions,
+        wrongCount: examSummary.wrongCount,
+        resultsBlock:
+          resultsSummary.length > 0
+            ? `## Question-by-Question Results\n${resultsSummary.map((r) => `- Q${r.questionNumber}: ${r.isCorrect ? "✅" : "❌"} (${r.marksEarned}/${r.totalMarks}) - ${r.title.slice(0, 50)}...`).join("\n")}`
+            : "",
+        feedbackBlock: currentResult?.feedbackMd
+          ? `\n## AI Feedback\n${currentResult.feedbackMd}`
+          : "",
+      });
+      systemSection = text;
     }
 
     const conversationHistory = messages
@@ -177,19 +166,21 @@ Provide encouraging and educational guidance. Help the student understand what t
       )
       .join("\n");
 
-    const prompt = `${systemPrompt}
-
-Recent conversation:
-${conversationHistory}
-
-User's latest message: ${messages[messages.length - 1]?.content || ""}
-
-Respond as TiC with helpful guidance. Keep responses focused and educational.`;
+    const { text: prompt, settings: promptSettings } = await getPrompt(
+      "paper3",
+      "exam_review_chat",
+      {
+        systemSection,
+        conversationHistory,
+        latestMessage: messages[messages.length - 1]?.content || "",
+      },
+    );
 
     const result = await generateCritical({
       task: "reasoning",
       schema: responseSchema,
       prompt,
+      ...promptCallFields(promptSettings),
     });
 
     if (enforcement.aiTutor && tutorCost > 0) {

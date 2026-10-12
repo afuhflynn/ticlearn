@@ -28,10 +28,19 @@ Twenty findings must close before real students use this: a payment webhook that
 
 (basis: research/security.md §launch blockers · spec 0001, cross check findings incorporated before acceptance)
 
-### 3. Prompt registry · needs a decision · GA
+### 3. Prompt registry · GA
 Every AI prompt is an inline template literal in about ten files. Move them all to editable markdown with front matter, read at runtime, so a prompt change needs no rebuild and lives in git where it can be reviewed.
 **Done when:** no prompt string is inline in code, each prompt file carries its model and settings in front matter, an edit to a file changes behaviour on the next request, and the tool descriptions the model sees load from the same place.
-- [ ] Design it (spec): `/solution-architect prompt registry`
+- [x] Design it (spec): [0002](../specs/0002-prompt-registry/index.md) · code in `prompts/`, `lib/prompts/loader.ts`
+- [x] Build it: /feature-build prompt registry
+  - [x] Loader and schema: typed `getPrompt`, header validation, slot checks, memory hold, fallback (covers: model and settings in front matter, edits apply on next request)
+  - [x] Migrate every prompt and tool text: all inline prompts including Paper 3 and jobs plus tool descriptions, one file per builder (covers: no inline strings, tool text from the same home)
+  - [x] Enforcement: CI check that validates all prompt files and blocks new inline prompt text (proven 2026-10-12: 38 files ok, tripwire trips and clears; needs flag enforcement plus file settings travelling with text plus name/version logs wired 2026-10-12 across quiz, exam, Paper 3, jobs, chat)
+  - [x] Full AI pass through the running app: quiz READY with 5 questions, exam mock 200 with 5 questions, Paper 3 mock DRAFT with 5 questions, chat streamed MANGO to completion, name/version/model lines in server logs (driven 2026-10-12 with fixture user plus seed plus `scripts/seed-verify-fixture.ts`; exam needed a prompt v2 one line difficulty fix, Paper 3 needed retries; generate_mock cap 8192 tried and reverted, v1 stands)
+- [x] Verify it: /verify-release prompt registry (PASS 2026-10-12: all four Done when met with live evidence, quiz READY plus exam 200 plus Paper 3 DRAFT plus chat DONE; rerun note: daily free tier quota of 20 was spent by the drives, re drives can wait for reset)
+- [x] Test it: /test-engineer prompt registry (43 passed 2026-10-12: loader conformance extended plus new orchestrator suite)
+- [x] Review it (fresh model): /peer-review prompt registry (Changes requested 2026-10-12: 1 major plus 10 minor plus 4 nits; top: inline scan bypassable)
+- [x] Document it: /tech-writer prompt registry (changelog entry under Developer Experience)
 
 (basis: research/chat-experience.md §14 and research/web-search-tooling.md §6 both landed on the same front matter shape, so it is designed once and reused)
 

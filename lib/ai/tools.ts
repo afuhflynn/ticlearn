@@ -1,23 +1,24 @@
 import { tavily } from "@tavily/core";
 import { tool } from "ai";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import {
-  getPlatformSettings,
-  quizCreditsRequired,
-} from "@/lib/platform-settings";
+  CREATE_QUIZ_TOOL_POLICIES,
+  createToolPolicyContext,
+  DEFAULT_CHAT_TOOL_POLICIES,
+  WEB_SEARCH_TOOL_POLICIES,
+  wrapTool,
+} from "@/lib/ai/tool-policy";
 import {
   getEffectiveCreditCost,
   getUserCreditBalance,
   spendCredits,
 } from "@/lib/credits";
 import {
-  wrapTool,
-  createToolPolicyContext,
-  DEFAULT_CHAT_TOOL_POLICIES,
-  WEB_SEARCH_TOOL_POLICIES,
-  CREATE_QUIZ_TOOL_POLICIES,
-} from "@/lib/ai/tool-policy";
+  getPlatformSettings,
+  quizCreditsRequired,
+} from "@/lib/platform-settings";
+import { prisma } from "@/lib/prisma";
+import { getToolDescription } from "@/lib/prompts/loader";
 
 const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
 
@@ -103,8 +104,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   const policyContext = createToolPolicyContext(userId);
 
   const webSearchTool = tool({
-    description:
-      "Search the web for current information, recent changes, or live facts that are not safely answerable from stored user data.",
+    description: getToolDescription("web_search"),
     inputSchema: z.object({
       query: z.string().min(3).describe("The web search query."),
       searchDepth: z
@@ -125,8 +125,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getUserNotesTool = tool({
-    description:
-      "Get the authenticated user's uploaded notes, including processing state and study insights previews.",
+    description: getToolDescription("get_user_notes"),
     inputSchema: z.object({
       limit: z.number().int().min(1).max(20).default(10),
       status: z
@@ -150,8 +149,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const searchNotesTool = tool({
-    description:
-      "Search the authenticated user's notes by title, subject, extracted text, or summary.",
+    description: getToolDescription("search_notes"),
     inputSchema: z.object({
       query: z
         .string()
@@ -181,8 +179,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getNoteContextTool = tool({
-    description:
-      "Get the full context of one user note, including summary, topics, key points, and related quizzes.",
+    description: getToolDescription("get_note_context"),
     inputSchema: z.object({
       noteId: z.string().min(1).describe("The note ID."),
     }),
@@ -235,8 +232,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getUserQuizzesTool = tool({
-    description:
-      "Get the authenticated user's quizzes, including visibility and generation state.",
+    description: getToolDescription("get_user_quizzes"),
     inputSchema: z.object({
       scope: z.enum(["all", "my", "public"]).default("my"),
       limit: z.number().int().min(1).max(20).default(10),
@@ -280,8 +276,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getQuizContextTool = tool({
-    description:
-      "Get the full context of a quiz the user owns or can access publicly, including questions and the user's recent attempts.",
+    description: getToolDescription("get_quiz_context"),
     inputSchema: z.object({
       quizId: z.string().min(1).describe("The quiz ID."),
     }),
@@ -325,8 +320,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getQuizAttemptHistoryTool = tool({
-    description:
-      "Get the authenticated user's recent quiz attempts, optionally filtered to one quiz.",
+    description: getToolDescription("get_quiz_attempt_history"),
     inputSchema: z.object({
       quizId: z.string().optional().describe("Optional quiz ID filter."),
       limit: z.number().int().min(1).max(20).default(10),
@@ -351,8 +345,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getStudyProgressTool = tool({
-    description:
-      "Get the authenticated user's study stats, streak, points, counts, and recent averages.",
+    description: getToolDescription("get_study_progress"),
     inputSchema: z.object({}),
     execute: async () => {
       const [userStats, noteCount, quizCount, attemptCount, avgScore] =
@@ -387,8 +380,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const getSubscriptionContextTool = tool({
-    description:
-      "Get the authenticated user's current subscription or plan status so the assistant can explain limits and feature access correctly.",
+    description: getToolDescription("get_subscription_context"),
     inputSchema: z.object({}),
     execute: async () => {
       const subscription = await prisma.subscription.findFirst({
@@ -406,8 +398,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
   });
 
   const createQuizTool = tool({
-    description:
-      "Create a quiz for the authenticated user. Can be linked to one of their notes (noteId) or standalone with no note link. Generates the full quiz with all questions in one shot. Use this when the user asks to generate, create, or make a quiz - either from a specific note or on a topic from the conversation.",
+    description: getToolDescription("create_quiz"),
     inputSchema: z.object({
       title: z.string().min(3).max(120).describe("Quiz title."),
       noteId: z

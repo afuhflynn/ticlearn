@@ -1,14 +1,3 @@
-import {
-  MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
-  MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
-} from "@/constants";
-import {
-  generate,
-  generateCritical,
-  generateTextCritical,
-} from "@/lib/ai/orchestrator";
-import { getSubjectLabel } from "@/lib/subject-labels";
-import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import mammoth from "mammoth";
 import {
   GlobalWorkerOptions,
@@ -18,6 +7,18 @@ import {
 import Tesseract from "tesseract.js";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
+import {
+  MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
+  MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
+} from "@/constants";
+import {
+  generate,
+  generateCritical,
+  generateTextCritical,
+} from "@/lib/ai/orchestrator";
+import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
+import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
+import { getSubjectLabel } from "@/lib/subject-labels";
 
 const utapi = new UTApi();
 
@@ -433,22 +434,15 @@ export async function summarizeText(
 
   const excerpt = content.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT);
 
-  const prompt = `Analyze the following study notes and return a concise study brief.
-
-Requirements:
-- summary: 2-3 sentences, max 500 characters
-- topics: 3-5 short topic labels
-- keyPoints: 3-6 concrete learning points written as complete sentences
-- stay faithful to the source material
-- avoid generic filler like "general overview"
-
-Notes:
-${excerpt}`;
+  const { text: prompt, settings } = await getPrompt("quiz", "study_brief", {
+    excerpt,
+  });
 
   const { object } = await generate({
     task: "summarize",
     schema,
     prompt,
+    ...promptCallFields(settings),
   });
 
   return {
@@ -477,28 +471,15 @@ export async function generateQuizFromNote(
         ? "Generate only Multiple Choice Questions (MCQ)."
         : "Generate only Open-ended questions.";
 
-  const prompt = `You are an educational quiz generator. Generate ${options.questionCount} quiz questions based on the following study notes.
-
-  ${questionTypeText}
-
-  Return JSON only.
-
-  For every question you MUST include all of these fields:
-  - type
-  - question
-  - options
-  - correctAnswer
-  - explanation
-
-  Rules:
-  - MCQ: Provide exactly 4 options in the options array
-  - OPEN: Provide an empty options array []
-  - correctAnswer must always be a string
-  - explanation must always be a non-empty string
-  - Stay faithful to the note content
-
-  Study Notes:
-  ${noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT)} ${noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT ? "... (content truncated)" : ""}`;
+  const { text: prompt, settings } = await getPrompt("quiz", "quiz_from_note", {
+    questionCount: options.questionCount,
+    questionTypeText,
+    noteExcerpt: noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT),
+    truncatedSuffix:
+      noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT
+        ? " ... (content truncated)"
+        : "",
+  });
 
   const schema = z.object({
     questions: z.array(generatedQuestionSchema),
@@ -509,6 +490,7 @@ export async function generateQuizFromNote(
       task: "quiz_gen",
       schema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -562,41 +544,19 @@ export async function generateQuizFromWeakAreas(
         ? "medium difficulty questions that bridge basic and advanced concepts"
         : "challenging advanced questions";
 
-  const prompt = `You are an educational quiz generator specialized in helping students improve on their weak areas.
-
-USER PROFILE:
-- Current readiness score: ${options.readinessScore}%
-- Weak areas to focus on: ${weakConcepts.join(", ") || "General topics"}
-- Recommended difficulty: ${difficultyLevel}
-
-CONTEXT FROM NOTES:
-${noteContext.slice(0, 15000)}
-
-TASK:
-Generate ${options.questionCount} quiz questions that specifically target the user's weak areas while building on their existing knowledge.
-
-IMPORTANT GUIDELINES:
-1. Prioritize questions on: ${weakConcepts.join(", ") || "topics where student shows weakness"}
-2. Gradually increase difficulty to help student improve
-3. Include some review questions on topics they know to build confidence
-4. Make explanations educational - teach the concept, don't just give the answer
-
-Return JSON only.
-
-For every question you MUST include all of these fields:
-- type (MCQ or OPEN)
-- question
-- options (array of 4 strings for MCQ, empty array for OPEN)
-- correctAnswer
-- explanation (must be educational, explain the concept)
-
-Rules:
-- MCQ: Provide exactly 4 options in the options array
-- OPEN: Provide an empty options array []
-- correctAnswer must always be a string
-- explanation must always be a non-empty string (minimum 50 words, explain the concept)
-- Stay faithful to the note content
-- Questions should be appropriate for Cameroon GCE A-Level curriculum`;
+  const { text: prompt, settings } = await getPrompt(
+    "quiz",
+    "quiz_from_weak_areas",
+    {
+      questionCount: options.questionCount,
+      readinessScore: options.readinessScore,
+      weakAreas: weakConcepts.join(", ") || "General topics",
+      weakAreasGuideline:
+        weakConcepts.join(", ") || "topics where student shows weakness",
+      difficultyLevel,
+      noteContext: noteContext.slice(0, 15000),
+    },
+  );
 
   const schema = z.object({
     questions: z.array(generatedQuestionSchema),
@@ -607,6 +567,7 @@ Rules:
       task: "quiz_gen",
       schema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -669,29 +630,16 @@ export async function generateQuizFromTopic(
         ? "Generate only Multiple Choice Questions (MCQ)."
         : "Generate only Open-ended questions.";
 
-  const prompt = `You are an educational quiz generator for GCE A-Level students. Generate ${options.questionCount} quiz questions based on the following topic.
-
-  Topic: ${topic}
-  Description: ${topicPrompt}
-
-  ${questionTypeText}
-
-  Return JSON only.
-
-  For every question you MUST include all of these fields:
-  - type
-  - question
-  - options
-  - correctAnswer
-  - explanation
-
-  Rules:
-  - MCQ: Provide exactly 4 options in the options array
-  - OPEN: Provide an empty options array []
-  - correctAnswer must always be a string
-  - explanation must always be a non-empty string
-  - Questions should be appropriate for GCE A-Level examination standard
-  - Stay faithful to the topic description provided`;
+  const { text: prompt, settings } = await getPrompt(
+    "quiz",
+    "quiz_from_topic",
+    {
+      questionCount: options.questionCount,
+      topic,
+      topicDescription: topicPrompt,
+      questionTypeText,
+    },
+  );
 
   const schema = z.object({
     questions: z.array(generatedQuestionSchema),
@@ -702,6 +650,7 @@ export async function generateQuizFromTopic(
       task: "quiz_gen",
       schema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -718,20 +667,20 @@ export async function gradeOpenAnswer(
   userAnswer: string,
   correctAnswer: string,
 ) {
-  const prompt = `You are an AI grading assistant. Grade the following open-ended answer.
-
-  Question: ${question}
-  Correct Answer: ${correctAnswer}
-  User's Answer: ${userAnswer}
-
-  Provide:
-  1. A score (0-100)
-  2. Feedback on the answer
-  3. Key points the user missed`;
+  const { text: prompt, settings } = await getPrompt(
+    "grade",
+    "grade_open_answer",
+    {
+      question,
+      correctAnswer,
+      userAnswer,
+    },
+  );
 
   const { text } = await generateTextCritical({
     task: "grading",
     prompt,
+    ...promptCallFields(settings),
   });
 
   return text;
@@ -743,21 +692,21 @@ export async function explainMCQAnswer(
   correctAnswer: string,
   options: string[],
 ) {
-  const prompt = `You are an AI tutoring assistant. Explain why the user's answer is incorrect and why the correct answer is right.
-
-Question: ${question}
-Options: ${options.join(", ")}
-User's Answer: ${userAnswer}
-Correct Answer: ${correctAnswer}
-
-Provide a brief explanation (2-3 sentences) explaining:
-1. Why the user's answer is wrong
-2. Why the correct answer is right
-3. A tip to remember this concept`;
+  const { text: prompt, settings } = await getPrompt(
+    "grade",
+    "explain_mcq_answer",
+    {
+      question,
+      options: options.join(", "),
+      userAnswer,
+      correctAnswer,
+    },
+  );
 
   const { text } = await generateTextCritical({
     task: "reasoning",
     prompt,
+    ...promptCallFields(settings),
   });
 
   return text;
@@ -770,18 +719,11 @@ export async function generateExamQuestions(
 ) {
   const subjectName = getSubjectLabel(subject);
 
-  const prompt = `You are an exam generator for GCE A-Level ${subjectName}.
-
-  Topic: ${topic}
-  Number of questions: ${questionCount}
-
-  Generate exam-quality questions that:
-  - Follow the Cameroon GCE A-Level syllabus
-  - Include a mix of difficulty levels
-  - Have clear, accurate answers
-  - Include explanations
-  - Always include an options array
-  - Use [] for open-ended questions`;
+  const { text: prompt, settings } = await getPrompt("exam", "exam_questions", {
+    subjectName,
+    topic,
+    questionCount,
+  });
 
   const schema = z.object({
     questions: z.array(generatedQuestionSchema),
@@ -792,6 +734,7 @@ export async function generateExamQuestions(
       task: "exam_gen",
       schema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     return normalizeGeneratedQuestions(object.questions);
