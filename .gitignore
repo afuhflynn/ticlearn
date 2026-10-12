@@ -44,6 +44,7 @@ next-env.d.ts
 /lib/generated/prisma
 
 TODO.md
+todo.md
 
 # PWA generated files
 /public/sw.js

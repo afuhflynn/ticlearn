@@ -43,7 +43,7 @@
 | Database | PostgreSQL + Prisma 7 ORM |
 | Styling | Tailwind CSS 4 + shadcn/ui + Framer Motion |
 | State | TanStack React Query + Zustand (client state) |
-| AI | AI SDK + OpenAI (GPT-5.5) |
+| AI | AI SDK + Google Gemini (`gemini-2.5-flash`) |
 | File Upload | UploadThing |
 | Payments | Fapshi API (MTN MoMo / Orange Money) |
 | Background Jobs | Inngest |
@@ -58,7 +58,7 @@
 
 - Node.js 18+
 - PostgreSQL database (use Docker for local)
-- OpenAI API key (for AI features)
+- Google Gemini API key (for AI features)
 - UploadThing account (for file uploads)
 - Fapshi account (for payments)
 
@@ -142,10 +142,10 @@ app/                     # Next.js App Router
 ├── (auth)/              # Sign-in, sign-up, verify-email
 ├── (onboarding)/        # 5-step onboarding wizard
 ├── (dashboard)/         # Main app: dashboard, quizzes, exams, practice, chat, community, settings, upload
-├── (admin)/             # 24 admin pages: users, subs, metrics, content, Paper 3, revision guides
+├── (admin)/             # 25 admin pages: users, subs, metrics, content, Paper 3, revision guides
 ├── chat/                # AI chat (standalone route)
 ├── result/              # Public shareable result pages
-└── api/                 # 115+ API route handlers
+└── api/                 # 143 API route handlers
 components/
 ├── ui/                  # shadcn/ui primitives
 ├── layout/              # Navigation, sidebar, headers
@@ -153,14 +153,16 @@ components/
 ├── paper3/              # Paper 3 components
 ├── ai-elements/         # AI chat components
 └── marketing/           # Marketing page components
-hooks/                   # 21 custom hooks (76 exports)
-lib/                     # Utilities, AI, auth, email, inngest, api-client
-├── generated/prisma/    # Generated Prisma client
+hooks/                   # 22 custom hooks, re-exported from hooks/index.ts
+lib/                     # Utilities, AI, auth, email, inngest, paper3, api-client
+├── generated/prisma/    # Generated Prisma client (gitignored, run pnpm db:generate)
+├── ai/                  # Model calls, task registry, chat tools, cache
 ├── inngest/             # Background job functions
+├── paper3/              # Paper 3 evaluation and grading, separate from lib/ai
 └── email/               # Email templates
 prisma/
 ├── schema.prisma        # 59 models, 37 enums
-└── migrations/          # Database migrations
+└── migrations/          # 68 database migrations
 providers/               # React providers (Query, Theme)
 stores/                  # Zustand stores (onboarding)
 constants/               # Shared constants (FAQ, landing mock data)
@@ -236,13 +238,7 @@ Run `pnpm dev:all` to start the Inngest dev server alongside Next.js.
 
 ## Testing
 
-Vitest is configured as the test runner. Run tests with:
-
-```bash
-pnpm test                # Run once
-pnpm test:ui             # Interactive UI mode
-pnpm test:coverage       # With coverage report
-```
+Vitest is installed and the scripts exist, but there is no test suite yet and no config file. `pnpm test` will not run anything useful. Verification today is `pnpm lint`, `pnpm format`, and `pnpm build`.
 
 ## Linting & Formatting
 
@@ -255,12 +251,11 @@ pnpm format   # Auto-format all files
 
 ## Contributing
 
-1. Read [`RULES.md`](./RULES.md) first - contains non-negotiable project conventions
-2. Read [`docs/codebase-index.md`](./docs/codebase-index.md) for architecture overview
-3. Create a feature branch
-4. Make your changes
-5. Run `pnpm lint` before committing
-6. Submit a pull request
+1. Read [`AGENTS.md`](./AGENTS.md) first. It is the entry point for both humans and AI tools, and it links to the area specific context files for `lib/ai/`, `app/api/`, and `prisma/`.
+2. Create a feature branch
+3. Make your changes
+4. Run `pnpm lint` and `pnpm build` before committing
+5. Submit a pull request
 
 ---
 

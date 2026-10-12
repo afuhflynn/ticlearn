@@ -1,3 +1,69 @@
+# TiCLearn
+
+AI study platform for Cameroonian GCE A Level, O Level, and HND students. Note upload, AI quiz generation, blueprint driven Paper 1 and 2 mocks, a full Paper 3 exam system with AI marking, subscription plans paid over Mobile Money, and an admin panel.
+
+## Stack
+
+- **Language / Runtime**: TypeScript 5, React 19.2, Node 18 or newer
+- **Framework**: Next.js 16.2.2, App Router, React Compiler on
+- **Key dependencies**: Prisma 7 with Postgres via `@prisma/adapter-pg`, better-auth, AI SDK with Google Gemini, Tailwind CSS 4 plus shadcn/ui, Inngest, TanStack Query
+- **Package manager**: pnpm
+
+## Build approach
+
+Tracer Bullet. Each slice is built through every layer and works before the next one starts.
+
+## Commands
+
+```bash
+# Install
+pnpm install
+
+# Dev server (Next.js only)
+pnpm dev
+
+# Dev server (Next.js + Inngest + ngrok, recommended)
+pnpm dev:all
+
+# Build (generates the Prisma client first)
+pnpm build
+
+# Lint and format
+pnpm lint
+pnpm format
+
+# Database
+pnpm db:up          # Postgres on 5435, pgAdmin on 5050
+pnpm db:generate
+pnpm db:migrate
+pnpm db:seed
+
+# Background jobs
+pnpm inngest:start
+```
+
+There are no tests. Vitest is installed and three test scripts exist, but there is no config file and no test file anywhere, so `pnpm test` fails. Do not treat it as a verification step.
+
+## Rules
+
+- The request guard is `proxy.ts` at the repo root, not `middleware.ts`. Next 16 renamed it. A `middleware.ts` will be silently ignored.
+- Import Prisma from `@/lib/generated/prisma/client`, never from `@prisma/client`. The client generates into source and is gitignored, so a fresh clone needs `pnpm db:generate` first.
+- Data flows page to hook to API route to Prisma. Server state belongs in TanStack Query with keys from `lib/query-keys.ts`, hooks exported from `hooks/index.ts`.
+- This version of Next.js has breaking changes. Read the guide in `node_modules/next/dist/docs/` before assuming any framework behaviour.
+- Biome formats and lints: double quotes, semicolons, two space indent, imports sorted. Run `pnpm lint` before committing. The `lint` script only checks, it does not write fixes, so run `pnpm format` too.
+- `@/*` maps to the repo root, not to `src/`.
+- Tailwind 4 has no config file. Theme tokens live in the `@theme inline` block of `app/globals.css`.
+- Money is XAF in whole units, never minor units. Credits are a separate balance from money, tracked through `lib/credits.ts`.
+- Do not commit secrets from `.env`. Use `.env.example` for documentation, and keep real keys out of client code.
+- When you add a new abstraction, it must replace an existing one for a clear slice, not sit beside it. Two competing patterns for the same job is how the drift in this repo started.
+- Keep the three implementation summaries at the bottom of this file current as work lands.
+
+## Context files
+
+- [lib/ai/AGENTS.md](lib/ai/AGENTS.md): AI model calls, the task registry, chat tools, and the cache
+- [app/api/AGENTS.md](app/api/AGENTS.md): route handler conventions, auth checks, plan limits, webhooks
+- [prisma/AGENTS.md](prisma/AGENTS.md): schema layout, the two parallel mock families, migrations, seeding
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
@@ -97,7 +163,7 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 ## Constraints & Preferences
 - Onboarding: 60–90 seconds max, one decision per screen, auto-save, 480–520px centered, slide transitions (250–300ms)
 - GCE = multi-select subjects (soft cap 4), HND = single-select specialty
-- Mobile-first: large tap targets, no hover-only interactions
+- Mobile-first: large tap targets, no-hover-only interactions
 - Post-onboarding: AI context includes level, programs, exam date, baselines, weakest program
 - Use `gemini-2.5-flash`, Prisma migrations, pnpm
 
@@ -143,47 +209,47 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 <!-- END:onboarding-rework -->
 
 <!-- BEGIN:ai-orchestration-rework -->
-# AI Orchestration & Performance — Implementation Summary
+# AI Orchestration - Implementation Summary
 
 ## Goal
-Fix AI orchestration latency (model chain fallback, no timeouts, no caching) and route critical paths to OpenAI directly while keeping the multi-agent chain for background tasks.
+Keep AI calls fast and predictable on a single model: one Gemini model, a 10 second timeout everywhere, and an in-memory cache for the tasks whose output does not change.
 
-## Constraints & Preferences
-- Critical user-facing paths (chat, quiz gen, exam gen, grading) → OpenAI direct (gemini-2.5-flash)
-- Background/async paths (Inngest jobs, short answer grading) → multi-agent chain fallback
-- 10s timeout on all AI SDK calls
-- Model health cache: working model (5 min TTL) + dead model (30s negative TTL)
-- Build must pass before commit
+## How it works now
+- One model: `google("gemini-2.5-flash")`, built in `lib/ai/instances.ts` and used by `lib/ai/orchestrator.ts`.
+- Every call sets `timeout: TIMEOUT_MS` (10000) and `maxRetries: 1`.
+- `lib/ai/registry.ts` maps eight task names (`reasoning`, `fast_chat`, `quiz_gen`, `exam_gen`, `paper3_gen`, `paper3_eval`, `summarize`, `grading`) to a per-task cache TTL. `paper3_eval` and `grading` are set to 0, so they never cache. `getTaskConfig` throws on an unknown task name, so every new task must be registered.
+- `lib/ai/cache.ts` is an in-memory `Map` keyed by a sha256 of the task name plus the prompt or messages. It dies with the process and is not shared across instances.
+- `generate` and `streamChat` are the two entry points. `generateTextWithFallback` and `streamChat` callers use them from routes.
 
 ## Progress
 ### Done
-- Added working model cache (5 min TTL) + dead model cache (30s TTL) to orchestrator
-- Added 10s timeout on all AI SDK calls (generateObject, generateText, streamText)
-- Removed redundant health check from streamChat — try streamText directly with fallback
-- Chat route: tries OpenAI first in health check, falls back to chain; uses orchestrator model cache
-- Added `generateCritical()` and `generateTextCritical()` to orchestrator — calls openai("gemini-2.5-flash") directly, no chain fallback, maxRetries: 1
-- lib/ai/index.ts: quiz gen, exam gen, grading → switched to generateCritical / generateTextCritical
-- paper3/chat route: switched from generate → generateCritical
-- revision-guides route: switched from generateTextWithFallback → generateTextCritical
-- Added top-level try/catch to paper3-exam-functions Inngest handler (marks attempt FAILED on error)
-- Added try/catch to gradeShortAnswer for graceful AI failure fallback
-- Removed dead code: createChatStream (index.ts), evaluateWithAI (evaluate.ts), unused imports
+- Set a 10 second timeout on every generateObject, generateText, and streamText call
+- Added the task registry with per-task cache TTLs
+- Added the in-memory sha256 cache in `lib/ai/cache.ts`
+- Added `generateCritical` and `generateTextCritical` so critical paths read clearly at the call site
 
-## Key Decisions
-- Critical paths (user-facing, synchronous): OpenAI direct only — no fallback chain, no health check, maxRetries: 1
-- Background paths (Inngest, async): multi-agent chain [gpt → gemini → nemotron → mistral → deepseek] — failure handled gracefully
-- summarizeText stays on multi-agent chain (Inngest background)
-- Model cache uses global Map — not shared across instances but sufficient for single-instance deploys
-- AbortSignal.timeout not used (Node version constraints); use SDK's built-in `timeout` option instead
-- ProcessingStatus enum has no "ERROR" value — use "FAILED" instead
+### In Progress
+- (none)
+
+### Blocked
+- (none)
+
+## Gotchas in this area
+- `generateCritical` is a byte identical copy of `generate`, and `generateTextCritical` is a byte identical copy of `generateTextWithFallback`. The `Critical` names are aliases for backward compatibility, not a different behaviour. Do not expect the critical path to skip the cache or the retry; it does neither.
+- `registry.ts` declares a `chain: LanguageModel[]` array on every task and every array holds exactly one model. There is no fallback chain, so a Gemini outage fails the request. If you add a real chain, the orchestrator does not iterate it today; you must write that loop.
+- The old model cache (a working model with a 5 minute TTL and a dead model with a 30 second negative TTL) described in earlier notes does not exist in the code. Ignore any reference to it.
+- The `cacheTtlMs` values are long (7 to 30 days) and the cache key is the prompt, so two users asking the same question share a cached answer. That is intended for `summarize`, `quiz_gen`, and the other generation tasks, and is why the grading tasks are set to 0.
+- `instances.ts` re-exports only `google`. The `@ai-sdk/openai`, `@ai-sdk/openai-compatible`, `@polar-sh/*`, and `@inngest/realtime` packages are installed but never imported. Do not assume an OpenAI path exists.
 
 ## Relevant Files
-- `lib/ai/orchestrator.ts`: Core — model cache (working + dead), 10s timeout, generateCritical / generateTextCritical, tryCachedModel / reportModelSuccess / reportModelFailure
-- `lib/ai/index.ts`: Critical wrappers switched to generateCritical / generateTextCritical; summarizeText stays on generate
-- `app/api/ai/chat/route.ts`: OpenAI-first health check, uses orchestrator model cache, 10s timeout
-- `app/api/paper3/chat/route.ts`: Uses generateCritical instead of generate
-- `app/api/admin/revision-guides/route.ts`: Uses generateTextCritical instead of generateTextWithFallback
-- `lib/inngest/paper3-exam-functions.ts`: Top-level try/catch, marks FAILED on error
-- `lib/paper3/grade-short-answer.ts`: try/catch with graceful fallback
-- `lib/inngest/paper3-functions.ts`, `lib/inngest/question-ingest.ts`, `lib/mock-generator.ts`: Keep multi-agent chain (background)
+- `lib/ai/instances.ts`: the single `google` re-export
+- `lib/ai/orchestrator.ts`: model instance, timeout, generate, streamChat, the four exported wrappers
+- `lib/ai/registry.ts`: task names and cache TTLs
+- `lib/ai/cache.ts`: in-memory sha256 cache
+- `lib/ai/index.ts`: extraction, summarization, quiz and exam generation, grading helpers
+- `lib/ai/tools.ts`: chat tool definitions (web search, notes, quizzes, progress, createQuiz)
+- `lib/ai/validators.ts`: `normalizeGeneratedQuestions`
+- `lib/paper3/`: Paper 3 evaluation, short answer grading, prompts, subject tasks (separate from `lib/ai/`)
 <!-- END:ai-orchestration-rework -->
+
+_Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
