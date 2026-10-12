@@ -130,8 +130,10 @@ See [`.env.example`](./.env.example) for the complete list with setup instructio
 | `ARCJET_KEY` | Security | Arcjet API key |
 | `INNGEST_EVENT_KEY` | Background | Inngest event key |
 | `INNGEST_SIGNING_KEY` | Background | Inngest signing key |
-| `NEXT_PUBLIC_POSTHOG_KEY` | Analytics | PostHog project key |
-| `NEXT_PUBLIC_POSTHOG_HOST` | Analytics | PostHog host URL |
+| `SENTRY_DSN` | Error Tracking | Sentry DSN (get from Sentry project settings) |
+| `SENTRY_AUTH_TOKEN` | Error Tracking | Sentry auth token for source map uploads |
+| `SENTRY_ORG` | Error Tracking | Sentry organization slug |
+| `SENTRY_PROJECT` | Error Tracking | Sentry project slug |
 | `TAVILY_API_KEY` | Search | Tavily search API key |
 
 ## Project Structure

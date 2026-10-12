@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import {
-  useParams,
-  useSearchParams,
-  useRouter,
-} from "next/navigation";
+import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,10 +18,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import {
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@/components/ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Separator } from "@/components/ui/separator";
 import {
   Dialog,
@@ -71,30 +64,23 @@ function letterFromPct(p: number): string {
   return "E";
 }
 
-function formatMcqWithLabel(
-  letter: string,
-  opts?: MockMcqOption[],
-): string {
+function formatMcqWithLabel(letter: string, opts?: MockMcqOption[]): string {
   const L = letter.trim().toUpperCase().slice(0, 1);
   if (!L || L === "?") return "—";
-  const label =
-    opts?.find((o) => o.letter?.toUpperCase()?.slice(0, 1) === L)?.label;
+  const label = opts?.find(
+    (o) => o.letter?.toUpperCase()?.slice(0, 1) === L,
+  )?.label;
   return label ? `${L} — ${label}` : L;
 }
 
 function isMcqRow(row: MockReviewPerQuestionRow) {
-  return (
-    row.questionType.toUpperCase() === "MCQ" ||
-    row.correctOption != null
-  );
+  return row.questionType.toUpperCase() === "MCQ" || row.correctOption != null;
 }
 
 export default function MockResultPage() {
   const params = useParams();
   const attemptId =
-    typeof params.attemptId === "string"
-      ? params.attemptId
-      : "";
+    typeof params.attemptId === "string" ? params.attemptId : "";
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -118,7 +104,10 @@ export default function MockResultPage() {
     fetch(`/api/mocks/attempts/${attemptId}`)
       .then(async (res) => {
         const body = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(typeof body?.error === "string" ? body.error : res.statusText);
+        if (!res.ok)
+          throw new Error(
+            typeof body?.error === "string" ? body.error : res.statusText,
+          );
         return body as {
           attempt: AttemptApi | undefined;
           review: ReviewPayload | null | undefined;
@@ -145,15 +134,19 @@ export default function MockResultPage() {
   }, [attemptId]);
 
   const totalMarks =
-    attempt?.totalMarks && attempt.totalMarks > 0 ?
-      attempt.totalMarks
-    : urlTotal > 0 ? urlTotal : 1;
+    attempt?.totalMarks && attempt.totalMarks > 0
+      ? attempt.totalMarks
+      : urlTotal > 0
+        ? urlTotal
+        : 1;
 
   const score =
     attempt?.completedAt && attempt.score != null ? attempt.score : urlScore;
 
   const pct =
-    totalMarks > 0 ? Math.round((score / Math.max(totalMarks, 1)) * 100) : urlPct;
+    totalMarks > 0
+      ? Math.round((score / Math.max(totalMarks, 1)) * 100)
+      : urlPct;
 
   const recoveredPct = pct;
   const missedMarks = Math.max(0, totalMarks - score);
@@ -184,14 +177,19 @@ export default function MockResultPage() {
   }, [review?.sectionSummary]);
 
   const gradeColor =
-    pct >= 65 ? "text-primary"
-    : pct >= 40 ? "text-foreground"
-    : "text-destructive";
+    pct >= 65
+      ? "text-primary"
+      : pct >= 40
+        ? "text-foreground"
+        : "text-destructive";
   const gradeLabel =
-    pct >= 85 ? "Strong performance"
-    : pct >= 65 ? "Solid — tighten weak topics"
-    : pct >= 40 ? "Momentum building — drill gaps"
-    : "Keep practising — revise mistakes below";
+    pct >= 85
+      ? "Strong performance"
+      : pct >= 65
+        ? "Solid — tighten weak topics"
+        : pct >= 40
+          ? "Momentum building — drill gaps"
+          : "Keep practising — revise mistakes below";
 
   const goBack = () => {
     if (typeof window !== "undefined" && window.history.length > 1)
@@ -199,17 +197,15 @@ export default function MockResultPage() {
     else router.push("/practice/mock");
   };
 
-  const [reviewFilter, setReviewFilter] = useState<"wrong" | "all">(
-    "wrong",
-  );
+  const [reviewFilter, setReviewFilter] = useState<"wrong" | "all">("wrong");
   const [reviewOpen, setReviewOpen] = useState(false);
 
   const shownQuestions =
-    reviewFilter === "wrong" && review ?
-      review.perQuestion.filter((q) => q.earned < q.maxMarks)
-    : review?.perQuestion ?? [];
+    reviewFilter === "wrong" && review
+      ? review.perQuestion.filter((q) => q.earned < q.maxMarks)
+      : (review?.perQuestion ?? []);
 
-  const hasReview = !!(review?.perQuestion?.length);
+  const hasReview = !!review?.perQuestion?.length;
 
   return (
     <div className="text-card-foreground mx-auto max-w-4xl space-y-6 px-4 py-6 sm:py-8">
@@ -241,7 +237,9 @@ export default function MockResultPage() {
             </CardHeader>
             <CardContent className="space-y-7 pt-6 sm:space-y-8 sm:pt-7">
               <div className="flex flex-col items-center gap-2">
-                <div className={`text-6xl font-bold tabular-nums ${gradeColor}`}>
+                <div
+                  className={`text-6xl font-bold tabular-nums ${gradeColor}`}
+                >
                   {pct}%
                 </div>
                 <p className="text-muted-foreground text-sm uppercase tracking-[0.2em]">
@@ -263,21 +261,22 @@ export default function MockResultPage() {
                     </span>
                   </p>
                   <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
-                    {missedMarks > 0 ?
+                    {missedMarks > 0 ? (
                       <>
                         Roughly{" "}
                         <span className="text-foreground font-medium tabular-nums">
                           +{missedMarks}
                         </span>{" "}
-                        marks still on the table on this sitting — revisiting flagged gaps
-                        is fastest leverage before your next timed round.
+                        marks still on the table on this sitting — revisiting
+                        flagged gaps is fastest leverage before your next timed
+                        round.
                       </>
-                    :
+                    ) : (
                       <>
-                        Full marks booked on this sitting — replicate the pacing on a fresh
-                        paper to stay exam-fit.
+                        Full marks booked on this sitting — replicate the pacing
+                        on a fresh paper to stay exam-fit.
                       </>
-                    }
+                    )}
                   </p>
                 </div>
 
@@ -308,8 +307,8 @@ export default function MockResultPage() {
                     </div>
                   </div>
                   <p className="text-muted-foreground mt-4 text-xs leading-relaxed">
-                    Targets assume you convert a chunk of misses on your weakest areas —
-                    directional, not a guarantee.
+                    Targets assume you convert a chunk of misses on your weakest
+                    areas — directional, not a guarantee.
                   </p>
                 </div>
               </section>
@@ -327,16 +326,19 @@ export default function MockResultPage() {
                     </Badge>
                   </div>
                   <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
-                    {weakHints.length ?
+                    {weakHints.length ? (
                       <>
                         Aim your next recap at{" "}
                         <span className="text-foreground font-medium">
                           {weakHints.slice(0, 2).join(" · ")}
                         </span>
-                        {weakHints.length > 2 ? " and related subtopics." : " — tighten definitions, sketches, then re-test with a lighter drill set."}
+                        {weakHints.length > 2
+                          ? " and related subtopics."
+                          : " — tighten definitions, sketches, then re-test with a lighter drill set."}
                       </>
-                    :
-                      "Great balance across sections on this sitting — skim anything you hesitated on, then sit another mock while it is fresh."}
+                    ) : (
+                      "Great balance across sections on this sitting — skim anything you hesitated on, then sit another mock while it is fresh."
+                    )}
                   </p>
                 </div>
               )}
@@ -344,24 +346,30 @@ export default function MockResultPage() {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
                   <p className="tabular-nums text-2xl font-bold">{pct}%</p>
-                  <p className="text-muted-foreground mt-1 text-xs">Weighted score</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Weighted score
+                  </p>
                 </div>
                 <div className="rounded-xl border border-border bg-muted/30 p-4 text-center">
                   <p className="tabular-nums text-2xl font-bold">
                     {score}/{totalMarks}
                   </p>
-                  <p className="text-muted-foreground mt-1 text-xs">Raw marks</p>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    Raw marks
+                  </p>
                 </div>
               </div>
 
               <div className="text-muted-foreground mx-auto rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm leading-relaxed">
-                Ready for round two? Starting another attempt generates a fresh timed
-                session (new submissions are separate from this score).
+                Ready for round two? Starting another attempt generates a fresh
+                timed session (new submissions are separate from this score).
               </div>
 
               {!hasReview && (
                 <p className="text-muted-foreground text-center text-sm">
-                  Detailed question breakdown is not stored for every historical mock (for example syllabus-only setups). Sit another timed practice to unlock line-by-line review.
+                  Detailed question breakdown is not stored for every historical
+                  mock (for example syllabus-only setups). Sit another timed
+                  practice to unlock line-by-line review.
                 </p>
               )}
 
@@ -389,8 +397,9 @@ export default function MockResultPage() {
                             See wrong answers
                           </DialogTitle>
                           <DialogDescription className="text-muted-foreground text-sm sm:text-[15px]">
-                            Compare your responses with the keyed answers. Multiple-choice rows
-                            show option labels whenever we saved them from the generator.
+                            Compare your responses with the keyed answers.
+                            Multiple-choice rows show option labels whenever we
+                            saved them from the generator.
                           </DialogDescription>
                         </DialogHeader>
                         <div className="flex shrink-0 justify-end pt-2 sm:pt-0">
@@ -431,12 +440,11 @@ export default function MockResultPage() {
                                 .toUpperCase()
                                 .slice(0, 1)
                                 .replace(/[^A-D]/, "");
-                              const wrong =
-                                mcq ?
-                                  Boolean(
-                                    row.correctOption ?
-                                      pickedLetter !== row.correctOption
-                                    : row.earned < row.maxMarks,
+                              const wrong = mcq
+                                ? Boolean(
+                                    row.correctOption
+                                      ? pickedLetter !== row.correctOption
+                                      : row.earned < row.maxMarks,
                                   )
                                 : row.earned < row.maxMarks;
                               return (
@@ -460,16 +468,14 @@ export default function MockResultPage() {
                                         >
                                           {row.sectionName}
                                         </Badge>
-                                        {wrong ?
-                                          (
-                                            <Badge
-                                              variant="destructive"
-                                              className="text-[11px] sm:text-xs"
-                                            >
-                                              Missed
-                                            </Badge>
-                                          )
-                                        : (
+                                        {wrong ? (
+                                          <Badge
+                                            variant="destructive"
+                                            className="text-[11px] sm:text-xs"
+                                          >
+                                            Missed
+                                          </Badge>
+                                        ) : (
                                           <Badge
                                             variant="secondary"
                                             className="bg-primary/15 text-[11px] text-primary hover:bg-primary/15 sm:text-xs"
@@ -493,14 +499,14 @@ export default function MockResultPage() {
                                           Your answer
                                         </p>
                                         <p className="mt-3 text-[15px] leading-relaxed sm:text-base">
-                                          {mcq ?
-                                            formatMcqWithLabel(
-                                              row.userAnswer,
-                                              row.options,
-                                            )
-                                          : row.userAnswer ?
-                                            row.userAnswer
-                                          : "(blank)"}
+                                          {mcq
+                                            ? formatMcqWithLabel(
+                                                row.userAnswer,
+                                                row.options,
+                                              )
+                                            : row.userAnswer
+                                              ? row.userAnswer
+                                              : "(blank)"}
                                         </p>
                                       </div>
                                       <Separator />
@@ -510,12 +516,12 @@ export default function MockResultPage() {
                                         </p>
                                         {mcq ? (
                                           <p className="mt-3 text-[15px] font-medium leading-relaxed sm:text-base">
-                                            {row.correctOption ?
-                                              formatMcqWithLabel(
-                                                row.correctOption,
-                                                row.options,
-                                              )
-                                            : "Marked if you responded"}
+                                            {row.correctOption
+                                              ? formatMcqWithLabel(
+                                                  row.correctOption,
+                                                  row.options,
+                                                )
+                                              : "Marked if you responded"}
                                           </p>
                                         ) : row.modelAnswer ? (
                                           <p className="text-foreground mt-3 whitespace-pre-wrap text-[15px] leading-relaxed sm:text-base">

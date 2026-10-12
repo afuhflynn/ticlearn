@@ -7,7 +7,7 @@ import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function POST(
   request: Request,
-  { params }: { params: Promise<{ attemptId: string }> }
+  { params }: { params: Promise<{ attemptId: string }> },
 ) {
   try {
     const session = await auth.api.getSession({
@@ -68,7 +68,7 @@ export async function POST(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ attemptId: string }> }
+  { params }: { params: Promise<{ attemptId: string }> },
 ) {
   try {
     const session = await auth.api.getSession({

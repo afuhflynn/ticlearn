@@ -1,16 +1,35 @@
-import arcjet, { createMiddleware, detectBot, shield } from "@arcjet/next";
+import arcjet, {
+  createMiddleware,
+  detectBot,
+  shield,
+  tokenBucket,
+} from "@arcjet/next";
 import { getSessionCookie } from "better-auth/cookies";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "./lib/auth";
 import { headers } from "next/headers";
+import { arcjetKey } from "./lib/env";
 
 const aj = arcjet({
-  key: process.env.ARCJET_KEY as string,
+  key: arcjetKey,
   rules: [
     shield({ mode: "LIVE" }),
     detectBot({
       mode: "LIVE",
       allow: ["CATEGORY:SEARCH_ENGINE", "CATEGORY:MONITOR", "CATEGORY:VERCEL"],
+    }),
+  ],
+});
+
+const apiRateLimit = arcjet({
+  key: arcjetKey,
+  rules: [
+    tokenBucket({
+      mode: "LIVE",
+      characteristics: ["ip.src"],
+      refillRate: 60,
+      interval: 60,
+      capacity: 100,
     }),
   ],
 });
@@ -52,10 +71,20 @@ const protectedRoutes = [
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  if (pathname.startsWith("/api/")) {
+    const decision = await apiRateLimit.protect(request, { requested: 1 });
+    if (decision.isDenied()) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": "60" } },
+      );
+    }
+  }
+
   const sessionCookie = getSessionCookie(request);
   const session = await auth.api.getSession({ headers: await headers() });
 
-  // Handle root separately with exact match
   if (pathname === "/") {
     if (sessionCookie && session) {
       return NextResponse.redirect(new URL("/chat", request.url));
@@ -63,7 +92,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow public paths (safe to use startsWith now that "/" is removed)
   if (publicPaths.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
@@ -87,7 +115,6 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL("/chat", request.url));
   }
 
-  // Role-based routing
   if (pathname.startsWith("/admin") && session?.user.role !== "ADMIN") {
     return NextResponse.redirect("/dashboard");
   }
@@ -97,13 +124,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

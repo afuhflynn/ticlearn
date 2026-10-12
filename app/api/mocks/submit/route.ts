@@ -61,7 +61,10 @@ export async function POST(req: Request) {
     let results: Prisma.InputJsonValue;
 
     if (payload) {
-      const graded = scorePracticePayload(payload, answers as Record<string, unknown>);
+      const graded = scorePracticePayload(
+        payload,
+        answers as Record<string, unknown>,
+      );
       score = Math.min(graded.score, attempt.totalMarks);
       results = {
         sections: graded.sectionRows,

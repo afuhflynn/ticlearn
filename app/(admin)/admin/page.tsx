@@ -114,7 +114,8 @@ const navItems = [
     title: "Paper3 Modules",
     icon: ClipboardList,
     href: "/admin/paper3/modules",
-    description: "Group mocks into bundles and control visibility for students.",
+    description:
+      "Group mocks into bundles and control visibility for students.",
   },
   {
     title: "Paper3 Analytics",

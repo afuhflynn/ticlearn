@@ -580,7 +580,6 @@ export default function TakeExamPage() {
           </Button>
         </div>
       </div>
-
-      </div>
+    </div>
   );
 }

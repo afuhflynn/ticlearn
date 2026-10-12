@@ -93,7 +93,8 @@ export async function GET(req: Request) {
     if (section) where.section = section as Paper3Section;
     if (taskType) where.taskType = taskType as Paper3TaskType;
     if (source) where.sourceId = source;
-    if (subject) where.source = { subject: subject as "ICT" | "COMPUTER_SCIENCE" };
+    if (subject)
+      where.source = { subject: subject as "ICT" | "COMPUTER_SCIENCE" };
     if (search) {
       where.OR = [
         { title: { contains: search, mode: "insensitive" } },

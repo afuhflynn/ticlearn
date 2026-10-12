@@ -100,7 +100,10 @@ export async function PUT(
       },
     });
 
-    trackEvent(session.user.id, EVENTS.EXAM_COMPLETED, { subject: exam.subject, score }).catch(() => {});
+    trackEvent(session.user.id, EVENTS.EXAM_COMPLETED, {
+      subject: exam.subject,
+      score,
+    }).catch(() => {});
 
     return NextResponse.json({ exam: updatedExam, success: true });
   } catch (error) {

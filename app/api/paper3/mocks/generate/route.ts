@@ -118,7 +118,7 @@ export async function GET(req: Request) {
 
     const sources = await prisma.paper3Source.findMany({
       where: {
-        subject: (subject as unknown) as "ICT" | "COMPUTER_SCIENCE" | undefined,
+        subject: subject as unknown as "ICT" | "COMPUTER_SCIENCE" | undefined,
         status: "READY",
         ...(!includeGenerated && {
           sourceType: { not: "AI_GENERATED" },

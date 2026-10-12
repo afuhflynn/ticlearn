@@ -2,9 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import {
-  parseStoredSessionPayload,
-} from "@/lib/mock-session-payload";
+import { parseStoredSessionPayload } from "@/lib/mock-session-payload";
 import type { MockSessionPayload } from "@/lib/mock-generator";
 
 /**

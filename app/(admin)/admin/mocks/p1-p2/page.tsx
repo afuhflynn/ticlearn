@@ -37,12 +37,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   ArrowLeft,
   ClipboardList,
@@ -192,7 +187,8 @@ export default function AdminPaper1Paper2MocksPage() {
     fetch("/api/admin/mocks/p1p2/modules")
       .then(async (r) => {
         const d = await r.json();
-        if (r.ok && Array.isArray(d.modules)) setModules(d.modules as ModuleRow[]);
+        if (r.ok && Array.isArray(d.modules))
+          setModules(d.modules as ModuleRow[]);
         else setModules([]);
       })
       .catch(() => setModules([]))
@@ -216,12 +212,11 @@ export default function AdminPaper1Paper2MocksPage() {
     fetch("/api/admin/blueprints")
       .then((r) => r.json())
       .then((d: { blueprints?: AdminBlueprintRow[] }) => {
-        const b = d.blueprints?.filter((x) => x.component?.type === "PAPER") ?? [];
+        const b =
+          d.blueprints?.filter((x) => x.component?.type === "PAPER") ?? [];
         setAllBlueprints(b);
         setPickBlueprintId((prev) =>
-          prev && b.some((x) => x.id === prev) ?
-            prev
-          : b[0]?.id ?? "",
+          prev && b.some((x) => x.id === prev) ? prev : (b[0]?.id ?? ""),
         );
       })
       .catch(() => setAllBlueprints([]));
@@ -244,7 +239,9 @@ export default function AdminPaper1Paper2MocksPage() {
       const data = await res.json();
       if (!res.ok)
         throw new Error(
-          typeof data.error === "string" ? data.error : "Could not load preview",
+          typeof data.error === "string"
+            ? data.error
+            : "Could not load preview",
         );
       setPreviewDetail(data.preview as AdminPreviewDetail);
     } catch (e) {
@@ -359,7 +356,11 @@ export default function AdminPaper1Paper2MocksPage() {
   };
 
   const deleteModule = async (moduleId: string) => {
-    if (!confirm("Delete this group? Exams stay in the database; only the grouping is removed."))
+    if (
+      !confirm(
+        "Delete this group? Exams stay in the database; only the grouping is removed.",
+      )
+    )
       return;
     try {
       const res = await fetch(`/api/admin/mocks/p1p2/modules/${moduleId}`, {
@@ -681,7 +682,10 @@ export default function AdminPaper1Paper2MocksPage() {
                   <>
                     <div className="space-y-2">
                       <Label>Subject paper</Label>
-                      <Select value={componentId} onValueChange={setComponentId}>
+                      <Select
+                        value={componentId}
+                        onValueChange={setComponentId}
+                      >
                         <SelectTrigger className="w-full">
                           <SelectValue placeholder="Select paper" />
                         </SelectTrigger>
@@ -699,7 +703,9 @@ export default function AdminPaper1Paper2MocksPage() {
                       <Label>Paper</Label>
                       <RadioGroup
                         value={paper}
-                        onValueChange={(v) => setPaper(v as "PAPER_1" | "PAPER_2")}
+                        onValueChange={(v) =>
+                          setPaper(v as "PAPER_1" | "PAPER_2")
+                        }
                         className="flex gap-6"
                       >
                         <div className="flex items-center gap-2">
@@ -745,7 +751,9 @@ export default function AdminPaper1Paper2MocksPage() {
                           >
                             <Checkbox
                               checked={!!pickedTopics[t.id]}
-                              onCheckedChange={(c) => toggleTopic(t.id, c === true)}
+                              onCheckedChange={(c) =>
+                                toggleTopic(t.id, c === true)
+                              }
                             />
                             {t.name}
                           </label>
@@ -831,14 +839,18 @@ export default function AdminPaper1Paper2MocksPage() {
                                     <GripVertical className="h-5 w-5 shrink-0" />
                                   </button>
                                   <div>
-                                    <p className="font-medium leading-snug">{a.title}</p>
+                                    <p className="font-medium leading-snug">
+                                      {a.title}
+                                    </p>
                                     <p className="text-muted-foreground text-xs">
                                       {a.inProgress ? "In progress · " : ""}
-                                      {typeof a.durationMin === "number" ?
-                                        `${a.durationMin} min · `
-                                      : ""}
+                                      {typeof a.durationMin === "number"
+                                        ? `${a.durationMin} min · `
+                                        : ""}
                                       {a.totalMarks} marks ·{" "}
-                                      {formatRelativeTime(a.completedAt ?? a.startedAt)}
+                                      {formatRelativeTime(
+                                        a.completedAt ?? a.startedAt,
+                                      )}
                                     </p>
                                   </div>
                                 </div>
@@ -908,9 +920,11 @@ export default function AdminPaper1Paper2MocksPage() {
                     disabled={creatingGroup}
                     variant="secondary"
                   >
-                    {creatingGroup ?
+                    {creatingGroup ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
-                    : "Create group"}
+                    ) : (
+                      "Create group"
+                    )}
                   </Button>
                 </div>
 
@@ -948,11 +962,11 @@ export default function AdminPaper1Paper2MocksPage() {
                                 <p className="font-semibold leading-tight">
                                   {mod.title}
                                 </p>
-                                {mod.description ?
+                                {mod.description ? (
                                   <p className="text-muted-foreground mt-1 text-sm">
                                     {mod.description}
                                   </p>
-                                : null}
+                                ) : null}
                               </div>
                               {mod.visibleToStudents ? (
                                 <Badge
@@ -975,19 +989,25 @@ export default function AdminPaper1Paper2MocksPage() {
                             <div className="flex flex-wrap items-center gap-3">
                               <div className="flex items-center gap-2">
                                 <Label className="text-xs text-muted-foreground whitespace-nowrap">
-                                  {mod.visibleToStudents ?
-                                    "Show to students"
-                                  : "Hide from students"}
+                                  {mod.visibleToStudents
+                                    ? "Show to students"
+                                    : "Hide from students"}
                                 </Label>
                                 <Switch
                                   checked={mod.visibleToStudents}
                                   onCheckedChange={(v) =>
-                                    patchModule(mod.id, { visibleToStudents: v })
+                                    patchModule(mod.id, {
+                                      visibleToStudents: v,
+                                    })
                                   }
                                 />
                               </div>
                               <CollapsibleTrigger asChild>
-                                <Button size="sm" variant="outline" type="button">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  type="button"
+                                >
                                   <ClipboardList className="mr-1 h-4 w-4" />
                                   {mod.items.length > 0
                                     ? `${mod.items.length} exams`
@@ -1012,20 +1032,21 @@ export default function AdminPaper1Paper2MocksPage() {
                                 ref={dropProvided.innerRef}
                                 {...dropProvided.droppableProps}
                                 className={`border-t px-4 py-3 ${
-                                  dropSnapshot.isDraggingOver ?
-                                    "bg-primary/10"
-                                  : "bg-muted/20"
+                                  dropSnapshot.isDraggingOver
+                                    ? "bg-primary/10"
+                                    : "bg-muted/20"
                                 }`}
                               >
                                 <p className="text-muted-foreground mb-2 text-xs">
                                   Drop previews here · drag rows to reorder
                                 </p>
-                                {mod.items.length === 0 ?
+                                {mod.items.length === 0 ? (
                                   <p className="text-muted-foreground py-2 text-sm">
                                     No exams yet — drop an admin preview (from
                                     the Generate tab) or use Add exams below.
                                   </p>
-                                : mod.items.map((it, index) => (
+                                ) : (
+                                  mod.items.map((it, index) => (
                                     <Draggable
                                       key={it.id}
                                       draggableId={`item-${it.id}`}
@@ -1036,8 +1057,11 @@ export default function AdminPaper1Paper2MocksPage() {
                                           ref={dragProvided.innerRef}
                                           {...dragProvided.draggableProps}
                                           style={{
-                                            ...dragProvided.draggableProps.style,
-                                            opacity: dragSnapshot.isDragging ? 0.9 : 1,
+                                            ...dragProvided.draggableProps
+                                              .style,
+                                            opacity: dragSnapshot.isDragging
+                                              ? 0.9
+                                              : 1,
                                           }}
                                           className="mb-2 flex items-center gap-2 rounded-md border bg-card px-3 py-2 text-sm shadow-sm"
                                         >
@@ -1050,12 +1074,21 @@ export default function AdminPaper1Paper2MocksPage() {
                                             <GripVertical className="h-4 w-4 shrink-0" />
                                           </button>
                                           <span className="min-w-0 flex-1 truncate">
-                                            <span className="font-medium">{it.blueprint.name}</span>
+                                            <span className="font-medium">
+                                              {it.blueprint.name}
+                                            </span>
                                             <span className="text-muted-foreground">
                                               {" "}
-                                              · {it.blueprint.component.program.examLevel.name}{" "}
-                                              {it.blueprint.component.program.name} ·{" "}
-                                              {it.blueprint.durationMin} min ·{" "}
+                                              ·{" "}
+                                              {
+                                                it.blueprint.component.program
+                                                  .examLevel.name
+                                              }{" "}
+                                              {
+                                                it.blueprint.component.program
+                                                  .name
+                                              }{" "}
+                                              · {it.blueprint.durationMin} min ·{" "}
                                               {it.blueprint.totalMarks} marks
                                             </span>
                                           </span>
@@ -1064,7 +1097,9 @@ export default function AdminPaper1Paper2MocksPage() {
                                             size="icon"
                                             variant="ghost"
                                             className="shrink-0 text-destructive"
-                                            onClick={() => removeItem(mod.id, it.id)}
+                                            onClick={() =>
+                                              removeItem(mod.id, it.id)
+                                            }
                                             aria-label="Remove from group"
                                           >
                                             <Trash2 className="h-4 w-4" />
@@ -1073,7 +1108,7 @@ export default function AdminPaper1Paper2MocksPage() {
                                       )}
                                     </Draggable>
                                   ))
-                                }
+                                )}
                                 {dropProvided.placeholder}
                               </div>
                             )}
@@ -1090,7 +1125,9 @@ export default function AdminPaper1Paper2MocksPage() {
                                     <Label>Title</Label>
                                     <Input
                                       value={examName}
-                                      onChange={(e) => setExamName(e.target.value)}
+                                      onChange={(e) =>
+                                        setExamName(e.target.value)
+                                      }
                                       placeholder="Shown to students"
                                     />
                                   </div>
@@ -1106,7 +1143,8 @@ export default function AdminPaper1Paper2MocksPage() {
                                       <SelectContent className="max-h-72">
                                         {components.map((c) => (
                                           <SelectItem key={c.id} value={c.id}>
-                                            {c.examLevelName} · {c.programName} — {c.name}
+                                            {c.examLevelName} · {c.programName}{" "}
+                                            — {c.name}
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
@@ -1122,12 +1160,22 @@ export default function AdminPaper1Paper2MocksPage() {
                                       className="flex gap-4 pt-2"
                                     >
                                       <div className="flex items-center gap-2">
-                                        <RadioGroupItem value="PAPER_1" id={`ep1-${mod.id}`} />
-                                        <Label htmlFor={`ep1-${mod.id}`}>Paper 1</Label>
+                                        <RadioGroupItem
+                                          value="PAPER_1"
+                                          id={`ep1-${mod.id}`}
+                                        />
+                                        <Label htmlFor={`ep1-${mod.id}`}>
+                                          Paper 1
+                                        </Label>
                                       </div>
                                       <div className="flex items-center gap-2">
-                                        <RadioGroupItem value="PAPER_2" id={`ep2-${mod.id}`} />
-                                        <Label htmlFor={`ep2-${mod.id}`}>Paper 2</Label>
+                                        <RadioGroupItem
+                                          value="PAPER_2"
+                                          id={`ep2-${mod.id}`}
+                                        />
+                                        <Label htmlFor={`ep2-${mod.id}`}>
+                                          Paper 2
+                                        </Label>
                                       </div>
                                     </RadioGroup>
                                   </div>
@@ -1135,7 +1183,9 @@ export default function AdminPaper1Paper2MocksPage() {
                                 <label className="flex cursor-pointer items-center gap-2 text-sm">
                                   <Checkbox
                                     checked={addToCatalogToo}
-                                    onCheckedChange={(c) => setAddToCatalogToo(c === true)}
+                                    onCheckedChange={(c) =>
+                                      setAddToCatalogToo(c === true)
+                                    }
                                   />
                                   Also list outside this group under &quot;More
                                   mocks&quot; (independent catalog listing)
@@ -1144,11 +1194,16 @@ export default function AdminPaper1Paper2MocksPage() {
                                   type="button"
                                   size="sm"
                                   disabled={savingExam}
-                                  onClick={() => void createExamInModule(mod.id)}
+                                  onClick={() =>
+                                    void createExamInModule(mod.id)
+                                  }
                                 >
-                                  {savingExam && savingExamForModule === mod.id ?
+                                  {savingExam &&
+                                  savingExamForModule === mod.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
-                                  : "Create and attach exam"}
+                                  ) : (
+                                    "Create and attach exam"
+                                  )}
                                 </Button>
                               </div>
 
@@ -1169,7 +1224,8 @@ export default function AdminPaper1Paper2MocksPage() {
                                       <SelectContent className="max-h-64">
                                         {allBlueprints.map((b) => (
                                           <SelectItem key={b.id} value={b.id}>
-                                            {b.name} ({b.component.program.name})
+                                            {b.name} ({b.component.program.name}
+                                            )
                                           </SelectItem>
                                         ))}
                                       </SelectContent>
@@ -1207,20 +1263,22 @@ export default function AdminPaper1Paper2MocksPage() {
               {previewDetail?.displayName ?? "Mock preview"}
             </DialogTitle>
             <DialogDescription>
-              {previewDetail ?
+              {previewDetail ? (
                 <>
-                  {previewDetail.durationMin} min · {previewDetail.totalMarks} marks · admin review
-                  (includes marking keys)
+                  {previewDetail.durationMin} min · {previewDetail.totalMarks}{" "}
+                  marks · admin review (includes marking keys)
                 </>
-              : "Loading…"}
+              ) : (
+                "Loading…"
+              )}
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
-            {previewLoading ?
+            {previewLoading ? (
               <div className="flex justify-center py-16">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
-            : previewDetail ?
+            ) : previewDetail ? (
               <div className="space-y-8">
                 {previewDetail.sections.map((sec) => (
                   <section key={sec.name} className="space-y-4">
@@ -1236,43 +1294,46 @@ export default function AdminPaper1Paper2MocksPage() {
                           <div className="text-muted-foreground flex flex-wrap gap-2 text-xs">
                             <Badge variant="outline">{q.type}</Badge>
                             <span>{q.marks} marks</span>
-                            {q.correctOption ?
+                            {q.correctOption ? (
                               <span className="text-primary font-medium">
                                 Key: {q.correctOption}
                               </span>
-                            : null}
+                            ) : null}
                           </div>
-                          {q.options && q.options.length > 0 ?
+                          {q.options && q.options.length > 0 ? (
                             <ul className="border-muted mt-2 grid gap-1.5 rounded-md border bg-muted/20 p-3 text-sm">
                               {q.options.map((o) => (
                                 <li
                                   key={o.letter}
                                   className={
-                                    o.letter === q.correctOption ?
-                                      "font-medium text-primary"
-                                    : ""
+                                    o.letter === q.correctOption
+                                      ? "font-medium text-primary"
+                                      : ""
                                   }
                                 >
-                                  <span className="font-mono">{o.letter}.</span> {o.label}
+                                  <span className="font-mono">{o.letter}.</span>{" "}
+                                  {o.label}
                                 </li>
                               ))}
                             </ul>
-                          : null}
-                          {q.modelAnswer ?
+                          ) : null}
+                          {q.modelAnswer ? (
                             <div className="border-primary/20 bg-primary/5 mt-2 rounded-md border p-3 text-sm">
                               <p className="text-muted-foreground mb-1 text-xs font-medium uppercase">
                                 Model answer
                               </p>
-                              <p className="whitespace-pre-wrap">{q.modelAnswer}</p>
+                              <p className="whitespace-pre-wrap">
+                                {q.modelAnswer}
+                              </p>
                             </div>
-                          : null}
+                          ) : null}
                         </li>
                       ))}
                     </ol>
                   </section>
                 ))}
               </div>
-            : null}
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

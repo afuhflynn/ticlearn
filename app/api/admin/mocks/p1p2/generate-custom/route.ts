@@ -17,18 +17,14 @@ const bodySchema = z.object({
   topicIds: z.array(z.string()).optional(),
 });
 
-function normalizePaper(
-  raw: string,
-): StudentPaperMode | null {
+function normalizePaper(raw: string): StudentPaperMode | null {
   const u = raw.toUpperCase();
   if (u === "PAPER_1" || u === "P1") return "PAPER_1";
   if (u === "PAPER_2" || u === "P2") return "PAPER_2";
   return null;
 }
 
-function normalizeScope(
-  raw: string,
-): StudentMockScope | null {
+function normalizeScope(raw: string): StudentMockScope | null {
   const u = raw.toUpperCase().trim();
   if (u === "FULL_SYLLABUS" || u === "FULL") return "FULL_SYLLABUS";
   if (u === "TOPICS") return "TOPICS";
@@ -65,10 +61,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid scope" }, { status: 400 });
     }
 
-    if (
-      scope === "TOPICS" &&
-      (!body.topicIds || body.topicIds.length === 0)
-    ) {
+    if (scope === "TOPICS" && (!body.topicIds || body.topicIds.length === 0)) {
       return NextResponse.json(
         { error: "Select at least one topic for topic mode" },
         { status: 400 },
@@ -80,7 +73,10 @@ export async function POST(req: Request) {
       select: { id: true },
     });
     if (!componentOk) {
-      return NextResponse.json({ error: "Unknown paper component" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Unknown paper component" },
+        { status: 400 },
+      );
     }
 
     if (scope === "TOPICS" && body.topicIds?.length) {
@@ -89,7 +85,10 @@ export async function POST(req: Request) {
         where: { id: { in: distinct }, componentId: body.componentId },
       });
       if (topics.length !== distinct.length) {
-        return NextResponse.json({ error: "Invalid topic selection" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid topic selection" },
+          { status: 400 },
+        );
       }
     }
 
@@ -111,7 +110,9 @@ export async function POST(req: Request) {
         paper,
         scope,
         topicIds:
-          scope === "TOPICS" && body.topicIds?.length ? body.topicIds : undefined,
+          scope === "TOPICS" && body.topicIds?.length
+            ? body.topicIds
+            : undefined,
       },
       { creationContext: "ADMIN_PREVIEW" },
     );

@@ -38,10 +38,7 @@ export async function POST(
     });
 
     if (!attempt) {
-      return NextResponse.json(
-        { error: "Attempt not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ error: "Attempt not found" }, { status: 404 });
     }
 
     const ownsAttempt = profileId

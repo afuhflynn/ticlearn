@@ -35,7 +35,8 @@ export function revisionGuideUserPrompt(params: {
           ? "This guide is spreadsheet-heavy. Focus on Excel formulas, cell references, and grid interpretation."
           : params.emphasis === "WEB_PROGRAMMING"
             ? "This guide is web-heavy. HTML structure, inline CSS, forms, and tables only — no JavaScript."
-            : params.emphasis === "PROGRAMMING" || params.emphasis === "C_PROGRAMMING"
+            : params.emphasis === "PROGRAMMING" ||
+                params.emphasis === "C_PROGRAMMING"
               ? "This guide is programming-heavy. C/Pascal control flow, arrays, strings, functions, tracing. No pointers."
               : "Produce a mixed practical guide aligned to GCE Paper 3.";
 

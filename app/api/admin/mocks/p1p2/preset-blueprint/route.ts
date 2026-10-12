@@ -47,7 +47,10 @@ export async function POST(req: Request) {
       select: { id: true },
     });
     if (!comp) {
-      return NextResponse.json({ error: "Unknown paper component" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Unknown paper component" },
+        { status: 400 },
+      );
     }
 
     const moduleId = body.moduleId?.trim();
@@ -57,7 +60,10 @@ export async function POST(req: Request) {
         select: { id: true },
       });
       if (!moduleOk) {
-        return NextResponse.json({ error: "Unknown mock group" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Unknown mock group" },
+          { status: 400 },
+        );
       }
     }
 
@@ -109,7 +115,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ blueprint });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "";
-      if (msg.includes("Unique constraint") || msg.includes("unique constraint")) {
+      if (
+        msg.includes("Unique constraint") ||
+        msg.includes("unique constraint")
+      ) {
         return NextResponse.json(
           {
             error:

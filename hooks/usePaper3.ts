@@ -859,10 +859,9 @@ export function usePaper3Leaderboard(mockId: string, page = 1, limit = 20) {
 }
 
 function getGlobalPaper3Leaderboard(page = 1, limit = 20) {
-  return fetch(
-    `/api/paper3/leaderboard/global?page=${page}&limit=${limit}`,
-    { credentials: "include" },
-  ).then((res) => {
+  return fetch(`/api/paper3/leaderboard/global?page=${page}&limit=${limit}`, {
+    credentials: "include",
+  }).then((res) => {
     if (!res.ok) throw new Error("Failed to fetch global leaderboard");
     return res.json();
   });

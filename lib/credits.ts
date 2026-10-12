@@ -7,11 +7,16 @@ export function getCreditCostMultiplier(
   settings: PlatformSettingsSnapshot,
 ): number {
   switch (plan) {
-    case "STARTER": return settings.creditCostMultiplierStarter;
-    case "STANDARD": return settings.creditCostMultiplierStandard;
-    case "PREMIUM": return settings.creditCostMultiplierPremium;
-    case "PRO": return settings.creditCostMultiplierPro;
-    default: return 1.0;
+    case "STARTER":
+      return settings.creditCostMultiplierStarter;
+    case "STANDARD":
+      return settings.creditCostMultiplierStandard;
+    case "PREMIUM":
+      return settings.creditCostMultiplierPremium;
+    case "PRO":
+      return settings.creditCostMultiplierPro;
+    default:
+      return 1.0;
   }
 }
 

@@ -17,7 +17,9 @@ async function main() {
   const end = new Date();
   end.setHours(0, 0, 0, 0);
 
-  console.log(`Backfilling metrics from ${start.toISOString().split("T")[0]} to ${end.toISOString().split("T")[0]}`);
+  console.log(
+    `Backfilling metrics from ${start.toISOString().split("T")[0]} to ${end.toISOString().split("T")[0]}`,
+  );
 
   let count = 0;
   for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -31,7 +33,9 @@ async function main() {
   console.log(`Backfill complete. ${count} days processed.`);
 }
 
-main().catch((err) => {
-  console.error("Backfill failed:", err);
-  process.exit(1);
-}).finally(() => prisma.$disconnect());
+main()
+  .catch((err) => {
+    console.error("Backfill failed:", err);
+    process.exit(1);
+  })
+  .finally(() => prisma.$disconnect());

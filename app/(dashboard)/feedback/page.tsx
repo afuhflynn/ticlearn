@@ -151,7 +151,11 @@ export default function FeedbackPage() {
               <span className="text-sm">Mark as important</span>
             </label>
 
-            <Button type="submit" className="w-full" disabled={submitFeedback.isPending}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={submitFeedback.isPending}
+            >
               {submitFeedback.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (

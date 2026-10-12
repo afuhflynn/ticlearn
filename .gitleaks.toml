@@ -1,0 +1,102 @@
+title = "Gitleaks configuration for TiCLearn"
+
+[allowlist]
+description = "Allowlisted patterns for gitleaks"
+paths = [
+  "*.md",
+  "*.txt",
+  "*.json.example",
+  "*.env.example",
+  ".env.example",
+  "pnpm-lock.yaml",
+  "package.json",
+  "docs/**",
+  "prisma/migrations/**",
+  "scripts/**",
+  ".github/workflows/**"
+]
+regexes = [
+  """(?i)example""",
+  """(?i)placeholder""",
+  """(?i)your-.*-here""",
+  """(?i)changeme""",
+  """^#{1,3}""",
+]
+
+[rule]
+id = "arcjet-key"
+description = "Arcjet API key"
+regex = """ajkey_[a-zA-Z0-9_-]{32,}"""
+tags = ["key", "arcjet"]
+
+[rule]
+id = "better-auth-secret"
+description = "Better Auth secret"
+regex = """better-auth-secret["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{32,}["']?"""
+tags = ["secret", "better-auth"]
+
+[rule]
+id = "fapshi-webhook-secret"
+description = "Fapshi webhook secret"
+regex = """fapshi[_-]?webhook[_-]?secret["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{32,}["']?"""
+tags = ["secret", "fapshi"]
+
+[rule]
+id = "google-oauth"
+description = "Google OAuth credentials"
+regex = """(GOOGLE_CLIENT_ID|GOOGLE_CLIENT_SECRET)["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{24,}["']?"""
+tags = ["secret", "google", "oauth"]
+
+[rule]
+id = "openai-api-key"
+description = "OpenAI API key"
+regex = """sk-[a-zA-Z0-9]{48,}"""
+tags = ["key", "openai"]
+
+[rule]
+id = "nim-api-key"
+description = "NVIDIA NIM API key"
+regex = """nvapi_[a-zA-Z0-9_-]{32,}"""
+tags = ["key", "nvidia", "nim"]
+
+[rule]
+id = "tavily-api-key"
+description = "Tavily API key"
+regex = """tvly_[a-zA-Z0-9_-]{32,}"""
+tags = ["key", "tavily"]
+
+[rule]
+id = "uploadthing-token"
+description = "UploadThing token"
+regex = """uploadthing[_-]?token["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{32,}["']?"""
+tags = ["token", "uploadthing"]
+
+[rule]
+id = "postgres-password"
+description = "PostgreSQL password in connection string"
+regex = """postgresql://[^:]+:([^@]{8,})@"""
+tags = ["password", "postgres"]
+
+[rule]
+id = "smtp-password"
+description = "SMTP password"
+regex = """SMTP_PASS["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{8,}["']?"""
+tags = ["password", "smtp"]
+
+[rule]
+id = "inngest-signing-key"
+description = "Inngest signing key"
+regex = """signing[_-]?key["']?\s*[:=]\s*["']?signkey_[a-zA-Z0-9_-]{32,}["']?"""
+tags = ["key", "inngest"]
+
+[rule]
+id = "posthog-key"
+description = "PostHog key"
+regex = """phc_[a-zA-Z0-9]{32,}"""
+tags = ["key", "posthog"]
+
+[rule]
+id = "generic-api-key"
+description = "Generic API key pattern"
+regex = """(api[_-]?key|secret[_-]?key|access[_-]?token)["']?\s*[:=]\s*["']?[a-zA-Z0-9_-]{32,}["']?"""
+tags = ["key", "generic"]

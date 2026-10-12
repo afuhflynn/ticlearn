@@ -46,9 +46,7 @@ export function QuizFeedbackPrompt({ quizId }: { quizId: string }) {
       <div className="flex items-start gap-3">
         <MessageCircle className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
         <div className="min-w-0 flex-1 space-y-3">
-          <p className="text-sm font-medium">
-            How was this quiz? Any issues?
-          </p>
+          <p className="text-sm font-medium">How was this quiz? Any issues?</p>
           <Textarea
             placeholder="Tell us about your experience (optional)..."
             value={message}
@@ -67,11 +65,7 @@ export function QuizFeedbackPrompt({ quizId }: { quizId: string }) {
             >
               Skip
             </Button>
-            <Button
-              size="sm"
-              onClick={handleSubmit}
-              disabled={submitting}
-            >
+            <Button size="sm" onClick={handleSubmit} disabled={submitting}>
               Send feedback
             </Button>
           </div>

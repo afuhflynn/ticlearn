@@ -9,6 +9,9 @@ export async function GET() {
     return NextResponse.json({ levels });
   } catch (error) {
     console.error("Exam levels GET error:", error);
-    return NextResponse.json({ error: "Failed to fetch exam levels" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch exam levels" },
+      { status: 500 },
+    );
   }
 }

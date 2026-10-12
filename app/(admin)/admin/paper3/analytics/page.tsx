@@ -87,9 +87,7 @@ export default function Paper3MockAnalyticsPage() {
                   <td className="py-3 pr-4">{r.attemptsStarted}</td>
                   <td className="py-3 pr-4">{r.attemptsCompleted}</td>
                   <td className="py-3 pr-4">
-                    {r.avgScoreCompleted != null
-                      ? r.avgScoreCompleted
-                      : "—"}
+                    {r.avgScoreCompleted != null ? r.avgScoreCompleted : "—"}
                   </td>
                   <td className="py-3">
                     {r.completionRate != null ? `${r.completionRate}%` : "—"}

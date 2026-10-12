@@ -50,7 +50,7 @@ export async function GET() {
         durationMin:
           typeof payload?.durationMin === "number"
             ? payload.durationMin
-            : row.blueprint?.durationMin ?? null,
+            : (row.blueprint?.durationMin ?? null),
         inProgress: row.completedAt == null && row.score == null,
       };
     });

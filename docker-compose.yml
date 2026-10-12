@@ -4,15 +4,15 @@ services:
     restart: unless-stopped
     container_name: ticlearn-postgres
     environment:
-      POSTGRES_USER: ticlearn
-      POSTGRES_PASSWORD: ticlearn_password
-      POSTGRES_DB: ticlearn
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
-      - "5435:5432"
+      - "127.0.0.1:5435:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ticlearn -d ticlearn"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -24,10 +24,10 @@ services:
     restart: unless-stopped
     container_name: ticlearn-pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@ticlearn.com
-      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
     ports:
-      - "5050:80"
+      - "127.0.0.1:5050:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     depends_on:

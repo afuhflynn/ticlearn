@@ -85,25 +85,31 @@ export async function GET() {
     });
 
     // Track blueprint-based mock attempts
-    const profileId = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { activeProfileId: true },
-    }).then(u => u?.activeProfileId);
+    const profileId = await prisma.user
+      .findUnique({
+        where: { id: session.user.id },
+        select: { activeProfileId: true },
+      })
+      .then((u) => u?.activeProfileId);
 
-    const mocksThisWeek = profileId ? await prisma.mockAttempt.count({
-      where: {
-        examProfileId: profileId,
-        startedAt: { gte: getStartOfWeek() },
-      },
-    }) : 0;
+    const mocksThisWeek = profileId
+      ? await prisma.mockAttempt.count({
+          where: {
+            examProfileId: profileId,
+            startedAt: { gte: getStartOfWeek() },
+          },
+        })
+      : 0;
 
     // AI solves (questions processed via chat vision)
-    const aiSolvesToday = profileId ? await prisma.question.count({
-      where: {
-        sourceType: "USER_UPLOADED",
-        createdAt: { gte: getStartOfDay() },
-      },
-    }) : 0;
+    const aiSolvesToday = profileId
+      ? await prisma.question.count({
+          where: {
+            sourceType: "USER_UPLOADED",
+            createdAt: { gte: getStartOfDay() },
+          },
+        })
+      : 0;
 
     const paper3Usage = getPaper3Usage(
       plan,
@@ -144,9 +150,24 @@ export async function GET() {
         resetsAt: nextResetAt.toISOString(),
         resetsInSeconds,
       },
-      canUpload: canUseFeature(plan, "pdfUploads", noteCount, limits.pdfUploads),
-      canGenerateQuiz: canUseFeature(plan, "quizGenerations", quizCount, limits.quizGenerations),
-      canUseAIChat: canUseFeature(plan, "aiTutorMessages", chatsToday, limits.aiTutorMessages),
+      canUpload: canUseFeature(
+        plan,
+        "pdfUploads",
+        noteCount,
+        limits.pdfUploads,
+      ),
+      canGenerateQuiz: canUseFeature(
+        plan,
+        "quizGenerations",
+        quizCount,
+        limits.quizGenerations,
+      ),
+      canUseAIChat: canUseFeature(
+        plan,
+        "aiTutorMessages",
+        chatsToday,
+        limits.aiTutorMessages,
+      ),
       canTakePaper3Exam: paper3Usage.canTakeExam,
       canRetakePaper3Exam: paper3Usage.canRetake,
       paper3Usage,
@@ -161,20 +182,23 @@ export async function GET() {
 }
 
 function getPlanLimits(plan: string) {
-  const limits: Record<string, {
-    pdfUploads: number;
-    quizGenerations: number;
-    aiTutorMessages: number;
-    canAccessCommunity: boolean;
-    canAccessLeaderboard: boolean;
-    canAccessGCE: boolean;
-    paper3ExamLimit: number;
-    paper3RetakeLimit: number;
-    paper3AIExamMessages: number;
-    canViewCorrectAnswers: boolean;
-    canAccessPaper3AI: boolean;
-    canShareResults: boolean;
-  }> = {
+  const limits: Record<
+    string,
+    {
+      pdfUploads: number;
+      quizGenerations: number;
+      aiTutorMessages: number;
+      canAccessCommunity: boolean;
+      canAccessLeaderboard: boolean;
+      canAccessGCE: boolean;
+      paper3ExamLimit: number;
+      paper3RetakeLimit: number;
+      paper3AIExamMessages: number;
+      canViewCorrectAnswers: boolean;
+      canAccessPaper3AI: boolean;
+      canShareResults: boolean;
+    }
+  > = {
     FREE: {
       pdfUploads: 2,
       quizGenerations: 4,

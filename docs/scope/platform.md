@@ -1,8 +1,8 @@
 # Platform
 
-The engine under every later slice. Thirteen foundations: security, the prompt registry, the model chain, the database, background work, caching, the design system, and email. Plus one cross cutting bar that every slice is measured against: the screens have to work on the phone our students actually own.
+The engine under every later slice. Fifteen foundations: security, the prompt registry, the model chain, the database, background work, caching, the design system, email, and how every route paints. Plus one cross cutting bar that every slice is measured against: the screens have to work on the phone our students actually own.
 
-(basis: research/audience-and-market.md · research/env-inventory.md · research/performance-and-database.md · research/ui-toolkit.md · research/security.md · research/email-system.md · research/stack-and-storage.md)
+(basis: research/audience-and-market.md · research/env-inventory.md · research/performance-and-database.md · research/ui-toolkit.md · research/security.md · research/email-system.md · research/stack-and-storage.md · research/seo-and-rendering.md)
 
 ## Foundations
 
@@ -11,12 +11,22 @@ The engine under every later slice. Thirteen foundations: security, the prompt r
 **Done when:** `AGENTS.md` matches the code, and root `AGENTS.md` plus nested area docs name the conventions future work must follow.
 - [x] Capture the real conventions: `/codebase-audit`
 
-### 2. Security and integrity hardening · needs a decision · GA
+### 2. Security and integrity hardening · GA
 Twenty findings must close before real students use this: a payment webhook that grants a subscription when its secret is unset, an admin route with no role check, a knowledge search that reads every user's notes, rate limiting written but never switched on, and an exam endpoint that sends the answer key to the phone before the exam starts.
 **Done when:** every launch blocker in `research/security.md` is closed with a test that fails without the fix, the payment webhook fails closed, no route leaks another user's data, and every AI, upload, contact, signup and admin route has a live rate limit.
-- [ ] Design it (spec): `/solution-architect security and integrity hardening`
+- [x] Design it (spec): [0001](../specs/0001-security-and-integrity-hardening/index.md) · four children under it, one per surface, all resting on the same four shared modules
+- [x] Build it: /feature-build security and integrity hardening
+  - [x] Harness and shared modules: vitest config, `typecheck` script, first CI workflow, the split `lib/env.ts`, `lib/rate-limit.ts` with the coarse proxy baseline, `lib/require-admin.ts`, `lib/ai/tool-policy.ts` (satisfies AC-4, AC-6, AC-11, AC-15, AC-20)
+  - [x] Money path first: webhook fails closed, constant time compare, replay guard on ACTIVE plus the same transaction id, affiliate upsert with its migration, and every route family metered (satisfies AC-1, AC-2, AC-3, AC-6)
+  - [x] Identity and leaky surfaces: admin guard across all 42 routes, contact escaping and spam trap, delete parse-status, rewrite the trigger helper as a direct `inngest.send`, delete the trigger route, delete `searchKnowledge` and both harvest jobs (satisfies AC-4, AC-5, AC-9)
+  - [x] Abuse and AI boundaries: OTP buckets in the better-auth send handler, denial and fail open logs, webhook out of bot detection, upload caps, note job concurrency, tool wrapper across both chat tool sets, web search scrubbing, `isPublic` off the model, chat caps, server derived note and ingest URLs (satisfies AC-7, AC-8, AC-10, AC-11, AC-12, AC-13, AC-14, AC-18, AC-21, AC-22, AC-23, AC-25)
+  - [x] Deploy surface and proof: security headers with enumerated image hosts, compose credentials and identifiers, `BETTER_AUTH_TRUSTED_ORIGINS`, dependency gate allowlist, `minimumReleaseAge`, `renovate.json`, then walk every AC against the running app (satisfies AC-16, AC-17, AC-19, AC-20, AC-24, and the full AC walk)
+- [x] Verify it: /verify-release security and integrity hardening
+- [x] Test it: /test-engineer security and integrity hardening
+- [x] Review it (fresh model): /peer-review security and integrity hardening
+- [x] Document it: /tech-writer security and integrity hardening
 
-(basis: research/security.md §launch blockers)
+(basis: research/security.md §launch blockers · spec 0001, cross check findings incorporated before acceptance)
 
 ### 3. Prompt registry · needs a decision · GA
 Every AI prompt is an inline template literal in about ten files. Move them all to editable markdown with front matter, read at runtime, so a prompt change needs no rebuild and lives in git where it can be reviewed.
@@ -32,22 +42,14 @@ Today every AI task hardcodes one Gemini model and there is no fallback. Route t
 
 (basis: research/stack-and-storage.md §3 · three Google and Anthropic models fail together, so the chain must span labs)
 
-### 5. Delete GCE content, repoint the data model · needs a decision · GA
-The product is secondary school shaped at every layer: twenty GCE A Level subjects, twenty three O Level programmes, blueprints, a question pipeline, mocks, countdown timers, and GCE copy in metadata, navigation, emails and share text. Cameroon universities run internal semester exams, so the past paper ingest pipeline has no feed and goes with the content.
-**Done when:** no GCE, O Level or WAEC content or copy survives anywhere a student or a search engine can see, the schema carries university institutions, faculties, courses and years, the admin question, blueprint and mock authoring is gone, and the data migration runs clean against production without a reset.
-- [ ] Design it (spec): `/solution-architect delete GCE content`
-
-### 6. Generalise the exam and grading engine · needs a decision · GA
-The fullscreen runner, the anti cheat rules, the short answer grader and the revision guides are the most expensive code in the repo and they work for university essays. Strip the level names and the ICT and Pascal assumptions out of them so they grade any course.
-**Done when:** a mock for any course can be authored, sat fullscreen, graded by AI with written feedback and a per question breakdown, and no module, enum or prompt names a level or a programming language.
-- [ ] Design it (spec): `/solution-architect generalise the exam and grading engine`
-
 ### 7. Design system and UI toolkit convention · needs a decision · GA
 The tokens and the rounded radius are a real asset every kit would replace, so keep them. Document a rule: shadcn and AI Elements are the default, components are owned locally and customised, and a new primitive is built only where shadcn genuinely lacks one. Also switch the shadcn base off the slowing Radix fork and record which of the twenty three unused AI Elements come in.
 **Done when:** `docs/research/ui-toolkit.md` §7 is turned into a written convention, the shadcn base is current, the custom primitives the rebuild needs exist as owned components, focus rings pass contrast, no screen hand rolls a control that shadcn already ships, and the responsive contract for every breakpoint is written down once rather than invented per screen.
 - [ ] Design it (spec): `/solution-architect design system and UI toolkit convention`
 
 (basis: research/ui-toolkit.md · forty six of fifty five UI files have diverged from upstream, which is right for design and fatal for future accessibility fixes, so the convention must say rebase rather than drift)
+
+**Reading order.** Features 5 and 6 live in [Pivot](pivot.md), which is the second file in the foundations block. They are numbered in the index so the foundations read as one sequence, but their sections are not duplicated here.
 
 ### 8. URL state convention
 `nuqs` is installed, wired, and then ignored: three call sites, all auth, while tabs and pages sit in component state on twelve admin and dashboard screens. Make the URL the single home for anything a student can share or go back to.
@@ -84,6 +86,20 @@ Fifteen templates are inline literals in one thousand lines, the sending domain'
 - [ ] Design it (spec): `/solution-architect email system rebuild`
 
 (basis: research/email-system.md · Cameroonian law requires prior consent for email prospecting, so the digest becomes opt in rather than a default)
+
+### 34. Rendering strategy and streaming boundaries · needs a decision · GA
+Two layouts block the entire page, including the navigation, on a database call before anything paints, so a student sees a white screen for a second or three on every navigation. The landing page sends 340 KB of compressed script and then fetches its own content from an API, which means blank HTML, then a large download, then a round trip, in that order, before a student sees what the product does.
+**Done when:** every route has a written rendering decision, the two blocking layouts paint their chrome immediately and stream the rest, the landing page's headline and course list arrive in the first HTML with no script dependency, the catalogue prerenders the top slice and caches the rest with invalidation on publish rather than on rebuild, and no route pays for a render, an API call and a hydration it does not need.
+- [ ] Design it (spec): `/solution-architect rendering strategy and streaming boundaries`
+
+(basis: research/seo-and-rendering.md §6 · a student arriving from a search result on a phone has one job, see what this is, and the current shape makes them wait for JavaScript to do it)
+
+### 35. Loading states and perceived speed
+There are no route level loading boundaries anywhere, so any slow layout shows nothing at all. Sixty eight skeleton usages sit inside client components where they do not help, and a long AI answer cannot honestly be a skeleton because a student reads that as broken.
+**Done when:** every route that can be slow has a boundary that shows something honest, nothing under a second shows a loader, a skeleton appears only where the shape is genuinely known, the AI answer streams into place rather than sitting behind a placeholder, and the exam runner shows no loading state that could read as a lost answer.
+- [ ] Design it (spec): `/solution-architect loading states and perceived speed`
+
+(basis: research/seo-and-rendering.md §7 · the thresholds are published and cheap to hit, the rule that matters is the last one, a loader inside a timed exam is a correctness risk not a polish item)
 
 ## Cross cutting
 

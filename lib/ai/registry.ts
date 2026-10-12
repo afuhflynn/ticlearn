@@ -71,7 +71,9 @@ export const taskRegistry: Record<string, TaskConfig> = {
 export function getTaskConfig(task: string): TaskConfig {
   const config = taskRegistry[task];
   if (!config) {
-    throw new Error(`Unknown task: "${task}". Valid: ${Object.keys(taskRegistry).join(", ")}`);
+    throw new Error(
+      `Unknown task: "${task}". Valid: ${Object.keys(taskRegistry).join(", ")}`,
+    );
   }
   return config;
 }

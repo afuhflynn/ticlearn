@@ -699,6 +699,7 @@ model AffiliateEarning {
   status            EarningStatus @default(PENDING)
   requestedAt       DateTime?     @map("requested_at")
   paidAt            DateTime?     @map("paid_at")
+  fapshiTransId     String?       @unique @map("fapshi_trans_id")
   createdAt         DateTime      @default(now())
   affiliate         Affiliate     @relation(fields: [affiliateCode], references: [code])
 

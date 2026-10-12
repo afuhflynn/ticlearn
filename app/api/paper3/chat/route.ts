@@ -64,13 +64,17 @@ export async function POST(req: Request) {
     const currentQuestion = questionId
       ? allQuestions.find((mq) => mq.question.id === questionId)
       : null;
-    
+
     const currentResult = currentQuestion
-      ? attempt.detailedResults.find((dr) => dr.questionId === currentQuestion.question.id)
+      ? attempt.detailedResults.find(
+          (dr) => dr.questionId === currentQuestion.question.id,
+        )
       : null;
 
     const resultsSummary = attempt.detailedResults.map((dr) => {
-      const q = allQuestions.find((mq) => mq.question.id === dr.questionId)?.question;
+      const q = allQuestions.find(
+        (mq) => mq.question.id === dr.questionId,
+      )?.question;
       return {
         questionNumber: q?.questionNumber || "?",
         title: q?.title || "Unknown",
@@ -113,10 +117,10 @@ export async function POST(req: Request) {
     });
 
     let systemPrompt = "";
-    
+
     if (currentQuestion) {
       const taskTypeHint = getTaskTypeHint(currentQuestion.question.taskType);
-      
+
       systemPrompt = `You are TiC, an expert GCE Paper 3 tutor helping a student review their exam.
 
 ## Current Question
@@ -127,8 +131,12 @@ Marks: ${currentQuestion.marks}
 **Question Content:**
 ${currentQuestion.question.contentMd || currentQuestion.question.content}
 
-${currentResult ? `**Student's Result:** ${currentResult.isCorrect ? "Correct" : "Incorrect"} (${currentResult.marksEarned}/${currentResult.totalMarks} marks)
-**Feedback:** ${currentResult.feedback || "No feedback available"}` : ""}
+${
+  currentResult
+    ? `**Student's Result:** ${currentResult.isCorrect ? "Correct" : "Incorrect"} (${currentResult.marksEarned}/${currentResult.totalMarks} marks)
+**Feedback:** ${currentResult.feedback || "No feedback available"}`
+    : ""
+}
 
 ${taskTypeHint}
 
@@ -144,11 +152,19 @@ Provide specific hints related to this question. Guide the student toward unders
 - **Questions Correct:** ${examSummary.correctCount}/${examSummary.totalQuestions}
 - **Questions to Review:** ${examSummary.wrongCount}
 
-${resultsSummary.length > 0 ? `## Question-by-Question Results
-${resultsSummary.map((r) => `- Q${r.questionNumber}: ${r.isCorrect ? "✅" : "❌"} (${r.marksEarned}/${r.totalMarks}) - ${r.title.slice(0, 50)}...`).join("\n")}` : ""}
+${
+  resultsSummary.length > 0
+    ? `## Question-by-Question Results
+${resultsSummary.map((r) => `- Q${r.questionNumber}: ${r.isCorrect ? "✅" : "❌"} (${r.marksEarned}/${r.totalMarks}) - ${r.title.slice(0, 50)}...`).join("\n")}`
+    : ""
+}
 
-${currentResult?.feedbackMd ? `\n## AI Feedback
-${currentResult.feedbackMd}` : ""}
+${
+  currentResult?.feedbackMd
+    ? `\n## AI Feedback
+${currentResult.feedbackMd}`
+    : ""
+}
 
 Provide encouraging and educational guidance. Help the student understand what they did well and where they can improve.`;
     }
@@ -212,14 +228,14 @@ function getTaskTypeHint(taskType: string): string {
 - Logic and algorithm structure
 - Variable declarations and data types
 - Control structures (loops, conditionals)`;
-    
+
     case "WEB_PROGRAMMING":
       return `This is a web programming question (HTML/CSS). Focus on:
 - HTML element structure and semantic tags
 - Inline CSS styling
 - Proper nesting and closing tags
 - Content organization`;
-    
+
     case "EXCEL_FORMULA":
     case "EXCEL_GRID":
       return `This is a spreadsheet question. Focus on:
@@ -227,7 +243,7 @@ function getTaskTypeHint(taskType: string): string {
 - Built-in functions (SUM, IF, VLOOKUP, etc.)
 - Relative and absolute references
 - Data organization in cells`;
-    
+
     case "SQL_QUERY":
     case "ACCESS_TABLE":
     case "ACCESS_RELATIONSHIP":
@@ -236,14 +252,14 @@ function getTaskTypeHint(taskType: string): string {
 - Table relationships and keys
 - Data manipulation commands
 - Database design principles`;
-    
+
     case "ALGORITHM_PSEUDOCODE":
       return `This is an algorithm/pseudocode question. Focus on:
 - Step-by-step logic flow
 - Variable initialization and updates
 - Loop and conditional structures
 - Clear, organized pseudocode format`;
-    
+
     default:
       return "Review the question content and think through your approach step by step.";
   }

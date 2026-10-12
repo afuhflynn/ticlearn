@@ -26,7 +26,11 @@ async function main() {
   console.log("Exam levels seeded.");
 
   // ── Helper: upsert a program ─────────────────────────────
-  async function upsertProgram(examLevelId: string, code: string, name: string) {
+  async function upsertProgram(
+    examLevelId: string,
+    code: string,
+    name: string,
+  ) {
     return prisma.program.upsert({
       where: { code },
       update: {},
@@ -120,7 +124,10 @@ async function main() {
   const olCommercialSpecialties: Array<{ code: string; name: string }> = [
     { code: "OL_ACC_COM", name: "Accounting" },
     { code: "OL_MKT_COM", name: "Marketing" },
-    { code: "OL_SAC_COM", name: "Secretarial Administration and Communication" },
+    {
+      code: "OL_SAC_COM",
+      name: "Secretarial Administration and Communication",
+    },
     { code: "OL_HEC_COM", name: "Home Economics" },
   ];
   for (const spec of olCommercialSpecialties) {
@@ -150,7 +157,9 @@ async function main() {
     await createComponents(subj.code, [
       { code: "P1", name: "Paper 1", type: "PAPER" },
       { code: "P2", name: "Paper 2", type: "PAPER" },
-      ...(isCSorICT ? [{ code: "P3", name: "Paper 3", type: "PAPER" as const }] : []),
+      ...(isCSorICT
+        ? [{ code: "P3", name: "Paper 3", type: "PAPER" as const }]
+        : []),
     ]);
   }
 
@@ -163,7 +172,10 @@ async function main() {
   }
 
   // ── Components: GCE A-Level Commercial ─────────────────
-  const alCommercialSubjects: Record<string, Array<{ code: string; name: string }>> = {
+  const alCommercialSubjects: Record<
+    string,
+    Array<{ code: string; name: string }>
+  > = {
     AL_ACC: [
       { code: "FIN_ACC", name: "Financial Accounting" },
       { code: "COST_MGT", name: "Cost and Management Accounting" },
@@ -204,7 +216,10 @@ async function main() {
     AL_TIMS: [
       { code: "FIN_ACC", name: "Financial Accounting" },
       { code: "TAX_PRACTICE", name: "Principles and Practice of Taxation" },
-      { code: "INFO_MGT_SYS", name: "Information Management Systems for Business" },
+      {
+        code: "INFO_MGT_SYS",
+        name: "Information Management Systems for Business",
+      },
       { code: "BUS_MATH", name: "Business Mathematics" },
       { code: "ECON", name: "Economics" },
       { code: "BUS_MGT", name: "Business Management" },
@@ -231,7 +246,10 @@ async function main() {
   }
 
   // ── Components: GCE O-Level Commercial ─────────────────
-  const olCommercialSubjects: Record<string, Array<{ code: string; name: string }>> = {
+  const olCommercialSubjects: Record<
+    string,
+    Array<{ code: string; name: string }>
+  > = {
     OL_ACC_COM: [
       { code: "FIN_ACC", name: "Financial Accounting" },
       { code: "COMMERCE", name: "Commerce" },
@@ -875,7 +893,10 @@ async function main() {
   };
 
   // ── Topics: A-Level Commercial subjects ─────────────────
-  const alCommercialTopicMap: Record<string, Array<{ name: string; order: number }>> = {
+  const alCommercialTopicMap: Record<
+    string,
+    Array<{ name: string; order: number }>
+  > = {
     "AL_ACC:FIN_ACC": [
       { name: "Double Entry System", order: 1 },
       { name: "Final Accounts", order: 2 },
@@ -1131,7 +1152,10 @@ async function main() {
   };
 
   // ── Topics: O-Level Commercial subjects ─────────────────
-  const olCommercialTopicMap: Record<string, Array<{ name: string; order: number }>> = {
+  const olCommercialTopicMap: Record<
+    string,
+    Array<{ name: string; order: number }>
+  > = {
     "OL_ACC_COM:FIN_ACC": [
       { name: "Double Entry Bookkeeping", order: 1 },
       { name: "Cash Book & Bank Reconciliation", order: 2 },
@@ -1221,9 +1245,7 @@ async function main() {
   for (const comp of allComponents) {
     const key = `${comp.program.code}:${comp.code}`;
     const topics =
-      topicMap[key] ||
-      alCommercialTopicMap[key] ||
-      olCommercialTopicMap[key];
+      topicMap[key] || alCommercialTopicMap[key] || olCommercialTopicMap[key];
     if (topics) {
       await prisma.topic.createMany({
         data: topics.map((t) => ({

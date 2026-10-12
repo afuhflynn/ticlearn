@@ -46,9 +46,7 @@ export function IncompleteProfileBanner() {
     <div className="mx-4 mt-2 flex items-start gap-3 rounded-xl border-2 border-blue-200 bg-blue-50 p-3 text-xs">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-blue-600" />
       <div className="flex-1">
-        <p className="font-medium text-blue-800">
-          Limited AI context
-        </p>
+        <p className="font-medium text-blue-800">Limited AI context</p>
         <p className="mt-0.5 text-blue-700">
           Complete your profile to give the AI your subjects, exam date, and
           study data for better answers.

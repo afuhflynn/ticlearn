@@ -598,10 +598,18 @@ export async function sendAdminFeedbackAlert({
   const safeEmail = escapeHtml(userEmail);
   const safeSubject = escapeHtml(subject || "No subject");
   const safeMessage = escapeHtml(message || "No message").slice(0, 500);
-  const typeLabel = { BUG: "🐛 Bug Report", FEATURE: "💡 Feature Request", GENERAL: "💬 General Feedback", EXAM: "📝 Exam Feedback", CHAT: "💬 Chat Rating" }[type] || type;
-  const ratingHtml = rating !== undefined && rating !== null
-    ? `<p><strong>Rating:</strong> ${rating > 0 ? "👍 Thumbs Up" : "👎 Thumbs Down"}</p>`
-    : "";
+  const typeLabel =
+    {
+      BUG: "🐛 Bug Report",
+      FEATURE: "💡 Feature Request",
+      GENERAL: "💬 General Feedback",
+      EXAM: "📝 Exam Feedback",
+      CHAT: "💬 Chat Rating",
+    }[type] || type;
+  const ratingHtml =
+    rating !== undefined && rating !== null
+      ? `<p><strong>Rating:</strong> ${rating > 0 ? "👍 Thumbs Up" : "👎 Thumbs Down"}</p>`
+      : "";
   const subjectLine = `📬 New Feedback: ${typeLabel} - ${safeName}`;
   const html = `
     <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 8px;">
@@ -905,7 +913,13 @@ export function buildEngagementEmail(
   }
 
   function cta(url: string, label: string) {
-    return '<a href="' + url + '" class="button" style="display:inline-block;text-align:center;">' + label + '</a>';
+    return (
+      '<a href="' +
+      url +
+      '" class="button" style="display:inline-block;text-align:center;">' +
+      label +
+      "</a>"
+    );
   }
 
   let subject: string;
@@ -914,7 +928,11 @@ export function buildEngagementEmail(
   switch (campaign) {
     case "re-engagement": {
       const topic = user.weakestTopic
-        ? 'Your weakest topic is <span class="highlight">' + escapeHtml(user.weakestTopic) + '</span> (' + user.weakestTopicScore + '%). A short quiz is all it takes to get back on track.'
+        ? 'Your weakest topic is <span class="highlight">' +
+          escapeHtml(user.weakestTopic) +
+          "</span> (" +
+          user.weakestTopicScore +
+          "%). A short quiz is all it takes to get back on track."
         : "A short quiz is all it takes to get back on track.";
       subject = "We miss you, " + safe + "! 🎯";
       body = `
@@ -956,8 +974,8 @@ export function buildEngagementEmail(
         : "Keep practicing, " + safe + "!";
       body = `
         <h2 style="color:#1f2937;">Time to level up, ${safe}!</h2>
-        ${user.weakestTopic ? '<p>Your weakest area is <span class="highlight">' + topic + '</span> (' + user.weakestTopicScore + '% mastery). Focused practice can bring that score up fast.</p>' : "<p>Keep up the great work! Regular practice is the key to exam success.</p>"}
-        ${user.strongestTopic ? '<p>Your strongest topic is <span class="highlight">' + escapeHtml(user.strongestTopic) + '</span> — great job!</p>' : ""}
+        ${user.weakestTopic ? '<p>Your weakest area is <span class="highlight">' + topic + "</span> (" + user.weakestTopicScore + "% mastery). Focused practice can bring that score up fast.</p>" : "<p>Keep up the great work! Regular practice is the key to exam success.</p>"}
+        ${user.strongestTopic ? '<p>Your strongest topic is <span class="highlight">' + escapeHtml(user.strongestTopic) + "</span> — great job!</p>" : ""}
         <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Take a Practice Quiz →")}</div>
       `;
       break;
@@ -965,12 +983,13 @@ export function buildEngagementEmail(
 
     case "exam-countdown": {
       const days = user.daysUntilExam ?? 0;
-      const readiness = user.readiness !== null ? user.readiness + "%" : "not yet assessed";
+      const readiness =
+        user.readiness !== null ? user.readiness + "%" : "not yet assessed";
       subject = days + " days until your exam! 🕐";
       body = `
         <h2 style="color:#1f2937;">${days} days to go, ${safe}!</h2>
         <p>Your current readiness: <span class="highlight">${readiness}</span></p>
-        ${user.weakestTopic ? '<p>Focus on <span class="highlight">' + escapeHtml(user.weakestTopic) + '</span> — it\'s your weakest area right now.</p>' : ""}
+        ${user.weakestTopic ? '<p>Focus on <span class="highlight">' + escapeHtml(user.weakestTopic) + "</span> — it's your weakest area right now.</p>" : ""}
         <p>Every session counts. Let's make these days count!</p>
         <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/dashboard", "Study Now →")}</div>
       `;
@@ -995,7 +1014,7 @@ export function buildEngagementEmail(
             <p style="font-size:12px;color:#6b7280;margin:4px 0 0;">Readiness</p>
           </div>
         </div>
-        ${user.weakestTopic ? '<p>Keep working on <span class="highlight">' + escapeHtml(user.weakestTopic) + '</span> to boost your score.</p>' : ""}
+        ${user.weakestTopic ? '<p>Keep working on <span class="highlight">' + escapeHtml(user.weakestTopic) + "</span> to boost your score.</p>" : ""}
         <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Continue Practicing →")}</div>
       `;
       break;
@@ -1028,11 +1047,19 @@ export async function hydrateEngagementData(
     }),
     prisma.userStats.findFirst({
       where: { userId },
-      select: { currentStreak: true, lastActivityDate: true, quizzesTaken: true },
+      select: {
+        currentStreak: true,
+        lastActivityDate: true,
+        quizzesTaken: true,
+      },
     }),
     prisma.paper3UserStats.findFirst({
       where: { userId },
-      select: { weakConcepts: true, readinessScore: true, strongConcepts: true },
+      select: {
+        weakConcepts: true,
+        readinessScore: true,
+        strongConcepts: true,
+      },
     }),
     prisma.examProfile.findFirst({
       where: { userId, onboardingCompleted: true },
@@ -1050,7 +1077,8 @@ export async function hydrateEngagementData(
 
   const daysSinceActive = userStats?.lastActivityDate
     ? Math.floor(
-        (Date.now() - userStats.lastActivityDate.getTime()) / (1000 * 60 * 60 * 24),
+        (Date.now() - userStats.lastActivityDate.getTime()) /
+          (1000 * 60 * 60 * 24),
       )
     : null;
 

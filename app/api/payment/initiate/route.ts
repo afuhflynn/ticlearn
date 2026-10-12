@@ -65,7 +65,10 @@ export async function POST(request: Request) {
       data: { fapshiTransId: result.transId },
     });
 
-    trackEvent(session.user.id, EVENTS.PAYMENT_INITIATED, { plan, amount: price.amount }).catch(() => {});
+    trackEvent(session.user.id, EVENTS.PAYMENT_INITIATED, {
+      plan,
+      amount: price.amount,
+    }).catch(() => {});
 
     return NextResponse.json({ link: result.link, transId: result.transId });
   } catch (error) {

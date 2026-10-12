@@ -73,7 +73,10 @@ export async function POST(req: Request, ctx: RouteCtx) {
       );
     }
     const msg = error instanceof Error ? error.message : "";
-    if (msg.includes("Unique constraint") || msg.includes("unique constraint")) {
+    if (
+      msg.includes("Unique constraint") ||
+      msg.includes("unique constraint")
+    ) {
       return NextResponse.json(
         { error: "That exam is already in this group" },
         { status: 409 },

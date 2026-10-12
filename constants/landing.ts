@@ -70,4 +70,3 @@ export const SAMPLE_MOCKS: SampleMock[] = [
       "Structured theory paper with sectional marks aligned to typical GCE weighting.",
   },
 ];
-

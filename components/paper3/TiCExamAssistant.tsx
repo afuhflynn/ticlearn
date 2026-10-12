@@ -226,7 +226,12 @@ export function TiCExamAssistant({
                   >
                     {msg.role === "assistant" ? (
                       <div className="prose prose-sm max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown
+                          remarkPlugins={[remarkMath]}
+                          rehypePlugins={[rehypeKatex]}
+                        >
+                          {msg.content}
+                        </ReactMarkdown>
                       </div>
                     ) : (
                       msg.content
@@ -279,12 +284,15 @@ export function TiCExamAssistant({
                     Not enough credits
                   </p>
                   <p className="text-xs text-amber-600 mt-1">
-                    You need {AI_TUTOR_COST} credits per message. Your balance: {creditBalance}.
+                    You need {AI_TUTOR_COST} credits per message. Your balance:{" "}
+                    {creditBalance}.
                   </p>
                   <Button
                     size="sm"
                     className="mt-2 gap-1"
-                    onClick={() => (window.location.href = "/subscription#credits-top-up")}
+                    onClick={() =>
+                      (window.location.href = "/subscription#credits-top-up")
+                    }
                   >
                     <Coins className="h-3 w-3" />
                     Buy credits
@@ -339,13 +347,14 @@ export function TiCExamAssistant({
             </p>
           </div>
           <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowCreditModal(false)}
-            >
+            <Button variant="outline" onClick={() => setShowCreditModal(false)}>
               Cancel
             </Button>
-            <Button onClick={() => (window.location.href = "/subscription#credits-top-up")}>
+            <Button
+              onClick={() =>
+                (window.location.href = "/subscription#credits-top-up")
+              }
+            >
               <Coins className="h-4 w-4 mr-1" />
               Buy credits
             </Button>

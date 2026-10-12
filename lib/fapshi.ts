@@ -71,7 +71,9 @@ export async function initiatePayment(
 }
 
 /** Optional status check (e.g. return page) — matches ticportal `/payment-status/:transId`. */
-export async function getPaymentStatus(transId: string): Promise<unknown | null> {
+export async function getPaymentStatus(
+  transId: string,
+): Promise<unknown | null> {
   if (!FAPSHI_API_USER || !FAPSHI_API_KEY || !transId) {
     return null;
   }

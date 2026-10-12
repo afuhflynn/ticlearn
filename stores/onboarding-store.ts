@@ -23,7 +23,10 @@ interface OnboardingActions {
   setProgramIds: (ids: string[]) => void;
   setExamDate: (year: number | null, date: string | null) => void;
   setBaselines: (baselines: Baseline[]) => void;
-  setStudyIntent: (isRetaking: boolean, studyHoursPerWeek: number | null) => void;
+  setStudyIntent: (
+    isRetaking: boolean,
+    studyHoursPerWeek: number | null,
+  ) => void;
   reset: () => void;
 }
 

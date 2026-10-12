@@ -1,19 +1,26 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { nanoid } from "nanoid";
+import { requireAdmin } from "@/lib/require-admin";
+import { limit } from "@/lib/rate-limit";
+
+async function adminRateLimit(request: Request): Promise<NextResponse | null> {
+  const nextReq = new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+  });
+  return limit("admin", nextReq as any);
+}
 
 export async function GET(req: Request) {
+  const rateLimitResponse = await adminRateLimit(req);
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const adminCheck = await requireAdmin();
+  if (adminCheck instanceof NextResponse) return adminCheck;
+
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user || (session.user as any).role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
@@ -92,15 +99,13 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const rateLimitResponse = await adminRateLimit(req);
+  if (rateLimitResponse) return rateLimitResponse;
+
+  const adminCheck = await requireAdmin();
+  if (adminCheck instanceof NextResponse) return adminCheck;
+
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user || (session.user as any).role !== "ADMIN") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
     const { userId, code, momoNumber, momoName } = await req.json();
 
     if (!userId || !code || !momoNumber || !momoName) {
@@ -118,7 +123,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Check if user is already an affiliate
     const existingAffiliate = await prisma.affiliate.findUnique({
       where: { userId },
     });
@@ -130,7 +134,6 @@ export async function POST(req: Request) {
       );
     }
 
-    // Check if code is unique
     const existingCode = await prisma.affiliate.findUnique({
       where: { code },
     });

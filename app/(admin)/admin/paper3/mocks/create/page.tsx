@@ -25,13 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  ArrowLeft,
-  ArrowRight,
-  Check,
-  Loader2,
-  Sparkles,
-} from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Loader2, Sparkles } from "lucide-react";
 
 type Step = "info" | "method" | "review";
 
@@ -74,9 +68,7 @@ export default function CreateMockExamPage() {
 
   const totalMarks = useMemo(() => {
     return selectedQuestions.reduce((sum, id) => {
-      const q = approvedQuestions.find(
-        (q: { id: string }) => q.id === id,
-      );
+      const q = approvedQuestions.find((q: { id: string }) => q.id === id);
       return sum + (q?.marks ?? 0);
     }, 0);
   }, [selectedQuestions, approvedQuestions]);
@@ -159,9 +151,7 @@ export default function CreateMockExamPage() {
                     : "outline"
               }
               className={
-                steps.findIndex((x) => x.key === step) > i
-                  ? "bg-green-600"
-                  : ""
+                steps.findIndex((x) => x.key === step) > i ? "bg-green-600" : ""
               }
             >
               {steps.findIndex((x) => x.key === step) > i ? (
@@ -171,9 +161,7 @@ export default function CreateMockExamPage() {
               )}
               {s.label}
             </Badge>
-            {i < steps.length - 1 && (
-              <div className="h-px w-6 bg-border" />
-            )}
+            {i < steps.length - 1 && <div className="h-px w-6 bg-border" />}
           </div>
         ))}
       </div>
@@ -310,16 +298,14 @@ export default function CreateMockExamPage() {
               <CardTitle className="flex items-center gap-2">
                 <Check
                   className={`h-5 w-5 ${
-                    mode === "manual"
-                      ? "text-primary"
-                      : "text-muted-foreground"
+                    mode === "manual" ? "text-primary" : "text-muted-foreground"
                   }`}
                 />
                 Manual: Pick from approved questions
               </CardTitle>
               <CardDescription>
-                Choose individual questions from the approved question bank.
-                You control exactly which questions appear.
+                Choose individual questions from the approved question bank. You
+                control exactly which questions appear.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -339,9 +325,7 @@ export default function CreateMockExamPage() {
           {/* AI method */}
           <Card
             className={`cursor-pointer transition-all ${
-              mode === "ai"
-                ? "ring-2 ring-primary"
-                : "hover:border-primary/50"
+              mode === "ai" ? "ring-2 ring-primary" : "hover:border-primary/50"
             }`}
             onClick={() => setMode("ai")}
           >
@@ -389,10 +373,7 @@ export default function CreateMockExamPage() {
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back
             </Button>
-            <Button
-              onClick={() => setStep("review")}
-              disabled={!mode}
-            >
+            <Button onClick={() => setStep("review")} disabled={!mode}>
               Next: Review
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -547,7 +528,9 @@ export default function CreateMockExamPage() {
                     <div className="space-y-2">
                       <Label>Subject</Label>
                       <p className="text-sm font-medium">
-                        {formData.subject === "ICT" ? "ICT" : "Computer Science"}
+                        {formData.subject === "ICT"
+                          ? "ICT"
+                          : "Computer Science"}
                       </p>
                     </div>
                     <div className="space-y-2">
@@ -581,10 +564,7 @@ export default function CreateMockExamPage() {
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   Back
                 </Button>
-                <Button
-                  type="submit"
-                  disabled={generateMock.isPending}
-                >
+                <Button type="submit" disabled={generateMock.isPending}>
                   {generateMock.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

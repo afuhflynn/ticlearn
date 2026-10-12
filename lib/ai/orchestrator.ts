@@ -19,9 +19,10 @@ export interface GenerateOptions<T> {
 export interface StreamChatOptions {
   task: string;
   system?: string;
-  messages: Array<
-    { role: "user" | "assistant" | "system" | "tool"; content: string }
-  >;
+  messages: Array<{
+    role: "user" | "assistant" | "system" | "tool";
+    content: string;
+  }>;
   tools?: Record<string, unknown>;
   onFinish?: (result: { text: string; usage: unknown }) => void;
 }
@@ -29,9 +30,7 @@ export interface StreamChatOptions {
 export interface TextGenOptions {
   task: string;
   prompt?: string;
-  messages?: Array<
-    { role: "user" | "assistant" | "system"; content: string }
-  >;
+  messages?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   system?: string;
   modelOptions?: Record<string, unknown>;
 }

@@ -15,6 +15,10 @@ export const processNote = inngest.createFunction(
     triggers: {
       event: "note/process",
     },
+    concurrency: {
+      limit: 4,
+      key: "note-processing",
+    },
   },
 
   async ({ event, step }) => {
@@ -132,11 +136,6 @@ export const processNote = inngest.createFunction(
       });
 
       console.log(`Note processed successfully: ${noteId}`);
-
-      await step.sendEvent("fire-note-harvest", {
-        name: "note/harvest-knowledge",
-        data: { noteId },
-      });
 
       return { success: true, noteId };
     } catch (error) {
@@ -269,7 +268,14 @@ export const generateQuizFromWeakAreas = inngest.createFunction(
     },
   },
   async ({ event }) => {
-    const { quizId, userId, weakConcepts, notes, questionCount, readinessScore } = event.data;
+    const {
+      quizId,
+      userId,
+      weakConcepts,
+      notes,
+      questionCount,
+      readinessScore,
+    } = event.data;
     console.log(
       `[Inngest] Generating quiz from weak areas for user: ${userId}, quiz: ${quizId}`,
     );
@@ -325,7 +331,11 @@ export const generateQuizFromWeakAreas = inngest.createFunction(
 
       console.log(`[Inngest] Quiz generated successfully: ${quizId}`);
 
-      return { success: true, quizId, questionCount: generatedQuestions.length };
+      return {
+        success: true,
+        quizId,
+        questionCount: generatedQuestions.length,
+      };
     } catch (error) {
       console.error(`[Inngest] Quiz from weak areas generation failed:`, error);
 
@@ -695,8 +705,9 @@ export const generateDefaultQuiz = inngest.createFunction(
         };
       }
 
-      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } =
-        await import("@/lib/ai");
+      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } = await import(
+        "@/lib/ai"
+      );
 
       const shuffledTopics = [...DEFAULT_QUIZ_TOPICS].sort(
         () => Math.random() - 0.5,
@@ -863,8 +874,9 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "ACTIVATE") {
-      const { sendSubscriptionActivatedEmail } =
-        await import("@/lib/email/send");
+      const { sendSubscriptionActivatedEmail } = await import(
+        "@/lib/email/send"
+      );
 
       await sendSubscriptionActivatedEmail({
         email: user.email,
@@ -879,8 +891,9 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "REJECT") {
-      const { sendSubscriptionRejectedEmail } =
-        await import("@/lib/email/send");
+      const { sendSubscriptionRejectedEmail } = await import(
+        "@/lib/email/send"
+      );
 
       await sendSubscriptionRejectedEmail({
         email: user.email,

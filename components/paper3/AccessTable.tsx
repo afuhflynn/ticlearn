@@ -39,9 +39,7 @@ export function AccessTable({
         )}
       </div>
 
-      {caption && (
-        <p className="text-sm text-gray-600 mb-2">{caption}</p>
-      )}
+      {caption && <p className="text-sm text-gray-600 mb-2">{caption}</p>}
 
       <div className="overflow-x-auto">
         <table className="border-collapse text-sm w-full">
@@ -53,7 +51,7 @@ export function AccessTable({
                   className={cn(
                     "px-3 py-2 border border-blue-300 text-left font-semibold",
                     col === primaryKey && "bg-green-50",
-                    foreignKeys.includes(col) && "bg-yellow-50"
+                    foreignKeys.includes(col) && "bg-yellow-50",
                   )}
                 >
                   <div className="flex items-center gap-1">
@@ -90,8 +88,10 @@ export function AccessTable({
                       key={cellIdx}
                       className={cn(
                         "px-3 py-2 border border-gray-300",
-                        columns[cellIdx] === primaryKey && "font-semibold bg-green-50",
-                        foreignKeys.includes(columns[cellIdx]) && "bg-yellow-50"
+                        columns[cellIdx] === primaryKey &&
+                          "font-semibold bg-green-50",
+                        foreignKeys.includes(columns[cellIdx]) &&
+                          "bg-yellow-50",
                       )}
                     >
                       {cell || <span className="text-gray-400">NULL</span>}

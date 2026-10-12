@@ -5,17 +5,22 @@ import { prisma } from "@/lib/prisma";
 import { generateMockFromBlueprint } from "@/lib/mock-generator";
 import { getActiveProfileId } from "@/lib/exam-profile";
 
-
 export async function POST(req: Request) {
   try {
     const session = await auth.api.getSession({ headers: await headers() });
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { blueprintId } = await req.json();
-    if (!blueprintId) return NextResponse.json({ error: "blueprintId is required" }, { status: 400 });
+    if (!blueprintId)
+      return NextResponse.json(
+        { error: "blueprintId is required" },
+        { status: 400 },
+      );
 
     const profileId = await getActiveProfileId(session.user.id);
-    if (!profileId) return NextResponse.json({ error: "No active profile" }, { status: 400 });
+    if (!profileId)
+      return NextResponse.json({ error: "No active profile" }, { status: 400 });
 
     const blueprint = await prisma.examBlueprint.findUnique({
       where: { id: blueprintId },
@@ -27,7 +32,10 @@ export async function POST(req: Request) {
     });
 
     if (!blueprint) {
-      return NextResponse.json({ error: "Blueprint not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Blueprint not found" },
+        { status: 404 },
+      );
     }
 
     const profilePrograms = await prisma.examProfileProgram.findMany({
@@ -73,9 +81,16 @@ export async function POST(req: Request) {
 
     if (!matchesStudentSubjects && !allowedViaCommunity && !allowedViaModule) {
       const details = [];
-      if (!hasProgramMatch) details.push("your profile does not include this subject");
-      if (blueprint.visibleForStudents && !hasProgramMatch) details.push("subject mismatch");
-      if (!blueprint.visibleForStudents && !blueprint.visibleInCommunity && !inVisibleModule) details.push("blueprint is not published");
+      if (!hasProgramMatch)
+        details.push("your profile does not include this subject");
+      if (blueprint.visibleForStudents && !hasProgramMatch)
+        details.push("subject mismatch");
+      if (
+        !blueprint.visibleForStudents &&
+        !blueprint.visibleInCommunity &&
+        !inVisibleModule
+      )
+        details.push("blueprint is not published");
       const reason = details.length ? details.join("; ") : "unknown";
       return NextResponse.json(
         {
@@ -96,6 +111,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ mock });
   } catch (error) {
     console.error("Mock generate error:", error);
-    return NextResponse.json({ error: "Failed to generate mock" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to generate mock" },
+      { status: 500 },
+    );
   }
 }

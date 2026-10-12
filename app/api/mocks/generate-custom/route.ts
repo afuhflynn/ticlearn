@@ -51,16 +51,22 @@ export async function POST(req: Request) {
     if (paperRaw === "PAPER_1" || paperRaw === "P1") paper = "PAPER_1";
     else if (paperRaw === "PAPER_2" || paperRaw === "P2") paper = "PAPER_2";
     else
-      return NextResponse.json({ error: "Invalid paper selection" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid paper selection" },
+        { status: 400 },
+      );
 
     let scope: StudentMockScope;
-    if (scopeRaw === "FULL_SYLLABUS" || scopeRaw === "FULL") scope = "FULL_SYLLABUS";
+    if (scopeRaw === "FULL_SYLLABUS" || scopeRaw === "FULL")
+      scope = "FULL_SYLLABUS";
     else if (scopeRaw === "TOPICS") scope = "TOPICS";
     else return NextResponse.json({ error: "Invalid scope" }, { status: 400 });
 
     if (
       scope === "TOPICS" &&
-      (!body.topicIds || !Array.isArray(body.topicIds) || body.topicIds.length === 0)
+      (!body.topicIds ||
+        !Array.isArray(body.topicIds) ||
+        body.topicIds.length === 0)
     ) {
       return NextResponse.json(
         { error: "Pick one or more topics for topic-focused mocks" },
@@ -86,7 +92,10 @@ export async function POST(req: Request) {
     });
 
     if (!componentOk)
-      return NextResponse.json({ error: "Unknown paper for your profile" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Unknown paper for your profile" },
+        { status: 403 },
+      );
 
     if (scope === "TOPICS" && body.topicIds?.length) {
       const distinct = [...new Set(body.topicIds)];
@@ -94,7 +103,10 @@ export async function POST(req: Request) {
         where: { id: { in: distinct }, componentId },
       });
       if (topics.length !== distinct.length)
-        return NextResponse.json({ error: "Invalid topic selection" }, { status: 400 });
+        return NextResponse.json(
+          { error: "Invalid topic selection" },
+          { status: 400 },
+        );
     }
 
     const settings = await getPlatformSettings();
@@ -142,9 +154,9 @@ export async function POST(req: Request) {
           referenceId: mock.attemptId,
         });
       } catch (error) {
-        await prisma.mockAttempt.delete({ where: { id: mock.attemptId } }).catch(
-          () => {},
-        );
+        await prisma.mockAttempt
+          .delete({ where: { id: mock.attemptId } })
+          .catch(() => {});
         if (error instanceof InsufficientCreditsError) {
           return NextResponse.json(
             {

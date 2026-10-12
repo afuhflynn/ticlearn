@@ -54,7 +54,11 @@ function loadFromStorage(attemptId: string, questionId: string): Message[] {
   return [];
 }
 
-function saveToStorage(attemptId: string, questionId: string, messages: Message[]) {
+function saveToStorage(
+  attemptId: string,
+  questionId: string,
+  messages: Message[],
+) {
   try {
     const key = getStorageKey(attemptId, questionId);
     localStorage.setItem(key, JSON.stringify(messages));
@@ -134,15 +138,21 @@ export function PerQuestionChat({
       const response = await chatMutation.mutateAsync({
         attemptId,
         questionId,
-        messages: messages.filter((m) => m.role === "user").map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        messages: messages
+          .filter((m) => m.role === "user")
+          .map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
       });
 
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: response.response, timestamp: Date.now() },
+        {
+          role: "assistant",
+          content: response.response,
+          timestamp: Date.now(),
+        },
       ]);
     } catch (error) {
       console.error("Chat error:", error);
@@ -282,7 +292,8 @@ export function PerQuestionChat({
         {messages.length === 0 && (
           <div className="bg-blue-50 rounded-lg p-3 text-center">
             <p className="text-sm text-blue-800">
-              Ask me about this question! You have {messagesRemaining} free messages.
+              Ask me about this question! You have {messagesRemaining} free
+              messages.
             </p>
           </div>
         )}
@@ -300,7 +311,12 @@ export function PerQuestionChat({
             >
               {msg.role === "assistant" ? (
                 <div className="prose prose-sm max-w-none">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>{msg.content}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
+                    {msg.content}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 msg.content

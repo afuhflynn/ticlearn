@@ -15,7 +15,9 @@ export async function GET(req: Request) {
     }
 
     const profileId = await getActiveProfileId(session.user.id);
-    const whereFilter = profileId ? { examProfileId: profileId } : { userId: session.user.id };
+    const whereFilter = profileId
+      ? { examProfileId: profileId }
+      : { userId: session.user.id };
 
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "1", 10);
@@ -45,18 +47,21 @@ export async function GET(req: Request) {
       }),
     ]);
 
-    const groupedByMock: Record<string, {
-      mockId: string;
-      mockTitle: string;
-      mockSubject: string;
-      attempts: Array<{
-        id: string;
-        score: number;
-        totalMarks: number;
-        timeTaken: number | null;
-        completedAt: Date | null;
-      }>;
-    }> = {};
+    const groupedByMock: Record<
+      string,
+      {
+        mockId: string;
+        mockTitle: string;
+        mockSubject: string;
+        attempts: Array<{
+          id: string;
+          score: number;
+          totalMarks: number;
+          timeTaken: number | null;
+          completedAt: Date | null;
+        }>;
+      }
+    > = {};
 
     for (const attempt of attempts) {
       const mockId = attempt.mockId;

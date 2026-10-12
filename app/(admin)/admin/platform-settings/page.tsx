@@ -134,7 +134,9 @@ export default function AdminPlatformSettingsPage() {
           <CardTitle>Pay-as-you-go (Fapshi)</CardTitle>
           <CardDescription>
             Students buy credits with Mobile Money;{" "}
-            <code className="text-xs">credits = floor(amountXaf × creditsPer1000Xaf / 1000)</code>
+            <code className="text-xs">
+              credits = floor(amountXaf × creditsPer1000Xaf / 1000)
+            </code>
             . Fapshi minimum charge is 100 XAF.
           </CardDescription>
         </CardHeader>
@@ -191,8 +193,8 @@ export default function AdminPlatformSettingsPage() {
             <div>
               <p className="font-medium">Enforce all credit gates</p>
               <p className="text-sm text-muted-foreground">
-                Same as enabling mocks, practice (quizzes + Paper 1/2 mock builds),
-                revision guides, and AI tutor enforcement at once.
+                Same as enabling mocks, practice (quizzes + Paper 1/2 mock
+                builds), revision guides, and AI tutor enforcement at once.
               </p>
             </div>
             <Switch
@@ -260,7 +262,9 @@ export default function AdminPlatformSettingsPage() {
                 min={0}
                 value={settings[key]}
                 onChange={(e) =>
-                  update({ [key]: Number(e.target.value) || 0 } as Partial<PlatformSettings>)
+                  update({
+                    [key]: Number(e.target.value) || 0,
+                  } as Partial<PlatformSettings>)
                 }
               />
             </div>
@@ -295,7 +299,9 @@ export default function AdminPlatformSettingsPage() {
                 step={0.05}
                 value={settings[key]}
                 onChange={(e) =>
-                  update({ [key]: Number(e.target.value) || 0 } as Partial<PlatformSettings>)
+                  update({
+                    [key]: Number(e.target.value) || 0,
+                  } as Partial<PlatformSettings>)
                 }
               />
               <p className="text-xs text-muted-foreground">
@@ -344,9 +350,7 @@ export default function AdminPlatformSettingsPage() {
           <p className="text-sm">Use ACE-style short-answer grading</p>
           <Switch
             checked={settings.useAceShortAnswerGrading}
-            onCheckedChange={(v) =>
-              update({ useAceShortAnswerGrading: v })
-            }
+            onCheckedChange={(v) => update({ useAceShortAnswerGrading: v })}
           />
         </CardContent>
       </Card>

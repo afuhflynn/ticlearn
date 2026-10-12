@@ -39,7 +39,10 @@ export async function POST(
     const cooldownMs = 30_000;
     if (note.updatedAt && Date.now() - note.updatedAt.getTime() < cooldownMs) {
       return NextResponse.json(
-        { error: "Note was recently processed. Please wait 30 seconds before trying again." },
+        {
+          error:
+            "Note was recently processed. Please wait 30 seconds before trying again.",
+        },
         { status: 429 },
       );
     }
@@ -56,7 +59,10 @@ export async function POST(
     });
     if (processCountToday >= 10) {
       return NextResponse.json(
-        { error: "Daily processing limit reached (10/day). Please try again tomorrow." },
+        {
+          error:
+            "Daily processing limit reached (10/day). Please try again tomorrow.",
+        },
         { status: 429 },
       );
     }

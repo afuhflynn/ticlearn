@@ -67,7 +67,9 @@ export async function computeDailyMetrics(date: Date) {
       prisma.feedback.count({
         where: { createdAt: { gte: start, lte: end }, user: { role: "USER" } },
       }),
-      prisma.subscription.count({ where: { status: "ACTIVE", user: { role: "USER" } } }),
+      prisma.subscription.count({
+        where: { status: "ACTIVE", user: { role: "USER" } },
+      }),
       prisma.user.count({ where: { role: "USER" } }),
       prisma.user.count({
         where: { role: "USER", createdAt: { gte: start, lte: end } },
@@ -142,7 +144,10 @@ export async function computeDailyMetrics(date: Date) {
     { metric: "exams_completed", value: examsCompleted },
     { metric: "paper3_completed", value: paper3Completed },
     { metric: "practice_answered", value: practiceAnswered },
-    { metric: "conversion_rate", value: totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 100) : 0 },
+    {
+      metric: "conversion_rate",
+      value: totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 100) : 0,
+    },
     { metric: "silent_churn_7d", value: silentChurn7d },
     { metric: "silent_churn_30d", value: silentChurn30d },
   ];
@@ -187,7 +192,10 @@ export async function computeCohortRetention(): Promise<CohortRetentionRow[]> {
 
   const userEventSet = new Set(userEvents.map((e) => e.userId));
 
-  const cohorts = new Map<string, { users: Array<{ id: string; createdAt: Date }> }>();
+  const cohorts = new Map<
+    string,
+    { users: Array<{ id: string; createdAt: Date }> }
+  >();
 
   for (const user of users) {
     if (!userEventSet.has(user.id)) continue;
@@ -260,22 +268,21 @@ export async function computeMasteryMetrics() {
   });
 
   const scores = performances.map((p) => p.masteryScore);
-  const avgMastery = scores.length > 0
-    ? scores.reduce((a, b) => a + b, 0) / scores.length
-    : 0;
+  const avgMastery =
+    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
 
   const previousPeriod = await prisma.topicPerformance.findMany({
     where: { lastUpdated: { lt: thirtyDaysAgo } },
     select: { masteryScore: true },
   });
   const prevScores = previousPeriod.map((p) => p.masteryScore);
-  const prevAvg = prevScores.length > 0
-    ? prevScores.reduce((a, b) => a + b, 0) / prevScores.length
-    : 50;
+  const prevAvg =
+    prevScores.length > 0
+      ? prevScores.reduce((a, b) => a + b, 0) / prevScores.length
+      : 50;
 
-  const improvement = prevAvg > 0
-    ? ((avgMastery - prevAvg) / prevAvg) * 100
-    : 0;
+  const improvement =
+    prevAvg > 0 ? ((avgMastery - prevAvg) / prevAvg) * 100 : 0;
 
   const recoveryDrills = await prisma.kpiEvent.count({
     where: {
@@ -346,10 +353,16 @@ export async function computeMRR() {
 export async function computeActivationFunnel() {
   const signedUp = await prisma.user.count({ where: { role: "USER" } });
   const onboardingSkipped = await prisma.user.count({
-    where: { role: "USER", examProfiles: { some: { onboardingSkipped: true } } },
+    where: {
+      role: "USER",
+      examProfiles: { some: { onboardingSkipped: true } },
+    },
   });
   const onboardingCompleted = await prisma.user.count({
-    where: { role: "USER", examProfiles: { some: { onboardingCompleted: true } } },
+    where: {
+      role: "USER",
+      examProfiles: { some: { onboardingCompleted: true } },
+    },
   });
   const firstQuiz = await prisma.quiz.groupBy({
     by: ["userId"],

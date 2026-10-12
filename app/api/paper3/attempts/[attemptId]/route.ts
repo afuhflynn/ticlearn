@@ -76,8 +76,14 @@ export async function GET(
 
     const detailedResults = attempt.detailedResults || [];
 
-    const sectionPerformance: Record<string, { correct: number; total: number }> = {};
-    const conceptPerformance: Record<string, { correct: number; total: number }> = {};
+    const sectionPerformance: Record<
+      string,
+      { correct: number; total: number }
+    > = {};
+    const conceptPerformance: Record<
+      string,
+      { correct: number; total: number }
+    > = {};
 
     for (const mq of attempt.mock.questions) {
       const question = mq.question;
@@ -98,7 +104,9 @@ export async function GET(
     }
 
     for (const result of results) {
-      const mq = attempt.mock.questions.find(mq => mq.question.id === result.questionId);
+      const mq = attempt.mock.questions.find(
+        (mq) => mq.question.id === result.questionId,
+      );
       if (!mq) continue;
 
       const question = mq.question;
@@ -121,17 +129,19 @@ export async function GET(
         section,
         marks: data.correct,
         totalMarks: data.total,
-        percentage: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+        percentage:
+          data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
       })),
       byConcept: Object.entries(conceptPerformance).map(([concept, data]) => ({
         concept,
         marks: data.correct,
         totalMarks: data.total,
-        percentage: data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
+        percentage:
+          data.total > 0 ? Math.round((data.correct / data.total) * 100) : 0,
       })),
-      correctCount: results.filter(r => r.isCorrect).length,
-      incorrectCount: results.filter(r => !r.isCorrect).length,
-      partialCount: detailedResults.filter(r => r.partialCredit).length,
+      correctCount: results.filter((r) => r.isCorrect).length,
+      incorrectCount: results.filter((r) => !r.isCorrect).length,
+      partialCount: detailedResults.filter((r) => r.partialCredit).length,
     };
 
     return NextResponse.json({

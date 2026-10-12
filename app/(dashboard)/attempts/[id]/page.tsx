@@ -194,7 +194,10 @@ export default function AttemptDetailPage() {
               <div>
                 <p className="text-sm font-medium mb-1">Explanation</p>
                 <div className="p-3 rounded-lg bg-muted text-sm text-muted-foreground space-y-1">
-                  <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkMath]}
+                    rehypePlugins={[rehypeKatex]}
+                  >
                     {answer.explanation || "No explanation available."}
                   </ReactMarkdown>
                 </div>

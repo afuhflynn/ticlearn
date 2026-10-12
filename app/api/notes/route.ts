@@ -5,12 +5,12 @@ import { auth } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/kpi";
+import { utapi } from "@/lib/uploadthing-server";
 
 const createNoteSchema = z.object({
   title: z.string().min(1, "Title is required"),
   subject: z.string().min(1, "Subject is required"),
-  fileUrl: z.string().url("A valid file URL is required"),
-  uploadthingKey: z.string().min(1).optional(),
+  uploadthingKey: z.string().min(1, "UploadThing key is required"),
   fileName: z.string().min(1, "File name is required"),
   fileType: z.enum(["PDF", "IMAGE", "WORD"]),
 });
@@ -108,8 +108,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const { title, subject, fileUrl, uploadthingKey, fileName, fileType } =
+    const { title, subject, uploadthingKey, fileName, fileType } =
       createNoteSchema.parse(await req.json());
+
+    // Derive fileUrl server-side from uploadthingKey, ignore any client-provided URL
+    const fileUrls = await utapi.getFileUrls(uploadthingKey);
+    if (!fileUrls || !fileUrls.data || fileUrls.data.length === 0) {
+      return NextResponse.json(
+        { error: "Invalid upload key" },
+        { status: 400 },
+      );
+    }
+    const fileUrl = fileUrls.data[0].url;
 
     const note = await prisma.note.create({
       data: {

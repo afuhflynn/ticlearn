@@ -183,7 +183,9 @@ export const ReasoningContent = memo(
           className,
         )}
       >
-        <Streamdown plugins={{ math: mathPlugin }}>{normalizeMathNotation(children)}</Streamdown>
+        <Streamdown plugins={{ math: mathPlugin }}>
+          {normalizeMathNotation(children)}
+        </Streamdown>
       </CollapsibleContent>
     );
   },

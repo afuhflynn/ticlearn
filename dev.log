@@ -1,0 +1,40 @@
+$ next dev
+▲ Next.js 16.2.2 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.226.107.83:3000
+- Environments: .env
+✓ Ready in 525ms
+○ Compiling instrumentation Node.js ...
+- Experiments (use with caution):
+  · clientTraceMetadata
+
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+ GET / 200 in 2.8s (next.js: 701ms, proxy.ts: 993ms, application-code: 1112ms)
+ HEAD / 200 in 240ms (next.js: 7ms, proxy.ts: 15ms, application-code: 217ms)
+ HEAD /api/webhooks/fapshi 405 in 559ms (next.js: 191ms, proxy.ts: 345ms, application-code: 24ms)
+ GET /sentry-tunnel 404 in 1919ms (next.js: 1753ms, proxy.ts: 8ms, application-code: 158ms)
+{"event":"webhook_rejected","route":"/api/webhooks/fapshi","reason":"invalid_secret","timestamp":"2026-10-12T08:20:36.295Z"}
+ POST /api/webhooks/fapshi 401 in 621ms (next.js: 16ms, proxy.ts: 586ms, application-code: 19ms)
+{"event":"webhook_rejected","route":"/api/webhooks/fapshi","reason":"invalid_secret","timestamp":"2026-10-12T08:20:58.204Z"}
+ POST /api/webhooks/fapshi 401 in 392ms (next.js: 4ms, proxy.ts: 377ms, application-code: 11ms)
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+{"event":"rate_limit_denied","route":"/api/contact","bucket":"contact","fingerprint":"12ca17b49af2","timestamp":"2026-10-12T08:21:18.744Z"}
+ POST /api/contact 429 in 983ms (next.js: 523ms, proxy.ts: 388ms, application-code: 72ms)
+  Reload env: .env
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+{"event":"rate_limit_denied","route":"/api/contact","bucket":"contact","fingerprint":"12ca17b49af2","timestamp":"2026-10-12T08:21:34.294Z"}
+ POST /api/contact 429 in 1406ms (next.js: 302ms, proxy.ts: 1059ms, application-code: 45ms)
+{"event":"rate_limit_denied","route":"/api/admin/affiliates","bucket":"admin","fingerprint":"12ca17b49af2","timestamp":"2026-10-12T08:21:48.802Z"}
+ GET /api/admin/affiliates 429 in 722ms (next.js: 149ms, proxy.ts: 535ms, application-code: 38ms)
+○ Compiling /api/ai/chat ...
+ POST /api/ai/chat 401 in 5.0s (next.js: 4.0s, proxy.ts: 992ms, application-code: 15ms)
+  Reload env: .env
+  Reload env: .env
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+✦Aj WARN Arcjet will use 127.0.0.1 when missing public IP address in development mode
+ GET /sentry-example-page 404 in 1720ms (next.js: 508ms, proxy.ts: 600ms, application-code: 613ms)
+✓ Compiled in 4s
+✓ Compiled in 28.9s

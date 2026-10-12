@@ -57,7 +57,7 @@ export async function POST(req: Request) {
 
     // Send email via Inngest
     const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/admin/accept-invite?token=${token}`;
-    
+
     await inngest.send({
       name: "email.send.admin-invite",
       data: {

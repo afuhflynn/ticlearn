@@ -97,8 +97,9 @@ export default function PracticePage() {
     useState<PracticeQuestion | null>(null);
   const [userAnswer, setUserAnswer] = useState("");
   const [result, setResult] = useState<EvaluationResult | null>(null);
-  const [allowedCategories, setAllowedCategories] =
-    useState<PracticeCategory[]>(ALL_CATEGORIES.map((c) => c.value));
+  const [allowedCategories, setAllowedCategories] = useState<
+    PracticeCategory[]
+  >(ALL_CATEGORIES.map((c) => c.value));
 
   useEffect(() => {
     fetch("/api/paper3/user-subject")
@@ -152,7 +153,8 @@ export default function PracticePage() {
       <div>
         <h1 className="text-2xl font-bold">AcePaper 3</h1>
         <p className="text-muted-foreground">
-          Master Paper 3 with AI-powered practice, mock exams, and instant feedback.
+          Master Paper 3 with AI-powered practice, mock exams, and instant
+          feedback.
         </p>
       </div>
 

@@ -27,11 +27,15 @@ export async function GET() {
       },
     });
 
-    const activeProfile = user?.examProfiles.find((p) => p.id === user.activeProfileId) ?? null;
+    const activeProfile =
+      user?.examProfiles.find((p) => p.id === user.activeProfileId) ?? null;
 
     return NextResponse.json({ activeProfile });
   } catch (error) {
     console.error("Onboarding progress error:", error);
-    return NextResponse.json({ error: "Failed to fetch progress" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch progress" },
+      { status: 500 },
+    );
   }
 }

@@ -21,7 +21,12 @@ export default async function DashboardLayout({
       where: { id: session.user.id },
       include: {
         examProfiles: {
-          select: { id: true, onboardingCompleted: true, onboardingSkipped: true, phoneNumber: true },
+          select: {
+            id: true,
+            onboardingCompleted: true,
+            onboardingSkipped: true,
+            phoneNumber: true,
+          },
         },
       },
     });

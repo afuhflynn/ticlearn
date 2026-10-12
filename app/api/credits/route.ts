@@ -62,7 +62,7 @@ export async function GET() {
     console.error("Credits API error:", error);
     return NextResponse.json(
       { error: "Failed to fetch credits" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

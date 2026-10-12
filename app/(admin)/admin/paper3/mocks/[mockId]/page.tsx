@@ -1,7 +1,15 @@
 "use client";
 
 import { DragDropContext, Draggable, Droppable } from "@hello-pangea/dnd";
-import { ArrowLeft, GripVertical, Loader2, Plus, Save, Trash2, X } from "lucide-react";
+import {
+  ArrowLeft,
+  GripVertical,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -39,7 +47,9 @@ function EditMockInner() {
     "MIXED" | "DATABASE" | "SPREADSHEET" | "PROGRAMMING" | "WEB_PROGRAMMING"
   >("MIXED");
   const [timeLimit, setTimeLimit] = useState(60);
-  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">("DRAFT");
+  const [status, setStatus] = useState<"DRAFT" | "PUBLISHED" | "ARCHIVED">(
+    "DRAFT",
+  );
   const [moduleId, setModuleId] = useState<string>("");
   const [visibleToAllStudents, setVisibleToAllStudents] = useState(true);
   const [modules, setModules] = useState<{ id: string; title: string }[]>([]);
@@ -56,7 +66,9 @@ function EditMockInner() {
     fetch("/api/admin/paper3/modules")
       .then((res) => res.json())
       .then((data: { modules?: { id: string; title: string }[] }) => {
-        setModules(data.modules?.map((m) => ({ id: m.id, title: m.title })) ?? []);
+        setModules(
+          data.modules?.map((m) => ({ id: m.id, title: m.title })) ?? [],
+        );
       })
       .catch(() => {});
   }, []);
@@ -92,15 +104,16 @@ function EditMockInner() {
     setFocusCategory(mock.focusCategory);
     setTimeLimit(mock.timeLimit);
     setStatus(mock.status);
-    setQuestionIds(mock.questions.map((q: { questionId: string }) => q.questionId));
+    setQuestionIds(
+      mock.questions.map((q: { questionId: string }) => q.questionId),
+    );
     setModuleId(
       (mock as { moduleId?: string | null }).moduleId ||
         (mock as { module?: { id: string } | null }).module?.id ||
         "",
     );
     setVisibleToAllStudents(
-      (mock as { visibleToAllStudents?: boolean }).visibleToAllStudents ??
-        true,
+      (mock as { visibleToAllStudents?: boolean }).visibleToAllStudents ?? true,
     );
     setInitialized(true);
     return null;
@@ -136,13 +149,17 @@ function EditMockInner() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm("Delete this mock exam? This cannot be undone.")) return;
+    if (!window.confirm("Delete this mock exam? This cannot be undone."))
+      return;
     setDeleting(true);
     await deleteMock.mutateAsync(mockId);
     router.push("/admin/paper3/mocks");
   };
 
-  const onDragEnd = (result: { source: { index: number }; destination: { index: number } | null }) => {
+  const onDragEnd = (result: {
+    source: { index: number };
+    destination: { index: number } | null;
+  }) => {
     if (!result.destination) return;
     const items = Array.from(questionIds);
     const [removed] = items.splice(result.source.index, 1);
@@ -211,9 +228,7 @@ function EditMockInner() {
             <select
               value={focusCategory}
               onChange={(e) =>
-                setFocusCategory(
-                  e.target.value as typeof focusCategory,
-                )
+                setFocusCategory(e.target.value as typeof focusCategory)
               }
               className="w-full rounded-lg border px-3 py-2 text-sm"
             >
@@ -239,9 +254,7 @@ function EditMockInner() {
             <label className="text-sm font-medium">Status</label>
             <select
               value={status}
-              onChange={(e) =>
-                setStatus(e.target.value as typeof status)
-              }
+              onChange={(e) => setStatus(e.target.value as typeof status)}
               className="w-full rounded-lg border px-3 py-2 text-sm"
             >
               <option value="DRAFT">Draft</option>
@@ -249,8 +262,8 @@ function EditMockInner() {
               <option value="ARCHIVED">Archived</option>
             </select>
             <p className="text-xs text-muted-foreground">
-              Draft = visible only in admin until you publish. AI-generated mocks
-              start as draft.
+              Draft = visible only in admin until you publish. AI-generated
+              mocks start as draft.
             </p>
           </div>
           <div className="space-y-1">
@@ -338,19 +351,26 @@ function EditMockInner() {
                   No more questions available.
                 </p>
               ) : (
-                bankQuestions.map((q: { id: string; title: string; marks: number; taskType: string }) => (
-                  <button
-                    key={q.id}
-                    type="button"
-                    onClick={() => addQuestion(q.id)}
-                    className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
-                  >
-                    <span className="font-medium">{q.title}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {q.marks} marks | {q.taskType}
-                    </span>
-                  </button>
-                ))
+                bankQuestions.map(
+                  (q: {
+                    id: string;
+                    title: string;
+                    marks: number;
+                    taskType: string;
+                  }) => (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => addQuestion(q.id)}
+                      className="flex w-full items-center justify-between rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-muted"
+                    >
+                      <span className="font-medium">{q.title}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {q.marks} marks | {q.taskType}
+                      </span>
+                    </button>
+                  ),
+                )
               )}
             </div>
           </div>
@@ -365,7 +385,17 @@ function EditMockInner() {
                 className="space-y-2"
               >
                 {currentQuestions.map(
-                  (q: { id: string; title: string; marks: number; taskType: string } | undefined, index: number) => {
+                  (
+                    q:
+                      | {
+                          id: string;
+                          title: string;
+                          marks: number;
+                          taskType: string;
+                        }
+                      | undefined,
+                    index: number,
+                  ) => {
                     if (!q) return null;
                     return (
                       <Draggable key={q.id} draggableId={q.id} index={index}>

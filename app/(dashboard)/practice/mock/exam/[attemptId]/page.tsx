@@ -15,13 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Progress } from "@/components/ui/progress";
-import {
-  Loader2,
-  Clock,
-  Send,
-  ChevronLeft,
-  ChevronRight,
-} from "lucide-react";
+import { Loader2, Clock, Send, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { extractMcqFromPlainText } from "@/lib/mcq-parse";
@@ -61,9 +55,8 @@ function flattenAndNormalizeExam(sections: SectionData[]): FlatQuestion[] {
   const out: FlatQuestion[] = [];
   for (const sec of sections) {
     type Q = NonNullable<SectionData["questions"]>[number];
-    const list: Q[] =
-      sec.questions?.length ?
-        sec.questions
+    const list: Q[] = sec.questions?.length
+      ? sec.questions
       : Array.from({ length: Math.max(sec.questionCount, 0) }, (_, i) => ({
           questionId: `placeholder_${sec.name}_${i}`,
           text: "",
@@ -76,9 +69,9 @@ function flattenAndNormalizeExam(sections: SectionData[]): FlatQuestion[] {
     for (let i = 0; i < list.length; i++) {
       const q = list[i]!;
       const stableId =
-        typeof q.questionId === "string" && q.questionId.length > 0 ?
-          q.questionId
-        : `fallback_${sec.name}_${i}`;
+        typeof q.questionId === "string" && q.questionId.length > 0
+          ? q.questionId
+          : `fallback_${sec.name}_${i}`;
 
       let stem = q.text?.trim() ?? "";
 
@@ -112,12 +105,10 @@ function flattenAndNormalizeExam(sections: SectionData[]): FlatQuestion[] {
           questionId: stableId,
           stem,
           marks:
-            typeof q.marks === "number" ?
-              q.marks
-            : sec.marksPerQuestion ??
-              Math.ceil(
-                sec.totalMarks / Math.max(sec.questionCount, 1),
-              ),
+            typeof q.marks === "number"
+              ? q.marks
+              : (sec.marksPerQuestion ??
+                Math.ceil(sec.totalMarks / Math.max(sec.questionCount, 1))),
           sectionName: sec.name,
           mode: "MCQ",
           options,
@@ -127,12 +118,10 @@ function flattenAndNormalizeExam(sections: SectionData[]): FlatQuestion[] {
           questionId: stableId,
           stem,
           marks:
-            typeof q.marks === "number" ?
-              q.marks
-            : sec.marksPerQuestion ??
-              Math.ceil(
-                sec.totalMarks / Math.max(sec.questionCount, 1),
-              ),
+            typeof q.marks === "number"
+              ? q.marks
+              : (sec.marksPerQuestion ??
+                Math.ceil(sec.totalMarks / Math.max(sec.questionCount, 1))),
           sectionName: sec.name,
           mode: "STRUCTURED",
           options: [],
@@ -187,14 +176,14 @@ export default function MockExamPage() {
         setSections(secs);
         setBlueprintName(data.blueprint?.name || "");
         setTotalMarks(
-          typeof data.blueprint?.totalMarks === "number" ?
-            data.blueprint.totalMarks
-          : 0,
+          typeof data.blueprint?.totalMarks === "number"
+            ? data.blueprint.totalMarks
+            : 0,
         );
         const dur =
-          typeof data.blueprint?.durationMin === "number" ?
-            data.blueprint.durationMin
-          : 0;
+          typeof data.blueprint?.durationMin === "number"
+            ? data.blueprint.durationMin
+            : 0;
         setDurationMin(dur);
         const seconds = Math.max(dur * 60, 0);
         setTimeLeft(seconds);
@@ -220,8 +209,7 @@ export default function MockExamPage() {
     examStarted && examQueue.length > 0 ? examQueue : flatQuestions;
   const totalQ = activeQuestions.length;
   const current = activeQuestions[currentIdx];
-  const isLastQuestion =
-    totalQ > 0 && currentIdx >= totalQ - 1;
+  const isLastQuestion = totalQ > 0 && currentIdx >= totalQ - 1;
   const progressPct =
     totalQ > 0 ? Math.round(((currentIdx + 1) / totalQ) * 100) : 0;
 
@@ -309,11 +297,11 @@ export default function MockExamPage() {
   const leaveExamConfirm = () => {
     if (submitting) return;
     const ok =
-      typeof window !== "undefined" ?
-        window.confirm(
-          "Leave this mock? Answers aren’t submitted yet — reopen this attempt from Mock exams when you’re ready.",
-        )
-      : true;
+      typeof window !== "undefined"
+        ? window.confirm(
+            "Leave this mock? Answers aren’t submitted yet — reopen this attempt from Mock exams when you’re ready.",
+          )
+        : true;
     if (ok) goToMocksHub();
   };
 
@@ -321,9 +309,9 @@ export default function MockExamPage() {
     autoSubmitTriggered.current = false;
     startedAtRef.current = Date.now();
     const seconds =
-      typeof durationMin === "number" && durationMin > 0 ?
-        Math.max(durationMin * 60, 0)
-      : 0;
+      typeof durationMin === "number" && durationMin > 0
+        ? Math.max(durationMin * 60, 0)
+        : 0;
     setTimeLeft(seconds);
     setExamQueue(flatQuestions.slice());
     setExamStarted(true);
@@ -373,26 +361,27 @@ export default function MockExamPage() {
                   {blueprintName || "Practice mock"}
                 </DialogTitle>
                 <DialogDescription className="text-muted-foreground text-sm leading-relaxed">
-                  Multiple-choice paper: pick one letter per question. Structured
-                  questions use a written response. Nothing is timed until you
-                  tap <strong className="text-foreground">Start exam</strong>.
+                  Multiple-choice paper: pick one letter per question.
+                  Structured questions use a written response. Nothing is timed
+                  until you tap{" "}
+                  <strong className="text-foreground">Start exam</strong>.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col gap-4 px-6 py-6">
                 <div className="flex flex-wrap gap-2">
                   <Badge variant="outline">{totalMarks} marks</Badge>
-                  {durationMin > 0 ?
+                  {durationMin > 0 ? (
                     <Badge variant="secondary">
                       Timer: {durationMin} min once started
                     </Badge>
-                  : null}
+                  ) : null}
                   <Badge variant="outline">{totalQ} questions</Badge>
                 </div>
                 <p className="text-muted-foreground text-sm">
                   You will answer one question at a time inside this window. Use{" "}
                   <span className="text-foreground">Previous</span> /{" "}
-                  <span className="text-foreground">Next</span> at the bottom
-                  to review. Submit appears only on the last question.
+                  <span className="text-foreground">Next</span> at the bottom to
+                  review. Submit appears only on the last question.
                 </p>
                 <Button
                   size="lg"
@@ -430,7 +419,7 @@ export default function MockExamPage() {
                     </p>
                   </div>
                   <div className="flex flex-shrink-0 items-center gap-3">
-                    {durationMin > 0 ?
+                    {durationMin > 0 ? (
                       <div
                         className={cn(
                           "flex items-center gap-2 font-mono text-lg",
@@ -444,7 +433,7 @@ export default function MockExamPage() {
                         <Clock className="size-5 shrink-0" />
                         <span>{formatTime(timeLeft)}</span>
                       </div>
-                    : null}
+                    ) : null}
                     <Badge variant="outline">{answeredCount} answered</Badge>
                   </div>
                 </div>
@@ -452,21 +441,26 @@ export default function MockExamPage() {
               </div>
 
               <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-5 sm:px-5">
-                {current ?
-                  <div key={current.questionId} className="animate-in fade-in slide-in-from-bottom-2 space-y-4 duration-150">
+                {current ? (
+                  <div
+                    key={current.questionId}
+                    className="animate-in fade-in slide-in-from-bottom-2 space-y-4 duration-150"
+                  >
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium">
                         Question {currentIdx + 1}
                       </p>
                       <Badge variant="outline">{current.marks} marks</Badge>
                     </div>
-                    {current.stem ?
+                    {current.stem ? (
                       <p className="text-foreground whitespace-pre-wrap text-base leading-relaxed">
                         {current.stem}
                       </p>
-                    : <p className="text-muted-foreground italic">No stem.</p>}
+                    ) : (
+                      <p className="text-muted-foreground italic">No stem.</p>
+                    )}
 
-                    {current.mode === "MCQ" ?
+                    {current.mode === "MCQ" ? (
                       <RadioGroup
                         value={answers[current.questionId] ?? ""}
                         onValueChange={(v) =>
@@ -493,19 +487,23 @@ export default function MockExamPage() {
                                 className="mt-0.5"
                               />
                               <span className="text-sm leading-snug">
-                                <span className="font-semibold">{opt.letter}.</span>{" "}
-                                {opt.label ?
+                                <span className="font-semibold">
+                                  {opt.letter}.
+                                </span>{" "}
+                                {opt.label ? (
                                   opt.label
-                                : <span className="text-muted-foreground italic">
+                                ) : (
+                                  <span className="text-muted-foreground italic">
                                     (select this option if it is correct)
                                   </span>
-                                }
+                                )}
                               </span>
                             </label>
                           );
                         })}
                       </RadioGroup>
-                    : <div className="mt-4">
+                    ) : (
+                      <div className="mt-4">
                         <Label
                           htmlFor={`open-${current.questionId}`}
                           className="text-muted-foreground mb-2 block text-xs"
@@ -526,9 +524,9 @@ export default function MockExamPage() {
                           className="resize-y min-h-[120px]"
                         />
                       </div>
-                    }
+                    )}
                   </div>
-                : null}
+                ) : null}
               </div>
 
               <div className="border-t bg-muted/40 px-4 py-4 sm:px-6">
@@ -540,15 +538,13 @@ export default function MockExamPage() {
                       size="icon"
                       aria-label="Previous question"
                       disabled={currentIdx <= 0 || submitting}
-                      onClick={() =>
-                        setCurrentIdx((i) => Math.max(0, i - 1))
-                      }
+                      onClick={() => setCurrentIdx((i) => Math.max(0, i - 1))}
                     >
                       <ChevronLeft className="size-4" />
                     </Button>
                   </div>
                   <div className="flex w-full shrink-0 flex-col gap-2 sm:w-auto sm:min-w-[200px] sm:flex-row sm:justify-end">
-                    {isLastQuestion ?
+                    {isLastQuestion ? (
                       <Button
                         type="button"
                         onClick={() => void handleSubmit()}
@@ -556,26 +552,27 @@ export default function MockExamPage() {
                         size="lg"
                         className="w-full sm:min-w-[200px]"
                       >
-                        {submitting ?
+                        {submitting ? (
                           <Loader2 className="mr-2 size-4 animate-spin" />
-                        : <Send className="mr-2 size-4" />}
+                        ) : (
+                          <Send className="mr-2 size-4" />
+                        )}
                         Submit mock
                       </Button>
-                    : <Button
+                    ) : (
+                      <Button
                         type="button"
                         size="lg"
                         className="w-full sm:min-w-[200px]"
                         disabled={submitting || currentIdx >= totalQ - 1}
                         onClick={() =>
-                          setCurrentIdx((i) =>
-                            Math.min(totalQ - 1, i + 1),
-                          )
+                          setCurrentIdx((i) => Math.min(totalQ - 1, i + 1))
                         }
                       >
                         Next
                         <ChevronRight className="ml-2 size-4" />
                       </Button>
-                    }
+                    )}
                   </div>
                 </div>
               </div>

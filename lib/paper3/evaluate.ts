@@ -537,15 +537,19 @@ function extractHtmlElements(html: string): HtmlEvaluationCriteria {
     criteria.tableCellCount = tdMatches ? tdMatches.length : 0;
   }
 
-  if (normalized.includes('<input') || normalized.includes("<input ")) {
+  if (normalized.includes("<input") || normalized.includes("<input ")) {
     criteria.hasTextInput = true;
   }
 
-  if (normalized.includes("<button") || normalized.includes('<input type="submit"') || normalized.includes("<input type='submit'")) {
+  if (
+    normalized.includes("<button") ||
+    normalized.includes('<input type="submit"') ||
+    normalized.includes("<input type='submit'")
+  ) {
     criteria.hasButton = true;
   }
 
-  if (normalized.includes('style=')) {
+  if (normalized.includes("style=")) {
     criteria.hasInlineStyles = true;
   }
 
@@ -555,7 +559,21 @@ function extractHtmlElements(html: string): HtmlEvaluationCriteria {
 
   let openCount = 0;
   let closeCount = 0;
-  const tags = ["div", "span", "p", "h1", "h2", "h3", "table", "tr", "td", "th", "form", "input", "button"];
+  const tags = [
+    "div",
+    "span",
+    "p",
+    "h1",
+    "h2",
+    "h3",
+    "table",
+    "tr",
+    "td",
+    "th",
+    "form",
+    "input",
+    "button",
+  ];
   for (const tag of tags) {
     const openPattern = new RegExp(`<${tag}[^>]*>`, "gi");
     const closePattern = new RegExp(`</${tag}>`, "gi");
@@ -594,7 +612,9 @@ function evaluateHtmlAnswer(
     breakdown.push({
       criteria: "Heading element",
       marks: headingMarks,
-      description: userCriteria.hasHeading ? `Found <h${userCriteria.headingLevel}>` : "No heading found",
+      description: userCriteria.hasHeading
+        ? `Found <h${userCriteria.headingLevel}>`
+        : "No heading found",
     });
     earnedMarks += headingMarks;
   } else if (userCriteria.hasHeading && !correctCriteria.hasHeading) {
@@ -616,7 +636,9 @@ function evaluateHtmlAnswer(
     breakdown.push({
       criteria: "Paragraph element",
       marks: paragraphMarks,
-      description: userCriteria.hasParagraph ? "Found <p> element" : "No paragraph required",
+      description: userCriteria.hasParagraph
+        ? "Found <p> element"
+        : "No paragraph required",
     });
     earnedMarks += paragraphMarks;
   } else if (userCriteria.hasParagraph) {
@@ -636,8 +658,12 @@ function evaluateHtmlAnswer(
   const tableMarks = 3;
   if (userCriteria.hasTable) {
     if (correctCriteria.hasTable) {
-      const rowBonus = Math.min(userCriteria.tableRowCount, correctCriteria.tableRowCount) * 0.3;
-      const cellBonus = Math.min(userCriteria.tableCellCount, correctCriteria.tableCellCount) * 0.1;
+      const rowBonus =
+        Math.min(userCriteria.tableRowCount, correctCriteria.tableRowCount) *
+        0.3;
+      const cellBonus =
+        Math.min(userCriteria.tableCellCount, correctCriteria.tableCellCount) *
+        0.1;
       breakdown.push({
         criteria: "Table with data",
         marks: tableMarks,
@@ -672,7 +698,9 @@ function evaluateHtmlAnswer(
     breakdown.push({
       criteria: "Text input field",
       marks: inputMarks,
-      description: userCriteria.hasTextInput ? "Found text input" : "No text input required",
+      description: userCriteria.hasTextInput
+        ? "Found text input"
+        : "No text input required",
     });
     earnedMarks += inputMarks;
   } else if (userCriteria.hasTextInput) {
@@ -694,7 +722,9 @@ function evaluateHtmlAnswer(
     breakdown.push({
       criteria: "Submit button",
       marks: buttonMarks,
-      description: userCriteria.hasButton ? "Found button" : "No button required",
+      description: userCriteria.hasButton
+        ? "Found button"
+        : "No button required",
     });
     earnedMarks += buttonMarks;
   } else if (userCriteria.hasButton) {
@@ -716,7 +746,9 @@ function evaluateHtmlAnswer(
     breakdown.push({
       criteria: "Inline styling",
       marks: styleMarks,
-      description: userCriteria.hasInlineStyles ? "Found inline styles" : "No inline styling required",
+      description: userCriteria.hasInlineStyles
+        ? "Found inline styles"
+        : "No inline styling required",
     });
     earnedMarks += styleMarks;
   } else if (userCriteria.hasInlineStyles) {
@@ -734,13 +766,16 @@ function evaluateHtmlAnswer(
   }
 
   const structureMarks = 2;
-  const structureEarned = Math.round(userCriteria.structureScore * structureMarks);
+  const structureEarned = Math.round(
+    userCriteria.structureScore * structureMarks,
+  );
   breakdown.push({
     criteria: "Structure completeness",
     marks: structureEarned,
-    description: structureEarned === structureMarks
-      ? "All tags properly opened and closed"
-      : `Structure score: ${Math.round(userCriteria.structureScore * 100)}%`,
+    description:
+      structureEarned === structureMarks
+        ? "All tags properly opened and closed"
+        : `Structure score: ${Math.round(userCriteria.structureScore * 100)}%`,
   });
   earnedMarks += structureEarned;
 
@@ -753,7 +788,8 @@ function evaluateHtmlAnswer(
   } else if (partialCredit) {
     feedback = `Partially correct. You earned ${earnedMarks}/${totalMarks} marks.`;
   } else if (earnedMarks === 0) {
-    feedback = "Your HTML does not match the expected structure. Please review the requirements.";
+    feedback =
+      "Your HTML does not match the expected structure. Please review the requirements.";
   } else {
     feedback = `Needs improvement. You earned ${earnedMarks}/${totalMarks} marks.`;
   }
@@ -890,13 +926,18 @@ function levenshteinDistance(a: string, b: string): number {
   return matrix[b.length][a.length];
 }
 
-export function isHtmlQuestion(taskType: string, contentMd?: string | null): boolean {
+export function isHtmlQuestion(
+  taskType: string,
+  contentMd?: string | null,
+): boolean {
   if (taskType === "WEB_PROGRAMMING") return true;
-  
+
   if (contentMd) {
     const trimmed = contentMd.trim().toLowerCase();
-    if (trimmed.startsWith("<html") || trimmed.startsWith("<!doctype")) return true;
-    const htmlTagPattern = /^<(html|head|body|div|span|p|h[1-6]|table|form|input|button|ul|ol|li|a|img)/;
+    if (trimmed.startsWith("<html") || trimmed.startsWith("<!doctype"))
+      return true;
+    const htmlTagPattern =
+      /^<(html|head|body|div|span|p|h[1-6]|table|form|input|button|ul|ol|li|a|img)/;
     if (htmlTagPattern.test(trimmed)) return true;
     if (trimmed.includes("<html") || trimmed.includes("<div")) {
       const htmlDensity = (trimmed.match(/<[a-z][^>]*>/gi) || []).length;
@@ -904,7 +945,7 @@ export function isHtmlQuestion(taskType: string, contentMd?: string | null): boo
       if (htmlDensity > 3 && htmlDensity > textDensity * 0.3) return true;
     }
   }
-  
+
   return false;
 }
 
@@ -936,7 +977,13 @@ export async function evaluateAnswer(
   }
 
   // Always use specialized evaluation for spreadsheet/SQL task types
-  const specializedTypes = ["EXCEL_FORMULA", "EXCEL_GRID", "SQL_QUERY", "ACCESS_TABLE", "ACCESS_RELATIONSHIP"];
+  const specializedTypes = [
+    "EXCEL_FORMULA",
+    "EXCEL_GRID",
+    "SQL_QUERY",
+    "ACCESS_TABLE",
+    "ACCESS_RELATIONSHIP",
+  ];
   if (specializedTypes.includes(question.taskType)) {
     switch (question.taskType) {
       case "EXCEL_FORMULA":
@@ -949,12 +996,21 @@ export async function evaluateAnswer(
       case "ACCESS_TABLE":
       case "ACCESS_RELATIONSHIP":
       case "SQL_QUERY":
-        return evaluateSqlAnswer(userAnswer, question.expectedAnswer, totalMarks);
+        return evaluateSqlAnswer(
+          userAnswer,
+          question.expectedAnswer,
+          totalMarks,
+        );
     }
   }
 
   // Use specialized evaluation for code/programming types
-  const codeTypes = ["C_PROGRAM", "PASCAL_PROGRAM", "WEB_PROGRAMMING", "ALGORITHM_PSEUDOCODE"];
+  const codeTypes = [
+    "C_PROGRAM",
+    "PASCAL_PROGRAM",
+    "WEB_PROGRAMMING",
+    "ALGORITHM_PSEUDOCODE",
+  ];
   if (codeTypes.includes(question.taskType)) {
     return evaluateCodeAnswer(
       userAnswer,
@@ -1003,7 +1059,7 @@ export async function evaluateAnswer(
     };
   }
 
-switch (question.taskType) {
+  switch (question.taskType) {
     case "EXCEL_FORMULA":
     case "EXCEL_GRID":
       return evaluateSpreadsheetAnswer(
@@ -1027,7 +1083,11 @@ switch (question.taskType) {
         question.language ?? "c",
       );
     case "WEB_PROGRAMMING":
-      return evaluateHtmlAnswer(userAnswer, question.expectedAnswer, totalMarks);
+      return evaluateHtmlAnswer(
+        userAnswer,
+        question.expectedAnswer,
+        totalMarks,
+      );
     default:
       return evaluateInputField(
         userAnswer,
@@ -1036,5 +1096,3 @@ switch (question.taskType) {
       );
   }
 }
-
-

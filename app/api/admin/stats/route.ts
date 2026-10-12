@@ -46,13 +46,20 @@ export async function GET() {
       prisma.feedback.count({ where: { status: "OPEN" } }),
       prisma.affiliate.count({ where: { status: "PENDING" } }),
       prisma.subscription.count({ where: { status: "ACTIVE", plan: "PRO" } }),
-      prisma.user.count({ where: { subscriptions: { none: { status: "ACTIVE" } } } }),
+      prisma.user.count({
+        where: { subscriptions: { none: { status: "ACTIVE" } } },
+      }),
       prisma.subscription.count({ where: { plan: "PRO" } }),
-      prisma.user.count({ where: { createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
+      prisma.user.count({
+        where: {
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        },
+      }),
       prisma.mockAttempt.count(),
     ]);
 
-    const conversionRate = totalUsers > 0 ? ((paidUsers / totalUsers) * 100).toFixed(1) : "0";
+    const conversionRate =
+      totalUsers > 0 ? ((paidUsers / totalUsers) * 100).toFixed(1) : "0";
 
     return NextResponse.json({
       stats: {

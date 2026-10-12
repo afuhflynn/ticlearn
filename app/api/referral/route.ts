@@ -37,7 +37,9 @@ export async function GET(req: Request) {
       data: { totalClicks: { increment: 1 } },
     });
 
-    trackEvent(affiliate.userId, EVENTS.REFERRAL_CLICK, { code }).catch(() => {});
+    trackEvent(affiliate.userId, EVENTS.REFERRAL_CLICK, { code }).catch(
+      () => {},
+    );
 
     return NextResponse.json({
       success: true,

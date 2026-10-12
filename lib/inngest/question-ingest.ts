@@ -1,21 +1,29 @@
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
-import { extractTextFromPDF, extractTextFromImage, extractTextFromWord } from "@/lib/ai";
+import {
+  extractTextFromPDF,
+  extractTextFromImage,
+  extractTextFromWord,
+} from "@/lib/ai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { generate } from "@/lib/ai/orchestrator";
 
 const parsedQuestionSchema = z.object({
-  sections: z.array(z.object({
-    name: z.string().nullable(),
-    questions: z.array(z.object({
-      number: z.string(),
-      text: z.string(),
-      marks: z.number().optional().default(1),
-      type: z.enum(["MCQ", "STRUCTURED", "PRACTICAL", "ESSAY"]),
-      options: z.array(z.string()).optional(),
-    })),
-  })),
+  sections: z.array(
+    z.object({
+      name: z.string().nullable(),
+      questions: z.array(
+        z.object({
+          number: z.string(),
+          text: z.string(),
+          marks: z.number().optional().default(1),
+          type: z.enum(["MCQ", "STRUCTURED", "PRACTICAL", "ESSAY"]),
+          options: z.array(z.string()).optional(),
+        }),
+      ),
+    }),
+  ),
 });
 
 async function extractText(fileUrl: string, fileName: string): Promise<string> {
@@ -53,15 +61,18 @@ export const ingestQuestions = inngest.createFunction(
     triggers: { event: "questions/ingest" },
   },
   async ({ event, step }) => {
-    const { jobId, componentId, examSourceId, fileUrl, fileName } = event.data as {
-      jobId: string;
-      componentId: string;
-      examSourceId?: string | null;
-      fileUrl: string;
-      fileName: string;
-    };
+    const { jobId, componentId, examSourceId, fileUrl, fileName } =
+      event.data as {
+        jobId: string;
+        componentId: string;
+        examSourceId?: string | null;
+        fileUrl: string;
+        fileName: string;
+      };
 
-    const rawText = await step.run("extract-text", () => extractText(fileUrl, fileName));
+    const rawText = await step.run("extract-text", () =>
+      extractText(fileUrl, fileName),
+    );
     if (!rawText || rawText.length < 50) {
       throw new Error("Extracted text too short or empty");
     }

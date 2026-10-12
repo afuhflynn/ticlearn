@@ -74,10 +74,12 @@ const visualTableSchema = z.object({
 
 const visualArraySchema = z.object({
   id: z.string().min(1),
-  dimensions: z.object({
-    rows: z.number(),
-    cols: z.number(),
-  }).nullable(),
+  dimensions: z
+    .object({
+      rows: z.number(),
+      cols: z.number(),
+    })
+    .nullable(),
   data: z.array(z.array(z.string())),
 });
 
@@ -313,7 +315,7 @@ function deriveVisualElements(contentMd: string, base?: VisualElements) {
   const tables = parseMarkdownTables(contentMd);
   const arrays = parseMarkdownArrays(contentMd);
   const codeBlocks = parseMarkdownCodeBlocks(contentMd);
-  
+
   const merged = {
     tables: [...(base?.tables ?? []), ...(tables ?? [])],
     arrays: [...(base?.arrays ?? []), ...(arrays ?? [])],
@@ -656,12 +658,10 @@ async function generateNewQuestions(
       }),
   );
 
-  const bankBlock = await step.run(
-    "load-approved-question-bank",
-    async () =>
-      loadApprovedQuestionBankBlock({
-        subject: (input.subject ?? "COMPUTER_SCIENCE") as Paper3Subject,
-      }),
+  const bankBlock = await step.run("load-approved-question-bank", async () =>
+    loadApprovedQuestionBankBlock({
+      subject: (input.subject ?? "COMPUTER_SCIENCE") as Paper3Subject,
+    }),
   );
 
   const combinedGrounding = [pastPaperContext.trim(), bankBlock.trim()]
@@ -876,11 +876,6 @@ export const processPaper3Source = inngest.createFunction(
         });
       });
 
-      await step.sendEvent("fire-paper3-harvest", {
-        name: "paper3/harvest-knowledge",
-        data: { sourceId: source.sourceId },
-      });
-
       return {
         success: true,
         sourceId: source.sourceId,
@@ -936,7 +931,8 @@ export const generatePaper3Mock = inngest.createFunction(
         "create-paper3-mock-and-questions",
         async () => {
           return prisma.$transaction(async (tx) => {
-            const theSubject = data.subject ?? "COMPUTER_SCIENCE" as Paper3Subject;
+            const theSubject =
+              data.subject ?? ("COMPUTER_SCIENCE" as Paper3Subject);
 
             const generatedSource = await tx.paper3Source.create({
               data: {

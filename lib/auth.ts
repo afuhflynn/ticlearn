@@ -1,4 +1,3 @@
-import { Plan } from "./../components/ai-elements/plan";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP } from "better-auth/plugins";
@@ -10,6 +9,24 @@ import {
   sendPasswordResetEmail,
 } from "./email/send";
 import { trackEvent } from "./kpi";
+import { trustedOrigins } from "./env";
+import { limitOtpSend } from "./rate-limit";
+
+const otpRateLimitMap = new Map<string, { count: number; resetAt: number }>();
+
+async function checkOtpRateLimit(email: string): Promise<boolean> {
+  const now = Date.now();
+  const record = otpRateLimitMap.get(email);
+  if (!record || now > record.resetAt) {
+    otpRateLimitMap.set(email, { count: 1, resetAt: now + 10 * 60 * 1000 });
+    return true;
+  }
+  if (record.count >= 3) {
+    return false;
+  }
+  record.count++;
+  return true;
+}
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -59,7 +76,7 @@ export const auth = betterAuth({
       },
     },
   },
-  trustedOrigins: [process.env.NEXT_PUBLIC_APP_URL! || "http://localhost:3000"],
+  trustedOrigins,
   databaseHooks: {
     session: {
       create: {
@@ -94,6 +111,11 @@ export const auth = betterAuth({
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
+        const allowed = await checkOtpRateLimit(email.toLowerCase());
+        if (!allowed) {
+          throw new Error("Too many OTP requests. Please try again later.");
+        }
+
         const user = await prisma.user.findFirst({ where: { email } });
         const name = user?.name || "Student";
 

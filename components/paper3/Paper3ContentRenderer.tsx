@@ -79,20 +79,30 @@ function detectHeaderRow(rows: string[][]): boolean {
   if (rows.length < 2) return false;
   const firstRow = rows[0];
   const numericPatterns = /^\d+$|^"?\d+\.?\d*"?$/;
-  const allFirstCellsNumeric = firstRow.every((cell) => numericPatterns.test(cell.trim()));
+  const allFirstCellsNumeric = firstRow.every((cell) =>
+    numericPatterns.test(cell.trim()),
+  );
   if (allFirstCellsNumeric) return false;
-  const nonNumericCount = firstRow.filter((cell) => !numericPatterns.test(cell.trim())).length;
+  const nonNumericCount = firstRow.filter(
+    (cell) => !numericPatterns.test(cell.trim()),
+  ).length;
   return nonNumericCount > firstRow.length / 2;
 }
 
-function parseArrayBlock(block: string): { data: string[][]; isHeader: boolean } {
+function parseArrayBlock(block: string): {
+  data: string[][];
+  isHeader: boolean;
+} {
   const lines = block.split("\n").filter((l) => l.trim());
   const data: string[][] = lines.map((line) => {
     const trimmed = line.trim();
     const inner = trimmed.slice(1, -1);
     const cells = inner.split(",").map((s) => {
       let cell = s.trim();
-      if ((cell.startsWith('"') && cell.endsWith('"')) || (cell.startsWith("'") && cell.endsWith("'"))) {
+      if (
+        (cell.startsWith('"') && cell.endsWith('"')) ||
+        (cell.startsWith("'") && cell.endsWith("'"))
+      ) {
         cell = cell.slice(1, -1);
       }
       return cell;
@@ -110,7 +120,8 @@ function parseContentMd(contentMd: string): ContentSegment[] {
   if (!contentMd) return segments;
 
   const tableRegex = /\|(.+)\|\n\|[-:\s|]+\|\n((?:\|.+\|\n?)+)/g;
-  const arrayBlockRegex = /(\[(?:[^\]\\]|\\.)*\])(?:\s*\n\s*(\[(?:[^\]\\]|\\.)*\]))*/g;
+  const arrayBlockRegex =
+    /(\[(?:[^\]\\]|\\.)*\])(?:\s*\n\s*(\[(?:[^\]\\]|\\.)*\]))*/g;
 
   interface Match {
     type: "table" | "array";
@@ -350,7 +361,12 @@ export function Paper3ContentRenderer({
     switch (segment.type) {
       case "text":
         return (
-          <ReactMarkdown key={`text-${index}`} components={markdownComponents} remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+          <ReactMarkdown
+            key={`text-${index}`}
+            components={markdownComponents}
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
             {segment.content}
           </ReactMarkdown>
         );
@@ -385,7 +401,11 @@ export function Paper3ContentRenderer({
     return (
       <div className={cn("space-y-2 w-full", className)}>
         {contentMd && (
-          <ReactMarkdown components={markdownComponents} remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
+          <ReactMarkdown
+            components={markdownComponents}
+            remarkPlugins={[remarkMath]}
+            rehypePlugins={[rehypeKatex]}
+          >
             {contentMd}
           </ReactMarkdown>
         )}

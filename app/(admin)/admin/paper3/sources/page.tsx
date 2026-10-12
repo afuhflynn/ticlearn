@@ -72,48 +72,59 @@ export default function Paper3SourcesPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {data?.sources?.map((source: { id: string; title: string; year: number; questionCount: number; status: string; subject: string; section: string; createdAt: string }) => (
-              <tr key={source.id}>
-                <td className="px-4 py-3">{source.title}</td>
-                <td className="px-4 py-3">{source.year}</td>
-                <td className="px-4 py-3">{source.subject}</td>
-                <td className="px-4 py-3">{source.section}</td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`px-2 py-1 rounded text-xs ${getStatusColor(source.status)}`}
-                  >
-                    {source.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm text-gray-500">
-                  {formatRelativeTime(source.createdAt)}
-                </td>
-                <td className="px-4 py-3 text-right space-x-2">
-                  {source.status === "PENDING" && (
+            {data?.sources?.map(
+              (source: {
+                id: string;
+                title: string;
+                year: number;
+                questionCount: number;
+                status: string;
+                subject: string;
+                section: string;
+                createdAt: string;
+              }) => (
+                <tr key={source.id}>
+                  <td className="px-4 py-3">{source.title}</td>
+                  <td className="px-4 py-3">{source.year}</td>
+                  <td className="px-4 py-3">{source.subject}</td>
+                  <td className="px-4 py-3">{source.section}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`px-2 py-1 rounded text-xs ${getStatusColor(source.status)}`}
+                    >
+                      {source.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-gray-500">
+                    {formatRelativeTime(source.createdAt)}
+                  </td>
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {source.status === "PENDING" && (
+                      <button
+                        type="button"
+                        onClick={() => processSource.mutate(source.id)}
+                        className="text-blue-600 hover:underline"
+                      >
+                        Process
+                      </button>
+                    )}
+                    <Link
+                      href={`/admin/paper3/questions?source=${source.id}`}
+                      className="text-green-600 hover:underline"
+                    >
+                      Questions
+                    </Link>
                     <button
                       type="button"
-                      onClick={() => processSource.mutate(source.id)}
-                      className="text-blue-600 hover:underline"
+                      onClick={() => deleteSource.mutate(source.id)}
+                      className="text-red-600 hover:underline"
                     >
-                      Process
+                      Delete
                     </button>
-                  )}
-                  <Link
-                    href={`/admin/paper3/questions?source=${source.id}`}
-                    className="text-green-600 hover:underline"
-                  >
-                    Questions
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => deleteSource.mutate(source.id)}
-                    className="text-red-600 hover:underline"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              ),
+            )}
           </tbody>
         </table>
         {data?.sources?.length === 0 && (

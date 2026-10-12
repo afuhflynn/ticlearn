@@ -1,6 +1,6 @@
 # Research
 
-Nine documents, one question each. They hold the evidence behind the scope in [`../scope/`](../scope/index.md). **Read the one that covers your feature before you design it**, and cite it in your spec rather than re researching.
+Ten documents, one question each. They hold the evidence behind the scope in [`../scope/`](../scope/index.md). **Read the one that covers your feature before you design it**, and cite it in your spec rather than re researching.
 
 Written 2026 with the Firecrawl CLI and parallel research agents. Anything unverified is marked as such in the document it appears in.
 
@@ -12,6 +12,7 @@ Written 2026 with the Firecrawl CLI and parallel research agents. Anything unver
 | [design-reference.md](design-reference.md) | Landing page, onboarding, or any visual rebuild. What to steal from which product, and what to avoid. |
 | [chat-experience.md](chat-experience.md) | The chat interface, the composer, thinking and tool disclosure, suggested prompts, or chat speed. |
 | [ui-toolkit.md](ui-toolkit.md) | Any component, any screen. Whether to stay on shadcn, what to adopt, what to build, and the nuqs rules. |
+| [seo-and-rendering.md](seo-and-rendering.md) | Anything indexed, shared, or that has to paint fast. Metadata, the public catalogue, GEO, rendering per route, and loading states. |
 | [web-search-tooling.md](web-search-tooling.md) | The search tool. Firecrawl as primary, Tavily as fallback, the normalised interface, the decision order, and the caching plan. |
 | [security.md](security.md) | Anything touching auth, uploads, payments, admin, or AI inputs. Twenty launch blockers, the prompt injection architecture, and a per route rate limit table. |
 | [performance-and-database.md](performance-and-database.md) | Any query, any slow screen. Exact index DDL, what to move to Inngest, the caching plan, and the performance budgets. |

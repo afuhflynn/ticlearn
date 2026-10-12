@@ -19,9 +19,7 @@ export function CProgram({
 
   return (
     <div className={cn("my-4", className)}>
-      {caption && (
-        <p className="text-sm text-gray-600 mb-2">{caption}</p>
-      )}
+      {caption && <p className="text-sm text-gray-600 mb-2">{caption}</p>}
       <div className="rounded-lg overflow-hidden border bg-gray-900">
         <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800">
           <span className="text-xs text-gray-400 uppercase">
