@@ -1,12 +1,13 @@
+import { generateObject } from "ai";
+import { z } from "zod";
+import { generate } from "@/lib/ai/orchestrator";
+import type { Prisma } from "@/lib/generated/prisma/client";
 import { inngest } from "@/lib/inngest/client";
-import { prisma } from "@/lib/prisma";
 import { evaluateAnswer } from "@/lib/paper3/evaluate";
 import { gradeShortAnswer } from "@/lib/paper3/grade-short-answer";
 import { getPlatformSettings } from "@/lib/platform-settings";
-import { generateObject } from "ai";
-import { z } from "zod";
-import { Prisma } from "@/lib/generated/prisma/client";
-import { generate } from "@/lib/ai/orchestrator";
+import { prisma } from "@/lib/prisma";
+import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
 
 type EvaluateExamEvent = {
   attemptId: string;
@@ -210,24 +211,20 @@ export const evaluatePaper3Exam = inngest.createFunction(
 
               if (needsCodeExplanation && result.userAnswerForAi.trim()) {
                 try {
+                  const { text: codePrompt, settings } = await getPrompt(
+                    "paper3",
+                    "code_explanation",
+                    {
+                      questionTitle: result.questionTitle,
+                      expectedAnswer: result.expectedAnswer,
+                      userAnswer: result.userAnswerForAi,
+                    },
+                  );
                   const { object } = await generate({
                     task: "reasoning",
                     schema: codeExplanationSchema,
-                    prompt: `You are a GCE A-Level Computer Science examiner. Analyze this student's code answer and explain what went wrong.
-
-Question: ${result.questionTitle}
-Expected Answer:
-${result.expectedAnswer}
-
-Student's Answer:
-${result.userAnswerForAi}
-
-For each line or logical section in the student's code:
-1. Explain what the code does
-2. Identify if there's an issue and what it is
-3. Suggest the correction
-
-Provide line-by-line explanations in a code comment style.`,
+                    prompt: codePrompt,
+                    ...promptCallFields(settings),
                   });
 
                   const explanationLines = object.explanations.map(

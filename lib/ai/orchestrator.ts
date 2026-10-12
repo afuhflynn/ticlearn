@@ -7,6 +7,13 @@ import { google } from "./instances";
 const gemini = google("gemini-2.5-flash");
 const TIMEOUT_MS = 10_000;
 
+/** Identity of the prompt file behind a call. Traces cache keys and logs. */
+export interface PromptRef {
+  name: string;
+  version: number;
+  model: string;
+}
+
 export interface GenerateOptions<T> {
   task: string;
   schema: z.ZodType<T>;
@@ -14,6 +21,9 @@ export interface GenerateOptions<T> {
   messages?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   system?: string;
   modelOptions?: Record<string, unknown>;
+  /** File values win over the task registry; 0 means never cache. */
+  cacheTtlMs?: number;
+  promptRef?: PromptRef;
 }
 
 export interface StreamChatOptions {
@@ -25,6 +35,7 @@ export interface StreamChatOptions {
   }>;
   tools?: Record<string, unknown>;
   onFinish?: (result: { text: string; usage: unknown }) => void;
+  promptRef?: PromptRef;
 }
 
 export interface TextGenOptions {
@@ -33,6 +44,9 @@ export interface TextGenOptions {
   messages?: Array<{ role: "user" | "assistant" | "system"; content: string }>;
   system?: string;
   modelOptions?: Record<string, unknown>;
+  /** File values win over the task registry; 0 means never cache. */
+  cacheTtlMs?: number;
+  promptRef?: PromptRef;
 }
 
 class OrchestratorError extends Error {
@@ -49,10 +63,15 @@ class OrchestratorError extends Error {
 export async function generate<T>(
   opts: GenerateOptions<T>,
 ): Promise<{ object: T }> {
-  const cacheKey = opts.prompt ?? JSON.stringify(opts.messages);
+  const rawKey = opts.prompt ?? JSON.stringify(opts.messages);
+  const cacheKey = opts.promptRef
+    ? `${opts.promptRef.name} v${opts.promptRef.version}:${rawKey}`
+    : rawKey;
   const config = getTaskConfig(opts.task);
+  const ttlMs = opts.cacheTtlMs ?? config.cacheTtlMs ?? 0;
+  logPromptUse(opts.task, opts.promptRef);
 
-  if (config.cacheTtlMs && config.cacheTtlMs > 0) {
+  if (ttlMs > 0) {
     const cached = getCached(opts.task, cacheKey);
     if (cached) {
       return { object: cached as T };
@@ -70,14 +89,23 @@ export async function generate<T>(
     ...(opts.modelOptions as Record<string, unknown>),
   });
 
-  if (config.cacheTtlMs && config.cacheTtlMs > 0) {
-    setCached(opts.task, cacheKey, result.object, config.cacheTtlMs);
+  if (ttlMs > 0) {
+    setCached(opts.task, cacheKey, result.object, ttlMs);
   }
 
   return { object: result.object };
 }
 
+function logPromptUse(task: string, ref?: PromptRef): void {
+  if (ref) {
+    console.debug(
+      `[ai] ${task} prompt ${ref.name} v${ref.version} ${ref.model}`,
+    );
+  }
+}
+
 export async function streamChat(opts: StreamChatOptions) {
+  logPromptUse(opts.task, opts.promptRef);
   return streamText({
     model: gemini,
     system: opts.system,
@@ -90,6 +118,7 @@ export async function streamChat(opts: StreamChatOptions) {
 }
 
 export async function generateTextWithFallback(opts: TextGenOptions) {
+  logPromptUse(opts.task, opts.promptRef);
   return generateText({
     model: gemini,
     prompt: opts.prompt,
@@ -106,10 +135,15 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
 export async function generateCritical<T>(
   opts: GenerateOptions<T>,
 ): Promise<{ object: T }> {
-  const cacheKey = opts.prompt ?? JSON.stringify(opts.messages);
+  const rawKey = opts.prompt ?? JSON.stringify(opts.messages);
+  const cacheKey = opts.promptRef
+    ? `${opts.promptRef.name} v${opts.promptRef.version}:${rawKey}`
+    : rawKey;
   const config = getTaskConfig(opts.task);
+  const ttlMs = opts.cacheTtlMs ?? config.cacheTtlMs ?? 0;
+  logPromptUse(opts.task, opts.promptRef);
 
-  if (config.cacheTtlMs && config.cacheTtlMs > 0) {
+  if (ttlMs > 0) {
     const cached = getCached(opts.task, cacheKey);
     if (cached) {
       return { object: cached as T };
@@ -127,14 +161,15 @@ export async function generateCritical<T>(
     ...(opts.modelOptions as Record<string, unknown>),
   });
 
-  if (config.cacheTtlMs && config.cacheTtlMs > 0) {
-    setCached(opts.task, cacheKey, result.object, config.cacheTtlMs);
+  if (ttlMs > 0) {
+    setCached(opts.task, cacheKey, result.object, ttlMs);
   }
 
   return { object: result.object };
 }
 
 export async function generateTextCritical(opts: TextGenOptions) {
+  logPromptUse(opts.task, opts.promptRef);
   return generateText({
     model: gemini,
     prompt: opts.prompt,

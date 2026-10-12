@@ -10,6 +10,9 @@ export interface TaskConfig {
 
 const gemini = google("gemini-2.5-flash");
 
+/** Models a prompt file header may name. Owned here so loader and jobs agree. */
+export const MODEL_ALLOWLIST: string[] = ["gemini-2.5-flash"];
+
 export const taskRegistry: Record<string, TaskConfig> = {
   reasoning: {
     chain: [gemini],

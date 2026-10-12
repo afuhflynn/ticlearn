@@ -1,10 +1,10 @@
-import { prisma } from "./prisma";
 import { generateObject } from "ai";
 import { z } from "zod";
-
-import { extractMcqFromPlainText } from "./mcq-parse";
-import { shuffleArrayCopy } from "./shuffle";
 import { generate } from "@/lib/ai/orchestrator";
+import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
+import { extractMcqFromPlainText } from "./mcq-parse";
+import { prisma } from "./prisma";
+import { shuffleArrayCopy } from "./shuffle";
 
 type SectionConfig = {
   id: string;
@@ -349,8 +349,23 @@ async function generateAIQuestions(
     Math.ceil(section.totalMarks / Math.max(count, 1));
 
   if (section.questionType === "MCQ") {
+    const { text: system } = await getPrompt(
+      "exam",
+      "mock_mcq_section_system",
+      { levelLabel, programName, sectionName: section.name },
+    );
+    const { text: prompt, settings } = await getPrompt(
+      "exam",
+      "mock_mcq_section",
+      {
+        count,
+        programName,
+        marksEach,
+      },
+    );
     const result = await generate({
       task: "exam_gen",
+      ...promptCallFields(settings),
       schema: z.object({
         questions: z.array(
           z.object({
@@ -374,11 +389,8 @@ async function generateAIQuestions(
           }),
         ),
       }),
-      system: `You write multiple-choice items for ${levelLabel} ${programName}.
-Section: "${section.name}".
-Each item MUST have: (1) one clear stem, (2) exactly four distinct, plausible options labelled in order A–D by array position, (3) exactly one correctLetter (A, B, C, or D).
-Options must not give away the answer; avoid "all of the above". Use syllabus-appropriate vocabulary.`,
-      prompt: `Generate ${count} fresh MCQ exam questions for ${programName}. Each is worth ${marksEach} mark(s). Difficulty should vary slightly across items.`,
+      system,
+      prompt,
     });
 
     return result.object.questions.map((q, i) => {
@@ -399,8 +411,27 @@ Options must not give away the answer; avoid "all of the above". Use syllabus-ap
     });
   }
 
+  const { text: system } = await getPrompt("exam", "mock_open_section_system", {
+    levelLabel,
+    programName,
+    count,
+    questionType: section.questionType,
+    sectionName: section.name,
+    marksEach,
+  });
+  const { text: prompt, settings } = await getPrompt(
+    "exam",
+    "mock_open_section",
+    {
+      count,
+      questionType: section.questionType,
+      programName,
+      marksEach,
+    },
+  );
   const result = await generate({
     task: "exam_gen",
+    ...promptCallFields(settings),
     schema: z.object({
       questions: z.array(
         z.object({
@@ -418,13 +449,8 @@ Options must not give away the answer; avoid "all of the above". Use syllabus-ap
         }),
       ),
     }),
-    system: `You are an exam question generator for ${levelLabel} ${programName}.
-Generate ${count} ${section.questionType} questions for section "${section.name}".
-Each item is ONE object with TWO separate string fields — this is mandatory:
-1) "text": only what the candidate reads on the paper (exam-quality, syllabus-aligned).
-2) "modelAnswer": the official short answer / bullet mark-scheme the examiner uses (${marksEach} marks). Never copy the model answer into "text" and never put the question inside "modelAnswer".`,
-    prompt: `Generate ${count} ${section.questionType} exam questions for ${programName}.
-Each question is worth ${marksEach} mark(s). Difficulty should vary slightly across items.`,
+    system,
+    prompt,
   });
 
   return result.object.questions.map((q, i) => ({

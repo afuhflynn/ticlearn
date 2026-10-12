@@ -48,6 +48,9 @@ jobs:
       - name: Lint
         run: pnpm lint
 
+      - name: Prompt registry check
+        run: pnpm prompts:check
+
       - name: Test
         run: pnpm test --run
         env:

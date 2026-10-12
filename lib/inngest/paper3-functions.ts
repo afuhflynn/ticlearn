@@ -1,4 +1,11 @@
-import { NonRetriableError, type GetStepTools } from "inngest";
+import { type GetStepTools, NonRetriableError } from "inngest";
+import { z } from "zod";
+import {
+  extractTextFromImage,
+  extractTextFromPDF,
+  extractTextFromWord,
+} from "@/lib/ai";
+import { generate } from "@/lib/ai/orchestrator";
 import type {
   Paper3Category,
   Paper3Language,
@@ -8,20 +15,12 @@ import type {
   Paper3Subject,
   Paper3TaskType,
 } from "@/lib/generated/prisma/client";
-import { z } from "zod";
-import {
-  extractTextFromImage,
-  extractTextFromPDF,
-  extractTextFromWord,
-} from "@/lib/ai";
 import { inngest } from "@/lib/inngest/client";
 import { buildPaper3SourceContextBlock } from "@/lib/paper3/exam-context";
-import {
-  examSystemPreamble,
-  groundedQuestionBatchPrompt,
-} from "@/lib/paper3/prompts";
+import { groundedQuestionBatchPrompt } from "@/lib/paper3/prompts";
 import { prisma } from "@/lib/prisma";
-import { generate } from "@/lib/ai/orchestrator";
+import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
+
 const SOURCE_TEXT_MIN_LENGTH = 100;
 
 type Paper3StepTools = GetStepTools<typeof inngest>;
@@ -455,28 +454,22 @@ async function repairVisualQuestion(
     visualElements: visualElementsSchema,
   });
 
-  const prompt = `Repair this GCE Paper 3 question so it is markdown-first and includes the required visual structures.
-
-Task type: ${question.taskType}
-Title: ${question.title}
-Current markdown:
-${question.contentMd}
-
-Return JSON only with:
-- contentMd: improved markdown
-- visualElements: required structured visuals
-
-Rules:
-- EXCEL_GRID must include arrays and markdown array rows like [12, 14, 9]
-- ACCESS_TABLE and ACCESS_RELATIONSHIP must include markdown tables and tables in visualElements
-- C_PROGRAM and PASCAL_PROGRAM must include fenced code blocks and matching codeBlocks
-- Keep the question meaning unchanged.`;
+  const { text: prompt, settings } = await getPrompt(
+    "paper3",
+    "repair_question",
+    {
+      taskType: question.taskType,
+      title: question.title,
+      contentMd: question.contentMd,
+    },
+  );
 
   const result = await step.run(stepName, async () => {
     const { object } = await generate({
       task: "paper3_gen",
       schema: repairSchema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     return object;
@@ -499,45 +492,27 @@ async function structureQuestionsFromSource(
     questions: z.array(generatedQuestionSchema),
   });
 
-  const prompt = `You are structuring a Cameroon GCE A-Level Paper 3 source into reusable practical questions for TiCLearn.
-
-Source metadata:
-- title: ${source.title}
-- year: ${source.year}
-- subject: ${source.subject}
-- section: ${source.section}
-- category: ${source.category}
-- paperType: ${source.paperType}
-- sourceType: ${source.sourceType}
-
-Primary goal:
-- produce markdown-first question content for rendering practical visuals well
-- preserve numbering and exam intent
-- create reviewer-ready structured questions
-
-Critical output rules:
-- \`sourceMarkdown\` must be a cleaned markdown version of the source text
-- every question must have \`contentMd\` as the primary representation
-- prefer markdown tables for database/spreadsheet structures
-- prefer fenced code blocks for C and Pascal content
-- when a question needs a visual representation, include both markdown and \`visualElements\`
-- \`content\` should be a plain-text summary of the markdown content
-- \`markingBreakdown\` must be a criteria array, not prose
-- only use valid task types and skill types from the schema
-
-Visual requirements:
-- EXCEL_GRID -> markdown rows like [12, 15, 20] and visualElements.arrays
-- ACCESS_TABLE / ACCESS_RELATIONSHIP -> markdown tables and visualElements.tables
-- C_PROGRAM / PASCAL_PROGRAM -> fenced code blocks and visualElements.codeBlocks
-
-Source text:
-${extractedText.slice(0, 24000)}`;
+  const { text: prompt, settings } = await getPrompt(
+    "paper3",
+    "structure_source",
+    {
+      title: source.title,
+      year: source.year,
+      subject: source.subject,
+      section: source.section,
+      category: source.category,
+      paperType: source.paperType,
+      sourceType: source.sourceType,
+      sourceText: extractedText.slice(0, 24000),
+    },
+  );
 
   const object = await step.run("structure-paper3-source", async () => {
     const result = await generate({
       task: "paper3_gen",
       schema: responseSchema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     return result.object;
@@ -668,7 +643,7 @@ async function generateNewQuestions(
     .filter(Boolean)
     .join("\n\n---\n\n");
 
-  const groundedPrompt = groundedQuestionBatchPrompt({
+  const groundedPrompt = await groundedQuestionBatchPrompt({
     focusCategory: input.focusCategory ?? "MIXED",
     count: input.questionCount,
     difficulty: input.difficulty ?? "standard",
@@ -677,63 +652,28 @@ async function generateNewQuestions(
     mockTitle: input.title,
   });
 
-  const prompt = `${examSystemPreamble}
+  const { text: preamble } = await getPrompt("paper3", "preamble");
 
-${groundedPrompt}
-
-Return structured questions compatible with TiCLearn Paper 3 mocks.
-Subject: ${input.subject ?? "COMPUTER_SCIENCE"}
-Section: ${input.section ?? "A"}
-Focus category: ${input.focusCategory ?? "MIXED"}
-Question count: ${input.questionCount}
-
-The content MUST be markdown-first because learners render the mock directly from markdown.
-
-Critical requirements:
-- every question must have rich \`contentMd\`
-- most visual/structured content must live in markdown, not plain text
-- for tables use markdown tables
-- for spreadsheet grids use markdown rows like [45, 20, 11]
-- for code use fenced code blocks with c or pascal
-- also provide structured \`visualElements\` matching the markdown
-- prefer a realistic mix of visual practical tasks rather than plain input questions
-- keep all questions aligned to Cameroon GCE A-Level Paper 3
-- generate ORIGINAL variants grounded in the source bank — do not copy stems verbatim
-
-Continuous-set rules:
-- the full question set must read like one coherent practical paper in the chosen focus category
-- avoid mixing unrelated categories when a focus category is provided
-
-Focus-category rules:
-- MIXED: allow a balanced realistic paper
-- DATABASE:
-  - ICT => Microsoft Access tasks only, no SQL_QUERY
-  - COMPUTER_SCIENCE => SQL_QUERY and data-modeling tasks are allowed
-- SPREADSHEET => Excel-only practical questions
-- PROGRAMMING => C, Pascal, and algorithmic tasks only
-- WEB_PROGRAMMING => HTML and CSS only, using inline styling only. No JavaScript.
-
-Code skeleton requirement:
-- For C_PROGRAM and PASCAL_PROGRAM questions, the expectedAnswer must be a FUNCTION SIGNATURE ONLY (not full implementation)
-- Format: "returnType functionName(parameterType paramName);" or "returnType functionName(paramType param1, paramType param2);"
-- Example full answer: "int add(int a, int b);" - just the declaration, no body
-- This enables learners to practice writing function signatures
-
-Visual/code rules for web programming:
-- WEB_PROGRAMMING questions must include fenced code blocks
-- include only HTML and CSS snippets in markdown
-- enforce inline styling where styling is needed
-- do not generate JavaScript, DOM APIs, or browser scripting tasks
-
-Difficulty distribution:
-${JSON.stringify(input.markDistribution ?? null)}
-`;
+  const { text: prompt, settings } = await getPrompt(
+    "paper3",
+    "generate_mock",
+    {
+      preamble,
+      grounded: groundedPrompt,
+      subject: input.subject ?? "COMPUTER_SCIENCE",
+      section: input.section ?? "A",
+      focusCategory: input.focusCategory ?? "MIXED",
+      questionCount: input.questionCount,
+      markDistribution: JSON.stringify(input.markDistribution ?? null),
+    },
+  );
 
   const object = await step.run("generate-paper3-mock-questions", async () => {
     const result = await generate({
       task: "paper3_gen",
       schema: responseSchema,
       prompt,
+      ...promptCallFields(settings),
     });
 
     return result.object;

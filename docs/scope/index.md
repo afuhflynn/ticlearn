@@ -20,7 +20,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | G | Mobile money payments | Carried over | existing |
 | 1 | Codebase audit and project conventions | Foundation | planned |
 | 2 | Security and integrity hardening | Foundation | in-progress |
-| 3 | Prompt registry | Foundation | planned |
+| 3 | Prompt registry | Foundation | done |
 | 4 | AI model chain through OpenRouter | Foundation | planned |
 | 5 | Delete GCE content, repoint the data model | Foundation | planned |
 | 6 | Generalise the exam and grading engine | Foundation | planned |

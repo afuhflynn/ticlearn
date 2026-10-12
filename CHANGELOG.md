@@ -45,6 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Developer Experience
 
+1. **Prompt registry** (see spec 0002): all AI wording moved from inline literals to 38 versioned markdown files under `prompts/` (quiz, exam, grade, ingest, paper3, chat, tools). Typed loader validates headers, slots, model allow list, and needs flags with fail fast errors. File edits apply on the next request with no rebuild.
+2. **File settings travel with prompts**: heat maps to temperature, cap maps to max tokens, file cache span wins over task defaults, grading prompts stay at span zero so marking never caches, and logs carry prompt name plus version plus model with no student data. `pnpm prompts:check` gates headers plus a 200 char inline prompt rule in CI.
+3. **Exam mock difficulty fix**: mock generation returned 500 because the prompt never named the difficulty scale the schema requires. The prompt file now rates difficulty 1 to 5, verified live with no rebuild.
+4. **Verify fixture seed**: dev only `scripts/seed-verify-fixture.ts` creates a verified admin user with credits, exam profile, visible blueprint, and READY note for end to end AI drives. Refuses production.
+5. **Test infrastructure**: suite at 49 passing, incl. loader conformance, orchestrator cache plus trace, and check script CLI suites.
+
 - **Type safety** — `lib/env.ts` split into Edge/Node validation with Zod schemas. `lib/require-admin.ts` shared admin guard. `lib/ai/tool-policy.ts` typed `wrapTool` with policy sets. `lib/rate-limit.ts` typed bucket configs and security event logging.
 
 - **Code quality** — Biome formatting, strict TypeScript, no `any` in new code, consistent import sorting.
