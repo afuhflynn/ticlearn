@@ -1,0 +1,715 @@
+> ## Documentation Index
+>
+> Fetch the complete documentation index at: [/llms.txt](https://docs.firecrawl.dev/llms.txt)
+>
+> Use this file to discover all available pages before exploring further.
+
+[Skip to main content](https://docs.firecrawl.dev/advanced-scraping-guide#content-area)
+
+Reference for every option across Firecrawl’s scrape, crawl, map, and agent endpoints.
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#basic-scraping)  Basic scraping
+
+To scrape a single page and get clean markdown content, use the `/scrape` endpoint.
+
+Python
+
+Node
+
+cURL
+
+```
+# pip install firecrawl-py
+
+from firecrawl import Firecrawl
+
+firecrawl = Firecrawl(api_key="fc-YOUR-API-KEY")
+
+doc = firecrawl.scrape("https://firecrawl.dev")
+
+print(doc.markdown)
+```
+
+```
+// npm install firecrawl
+
+import { Firecrawl } from 'firecrawl-js';
+
+const firecrawl = new Firecrawl({ apiKey: 'fc-YOUR-API-KEY' });
+
+const doc = await firecrawl.scrape('https://firecrawl.dev');
+
+console.log(doc.markdown);
+```
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+    -d '{
+      "url": "https://docs.firecrawl.dev"
+    }'
+```
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#scraping-pdfs)  Scraping PDFs
+
+Firecrawl supports PDFs. Use the `parsers` option (e.g., `parsers: ["pdf"]`) when you want to ensure PDF parsing. You can control the parsing strategy with the `mode` option:
+
+- **`auto`** (default) — attempts fast text-based extraction first, then falls back to OCR if needed.
+- **`fast`** — text-based parsing only (embedded text). Fastest, but skips scanned/image-heavy pages.
+- **`ocr`** — forces OCR parsing on every page. Use for scanned documents or when `auto` misclassifies a page.
+
+`{ type: "pdf" }` and `"pdf"` both default to `mode: "auto"`.
+
+```
+"parsers": [{ "type": "pdf", "mode": "fast", "maxPages": 50 }]
+```
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#scrape-options)  Scrape options
+
+When using the `/scrape` endpoint, you can customize the request with the following options.
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#formats-formats)  Formats (`formats`)
+
+The `formats` array controls which output types the scraper returns. Default: `["markdown"]`.**String formats**: pass the name directly (e.g. `"markdown"`).
+
+| Format | Description |
+| --- | --- |
+| `markdown` | Page content converted to clean Markdown. |
+| `html` | Processed HTML with unnecessary elements removed. |
+| `rawHtml` | Original HTML exactly as returned by the server. |
+| `rawBase64` | Base64-encoded original HTTP response body, as a bare Base64 string. Must be the only format in the request. The MIME type is in `metadata.contentType`. |
+| `links` | All links found on the page. |
+| `images` | All images found on the page. |
+| `summary` | An LLM-generated summary of the page content. |
+| `branding` | Extracts brand identity (colors, fonts, typography, spacing, UI components). |
+| `product` | Extracts a structured product (title, price, availability, images, variants) from product pages via multi-source structured data. |
+
+**Object formats**: pass an object with `type` and additional options.
+
+| Format | Options | Description |
+| --- | --- | --- |
+| `json` | `prompt?: string`, `schema?: object` | Extract structured data using an LLM. Provide a JSON schema and/or a natural-language prompt (max 10,000 characters). |
+| `screenshot` | `fullPage?: boolean`, `quality?: number`, `viewport?: { width, height }` | Capture a screenshot. Max one per request. Viewport max resolution is 7680×4320. Screenshot URLs expire after 24 hours. |
+| `changeTracking` | `modes?: ("json" | "git-diff")[]`, `tag?: string`, `schema?: object`, `prompt?: string` | Track changes between scrapes. Requires `"markdown"` to also be in the formats array. |
+| `attributes` | `selectors: [{ selector: string, attribute: string }]` | Extract specific HTML attributes from elements matching CSS selectors. |
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#mobile-scraping)  Mobile scraping
+
+Set `mobile: true` to emulate a mobile device. This is useful when a responsive site hides content on desktop or serves a different layout to mobile browsers.For region-specific sites, combine with `location` and a mobile screenshot to verify the rendered layout:
+
+Python
+
+Node
+
+cURL
+
+```
+from firecrawl import Firecrawl
+
+firecrawl = Firecrawl(api_key="fc-YOUR-API-KEY")
+
+doc = firecrawl.scrape(
+    "https://example.com",
+    mobile=True,
+    location={"country": "GB", "languages": ["en-GB"]},
+    formats=[\
+        "markdown",\
+        {"type": "screenshot", "fullPage": True, "viewport": {"width": 390, "height": 844}},\
+    ],
+    only_main_content=False,
+    wait_for=2000,
+)
+
+print(doc.markdown)
+```
+
+```
+import { Firecrawl } from 'firecrawl-js';
+
+const firecrawl = new Firecrawl({ apiKey: 'fc-YOUR-API-KEY' });
+
+const doc = await firecrawl.scrape('https://example.com', {
+  mobile: true,
+  location: { country: 'GB', languages: ['en-GB'] },
+  formats: [\
+    'markdown',\
+    { type: 'screenshot', fullPage: true, viewport: { width: 390, height: 844 } },\
+  ],
+  onlyMainContent: false,
+  waitFor: 2000,
+});
+
+console.log(doc.markdown);
+```
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://example.com",
+    "mobile": true,
+    "location": {
+      "country": "GB",
+      "languages": ["en-GB"]
+    },
+    "formats": [\
+      "markdown",\
+      { "type": "screenshot", "fullPage": true, "viewport": { "width": 390, "height": 844 } }\
+    ],
+    "onlyMainContent": false,
+    "waitFor": 2000
+  }'
+```
+
+If the site still serves a desktop layout despite `mobile: true`, add a mobile User-Agent via `headers`:
+
+```
+{
+  "headers": {
+    "User-Agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1"
+  }
+}
+```
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#content-filtering)  Content filtering
+
+These parameters control which parts of the page appear in the output. When `onlyMainContent` is `true` (the default), boilerplate (nav, footer, etc.) is stripped. `includeTags` and `excludeTags` are applied against the original page DOM, not the post-filtered result, so your selectors should target elements as they appear in the source HTML. Set `onlyMainContent: false` to use the full page as the starting point for tag filtering.
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `onlyMainContent` | `boolean` | `true` | Return only the main content. Set `false` for the full page. |
+| `includeTags` | `array` | — | CSS selectors to include — tags, classes, IDs, or attribute selectors (e.g. `["h1", "p", ".main-content", "[data-testid=\"main\"]"]`). |
+| `excludeTags` | `array` | — | CSS selectors to exclude — tags, classes, IDs, or attribute selectors (e.g. `["#ad", "#footer", "[role=\"banner\"]"]`). |
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#timing-and-cache)  Timing and cache
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `waitFor` | `integer` (ms) | `0` | Extra wait time before scraping, on top of smart-wait. Use sparingly. |
+| `maxAge` | `integer` (ms) | `172800000` | Return a cached version if fresher than this value (default is 2 days). Set `0` to always fetch fresh. |
+| `timeout` | `integer` (ms) | `60000` | Max request duration before aborting (default is 60 seconds). Minimum is 1000 (1 second). |
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#prompt-injection-check)  Prompt injection check
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `checkPromptInjection` | `boolean` | `false` | Scan the page content for prompt injection attempts before any LLM-backed format (such as `json`, `summary` or `question`) runs. Works with any format except `rawBase64`. A detection fails the request with a `403` and `SCRAPE_PROMPT_INJECTION_DETECTED`. Adds 4 credits when the check scans the whole page. See [Prompt injection detection](https://docs.firecrawl.dev/features/llm-extract#prompt-injection-detection). |
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#pdf-parsing)  PDF parsing
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `parsers` | `array` | `["pdf"]` | Controls PDF processing. `[]` to skip parsing and return base64 (1 credit flat). |
+
+```
+{ "type": "pdf", "mode": "fast" | "auto" | "ocr", "maxPages": 10, "pages": true, "blocks": true, "pageMarkers": true }
+```
+
+| Property | Type | Default | Description |
+| --- | --- | --- | --- |
+| `type` | `"pdf"` | _(required)_ | Parser type. |
+| `mode` | `"fast" | "auto" | "ocr"` | `"auto"` | `fast`: text-based extraction only. `auto`: fast with OCR fallback. `ocr`: force OCR. |
+| `maxPages` | `integer` | — | Cap the number of pages to parse. |
+| `pages` | `boolean` | `false` | Also return physical per-page markdown in the document’s `pages` field. No additional cost. |
+| `blocks` | `boolean` | `false` | Also return per-page typed layout blocks (normalized bounding boxes, block types, reading order, markdown character spans) in the document’s `blocks` field. No additional cost. |
+| `pageMarkers` | `boolean` | `false` | Annotate page breaks in the document markdown with `<!-- page N -->` markers (between pages only; numbering may skip pages merged across a break — see [Parse](https://docs.firecrawl.dev/features/parse#page-markers-pdf)). No additional cost. |
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#actions)  Actions
+
+Run browser actions before scraping. This is useful for dynamic content, navigation, or user-gated pages. You can include up to 50 actions per request, and the combined wait time across all `wait` actions and `waitFor` must not exceed 60 seconds.
+
+| Action | Parameters | Description |
+| --- | --- | --- |
+| `wait` | `milliseconds?: number`, `selector?: string` | Wait for a fixed duration **or** until an element is visible (provide one, not both). When using `selector`, times out after 30 seconds. |
+| `click` | `selector: string`, `all?: boolean` | Click an element matching the CSS selector. Set `all: true` to click every match. |
+| `write` | `text: string` | Type text into the currently focused field. You must focus the element with a `click` action first. |
+| `press` | `key: string` | Press a keyboard key (e.g. `"Enter"`, `"Tab"`, `"Escape"`). |
+| `scroll` | `direction?: "up" | "down"`, `selector?: string` | Scroll the page or a specific element. Direction defaults to `"down"`. |
+| `screenshot` | `fullPage?: boolean`, `quality?: number`, `viewport?: { width, height }` | Capture a screenshot. Max viewport resolution is 7680×4320. |
+| `scrape` | _(none)_ | Capture the current page HTML at this point in the action sequence. |
+| `executeJavascript` | `script: string` | Run JavaScript code in the page. Return values are available in the `actions.javascriptReturns` array of the response. |
+| `pdf` | `format?: string`, `landscape?: boolean`, `scale?: number` | Generate a PDF. Supported formats: `"A0"` through `"A6"`, `"Letter"`, `"Legal"`, `"Tabloid"`, `"Ledger"`. Defaults to `"Letter"`. |
+
+Python
+
+Node
+
+cURL
+
+```
+from firecrawl import Firecrawl
+
+firecrawl = Firecrawl(api_key='fc-YOUR-API-KEY')
+
+doc = firecrawl.scrape('https://example.com', {
+  'actions': [\
+    { 'type': 'wait', 'milliseconds': 1000 },\
+    { 'type': 'click', 'selector': '#accept' },\
+    { 'type': 'scroll', 'direction': 'down' },\
+    { 'type': 'click', 'selector': '#q' },\
+    { 'type': 'write', 'text': 'firecrawl' },\
+    { 'type': 'press', 'key': 'Enter' },\
+    { 'type': 'wait', 'milliseconds': 2000 }\
+  ],
+  'formats': ['markdown']
+})
+
+print(doc.markdown)
+```
+
+```
+import { Firecrawl } from 'firecrawl-js';
+
+const firecrawl = new Firecrawl({ apiKey: 'fc-YOUR-API-KEY' });
+
+const doc = await firecrawl.scrape('https://example.com', {
+  actions: [\
+    { type: 'wait', milliseconds: 1000 },\
+    { type: 'click', selector: '#accept' },\
+    { type: 'scroll', direction: 'down' },\
+    { type: 'click', selector: '#q' },\
+    { type: 'write', text: 'firecrawl' },\
+    { type: 'press', key: 'Enter' },\
+    { type: 'wait', milliseconds: 2000 }\
+  ],
+  formats: ['markdown']
+});
+
+console.log(doc.markdown);
+```
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://example.com",
+    "actions": [\
+      { "type": "wait", "milliseconds": 1000 },\
+      { "type": "click", "selector": "#accept" },\
+      { "type": "scroll", "direction": "down" },\
+      { "type": "click", "selector": "#q" },\
+      { "type": "write", "text": "firecrawl" },\
+      { "type": "press", "key": "Enter" },\
+      { "type": "wait", "milliseconds": 2000 }\
+    ],
+    "formats": ["markdown"]
+  }'
+```
+
+#### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#action-execution-notes)  Action execution notes
+
+- **Write** requires a preceding `click` to focus the target element.
+- **Scroll** accepts an optional `selector` to scroll a specific element instead of the page.
+- **Wait** accepts either `milliseconds` (fixed delay) or `selector` (wait until visible).
+- Actions run **sequentially**: each step completes before the next begins.
+- Actions are **not supported for PDFs**. If the URL resolves to a PDF the request will fail.
+
+#### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#advanced-action-examples)  Advanced action examples
+
+**Taking a screenshot:**
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://example.com",
+    "actions": [\
+      { "type": "click", "selector": "#load-more" },\
+      { "type": "wait", "milliseconds": 1000 },\
+      { "type": "screenshot", "fullPage": true, "quality": 80 }\
+    ]
+  }'
+```
+
+**Clicking multiple elements:**
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://example.com",
+    "actions": [\
+      { "type": "click", "selector": ".expand-button", "all": true },\
+      { "type": "wait", "milliseconds": 500 }\
+    ],
+    "formats": ["markdown"]
+  }'
+```
+
+**Generating a PDF:**
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://example.com",
+    "actions": [\
+      { "type": "pdf", "format": "A4", "landscape": false }\
+    ]
+  }'
+```
+
+**Executing JavaScript (e.g. extracting embedded page data):**
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://example.com",
+    "actions": [\
+      { "type": "executeJavascript", "script": "document.querySelector(\"#__NEXT_DATA__\").textContent" }\
+    ],
+    "formats": ["markdown"]
+  }'
+```
+
+The return value of each `executeJavascript` action is captured in the `actions.javascriptReturns` array of the response.
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#full-scrape-example)  Full scrape example
+
+The following request combines multiple scrape options:
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+    -d '{
+      "url": "https://docs.firecrawl.dev",
+      "formats": [\
+        "markdown",\
+        "links",\
+        "html",\
+        "rawHtml",\
+        { "type": "screenshot", "fullPage": true, "quality": 80 }\
+      ],
+      "includeTags": ["h1", "p", "a", ".main-content"],
+      "excludeTags": ["#ad", "#footer"],
+      "onlyMainContent": false,
+      "waitFor": 1000,
+      "timeout": 15000,
+      "parsers": ["pdf"]
+    }'
+```
+
+This request returns markdown, HTML, raw HTML, links, and a full-page screenshot. It scopes content to `<h1>`, `<p>`, `<a>`, and `.main-content` while excluding `#ad` and `#footer`, waits 1 second before scraping, sets a 15 second timeout, and enables PDF parsing.See the full [Scrape API reference](https://docs.firecrawl.dev/api-reference/endpoint/scrape) for details.
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#json-extraction-via-formats)  JSON extraction via formats
+
+Use the JSON format object in `formats` to extract structured data in one pass:
+
+Python
+
+Node
+
+cURL
+
+```
+from firecrawl import Firecrawl
+
+firecrawl = Firecrawl(api_key='fc-YOUR-API-KEY')
+
+doc = firecrawl.scrape('https://firecrawl.dev', {
+  'formats': [{\
+    'type': 'json',\
+    'prompt': 'Extract the features of the product',\
+    'schema': {\
+      'type': 'object',\
+      'properties': { 'features': { 'type': 'object' } },\
+      'required': ['features']\
+    }\
+  }]
+})
+
+print(doc.json)
+```
+
+```
+import { Firecrawl } from 'firecrawl-js';
+
+const firecrawl = new Firecrawl({ apiKey: 'fc-YOUR-API-KEY' });
+
+const doc = await firecrawl.scrape('https://firecrawl.dev', {
+  formats: [{\
+    type: 'json',\
+    prompt: 'Extract the features of the product',\
+    schema: {\
+      type: 'object',\
+      properties: { features: { type: 'object' } },\
+      required: ['features']\
+    }\
+  }]
+});
+
+console.log(doc.json);
+```
+
+```
+curl -X POST https://api.firecrawl.dev/v2/scrape \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://firecrawl.dev",
+    "formats": [{\
+      "type": "json",\
+      "prompt": "Extract the features of the product",\
+      "schema": {"type": "object", "properties": {"features": {"type": "object"}}, "required": ["features"]}\
+    }]
+  }'
+```
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#agent-endpoint)  Agent endpoint
+
+Use the `/v2/agent` endpoint for autonomous, multi-page data extraction. The agent runs asynchronously: you start a job, then poll for results.[Agent](https://docs.firecrawl.dev/features/agent) is the canonical reference for this endpoint, including execution traces, webhooks, and the full parameter list.
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#agent-options)  Agent options
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `prompt` | `string` | _(required)_ | Natural-language instructions describing what data to extract (max 10,000 characters). |
+| `urls` | `array` | — | URLs to constrain the agent to. |
+| `schema` | `object` | — | JSON schema to structure the extracted data. |
+| `maxCredits` | `number` | `2500` | Maximum credits the agent can spend. The dashboard supports up to 2,500; for higher limits, set this via the API (values above 2,500 are always billed as paid requests). |
+| `strictConstrainToURLs` | `boolean` | `false` | When `true`, the agent only visits the provided URLs. |
+| `model` | `string` | `"spark-2"` | AI model to use. Spark 1 models are deprecated and currently route to `"spark-2"`. |
+| `effort` | `string` | _(unset)_ | Reasoning budget: `"low"`, `"medium"`, or `"high"`. Every run executes on `"spark-2"`, so you can send `effort` with or without `model`. |
+
+Python
+
+Node
+
+cURL
+
+```
+from firecrawl import Firecrawl
+
+firecrawl = Firecrawl(api_key='fc-YOUR-API-KEY')
+
+# Start agent job
+started = firecrawl.start_agent(
+    prompt="Extract the title and description",
+    urls=["https://docs.firecrawl.dev"],
+    schema={"type": "object", "properties": {"title": {"type": "string"}, "description": {"type": "string"}}, "required": ["title"]}
+)
+
+# Poll status
+status = firecrawl.get_agent_status(started["id"])
+print(status.get("status"), status.get("data"))
+```
+
+```
+import { Firecrawl } from 'firecrawl';
+
+const firecrawl = new Firecrawl({ apiKey: 'fc-YOUR-API-KEY' });
+
+// Start agent job
+const started = await firecrawl.startAgent({
+  prompt: 'Extract the title and description',
+  urls: ['https://docs.firecrawl.dev'],
+  schema: { type: 'object', properties: { title: { type: 'string' }, description: { type: 'string' } }, required: ['title'] }
+});
+
+// Poll status
+const status = await firecrawl.getAgentStatus(started.id);
+console.log(status.status, status.data);
+```
+
+```
+curl -X POST https://api.firecrawl.dev/v2/agent \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "prompt": "Extract the title and description",
+    "urls": ["https://docs.firecrawl.dev"],
+    "schema": {"type": "object", "properties": {"title": {"type": "string"}, "description": {"type": "string"}}, "required": ["title"]}
+  }'
+```
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#check-agent-status)  Check agent status
+
+Poll `GET /v2/agent/{jobId}` to check progress. The response `status` field will be `"processing"`, `"completed"`, or `"failed"`.
+
+cURL
+
+```
+curl -X GET https://api.firecrawl.dev/v2/agent/YOUR-JOB-ID \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY'
+```
+
+The Python and Node SDKs also provide a convenience method (`firecrawl.agent()`) that starts the job and polls automatically until completion.
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#crawling-multiple-pages)  Crawling multiple pages
+
+To crawl multiple pages, use the `/v2/crawl` endpoint. The crawl runs asynchronously and returns a job ID. Use the `limit` parameter to control how many pages are crawled. If omitted, the crawl will process up to 10,000 pages.
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/crawl \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+    -d '{
+      "url": "https://docs.firecrawl.dev",
+      "limit": 10
+    }'
+```
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#response)  Response
+
+```
+{ "id": "1234-5678-9101" }
+```
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#check-crawl-job)  Check crawl job
+
+Use the job ID to check the status of a crawl and retrieve its results.
+
+cURL
+
+```
+curl -X GET https://api.firecrawl.dev/v2/crawl/1234-5678-9101 \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY'
+```
+
+If the content is larger than 10MB or the crawl job is still running, the response may include a `next` parameter, a URL to the next page of results.
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#crawl-prompt-and-params-preview)  Crawl prompt and params preview
+
+You can provide a natural-language `prompt` to let Firecrawl derive crawl settings. Preview them first:
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/crawl/params-preview \
+  -H 'Content-Type: application/json' \
+  -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+  -d '{
+    "url": "https://docs.firecrawl.dev",
+    "prompt": "Extract docs and blog"
+  }'
+```
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#crawler-options)  Crawler options
+
+When using the `/v2/crawl` endpoint, you can customize crawling behavior with the following options.
+
+#### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#path-filtering)  Path filtering
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `includePaths` | `array` | — | Regex patterns for URLs to include (pathname only by default). |
+| `excludePaths` | `array` | — | Regex patterns for URLs to exclude (pathname only by default). |
+| `regexOnFullURL` | `boolean` | `false` | Match patterns against the full URL instead of just the pathname. |
+
+The starting URL is also checked against `includePaths`. If it does not match any of the patterns, the crawl may return 0 pages.
+
+Patterns use Rust regex (RE2-style) syntax, so look-around and backreferences are not supported; a pattern that does not compile is rejected with a `400`. Each field accepts at most 1000 patterns of at most 2000 characters each, and `includePaths` and `excludePaths` together may contain at most 1000 patterns and 100,000 characters. For keyword-based filtering, send one short pattern per term instead of combining terms into a single long alternation.
+
+#### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#crawl-scope)  Crawl scope
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `maxDiscoveryDepth` | `integer` | — | Max link-depth for discovering new URLs. |
+| `limit` | `integer` | `10000` | Max pages to crawl. |
+| `crawlEntireDomain` | `boolean` | `false` | Explore siblings and parents to cover the entire domain. |
+| `allowExternalLinks` | `boolean` | `false` | Follow links to external domains. |
+| `allowSubdomains` | `boolean` | `false` | Follow subdomains of the main domain. |
+| `delay` | `number` (s) | — | Delay between scrapes. Setting this forces concurrency to 1. |
+
+#### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#sitemap-and-deduplication)  Sitemap and deduplication
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `sitemap` | `string` | `"include"` | `"include"`: use sitemap + link discovery. `"skip"`: ignore sitemap. `"only"`: crawl only sitemap URLs. |
+| `deduplicateSimilarURLs` | `boolean` | `true` | Normalize URL variants (`www.`, `https`, trailing slashes, `index.html`) as duplicates. |
+| `ignoreQueryParameters` | `boolean` | `false` | Strip query strings before deduplication (e.g. `/page?a=1` and `/page?a=2` become one URL). |
+
+#### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#scrape-options-for-crawl)  Scrape options for crawl
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `scrapeOptions` | `object` | `{ formats: ["markdown"] }` | Per-page scrape config. Accepts all [scrape options](https://docs.firecrawl.dev/advanced-scraping-guide#scrape-options) above. |
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#crawl-example)  Crawl example
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/crawl \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+    -d '{
+      "url": "https://docs.firecrawl.dev",
+      "includePaths": ["^/blog/.*$", "^/docs/.*$"],
+      "excludePaths": ["^/admin/.*$", "^/private/.*$"],
+      "maxDiscoveryDepth": 2,
+      "limit": 1000
+    }'
+```
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#mapping-website-links)  Mapping website links
+
+The `/v2/map` endpoint identifies URLs related to a given website.
+
+cURL
+
+```
+curl -X POST https://api.firecrawl.dev/v2/map \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer fc-YOUR-API-KEY' \
+    -d '{
+      "url": "https://docs.firecrawl.dev"
+    }'
+```
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#map-options)  Map options
+
+| Parameter | Type | Default | Description |
+| --- | --- | --- | --- |
+| `search` | `string` | — | Filter links by text match. |
+| `limit` | `integer` | `100` | Max links to return. |
+| `sitemap` | `string` | `"include"` | `"include"`, `"skip"`, or `"only"`. |
+| `includeSubdomains` | `boolean` | `true` | Include subdomains. |
+
+Here is the API Reference for it: [Map Endpoint Documentation](https://docs.firecrawl.dev/api-reference/endpoint/map)
+
+## [​](https://docs.firecrawl.dev/advanced-scraping-guide\#whitelisting-firecrawl)  Whitelisting Firecrawl
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#allowing-firecrawl-to-scrape-your-website)  Allowing Firecrawl to scrape your website
+
+- **robots.txt**: Firecrawl reads `robots.txt` before it crawls a site, and applies the rules written for the user-agent token `FirecrawlAgent` as well as the rules written for `*`. Use `FirecrawlAgent` to allow or disallow Firecrawl in `robots.txt`.
+- **User agent**: `FirecrawlAgent` is the token Firecrawl matches against when it applies `robots.txt` rules. Do not assume it is also the `User-Agent` header on the fetch itself. Allow-list Firecrawl with a `robots.txt` directive rather than with a firewall or WAF rule that matches a `User-Agent` string.
+- **IP addresses**: Firecrawl does not use a fixed set of outbound IPs.
+
+### [​](https://docs.firecrawl.dev/advanced-scraping-guide\#allowing-your-application-to-call-the-firecrawl-api)  Allowing your application to call the Firecrawl API
+
+If your firewall blocks outbound requests from your application to external services, you need to whitelist Firecrawl’s API server IP address so your application can reach the Firecrawl API (`api.firecrawl.dev`):
+
+- **IP Address**: `35.245.250.27`
+
+Add this IP to your firewall’s outbound allowlist so your backend can send scrape, crawl, map, and agent requests to Firecrawl.
+
+[Suggest edits](https://github.com/firecrawl/firecrawl-docs/edit/main/advanced-scraping-guide.mdx) [Raise issue](https://github.com/firecrawl/firecrawl-docs/issues/new?title=Issue%20on%20docs&body=Path:%20/advanced-scraping-guide)
+
+✕
+
+- 👋 Hi! Power AI agents with clean web data!
+
+- I can help with search, scrape, MCP setup, or billing.
