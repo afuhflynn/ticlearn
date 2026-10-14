@@ -135,6 +135,7 @@ export async function generate<T>(
 
   const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
+  if (runnable.length === 0) throw friendlyDown(opts.task, [{ model: "all", error: "All models are in cooldown." }]);
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];
   const failHeadOnce = headFailArmed() && process.env.NODE_ENV !== "production";
@@ -251,7 +252,6 @@ export async function streamChat(opts: StreamChatOptions) {
         ...streamParams.rest,
         onError: ({ error }) => {
           streamError = error;
-          void recordTransportFailure(modelId);
           void logUsage({
             userId: opts.userId ?? null,
             task: opts.task,
@@ -324,13 +324,22 @@ async function probeFirstToken(result: {
     if (typeof abort === "function") await abort.call(result);
     return;
   }
-  await iterator.return?.();
+  const preserved = (async function* () {
+    yield first.value;
+    while (true) {
+      const next = await iterator.next();
+      if (next.done) break;
+      yield next.value;
+    }
+  })();
+  Object.assign(result, { textStream: preserved });
 }
 
 export async function generateTextWithFallback(opts: TextGenOptions) {
   logPromptUse(opts.task, opts.promptRef);
   const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
+  if (runnable.length === 0) throw friendlyDown(opts.task, [{ model: "all", error: "All models are in cooldown." }]);
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];
   const failHeadOnce = headFailArmed() && process.env.NODE_ENV !== "production";
