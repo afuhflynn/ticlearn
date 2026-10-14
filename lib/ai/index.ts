@@ -422,7 +422,6 @@ async function getFileFetchCandidates(
 export async function summarizeText(
   content: string,
   userId?: string | null,
-  userId?: string | null,
 ): Promise<{ summary: string; topics: string[]; keyPoints: string[] }> {
   const schema = z.object({
     summary: z.string().min(1),
@@ -442,7 +441,6 @@ export async function summarizeText(
     prompt,
     ...promptCallFields(settings),
     userId,
-    userId,
   });
 
   return {
@@ -458,7 +456,6 @@ export async function generateQuizFromNote(
     questionCount: number;
     questionTypes: "MCQ" | "OPEN" | "MIXED";
   },
-  userId?: string | null,
   userId?: string | null,
 ) {
   console.log(
@@ -494,7 +491,6 @@ export async function generateQuizFromNote(
       prompt,
       ...promptCallFields(settings),
       userId,
-      userId,
     });
 
     const questions = normalizeGeneratedQuestions(object.questions);
@@ -524,7 +520,6 @@ export async function gradeOpenAnswer(
   userAnswer: string,
   correctAnswer: string,
   userId?: string | null,
-  userId?: string | null,
 ) {
   const { text: prompt, settings } = await getPrompt(
     "grade",
@@ -541,7 +536,6 @@ export async function gradeOpenAnswer(
     prompt,
     ...promptCallFields(settings),
     userId,
-    userId,
   });
 
   return text;
@@ -552,7 +546,6 @@ export async function explainMCQAnswer(
   userAnswer: string,
   correctAnswer: string,
   options: string[],
-  userId?: string | null,
   userId?: string | null,
 ) {
   const { text: prompt, settings } = await getPrompt(
@@ -570,7 +563,6 @@ export async function explainMCQAnswer(
     task: "grading",
     prompt,
     ...promptCallFields(settings),
-    userId,
     userId,
   });
 

@@ -205,7 +205,6 @@ export const generateQuiz = inngest.createFunction(
           questionTypes: questionTypes || "MIXED",
         },
         note.userId,
-        note.userId,
       );
 
       console.log(
