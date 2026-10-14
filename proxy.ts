@@ -5,9 +5,9 @@ import arcjet, {
   tokenBucket,
 } from "@arcjet/next";
 import { getSessionCookie } from "better-auth/cookies";
+import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "./lib/auth";
-import { headers } from "next/headers";
 import { arcjetKey } from "./lib/env";
 
 const aj = arcjet({
@@ -59,13 +59,11 @@ const protectedRoutes = [
   "/chat",
   "/community",
   "/leaderboard",
-  "/gce-exams",
   "/feedback",
   "/affiliate",
   "/settings",
   "/admin",
   "/subscription",
-  "/practice",
   "/onboarding",
 ];
 

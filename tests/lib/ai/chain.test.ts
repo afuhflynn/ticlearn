@@ -1,17 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   CHAIN_DEADLINE_MS,
-  DEFAULT_CHAIN,
-  getChain,
   headFailArmed,
   isFailFastError,
   isSchemaError,
   isTransportError,
+  OPEN_WEIGHT_CHAIN,
   perAttemptBudget,
   statusOf,
   withDeadline,
 } from "@/lib/ai/chain";
 import { MODEL_PRICES } from "@/lib/ai/pricing";
+import { MODEL_ALLOWLIST, resolveChain, taskRegistry } from "@/lib/ai/registry";
 
 function apiError(message: string, extra: Record<string, unknown> = {}) {
   const err = new Error(message);
@@ -19,7 +19,7 @@ function apiError(message: string, extra: Record<string, unknown> = {}) {
   return err;
 }
 
-describe("getChain (covers: AC-5)", () => {
+describe("resolveChain (covers: AC-5)", () => {
   const original = process.env.AI_CHAIN_ORDER;
 
   beforeEach(() => {
@@ -31,48 +31,77 @@ describe("getChain (covers: AC-5)", () => {
     else process.env.AI_CHAIN_ORDER = original;
   });
 
-  it("falls back to the shipped chain of twelve ids when no override is set", () => {
-    expect(getChain()).toEqual(DEFAULT_CHAIN);
+  it("gives every task a chain of open weight models, so no bill can run up", () => {
+    for (const [task, config] of Object.entries(taskRegistry)) {
+      for (const id of config.chain) {
+        expect(
+          OPEN_WEIGHT_CHAIN.includes(id),
+          `${task} names ${id}, which is not open weight`,
+        ).toBe(true);
+      }
+    }
   });
 
-  it("holds at least six models so a lab wide outage cannot empty the chain", () => {
-    expect(DEFAULT_CHAIN.length).toBeGreaterThanOrEqual(6);
+  it("holds enough models per task that one lab going down cannot empty it", () => {
+    for (const config of Object.values(taskRegistry)) {
+      expect(config.chain.length).toBeGreaterThanOrEqual(3);
+    }
   });
 
   it("spans more than one lab so correlated faults do not empty the chain", () => {
-    const labs = new Set(DEFAULT_CHAIN.map((id) => id.split("/")[0]));
+    const labs = new Set(OPEN_WEIGHT_CHAIN.map((id) => id.split("/")[0]));
     expect(labs.size).toBeGreaterThan(1);
   });
 
   it("has a priced entry for every chain id so XAF math never guesses", () => {
-    for (const id of DEFAULT_CHAIN) {
+    for (const id of OPEN_WEIGHT_CHAIN) {
       expect(MODEL_PRICES[id], `missing price for ${id}`).toBeDefined();
     }
   });
 
   it("has no duplicate ids so no model is tried twice per request", () => {
-    expect(new Set(DEFAULT_CHAIN).size).toBe(DEFAULT_CHAIN.length);
+    expect(new Set(OPEN_WEIGHT_CHAIN).size).toBe(OPEN_WEIGHT_CHAIN.length);
+    for (const config of Object.values(taskRegistry)) {
+      expect(new Set(config.chain).size).toBe(config.chain.length);
+    }
+  });
+
+  it("heads the chat task with the cheapest model it has", () => {
+    const chat = taskRegistry.fast_chat.chain;
+    const cheapest = [...OPEN_WEIGHT_CHAIN].sort(
+      (a, b) =>
+        MODEL_PRICES[a].inputPerMillion - MODEL_PRICES[b].inputPerMillion,
+    );
+    expect(chat[0]).toBe(cheapest[0]);
   });
 
   it("uses the override order when AI_CHAIN_ORDER is set", () => {
     process.env.AI_CHAIN_ORDER = "a/one, b/two ,c/three";
-    expect(getChain()).toEqual(["a/one", "b/two", "c/three"]);
+    expect(resolveChain("fast_chat")).toEqual(["a/one", "b/two", "c/three"]);
   });
 
   it("ignores blank entries in the override rather than calling an empty id", () => {
     process.env.AI_CHAIN_ORDER = "a/one, , ,b/two";
-    expect(getChain()).toEqual(["a/one", "b/two"]);
+    expect(resolveChain("fast_chat")).toEqual(["a/one", "b/two"]);
   });
 
-  it("falls back to the shipped chain when the override is only commas", () => {
+  it("falls back to the task chain when the override is only commas", () => {
     process.env.AI_CHAIN_ORDER = " , , ";
-    expect(getChain()).toEqual(DEFAULT_CHAIN);
+    expect(resolveChain("fast_chat")).toEqual(taskRegistry.fast_chat.chain);
   });
 
-  it("returns a copy so a caller cannot mutate the shipped default", () => {
-    const first = getChain();
+  it("returns a copy so a caller cannot mutate the registry", () => {
+    const first = resolveChain("fast_chat");
     first.push("injected/model");
-    expect(getChain()).toEqual(DEFAULT_CHAIN);
+    expect(resolveChain("fast_chat")).toEqual(taskRegistry.fast_chat.chain);
+  });
+
+  it("lists every task chain model on the allow list a prompt header is checked against", () => {
+    for (const config of Object.values(taskRegistry)) {
+      for (const id of config.chain) {
+        expect(MODEL_ALLOWLIST).toContain(id);
+      }
+    }
   });
 });
 

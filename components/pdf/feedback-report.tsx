@@ -1,12 +1,12 @@
-import React from "react";
-import { Document, View, Text, Page } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
+import type React from "react";
 import {
-  styles,
+  formatDate,
+  PDFFooter,
   PDFHeader,
   PDFTableHeader,
   PDFTableRow,
-  PDFFooter,
-  formatDate,
+  styles,
 } from "./styles";
 
 interface FeedbackData {

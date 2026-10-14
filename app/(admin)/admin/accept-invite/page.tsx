@@ -1,15 +1,16 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import {
-  Shield,
-  Loader2,
-  CheckCircle2,
   AlertCircle,
   ArrowRight,
+  CheckCircle2,
+  Loader2,
+  Shield,
 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,9 +20,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useSession } from "@/lib/auth-client";
-import { toast } from "sonner";
 import { useAcceptInvite } from "@/hooks/useInvite";
+import { useSession } from "@/lib/auth-client";
 
 function AcceptInviteContent() {
   const router = useRouter();

@@ -1,5 +1,5 @@
-import { api } from "@/lib/api-client";
 import { useMutation } from "@tanstack/react-query";
+import { api } from "@/lib/api-client";
 
 export function useAcceptInvite() {
   return useMutation({

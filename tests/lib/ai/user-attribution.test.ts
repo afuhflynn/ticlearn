@@ -38,7 +38,9 @@ function helperCalls(): HelperCall[] {
     ...listSourceFiles(path.join(ROOT, "lib", "ai")),
     ...listSourceFiles(path.join(ROOT, "lib", "paper3")),
     path.join(ROOT, "lib", "mock-generator.ts"),
-  ].filter((file) => path.basename(file) !== "orchestrator.ts");
+  ].filter(
+    (file) => path.basename(file) !== "orchestrator.ts" && fs.existsSync(file),
+  );
   const found: HelperCall[] = [];
   for (const file of files) {
     const text = fs.readFileSync(file, "utf8");
@@ -100,22 +102,6 @@ describe("student attribution wiring (covers: AC-4)", () => {
     );
   });
 
-  it("Paper3 short answer grading accepts a student", () => {
-    const text = fs.readFileSync(
-      path.join(ROOT, "lib", "paper3", "grade-short-answer.ts"),
-      "utf8",
-    );
-    expect(text).toMatch(/userId\??\s*:\s*string/);
-  });
-
-  it("the student id reaches the ledger write inside Paper3 grading", () => {
-    const text = fs.readFileSync(
-      path.join(ROOT, "lib", "paper3", "grade-short-answer.ts"),
-      "utf8",
-    );
-    expect(text).toMatch(/generate\([\s\S]*?userId,/);
-  });
-
   it("the quiz generate route passes the signed in student through", () => {
     const text = fs.readFileSync(
       path.join(ROOT, "app", "api", "quizzes", "generate", "route.ts"),
@@ -130,30 +116,6 @@ describe("student attribution wiring (covers: AC-4)", () => {
       "utf8",
     );
     expect(text).toMatch(/gradeOpenAnswer\([\s\S]*?session\.user\.id/);
-  });
-
-  it("the exams route passes the signed in student through", () => {
-    const text = fs.readFileSync(
-      path.join(ROOT, "app", "api", "exams", "route.ts"),
-      "utf8",
-    );
-    expect(text).toMatch(/generateExamQuestions\([\s\S]*?session\.user\.id/);
-  });
-
-  it("the Paper3 chat route passes the signed in student through", () => {
-    const text = fs.readFileSync(
-      path.join(ROOT, "app", "api", "paper3", "chat", "route.ts"),
-      "utf8",
-    );
-    expect(text).toMatch(/userId:\s*session\.user\.id/);
-  });
-
-  it("the mock generator passes the student into its AI calls", () => {
-    const text = fs.readFileSync(
-      path.join(ROOT, "lib", "mock-generator.ts"),
-      "utf8",
-    );
-    expect(text).toMatch(/task:\s*"exam_gen",\s*userId,/);
   });
 
   it("the note processing job passes the note owner through", () => {

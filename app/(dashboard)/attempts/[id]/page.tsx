@@ -1,15 +1,15 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useQuizAttempt } from "@/hooks";
-import { Loader2, ArrowLeft } from "lucide-react";
-import remarkMath from "remark-math";
+import { useParams, useRouter } from "next/navigation";
 import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
+import { useQuizAttempt } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -18,7 +18,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 type AttemptAnswer = {
   id: string;

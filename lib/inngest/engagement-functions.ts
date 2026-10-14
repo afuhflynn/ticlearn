@@ -1,7 +1,7 @@
+import type { CampaignType } from "@/lib/email/send";
+import { hydrateEngagementData, sendEngagementEmail } from "@/lib/email/send";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
-import type { CampaignType } from "@/lib/email/send";
-import { sendEngagementEmail, hydrateEngagementData } from "@/lib/email/send";
 
 const BATCH_SIZE = 50;
 const CAMPAIGN_BATCH_SIZE = 50;
@@ -57,14 +57,8 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
             where: {
               role: "USER",
               createdAt: { lt: threeDaysAgo },
-              examProfiles: {
-                none: {
-                  OR: [
-                    { onboardingCompleted: true },
-                    { onboardingSkipped: true },
-                  ],
-                },
-              },
+              onboardingCompleted: false,
+              onboardingSkipped: false,
             },
             select: { id: true },
             take: CAMPAIGN_BATCH_SIZE,
@@ -84,7 +78,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
                 some: { createdAt: { lt: sevenDaysAgo } },
                 none: { createdAt: { gte: sevenDaysAgo } },
               },
-              examProfiles: { some: { onboardingCompleted: true } },
+              onboardingCompleted: true,
             },
             select: { id: true },
             take: CAMPAIGN_BATCH_SIZE,
@@ -106,7 +100,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
                   lastActivityDate: { lt: twoDaysAgo },
                 },
               },
-              examProfiles: { some: { onboardingCompleted: true } },
+              onboardingCompleted: true,
             },
             select: { id: true },
             take: CAMPAIGN_BATCH_SIZE,
@@ -121,36 +115,14 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
           const users = await prisma.user.findMany({
             where: {
               role: "USER",
-              paper3UserStats: {
+              notes: {
                 some: {
-                  weakConcepts: { isEmpty: false },
-                  readinessScore: { lt: 70 },
+                  topicPerformances: {
+                    some: { masteryScore: { lt: 70 } },
+                  },
                 },
               },
-              examProfiles: { some: { onboardingCompleted: true } },
-            },
-            select: { id: true },
-            take: CAMPAIGN_BATCH_SIZE,
-          });
-          return users.map((u) => u.id);
-        },
-      },
-      {
-        campaign: "exam-countdown",
-        label: "Exam countdown",
-        findUsers: async () => {
-          const now = new Date();
-          const in10Days = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000);
-          const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-          const users = await prisma.user.findMany({
-            where: {
-              role: "USER",
-              examProfiles: {
-                some: {
-                  examDate: { gte: in10Days, lte: in30Days },
-                  onboardingCompleted: true,
-                },
-              },
+              onboardingCompleted: true,
             },
             select: { id: true },
             take: CAMPAIGN_BATCH_SIZE,
@@ -167,7 +139,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
             where: {
               role: "USER",
               kpiEvents: { some: { createdAt: { gte: sevenDaysAgo } } },
-              examProfiles: { some: { onboardingCompleted: true } },
+              onboardingCompleted: true,
             },
             select: { id: true },
             take: 100,

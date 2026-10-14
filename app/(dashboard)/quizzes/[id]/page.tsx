@@ -10,10 +10,11 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
+import { QuizFeedbackPrompt } from "@/components/feedback/QuizFeedbackPrompt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +27,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuiz, useQuizAttempts, useSubmitQuizAttempt } from "@/hooks";
-import { QuizFeedbackPrompt } from "@/components/feedback/QuizFeedbackPrompt";
 import { useSession } from "@/lib/auth-client";
 
 type QuizQuestion = {

@@ -7,30 +7,24 @@
 ![Prisma](https://img.shields.io/badge/Prisma-7.6-2d3748?style=for-the-badge&logo=prisma)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8?style=for-the-badge&logo=tailwind-css)
 
-**AI-powered study platform for Cameroonian GCE A-Level students**
+**Study platform for Cameroonian university students: upload lecture notes, generate quizzes, learn with Tip**
 
 </div>
 
 ## Features
 
-- **Note Upload** - Upload PDF or image notes, transform them into quizzes
-- **AI Quiz Generation** - Automatically generate quizzes from your notes
-- **Mock Exams (Paper 1/2)** - Blueprint-driven mock exams from past questions with timed sessions, section-based UI, and detailed results
-- **Paper 3 Exam System** - Full GCE Computer Science/ICT Paper 3 with programming, database, and spreadsheet tasks; AI-powered evaluation with partial credit; per-question leaderboards
-- **Onboarding Wizard** - 5-step flow: level selection, programs, exam date, confidence baselines, readiness snapshot. Multi-program support (O-Level GCE: 15 subjects, HND: 8 specialties)
-- **Readiness Engine** - 3-pillar score (35% baseline + 45% performance + 20% recency) with topic-level mastery tracking
-- **TiC AI Tutor** - 24/7 AI-powered study assistant with conversation history, profile-aware context
-- **Anti-Cheat** - Fullscreen enforcement, tab-switch warning with auto-submit
-- **Shareable Results** - `/result/[shareId]` public result cards
-- **Credit System** - Pay-as-you-go credits for quiz generation, mock exams, AI tutor messages; purchase credits via Mobile Money
+- **Note Upload** - Upload PDF, Word or photo notes; text extraction, summaries, key points and topic detection
+- **AI Quiz Generation** - Quizzes generated from one of your own notes, every question traceable to your material
+- **Tip AI Tutor** - Teaches from your notes instead of handing over answers, explains at your year of study
+- **Readiness Tracking** - Topic mastery from quiz attempts, weakest topics first
+- **Leaderboards** - Quiz points, streaks and rankings
+- **Progress Tracking** - Notes, quizzes, attempts and streaks
+- **Community** - Forum posts and public quizzes
+- **Level Onboarding** - One question: your year of study
+- **Credit System** - Pay-as-you-go credits for quiz generation and tutor messages; top up with Mobile Money
 - **Subscription Plans** - Free/Starter/Standard/Premium/PRO with Fapshi (MTN MoMo/Orange Money)
-- **Revision Guides** - AI-generated with PDF export
-- **Leaderboards** - Quiz, Paper 3 mock, and global rankings
-- **Progress Tracking** - Topic mastery bars, readiness circle, risk warnings, detailed analytics
-- **Community** - Forum posts, threaded comments, likes
 - **Affiliate Program** - Referral codes, click tracking, commission earnings
-- **Admin Panel** - 24 pages for user management, subscriptions, KPI/metrics, content management (blueprints, Paper 3 questions, revision guides), platform/ payment settings, invites
-- **KPI & Analytics Dashboard** - Daily metrics, retention cohorts, revenue tracking
+- **Admin Panel** - User management, subscriptions, metrics, platform and payment settings
 - **PWA Support** - Manifest, sitemap, SEO metadata
 
 ## Tech Stack
@@ -43,7 +37,7 @@
 | Database | PostgreSQL + Prisma 7 ORM |
 | Styling | Tailwind CSS 4 + shadcn/ui + Framer Motion |
 | State | TanStack React Query + Zustand (client state) |
-| AI | AI SDK + Google Gemini (`gemini-2.5-flash`) |
+| AI | AI SDK via OpenRouter, open weight model chains per task |
 | File Upload | UploadThing |
 | Payments | Fapshi API (MTN MoMo / Orange Money) |
 | Background Jobs | Inngest |
@@ -92,7 +86,7 @@ pnpm db:generate
 pnpm db:migrate
 ```
 
-6. (Optional) Seed exam data:
+6. (Optional) Ensure platform settings:
 ```bash
 pnpm db:seed
 ```
@@ -142,35 +136,33 @@ See [`.env.example`](./.env.example) for the complete list with setup instructio
 app/                     # Next.js App Router
 ├── (marketing)/         # Landing, pricing, about, FAQ, contact, privacy, terms
 ├── (auth)/              # Sign-in, sign-up, verify-email
-├── (onboarding)/        # 5-step onboarding wizard
-├── (dashboard)/         # Main app: dashboard, quizzes, exams, practice, chat, community, settings, upload
-├── (admin)/             # 25 admin pages: users, subs, metrics, content, Paper 3, revision guides
-├── chat/                # AI chat (standalone route)
+├── (onboarding)/        # Level of study picker
+├── (dashboard)/         # Main app: dashboard, notes, quizzes, chat, community, settings, upload
+├── (admin)/             # 10 admin pages: users, subs, metrics, affiliates, feedback, payments, platform settings
+├── chat/                # Tip chat (standalone route)
 ├── result/              # Public shareable result pages
-└── api/                 # 143 API route handlers
+└── api/                 # 72 API route handlers
 components/
 ├── ui/                  # shadcn/ui primitives
 ├── layout/              # Navigation, sidebar, headers
 ├── app/                 # Feature-specific components
-├── paper3/              # Paper 3 components
 ├── ai-elements/         # AI chat components
 └── marketing/           # Marketing page components
-hooks/                   # 22 custom hooks, re-exported from hooks/index.ts
-lib/                     # Utilities, AI, auth, email, inngest, paper3, api-client
+hooks/                   # 19 custom hooks, re-exported from hooks/index.ts
+lib/                     # Utilities, AI, auth, email, inngest, api-client
 ├── generated/prisma/    # Generated Prisma client (gitignored, run pnpm db:generate)
 ├── ai/                  # Model calls, task registry, chat tools, cache
 ├── inngest/             # Background job functions
-├── paper3/              # Paper 3 evaluation and grading, separate from lib/ai
 └── email/               # Email templates
 prisma/
-├── schema.prisma        # 59 models, 37 enums
-└── migrations/          # 68 database migrations
+├── schema.prisma        # 39 models, 15 enums
+└── migrations/          # 70 database migrations, ending with the pivot wipe
 providers/               # React providers (Query, Theme)
-stores/                  # Zustand stores (onboarding)
-constants/               # Shared constants (FAQ, landing mock data)
+stores/                  # Zustand client stores
+constants/               # Shared constants (FAQ, levels, plans)
 types/                   # TypeScript type definitions
 config/                  # Axios config
-scripts/                 # Seed scripts, repair tools
+scripts/                 # Seed, repair and verification tools
 public/                  # Static assets, manifest, icons
 ```
 
@@ -190,7 +182,7 @@ pnpm db:migrate:reset   # Reset and re-run all migrations
 pnpm db:push            # Push schema to database (quick prototyping only)
 pnpm db:push:reset      # Force reset and push schema
 pnpm db:studio          # Open Prisma Studio
-pnpm db:seed            # Seed exam data (15 O-Level + 8 HND programs)
+pnpm db:seed            # Ensure platform settings (creates no content rows)
 pnpm db:up              # Start Docker PostgreSQL
 pnpm db:down            # Stop Docker PostgreSQL
 pnpm db:auth-template   # Generate Better Auth template
@@ -240,7 +232,7 @@ Run `pnpm dev:all` to start the Inngest dev server alongside Next.js.
 
 ## Testing
 
-Vitest is installed and the scripts exist, but there is no test suite yet and no config file. `pnpm test` will not run anything useful. Verification today is `pnpm lint`, `pnpm format`, and `pnpm build`.
+Vitest runs 247 tests (`pnpm vitest run`). Verification is typecheck, lint, tests, prompt check and build.
 
 ## Linting & Formatting
 

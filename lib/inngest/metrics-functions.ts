@@ -1,5 +1,5 @@
-import { inngest } from "./client";
 import { computeDailyMetrics } from "@/lib/kpi";
+import { inngest } from "./client";
 
 export const computeDailyMetricsJob = inngest.createFunction(
   {

@@ -1,14 +1,14 @@
 "use client";
 
+import { Loader2, User } from "lucide-react";
 import * as React from "react";
-import { User, Loader2 } from "lucide-react";
 import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
-  CommandList,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import { useUserSearch } from "@/hooks/useUserSearch";
 

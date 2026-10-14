@@ -7,19 +7,25 @@ import {
   recordTransportFailure,
   splitChain,
 } from "./breaker";
+import {
+  markProbeDone,
+  markProbeStart,
+  recordSuccess,
+  recordTransportFailure,
+  splitChain,
+} from "./breaker";
 import { getCached, setCached } from "./cache";
 import {
   CHAIN_DEADLINE_MS,
   CHAIN_STREAM_DEADLINE_MS,
   chainModel,
-  getChain,
   headFailArmed,
   isFailFastError,
   isTransportError,
   perAttemptBudget,
   withDeadline,
 } from "./chain";
-import { getTaskConfig } from "./registry";
+import { getTaskConfig, resolveChain } from "./registry";
 import { logUsage, usageFromResult } from "./usage";
 
 /** Identity of the prompt file behind a call. Traces cache keys and logs. */
@@ -40,6 +46,7 @@ export interface GenerateOptions<T> {
   cacheTtlMs?: number;
   promptRef?: PromptRef;
   userId?: string | null;
+  userId?: string | null;
 }
 
 export interface StreamChatOptions {
@@ -48,10 +55,13 @@ export interface StreamChatOptions {
   messages: Array<{
     role: "user" | "assistant" | "system" | "tool";
     content: unknown;
+    content: unknown;
   }>;
   tools?: Record<string, unknown>;
   onFinish?: (result: { text: string; usage: unknown }) => void;
   promptRef?: PromptRef;
+  userId?: string | null;
+  modelOptions?: Record<string, unknown>;
   userId?: string | null;
   modelOptions?: Record<string, unknown>;
 }
@@ -65,6 +75,7 @@ export interface TextGenOptions {
   /** File values win over the task registry; 0 means never cache. */
   cacheTtlMs?: number;
   promptRef?: PromptRef;
+  userId?: string | null;
   userId?: string | null;
 }
 
@@ -116,8 +127,46 @@ function friendlyDown(
   );
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error
+    ? `${error.name}: ${error.message}`
+    : String(error);
+}
+
+function callParams(modelOptions?: Record<string, unknown>): {
+  temperature?: number;
+  maxOutputTokens: number;
+  rest: Record<string, unknown>;
+} {
+  const opts = (modelOptions ?? {}) as Record<string, unknown>;
+  const { temperature, maxOutputTokens, maxTokens, ...rest } = opts;
+  const cap =
+    typeof maxOutputTokens === "number"
+      ? maxOutputTokens
+      : typeof maxTokens === "number"
+        ? maxTokens
+        : 2048;
+  return {
+    temperature: typeof temperature === "number" ? temperature : undefined,
+    maxOutputTokens: cap,
+    rest,
+  };
+}
+
+function friendlyDown(
+  task: string,
+  modelErrors: Array<{ model: string; error: string }>,
+): OrchestratorError {
+  return new OrchestratorError(
+    "AI help is briefly unavailable. Please try again in a moment.",
+    task,
+    modelErrors,
+  );
+}
+
 export async function generate<T>(
   opts: GenerateOptions<T>,
+): Promise<{ object: T; modelId: string }> {
 ): Promise<{ object: T; modelId: string }> {
   const rawKey = opts.prompt ?? JSON.stringify(opts.messages);
   const cacheKey = opts.promptRef
@@ -131,10 +180,11 @@ export async function generate<T>(
     const cached = getCached(opts.task, cacheKey);
     if (cached) {
       return { object: cached as T, modelId: "cache" };
+      return { object: cached as T, modelId: "cache" };
     }
   }
 
-  const chain = getChain();
+  const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];
@@ -229,7 +279,7 @@ function logPromptUse(task: string, ref?: PromptRef): void {
 
 export async function streamChat(opts: StreamChatOptions) {
   logPromptUse(opts.task, opts.promptRef);
-  const chain = getChain();
+  const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
   const tried: Array<{ model: string; error: string }> = [];
   let lastError: unknown = null;
@@ -330,7 +380,7 @@ async function probeFirstToken(result: {
 
 export async function generateTextWithFallback(opts: TextGenOptions) {
   logPromptUse(opts.task, opts.promptRef);
-  const chain = getChain();
+  const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];

@@ -1,13 +1,13 @@
-import React from "react";
-import { Document, View, Text, Page } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
+import type React from "react";
 import {
-  styles,
+  formatCurrency,
+  formatDate,
+  PDFFooter,
   PDFHeader,
   PDFTableHeader,
   PDFTableRow,
-  PDFFooter,
-  formatDate,
-  formatCurrency,
+  styles,
 } from "./styles";
 
 interface SubscriptionData {

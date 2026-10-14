@@ -1,6 +1,6 @@
 ---
 name: web_search
-model: gemini-2.5-flash
+model: openai/gpt-oss-120b
 version: 1
 heat: 0.4
 cap: 512

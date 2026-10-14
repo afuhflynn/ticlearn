@@ -1,4 +1,4 @@
-import { tool, Tool, ToolExecutionOptions } from "ai";
+import { type Tool, type ToolExecutionOptions, tool } from "ai";
 import { z } from "zod";
 
 type PolicyName =

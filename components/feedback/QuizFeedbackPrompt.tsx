@@ -1,11 +1,11 @@
 "use client";
 
+import { MessageCircle } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import { api } from "@/lib/api-client";
-import { MessageCircle } from "lucide-react";
 
 export function QuizFeedbackPrompt({ quizId }: { quizId: string }) {
   const storageKey = `quiz_feedback_${quizId}`;

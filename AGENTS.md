@@ -1,6 +1,6 @@
 # TiCLearn
 
-AI study platform for Cameroonian GCE A Level, O Level, and HND students. Note upload, AI quiz generation, blueprint driven Paper 1 and 2 mocks, a full Paper 3 exam system with AI marking, subscription plans paid over Mobile Money, and an admin panel.
+Study platform for Cameroonian university students. Note upload, AI quiz generation from your own notes, Tip the AI tutor, subscription plans paid over Mobile Money, and an admin panel.
 
 ## Stack
 
@@ -93,7 +93,7 @@ Implement comprehensive Paper 3 exam system with subscription-based monetization
 - Updated submit route to dispatch Inngest event
 - Enhanced result page with polling (5s), markdown rendering, HTML preview
 - Improved leaderboard with 3 tabs (Quiz, Paper3-Exam, Paper3-Global)
-- Added ReactMarkdown to TiCExamAssistant
+- Added ReactMarkdown to the exam assistant component
 - Removed WEB_PROGRAMMING from taskTypesWithoutInput (requireAnswer=true)
 - Added ALGORITHM_PSEUDOCODE to code editor case with HtmlPreview
 - Updated view-answer API to return correct answers array
@@ -142,7 +142,7 @@ Implement comprehensive Paper 3 exam system with subscription-based monetization
 - `hooks/useUsage.ts`: Paper3 usage tracking with canTakePaper3Exam, canRetakePaper3Exam
 - `app/api/usage/route.ts`: Returns paper3Usage object with monthly tracking
 - `app/(dashboard)/practice/exam/[mockId]/page.tsx`: Fullscreen enforcement, rules modal, AI chat with limits
-- `components/paper3/TiCExamAssistant.tsx`: Message limit tracking, upgrade modal
+- `components/paper3/` exam assistant: message limit tracking, upgrade modal
 - `components/paper3/ExamAssistant.tsx`: Per-attempt AI chat with 4-message limit
 - `app/(dashboard)/practice/exam/result/[attemptId]/page.tsx`: Enhanced result display, gated actions, share button
 - `app/(dashboard)/practice/page.tsx`: View Previous Result button
@@ -158,11 +158,11 @@ Implement comprehensive Paper 3 exam system with subscription-based monetization
 # Onboarding & Seed Data - Implementation Summary
 
 ## Goal
-Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15 subjects) and HND (8 specialties) exam data, fix AI tool bugs and math rendering.
+Redesign onboarding flow for multi-level/multi-program support, seed general secondary (15 subjects) and diploma (8 specialties) exam data, fix AI tool bugs and math rendering.
 
 ## Constraints & Preferences
 - Onboarding: 60–90 seconds max, one decision per screen, auto-save, 480–520px centered, slide transitions (250–300ms)
-- GCE = multi-select subjects (soft cap 4), HND = single-select specialty
+- General levels used multi-select subjects (soft cap 4), the diploma level used single-select specialty
 - Mobile-first: large tap targets, no-hover-only interactions
 - Post-onboarding: AI context includes level, programs, exam date, baselines, weakest program
 - Use `gemini-2.5-flash`, Prisma migrations, pnpm
@@ -173,7 +173,7 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 - Fixed `lib/math-format.ts`: added `\[...\]` → `$$...$$` and `\(...\)` → `$...$` to `normalizeMathNotation` (KaTeX rendering fix)
 - Added `COURSE` to `ComponentType` in `prisma/schema.prisma`
 - Created+applied migration `20260516110019_add_course_component_type`
-- Rewrote `prisma/seed.ts`: 15 O-Level subjects (P1/P2) + 8 HND specialties (Y1/Y2)
+- Rewrote `prisma/seed.ts`: 15 general subjects (two papers each) + 8 diploma specialties (two years each)
 - Ran seed successfully
 - Updated `app/api/onboarding/step/route.ts`: removed UNKNOWN fallback, creates empty profile
 - Updated `app/api/onboarding/baseline/route.ts`: removed UNKNOWN fallback, creates empty profile
@@ -187,8 +187,8 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 
 ## Key Decisions
 - Removed UNKNOWN program entirely - profiles created empty, programs added in step 2
-- O-Level = P1 + P2 components; HND = Y1 + Y2 COURSE components (not PAPER)
-- ComponentType extended with COURSE for non-paper exam structures (HND semester/module system)
+- General levels used two paper components per subject; the diploma level used two year COURSE components
+- ComponentType extended with COURSE for non-paper structures (diploma semester/module system)
 - Readiness uses 3-pillar: 35% baseline + 45% performance + 20% recency
 - Level card click = auto-advance (no extra Continue click); Continue button at step 0 is inert (dead code)
 
@@ -197,7 +197,7 @@ Redesign onboarding flow for multi-level/multi-program support, seed O-Level (15
 - `lib/math-format.ts`: KaTeX delimiter conversion
 - `prisma/schema.prisma`: COURSE enum value
 - `prisma/migrations/20260516110019_add_course_component_type/`: migration
-- `prisma/seed.ts`: comprehensive O-Level + HND seed
+- `prisma/seed.ts`: comprehensive general plus diploma seed
 - `app/(onboarding)/onboarding/page.tsx`: 5-step wizard
 - `app/api/onboarding/step/route.ts`: step save API
 - `app/api/onboarding/baseline/route.ts`: baseline save API

@@ -1,9 +1,13 @@
-import { auth } from "@/lib/auth";
-import { getPlanPrice, initiatePayment, PaymentPlanConfig } from "@/lib/fapshi";
-import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { trackEvent, EVENTS } from "@/lib/kpi";
+import { auth } from "@/lib/auth";
+import {
+  getPlanPrice,
+  initiatePayment,
+  type PaymentPlanConfig,
+} from "@/lib/fapshi";
+import { EVENTS, trackEvent } from "@/lib/kpi";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {

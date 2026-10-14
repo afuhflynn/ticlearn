@@ -1,25 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { useAdminUsers } from "@/hooks/useAdmin";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { format } from "date-fns";
 import {
-  Users,
-  Shield,
-  MoreVertical,
-  UserPlus,
   Loader2,
-  X,
+  MoreVertical,
   Search,
+  Shield,
   UserCheck,
+  UserPlus,
+  Users,
   UserX,
+  X,
 } from "lucide-react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -27,25 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -55,10 +33,32 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useAdminUsers } from "@/hooks/useAdmin";
 
 export default function AdminUsersPage() {
   const [search, setSearch] = useState("");
@@ -307,20 +307,18 @@ export default function AdminUsersPage() {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          {!user.activeProfileId ? (
-                            <Badge variant="outline">No profile</Badge>
-                          ) : user.onboardingSkipped ? (
+                          {user.levelOfStudy ?? (
+                            <Badge variant="outline">No level</Badge>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {user.onboardingSkipped ? (
                             <Badge variant="secondary">Skipped</Badge>
                           ) : user.onboardingCompleted ? (
                             <Badge>Completed</Badge>
                           ) : (
                             <Badge variant="outline">Incomplete</Badge>
                           )}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-sm font-mono">
-                          {user.phoneNumber
-                            ? `${user.phoneCountryCode ?? "+237"} ${user.phoneNumber}`
-                            : "—"}
                         </TableCell>
                         <TableCell className="text-muted-foreground text-sm">
                           {format(

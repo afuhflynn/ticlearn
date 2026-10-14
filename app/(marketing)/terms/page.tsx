@@ -22,8 +22,8 @@ export default function TermsPage() {
             </h2>
             <p className="text-muted-foreground">
               TiCLearn is an AI-powered educational platform that provides study
-              tools, quizzes, exam preparation resources, and TiC services for
-              GCE A-Level students in Cameroon.
+              tools, quizzes, and study resources, and Tip tutoring for
+              university students in Cameroon.
             </p>
           </section>
 

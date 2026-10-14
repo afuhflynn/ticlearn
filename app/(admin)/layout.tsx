@@ -1,9 +1,9 @@
-import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
-import { SidebarProvider } from "@/components/ui/sidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import { auth } from "@/lib/auth";
 
 export default async function AdminLayout({
   children,

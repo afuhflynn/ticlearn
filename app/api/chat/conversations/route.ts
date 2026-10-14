@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -43,13 +43,29 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = (await req.json()) as { title?: string };
+    const body = (await req.json().catch(() => ({}))) as {
+      title?: string;
+      noteId?: string;
+    };
     const title = body.title || "New Chat";
+
+    let noteId: string | null = null;
+    if (body.noteId) {
+      const note = await prisma.note.findFirst({
+        where: { id: body.noteId, userId: session.user.id },
+        select: { id: true },
+      });
+      if (!note) {
+        return NextResponse.json({ error: "Note not found" }, { status: 404 });
+      }
+      noteId = note.id;
+    }
 
     const conversation = await prisma.chatConversation.create({
       data: {
         userId: session.user.id,
         title,
+        noteId,
       },
     });
 

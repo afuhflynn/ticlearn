@@ -13,73 +13,50 @@ export interface FAQItem {
 }
 
 export const FAQ_ITEMS: FAQItem[] = [
-  // General Questions
   {
     question: "What is TiCLearn?",
     answer:
-      "TiCLearn is an AI-powered study platform designed specifically for Cameroonian GCE and TVEE students across all levels (A-Level, O-Level, Commercial/TVEE, and HND). It helps you transform notes into quizzes, prepare for exams with AI-generated mock tests, and track your progress over time with leaderboards.",
+      "TiCLearn is a study platform for Cameroonian university students. You upload your own lecture notes, turn them into quizzes, and learn with Tip, an AI tutor that teaches from your material instead of handing you answers.",
   },
   {
-    question: "How does TiCLearn help with GCE A-Level preparation?",
+    question: "Who is TiCLearn for?",
     answer:
-      "TiCLearn offers comprehensive exam preparation through AI-generated quizzes from your notes, mock exam simulations for subjects like Computer Science, ICT, Biology, Physics, Chemistry, Mathematics, Economics, and more, a 24/7 AI tutor (TiC) for instant help, and progress tracking with leaderboards to keep you motivated.",
+      "University students in Cameroon, whether at a public university like Buea or Bamenda or a private one. You pick your year of study once, and Tip explains things at the right depth for it.",
+  },
+  {
+    question: "What does Tip do differently?",
+    answer:
+      "Tip teaches instead of answering. It quotes your own note back to you, asks you a checking question before explaining, and refuses to just hand over a finished answer. That is how the material actually sticks.",
   },
   {
     question: "Is TiCLearn free to use?",
     answer:
-      "TiCLearn offers both free and premium plans. The free plan includes basic features like note uploading and limited quiz generation. Premium plans unlock unlimited access to AI features, mock exams, and advanced progress tracking.",
+      "TiCLearn offers a free plan and paid plans. The free plan covers a real but limited number of notes, quizzes and tutor messages. Paid plans lift those limits.",
   },
-  {
-    question: "Which GCE A-Level subjects does TiCLearn cover?",
-    answer:
-      "TiCLearn covers all major GCE A-Level subjects (Computer Science, ICT, Biology, Chemistry, Physics, Mathematics, Further Mathematics, Economics, Accounting, History, Geography, English, French, and more), GCE O-Level subjects, TVEE Commercial specialties (Accounting, Marketing, Secretarial Administration, Home Economics, Taxation, Tourism Management), and HND programmes. We're continuously expanding based on the Cameroon national curriculum.",
-  },
-  {
-    question: "How is TiCLearn different from other study platforms?",
-    answer:
-      "TiCLearn is specifically tailored for the Cameroon GCE A-Level curriculum. Unlike generic study apps, we understand the local syllabus, exam patterns, and student needs. Our AI adapts to generate questions that match the difficulty and format of actual GCE exams.",
-  },
-  {
-    question: "Who is behind TiCLearn?",
-    answer:
-      "TiCLearn is developed by Tic Foundation, a Cameroonian organization focused on using technology to improve education access and quality for students across Cameroon.",
-  },
-  // Feature Questions
   {
     question: "How do I upload my study notes?",
     answer:
-      "Simply sign up for an account, navigate to the upload section, and drag and drop your PDF files or images. Our AI will automatically extract the text, summarize key points, and prepare them for quiz generation.",
+      "Sign up, open the upload section, and drop in a PDF, a Word document or a photo of your handout. Tip extracts the text, summarises the key points, and pulls out the topics it will track for you.",
   },
   {
     question: "How does AI quiz generation work?",
     answer:
-      "After uploading your notes, our AI analyzes the content and generates relevant multiple-choice questions based on the key concepts and topics covered. You can customize the number of questions and difficulty level.",
-  },
-  {
-    question: "Can I practice past GCE exam papers?",
-    answer:
-      "Yes! TiCLearn offers mock GCE exam simulations for subjects like Computer Science, ICT, and Mathematics. These exams are designed to mirror the format and difficulty of actual GCE A-Level papers.",
-  },
-  {
-    question: "What is the TiC AI tutor?",
-    answer:
-      "TiC is your personal 24/7 AI study assistant. You can ask TiC questions about any topic from your notes or the GCE syllabus, and get instant, detailed explanations to help you understand difficult concepts.",
-  },
-  {
-    question: "How do leaderboards work?",
-    answer:
-      "Leaderboards track your performance based on quiz scores, points earned, and consistency. You can compete with other students across Cameroon and see how you rank in subjects you're studying.",
+      "After uploading a note, you generate a quiz from that note alone. Every question traces back to the part of your material it came from, so a quiz never invents a topic you never studied.",
   },
   {
     question: "Can I track my progress over time?",
     answer:
-      "Absolutely! TiCLearn provides detailed analytics showing your quiz scores, time spent studying, topics mastered, and areas that need more practice. This helps you identify weak points and improve systematically.",
+      "Yes. TiCLearn tracks your mastery per topic from your quiz attempts, averages it when a topic appears in more than one note, and shows a readiness score with your weakest topics first.",
   },
-  // Technical Questions
   {
     question: "What file formats can I upload?",
     answer:
-      "TiCLearn supports PDF files and images (PNG, JPG, JPEG) of your handwritten or typed notes. We recommend clear, well-organized documents for the best AI extraction results.",
+      "PDF files, Word documents and images (PNG, JPG, JPEG) of your handwritten or typed notes. Clear, well-organised documents give the best extraction results.",
+  },
+  {
+    question: "How do leaderboards work?",
+    answer:
+      "Leaderboards rank students on quiz points, quizzes taken and study streaks. You can see how you compare with other students across the country.",
   },
   {
     question: "How do I reset my password?",
@@ -96,21 +73,20 @@ export const FAQ_ITEMS: FAQItem[] = [
     answer:
       "Yes, we take data security seriously. Your personal information and study materials are encrypted and stored securely. We never share your data with third parties without your consent.",
   },
-  // Payment Questions
   {
     question: "What payment methods do you accept?",
     answer:
-      "We accept mobile money payments through MTN MoMo and Orange Money, which are the most popular payment methods in Cameroon. This makes it easy for students to subscribe to premium features.",
+      "We accept mobile money payments through MTN MoMo and Orange Money, which are the most popular payment methods in Cameroon.",
   },
   {
-    question: "How do I upgrade to premium?",
+    question: "How do I upgrade?",
     answer:
-      "Visit our Pricing page, select the plan that suits your needs, and follow the checkout process. Payment is processed securely through Fapshi, and you'll get instant access to premium features.",
+      "Visit our Pricing page, select the plan that suits your needs, and follow the checkout process. Payment is processed securely through Fapshi, and you'll get instant access to the higher limits.",
   },
   {
     question: "Can I get a refund?",
     answer:
-      "We offer a 7-day money-back guarantee for premium subscriptions. If you're not satisfied with the service, contact our support team within 7 days of purchase for a full refund.",
+      "We offer a 7-day money-back guarantee for paid subscriptions. If you're not satisfied with the service, contact our support team within 7 days of purchase for a full refund.",
   },
   {
     question: "What happens if payment fails?",
@@ -120,4 +96,3 @@ export const FAQ_ITEMS: FAQItem[] = [
 ];
 
 export const MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT = 999_999;
-export const MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS = 10_000;

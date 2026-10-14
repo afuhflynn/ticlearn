@@ -15,21 +15,21 @@ Students do not have soft copies of anything, so what they have is a photograph 
 
 ### 22. Storage move to Neon object storage · needs a decision · GA
 Neon object storage is generally available, S3 compatible, and includes five hundred gigabytes of egress per project, which against a student base paying for data by the gigabyte is roughly a hundred times cheaper than UploadThing on egress. It has no Africa region, so the latency from a Cameroonian network has to be measured before the bulk moves.
-**Done when:** resumable uploads are in use for large files, past papers and notes live in Neon object storage, avatars and image transforms stay on UploadThing, egress cost per student is measured on a real Cameroonian connection, and the migration of existing objects is complete and reversible.
+**Done when:** resumable uploads are in use for large files, notes live in Neon object storage (past papers are deleted with the pivot, so there is nothing of theirs to move), avatars and image transforms stay on UploadThing, egress cost per student is measured on a real Cameroonian connection, and the migration of existing objects is complete and reversible.
 - [ ] Design it (spec): `/solution-architect storage move to Neon object storage`
 
 (basis: research/stack-and-storage.md §4 · measured at about 105 XAF a month for a thousand students against about 5,857 for UploadThing, purely on egress)
 
 ### 23. Quiz generation flow · needs a decision · GA
 Today a quiz is generated in one shot with settings chosen up front, which ignores the strongest thing we have: the student has just been talking to a tutor about their notes and knows exactly what they do not understand. The flow should let the student decide, after learning, what to be tested on.
-**Done when:** a student can open a quiz on a specific note, topic, concept or course they discussed with the tutor, choose the format and length, generate and revise the questions before starting, and every question traces back to the part of their own material it came from.
+**Done when:** a student can open a quiz on a specific note they discussed with the tutor, choose the format and length, generate and revise the questions before starting, and every question traces back to the part of their own note it came from. A quiz without a note does not exist, so a topic or concept is offered by picking the note that covers it, never by inventing material.
 - [ ] Design it (spec): `/solution-architect quiz generation flow`
 
 (basis: research/audience-and-market.md §3 · students mostly skip tutorials and self study is the de facto mode of study, so generating practice has to be fast and specific rather than a form)
 
 ### 24. Upload limits and usage tracking · needs a decision
-The plan gates a limits table, the usage route returns per plan counters, and the composer shows a running attachment count, but none of it is consistent. Students on a metered connection need to see what they have used before they hit a wall, not after.
-**Done when:** every limit a plan carries has one source of truth, the current usage and what is left is visible where the action happens, hitting a limit explains what the limit is and what upgrading gives, and an upload that would exceed the limit is caught before bytes leave the phone.
+The one source of truth has landed: every plan limit lives in `lib/plan-limits.ts`, the usage route and every enforcing route read it, and a user resolves to `FREE` there rather than in each caller. What is left is the part a student feels. On a metered connection they need to see what they have used before they hit a wall, not after, and nothing today shows them before the fact.
+**Done when:** the current usage and what is left is visible where the action happens, hitting a limit explains what the limit is and what upgrading gives, and an upload that would exceed the limit is caught before bytes leave the phone.
 - [ ] Design it (spec): `/solution-architect upload limits and usage tracking`
 
 ### 25. Offline packs and low data mode · needs a decision

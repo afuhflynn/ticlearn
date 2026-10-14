@@ -1,16 +1,16 @@
-import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import crypto from "crypto";
 import { headers } from "next/headers";
-import { trackEvent, EVENTS } from "@/lib/kpi";
+import { NextResponse } from "next/server";
+import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
 import {
   sendAdminPaymentAlert,
   sendPaymentFailedEmail,
   sendPaymentSuccessEmail,
 } from "@/lib/email/send";
-import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
-import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
 import { webhookSecret } from "@/lib/env";
-import crypto from "crypto";
+import { EVENTS, trackEvent } from "@/lib/kpi";
+import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
+import { prisma } from "@/lib/prisma";
 
 const PLAN_LABELS: Record<string, string> = {
   STARTER: "Starter Plan",
@@ -169,17 +169,9 @@ export async function POST(req: Request) {
         where: { userId: sub.userId },
       });
       if (!existingStats) {
-        const profileId = await prisma.user
-          .findUnique({
-            where: { id: sub.userId },
-            select: { activeProfileId: true },
-          })
-          .then((u) => u?.activeProfileId);
-
         await prisma.userStats.create({
           data: {
             userId: sub.userId,
-            ...(profileId ? { examProfileId: profileId } : {}),
           },
         });
       }

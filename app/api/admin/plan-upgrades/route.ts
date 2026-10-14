@@ -45,15 +45,6 @@ async function requireAdmin() {
 
 function formatUserRow(user: Awaited<ReturnType<typeof findUsers>>[number]) {
   const subscription = user.subscriptions[0] ?? null;
-  const activeProfile = user.activeProfile;
-  const programs =
-    activeProfile?.programs.map((profileProgram) => ({
-      id: profileProgram.program.id,
-      name: profileProgram.program.name,
-      code: profileProgram.program.code,
-      level: profileProgram.program.examLevel.name,
-      confidence: profileProgram.confidence,
-    })) ?? [];
 
   return {
     id: user.id,
@@ -62,15 +53,9 @@ function formatUserRow(user: Awaited<ReturnType<typeof findUsers>>[number]) {
     image: user.image,
     role: user.role,
     createdAt: user.createdAt,
-    activeProfileId: user.activeProfileId,
-    onboardingCompleted: activeProfile?.onboardingCompleted ?? null,
-    onboardingSkipped: activeProfile?.onboardingSkipped ?? null,
-    onboardingStep: activeProfile?.onboardingStep ?? null,
-    examYear: activeProfile?.examYear ?? null,
-    examDate: activeProfile?.examDate ?? null,
-    phoneCountryCode: activeProfile?.phoneCountryCode ?? null,
-    phoneNumber: activeProfile?.phoneNumber ?? null,
-    programs,
+    levelOfStudy: user.levelOfStudy,
+    onboardingCompleted: user.onboardingCompleted,
+    onboardingSkipped: user.onboardingSkipped,
     currentPlan: subscription?.status === "ACTIVE" ? subscription.plan : "FREE",
     subscription: subscription
       ? {
@@ -86,7 +71,6 @@ function formatUserRow(user: Awaited<ReturnType<typeof findUsers>>[number]) {
     notesCount: user._count.notes,
     quizzesCount: user._count.quizzes,
     attemptsCount: user._count.quizAttempts,
-    paper3AttemptsCount: user._count.paper3MockAttempts,
   };
 }
 
@@ -99,32 +83,10 @@ async function findUsers(args: Parameters<typeof prisma.user.findMany>[0]) {
       email: true,
       image: true,
       role: true,
-      activeProfileId: true,
       createdAt: true,
-      activeProfile: {
-        select: {
-          onboardingCompleted: true,
-          onboardingSkipped: true,
-          onboardingStep: true,
-          examYear: true,
-          examDate: true,
-          phoneCountryCode: true,
-          phoneNumber: true,
-          programs: {
-            select: {
-              confidence: true,
-              program: {
-                select: {
-                  id: true,
-                  name: true,
-                  code: true,
-                  examLevel: { select: { name: true } },
-                },
-              },
-            },
-          },
-        },
-      },
+      levelOfStudy: true,
+      onboardingCompleted: true,
+      onboardingSkipped: true,
       subscriptions: {
         orderBy: { createdAt: "desc" },
         take: 1,
@@ -143,7 +105,6 @@ async function findUsers(args: Parameters<typeof prisma.user.findMany>[0]) {
           notes: true,
           quizzes: true,
           quizAttempts: true,
-          paper3MockAttempts: true,
         },
       },
     },
@@ -206,24 +167,15 @@ export async function GET(req: Request) {
     const onboardingWhere =
       onboardingStatus === "completed"
         ? {
-            activeProfile: {
-              onboardingCompleted: true,
-              onboardingSkipped: false,
-            },
+            onboardingCompleted: true,
+            onboardingSkipped: false,
           }
         : onboardingStatus === "skipped"
-          ? { activeProfile: { onboardingSkipped: true } }
+          ? { onboardingSkipped: true }
           : onboardingStatus === "not_completed"
             ? {
-                OR: [
-                  { activeProfile: null },
-                  {
-                    activeProfile: {
-                      onboardingCompleted: false,
-                      onboardingSkipped: false,
-                    },
-                  },
-                ],
+                onboardingCompleted: false,
+                onboardingSkipped: false,
               }
             : {};
 
@@ -385,8 +337,8 @@ export async function PATCH(req: Request) {
 
       await tx.userStats.upsert({
         where: { userId },
-        create: { userId, examProfileId: targetUser.activeProfileId },
-        update: { examProfileId: targetUser.activeProfileId ?? undefined },
+        create: { userId },
+        update: {},
       });
 
       await tx.kpiEvent.create({

@@ -25,7 +25,7 @@ function writePrompt(dir: string, body: string, header: string): void {
 
 const header = `---
 name: study_brief
-model: gemini-2.5-flash
+model: deepseek/deepseek-v4.1-flash
 version: 2
 heat: 0.4
 cap: 2048
@@ -56,7 +56,7 @@ describe("prompt loader", () => {
     const loaded = await getPrompt(AREA, "study_brief", { excerpt: "hello" });
     expect(loaded.text).toContain("hello");
     expect(loaded.settings.version).toBe(2);
-    expect(loaded.settings.model).toBe("gemini-2.5-flash");
+    expect(loaded.settings.model).toBe("deepseek/deepseek-v4.1-flash");
   });
 
   it("throws on a missing slot value", () => {
@@ -69,7 +69,7 @@ describe("prompt loader", () => {
     writePrompt(
       dir,
       "Body\n",
-      header.replace("gemini-2.5-flash", "other-model"),
+      header.replace("deepseek/deepseek-v4.1-flash", "other-model"),
     );
     expect(() => getPromptSync(AREA, "study_brief")).toThrow(PromptError);
   });
@@ -125,7 +125,7 @@ describe("prompt registry files", () => {
 
 const needsToolsHeader = `---
 name: study_brief
-model: gemini-2.5-flash
+model: deepseek/deepseek-v4.1-flash
 version: 1
 needsTools: true
 slots:
@@ -134,7 +134,7 @@ slots:
 
 const needsImagesHeader = `---
 name: study_brief
-model: gemini-2.5-flash
+model: deepseek/deepseek-v4.1-flash
 version: 1
 needsImages: true
 slots: []
@@ -213,7 +213,7 @@ describe("prompt loader fallback (covers: spec standard fallback path)", () => {
     writePrompt(
       dir,
       "Body\n",
-      header.replace("gemini-2.5-flash", "other-model"),
+      header.replace("deepseek/deepseek-v4.1-flash", "other-model"),
     );
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     const text = await getPromptOrFallback(AREA, "study_brief", {
@@ -248,7 +248,7 @@ describe("prompt call fields (covers: spec standard file settings travel)", () =
     expect(fields.promptRef).toEqual({
       name: "study_brief",
       version: loaded.settings.version,
-      model: "gemini-2.5-flash",
+      model: "deepseek/deepseek-v4.1-flash",
     });
   });
 
@@ -256,8 +256,6 @@ describe("prompt call fields (covers: spec standard file settings travel)", () =
     const grading: Array<[string, string]> = [
       ["grade", "grade_open_answer"],
       ["grade", "explain_mcq_answer"],
-      ["paper3", "grade_short_answer"],
-      ["paper3", "grade_short_answer_system"],
     ];
     for (const [area, name] of grading) {
       const loaded = loadPromptRawShipped(area, name);

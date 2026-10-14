@@ -1,6 +1,8 @@
 import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
+import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { levelLabel } from "@/constants/levels";
 import { generateTextWithFallback, streamChat } from "@/lib/ai/orchestrator";
 import { createChatTools } from "@/lib/ai/tools";
 import { auth } from "@/lib/auth";
@@ -10,8 +12,8 @@ import {
 } from "@/lib/chat-messages";
 import { getChatResetWindow } from "@/lib/chat-usage";
 import { getUserCreditBalance, spendCredits } from "@/lib/credits";
-import { getActiveProfileId } from "@/lib/exam-profile";
 import { EVENTS, trackEvent } from "@/lib/kpi";
+import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
 import {
   creditEnforcementEffective,
   getPlatformSettings,
@@ -23,6 +25,9 @@ import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
+/** How much of the attached note travels into the system prompt. */
+const NOTE_CONTEXT_CHARS = 12_000;
+
 async function generateTitle(
   userMessage: string,
   userId?: string | null,
@@ -33,7 +38,10 @@ async function generateTitle(
     });
     const result = await generateTextWithFallback({
       task: "fast_chat",
+    const result = await generateTextWithFallback({
+      task: "fast_chat",
       prompt,
+      userId: userId ?? null,
       userId: userId ?? null,
     });
     return result.text.trim().slice(0, 50) || "New Chat";
@@ -132,7 +140,12 @@ export async function POST(req: Request) {
 
     const conversation = await prisma.chatConversation.findFirst({
       where: { id: conversationId, userId },
-      include: { _count: { select: { messages: true } } },
+      include: {
+        _count: { select: { messages: true } },
+        note: {
+          select: { id: true, title: true, extractedText: true, userId: true },
+        },
+      },
     });
 
     if (!conversation) {
@@ -159,23 +172,14 @@ export async function POST(req: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    const plan = subscription?.plan || "FREE";
-    const isPaid = plan !== "FREE" && subscription?.status === "ACTIVE";
+    const plan = resolvePlan(subscription);
+    const isPaid = plan !== "FREE";
+    const { aiTutorMessages: chatLimit, maxConversationMessages } =
+      getPlanLimits(plan);
 
     const settings = await getPlatformSettings();
     const enforcement = creditEnforcementEffective(settings);
     const tutorCost = settings.creditCostAiTutorMessage;
-
-    // Define daily message limits per plan
-    const dailyLimits: Record<string, number> = {
-      FREE: 8,
-      STARTER: -1,
-      STANDARD: -1,
-      PREMIUM: -1,
-      PRO: -1,
-    };
-
-    const chatLimit = dailyLimits[plan] || 8;
 
     const { nextResetAt, windowStart } = getChatResetWindow();
     const chatsToday = await prisma.chatMessage.count({
@@ -190,7 +194,7 @@ export async function POST(req: Request) {
     });
 
     if (!isPaid) {
-      if (chatLimit !== -1 && chatsToday >= chatLimit) {
+      if (limitReached(chatLimit, chatsToday)) {
         return NextResponse.json(
           {
             error:
@@ -201,18 +205,10 @@ export async function POST(req: Request) {
       }
     }
 
-    // Conversation length limit per plan
-    const conversationLimits: Record<string, number> = {
-      FREE: 50,
-      STARTER: 100,
-      STANDARD: 200,
-      PREMIUM: 500,
-    };
-    const maxMessagesPerConversation = conversationLimits[plan] ?? 50;
-    if (conversation._count.messages >= maxMessagesPerConversation) {
+    if (limitReached(maxConversationMessages, conversation._count.messages)) {
       return NextResponse.json(
         {
-          error: `This conversation has reached the ${maxMessagesPerConversation}-message limit. Please start a new conversation to continue.`,
+          error: `This conversation has reached the ${maxConversationMessages}-message limit. Please start a new conversation to continue.`,
         },
         { status: 403 },
       );
@@ -261,6 +257,7 @@ export async function POST(req: Request) {
     ) {
       try {
         const newTitle = await generateTitle(userContent, userId);
+        const newTitle = await generateTitle(userContent, userId);
         await prisma.chatConversation.update({
           where: { id: conversationId },
           data: { title: newTitle },
@@ -293,42 +290,34 @@ export async function POST(req: Request) {
       });
     }
 
-    const profileId = await getActiveProfileId(userId);
     let profileContext = "";
 
-    if (profileId) {
-      try {
-        const readiness = await computeReadiness(profileId);
+    try {
+      const readiness = await computeReadiness(userId);
+    try {
+      const readiness = await computeReadiness(userId);
 
-        const programsList = readiness.programReadiness
-          .map((p) => `${p.program}: ${p.readiness}%`)
-          .join(", ");
+      const weakestThree = readiness.topicReadiness
+        .sort((a, b) => a.score - b.score)
+        .slice(0, 3)
+        .map((t) => `${t.topic} (${t.score}%)`)
+        .join(", ");
 
-        const weakestThree = readiness.topicReadiness
-          .sort((a, b) => a.score - b.score)
-          .slice(0, 3)
-          .map((t) => `${t.topic} (${t.score}%)`)
-          .join(", ");
+      const recommendations = readiness.weakestTopic
+        ? `Focus area: ${readiness.weakestTopic.name} (${readiness.weakestTopic.score}%)`
+        : "";
 
-        const recommendations = readiness.weakestTopic
-          ? `Focus area: ${readiness.weakestTopic.name} (${readiness.weakestTopic.score}%)`
-          : "";
-
-        profileContext = `\n
+      profileContext = `\n
 STUDENT PROFILE:
-- Programs: ${programsList || "Not set"}
 - Overall Readiness: ${readiness.readiness}%
 ${readiness.weakestTopic ? `- Weakest Topics: ${weakestThree}` : ""}
 ${readiness.strongestTopic ? `- Strongest Topic: ${readiness.strongestTopic.name} (${readiness.strongestTopic.score}%)` : ""}
-${readiness.daysUntilExam !== null ? `- Days Until Exam: ${readiness.daysUntilExam}` : ""}
-${readiness.highRisk ? "- ⚠️ HIGH RISK: Exam is approaching and readiness is low" : ""}
 ${recommendations ? `- ${recommendations}` : ""}
 
-Use this profile to personalize study recommendations, focus on weakest topics, and align advice with the student's current readiness level.
+Use this to personalise study recommendations and focus on the weakest topics.
 `;
-      } catch (e) {
-        console.error("Failed to compute readiness for chat context:", e);
-      }
+    } catch (e) {
+      console.error("Failed to compute readiness for chat context:", e);
     }
 
     const { text: systemPrompt, settings: promptSettings } = await getPrompt(
@@ -336,6 +325,8 @@ Use this profile to personalize study recommendations, focus on weakest topics, 
       "chat_system",
       {
         userName: session.user.name,
+        studentLevel,
+        noteContext,
         profileContext,
         appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "",
       },
@@ -347,10 +338,16 @@ Use this profile to personalize study recommendations, focus on weakest topics, 
     const tools = createChatTools({ userId: session.user.id });
 
     const result = await streamChat({
-      task: "reasoning",
+      task: "fast_chat",
       system: systemPrompt,
       tools,
       messages: modelMessages,
+      userId: session.user.id,
+      modelOptions: {
+        stopWhen: stepCountIs(5),
+        temperature: promptSettings.heat,
+        maxOutputTokens: promptSettings.cap,
+      },
       userId: session.user.id,
       modelOptions: {
         stopWhen: stepCountIs(5),
@@ -387,7 +384,7 @@ Use this profile to personalize study recommendations, focus on weakest topics, 
                   userId,
                   amount: tutorCost,
                   type: "AI_TUTOR_MESSAGE",
-                  description: "TiC AI tutor message",
+                  description: "Tip tutor message",
                   referenceId: userMsgRecord.id,
                 });
               }

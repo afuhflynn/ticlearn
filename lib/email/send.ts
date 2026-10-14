@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { prisma } from "@/lib/prisma";
+import { computeReadiness } from "@/lib/readiness";
 
 function escapeHtml(str: string): string {
   return String(str)
@@ -247,15 +248,15 @@ export async function sendWelcomeEmail({
       </div>
       <div class="content">
         <h2 style="color: #1f2937; margin-bottom: 16px;">Welcome aboard, ${name || "Student"}!</h2>
-        <p>Your TiCLearn account is now active and ready to help you ace your GCE A-Level exams!</p>
+        <p>Your TiCLearn account is now active. Upload your first lecture note and let Tip teach it back to you.</p>
 
         <h3 style="color: #1f2937; margin-top: 24px;">Here's what you can do:</h3>
         <ul class="features">
           <li><span class="features-icon">📝</span> <strong>Upload Notes</strong> - Transform your study materials</li>
           <li><span class="features-icon">🧠</span> <strong>AI Quizzes</strong> - Generate quizzes from your notes</li>
-          <li><span class="features-icon">💬</span> <strong>TiC</strong> - Get help anytime with our AI</li>
+          <li><span class="features-icon">💬</span> <strong>Tip</strong> - Your AI study tutor, available anytime</li>
           <li><span class="features-icon">🏆</span> <strong>Leaderboard</strong> - Compete with other students</li>
-          <li><span class="features-icon">📚</span> <strong>GCE Exams</strong> - Practice with past papers</li>
+          <li><span class="features-icon">📈</span> <strong>Readiness</strong> - See what you have mastered and what needs work</li>
         </ul>
 
         <a href="https://ticlearn.ticsummit.org/dashboard" class="button" style="display: block; text-align: center; width: fit-content; margin: 32px auto 0;">
@@ -706,7 +707,7 @@ export async function sendPlatformUpdateEmail({
 
         <div style="background: #f3f4f6; border-radius: 12px; padding: 20px; margin: 24px 0; text-align: center;">
           <p style="margin: 0; font-size: 16px; font-weight: 600; color: ${BRAND_COLORS.primary};">
-            Join 100+ students already acing their GCE exams!
+            Join 100+ students already studying smarter with TiCLearn!
           </p>
         </div>
 
@@ -866,7 +867,6 @@ export type CampaignType =
   | "streak-risk"
   | "onboarding-incomplete"
   | "weak-topic-drill"
-  | "exam-countdown"
   | "weekly-digest";
 
 export interface EngagementUserData {
@@ -961,7 +961,7 @@ export function buildEngagementEmail(
       body = `
         <h2 style="color:#1f2937;">Almost there, ${safe}!</h2>
         <p>You've created your account but haven't finished setting up your study profile yet.</p>
-        <p>Tell us your subjects and exam date so we can personalize your study plan — quizzes, recommendations, and AI coaching tailored to <em>your</em> curriculum.</p>
+        <p>Pick your year of study so Tip explains things at the right depth for you.</p>
         <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/onboarding", "Complete Setup →")}</div>
       `;
       break;
@@ -976,22 +976,7 @@ export function buildEngagementEmail(
         <h2 style="color:#1f2937;">Time to level up, ${safe}!</h2>
         ${user.weakestTopic ? '<p>Your weakest area is <span class="highlight">' + topic + "</span> (" + user.weakestTopicScore + "% mastery). Focused practice can bring that score up fast.</p>" : "<p>Keep up the great work! Regular practice is the key to exam success.</p>"}
         ${user.strongestTopic ? '<p>Your strongest topic is <span class="highlight">' + escapeHtml(user.strongestTopic) + "</span> — great job!</p>" : ""}
-        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Take a Practice Quiz →")}</div>
-      `;
-      break;
-    }
-
-    case "exam-countdown": {
-      const days = user.daysUntilExam ?? 0;
-      const readiness =
-        user.readiness !== null ? user.readiness + "%" : "not yet assessed";
-      subject = days + " days until your exam! 🕐";
-      body = `
-        <h2 style="color:#1f2937;">${days} days to go, ${safe}!</h2>
-        <p>Your current readiness: <span class="highlight">${readiness}</span></p>
-        ${user.weakestTopic ? '<p>Focus on <span class="highlight">' + escapeHtml(user.weakestTopic) + "</span> — it's your weakest area right now.</p>" : ""}
-        <p>Every session counts. Let's make these days count!</p>
-        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/dashboard", "Study Now →")}</div>
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/quizzes", "Take a Practice Quiz →")}</div>
       `;
       break;
     }
@@ -1015,7 +1000,7 @@ export function buildEngagementEmail(
           </div>
         </div>
         ${user.weakestTopic ? '<p>Keep working on <span class="highlight">' + escapeHtml(user.weakestTopic) + "</span> to boost your score.</p>" : ""}
-        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/practice", "Continue Practicing →")}</div>
+        <div style="text-align:center;margin:32px 0;">${cta("https://ticlearn.ticsummit.org/quizzes", "Continue Practicing →")}</div>
       `;
       break;
     }
@@ -1040,10 +1025,16 @@ export async function sendEngagementEmail(
 export async function hydrateEngagementData(
   userId: string,
 ): Promise<EngagementUserData | null> {
-  const [user, userStats, paper3Stats, activeProfile] = await Promise.all([
+  const [user, userStats] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, name: true, email: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        levelOfStudy: true,
+        onboardingCompleted: true,
+      },
     }),
     prisma.userStats.findFirst({
       where: { userId },
@@ -1053,21 +1044,11 @@ export async function hydrateEngagementData(
         quizzesTaken: true,
       },
     }),
-    prisma.paper3UserStats.findFirst({
-      where: { userId },
-      select: {
-        weakConcepts: true,
-        readinessScore: true,
-        strongConcepts: true,
-      },
-    }),
-    prisma.examProfile.findFirst({
-      where: { userId, onboardingCompleted: true },
-      select: { examDate: true, onboardingCompleted: true },
-    }),
   ]);
 
   if (!user) return null;
+
+  const readiness = await computeReadiness(userId).catch(() => null);
 
   const subscription = await prisma.subscription.findFirst({
     where: { userId, status: "ACTIVE" },
@@ -1082,24 +1063,18 @@ export async function hydrateEngagementData(
       )
     : null;
 
-  const daysUntilExam = activeProfile?.examDate
-    ? Math.ceil(
-        (activeProfile.examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
-      )
-    : null;
-
   return {
     name: user.name,
     email: user.email,
     streak: userStats?.currentStreak ?? 0,
     daysSinceActive,
-    readiness: paper3Stats ? Math.round(paper3Stats.readinessScore) : null,
-    weakestTopic: paper3Stats?.weakConcepts?.[0] ?? null,
-    weakestTopicScore: null,
-    strongestTopic: paper3Stats?.strongConcepts?.[0] ?? null,
-    daysUntilExam,
+    readiness: readiness && !readiness.needsAssessment ? readiness.readiness : null,
+    weakestTopic: readiness?.weakestTopic?.name ?? null,
+    weakestTopicScore: readiness?.weakestTopic?.score ?? null,
+    strongestTopic: readiness?.strongestTopic?.name ?? null,
+    daysUntilExam: null,
     plan: subscription?.plan ?? "FREE",
     quizzesTaken: userStats?.quizzesTaken ?? 0,
-    profileSetUp: activeProfile?.onboardingCompleted ?? false,
+    profileSetUp: user.onboardingCompleted,
   };
 }

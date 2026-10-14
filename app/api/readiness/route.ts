@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { computeReadiness } from "@/lib/readiness";
-import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET() {
   try {
@@ -10,13 +10,9 @@ export async function GET() {
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const profileId = await getActiveProfileId(session.user.id);
-    if (!profileId)
-      return NextResponse.json({ readiness: 50, needsAssessment: true });
+    const userId = session.user.id;
+    const readiness = await computeReadiness(userId);
 
-    const readiness = await computeReadiness(profileId);
-
-    // Build recommendations
     const recommendations: string[] = [];
 
     if (readiness.weakestTopic && readiness.weakestTopic.score < 40) {
@@ -25,34 +21,24 @@ export async function GET() {
       );
     }
 
-    if (readiness.readiness < 50) {
+    if (readiness.needsAssessment) {
       recommendations.push(
-        "Take a full mock exam this week to assess your level",
+        "Upload a note and generate a quiz from it to see your readiness",
       );
     }
 
-    const recentlyPracticed = await import("@/lib/prisma")
-      .then((m) =>
-        m.prisma.topicPerformance.count({
-          where: {
-            examProfileId: profileId,
-            lastPracticedAt: {
-              gte: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-            },
-          },
-        }),
-      )
-      .catch(() => 0);
+    const recentlyPractised = await prisma.topicPerformance.count({
+      where: {
+        note: { userId },
+        lastPracticedAt: {
+          gte: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+        },
+      },
+    });
 
-    if (recentlyPracticed === 0 && readiness.weakestTopic) {
+    if (recentlyPractised === 0 && readiness.weakestTopic) {
       recommendations.push(
-        `You haven't practiced ${readiness.weakestTopic.name} recently`,
-      );
-    }
-
-    if (readiness.highRisk) {
-      recommendations.unshift(
-        "⚠️ High Risk Zone - focused practice recommended daily",
+        `You haven't practised ${readiness.weakestTopic.name} recently`,
       );
     }
 

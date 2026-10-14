@@ -1,12 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import type { ReactNode } from "react";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
-import { IncompleteProfileBanner } from "@/components/chat/IncompleteProfileBanner";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export default async function ChatLayout({
   children,
@@ -18,29 +17,10 @@ export default async function ChatLayout({
   if (session?.user) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: {
-        examProfiles: {
-          select: {
-            id: true,
-            onboardingCompleted: true,
-            onboardingSkipped: true,
-            phoneNumber: true,
-          },
-        },
-      },
+      select: { levelOfStudy: true },
     });
 
-    if (user?.activeProfileId) {
-      const activeProfile = user.examProfiles.find(
-        (p) => p.id === user.activeProfileId,
-      );
-      if (activeProfile && !activeProfile.onboardingSkipped) {
-        const missingRequiredPhone = !activeProfile.phoneNumber;
-        if (!activeProfile.onboardingCompleted || missingRequiredPhone) {
-          redirect("/onboarding");
-        }
-      }
-    } else {
+    if (!user?.levelOfStudy) {
       redirect("/onboarding");
     }
   }
@@ -50,7 +30,6 @@ export default async function ChatLayout({
       <ChatSidebar />
       <SidebarInset className="h-svh min-h-svh overflow-hidden">
         <ChatHeader />
-        <IncompleteProfileBanner />
         <div className="min-h-0 flex-1 overflow-hidden">{children}</div>
       </SidebarInset>
     </SidebarProvider>

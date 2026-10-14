@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
-import { prisma } from "@/lib/prisma";
 import { trackEvent } from "@/lib/kpi";
+import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
+import { prisma } from "@/lib/prisma";
 import { utapi } from "@/lib/uploadthing-server";
 
 const createNoteSchema = z.object({
   title: z.string().min(1, "Title is required"),
-  subject: z.string().min(1, "Subject is required"),
   uploadthingKey: z.string().min(1, "UploadThing key is required"),
   fileName: z.string().min(1, "File name is required"),
   fileType: z.enum(["PDF", "IMAGE", "WORD"]),
@@ -80,18 +80,8 @@ export async function POST(req: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    const plan = subscription?.status === "ACTIVE" ? subscription.plan : "FREE";
-
-    // Define limits per plan
-    const limits: Record<string, number> = {
-      FREE: 2,
-      STARTER: 10,
-      STANDARD: 30,
-      PREMIUM: -1,
-      PRO: -1,
-    };
-
-    const uploadLimit = limits[plan] || 2;
+    const plan = resolvePlan(subscription);
+    const uploadLimit = getPlanLimits(plan).pdfUploads;
 
     // Count current notes
     const noteCount = await prisma.note.count({
@@ -99,7 +89,7 @@ export async function POST(req: Request) {
     });
 
     // Check if user has reached their limit
-    if (uploadLimit !== -1 && noteCount >= uploadLimit) {
+    if (limitReached(uploadLimit, noteCount)) {
       return NextResponse.json(
         {
           error: `Upload limit reached (${uploadLimit} notes). Please upgrade to continue.`,
@@ -108,7 +98,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { title, subject, uploadthingKey, fileName, fileType } =
+    const { title, uploadthingKey, fileName, fileType } =
       createNoteSchema.parse(await req.json());
 
     // Derive fileUrl server-side from uploadthingKey, ignore any client-provided URL
@@ -125,12 +115,10 @@ export async function POST(req: Request) {
       data: {
         userId: session.user.id,
         title,
-        subject,
         fileUrl,
         uploadthingKey,
         fileName,
         fileType,
-        topics: [],
         keyPoints: [],
         status: "UPLOADING",
       },
@@ -150,7 +138,6 @@ export async function POST(req: Request) {
       trackEvent(session.user.id, "note_uploaded", {
         noteId: note.id,
         title: note.title,
-        subject: note.subject,
         fileType: note.fileType,
       }).catch(() => {});
 

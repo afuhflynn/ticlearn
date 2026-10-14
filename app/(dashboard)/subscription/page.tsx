@@ -1,23 +1,27 @@
 "use client";
 
-import { useUsage, usePlan } from "@/hooks";
 import {
-  CreditCard,
-  Check,
-  Zap,
-  Shield,
-  Upload,
-  ListTodo,
-  MessageSquare,
-  BarChart3,
-  ArrowRight,
-  Loader2,
-  Clock,
-  History,
   AlertCircle,
-  Smartphone,
+  ArrowRight,
+  BarChart3,
+  Check,
+  Clock,
   Coins,
+  CreditCard,
+  History,
+  ListTodo,
+  Loader2,
+  MessageSquare,
+  Shield,
+  Smartphone,
+  Upload,
+  Zap,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -26,10 +30,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,10 +38,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -50,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { usePlan, useUsage } from "@/hooks";
 
 const MONTHLY_CREDIT_BONUS: Record<string, number> = {
   STARTER: 400,
@@ -79,7 +79,7 @@ const PLAN_FEATURES = {
     "20% discount on all credit costs",
     "Community Access",
     "Leaderboard Participation",
-    "GCE Exam Preparation",
+    "Readiness tracking",
   ],
   STANDARD: [
     "30 PDF Uploads",

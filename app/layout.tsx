@@ -14,18 +14,17 @@ import { ourFileRouter } from "./api/uploadthing/core";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ticlearn.ticsummit.org"),
-  title: "TiCLearn - AI-Powered Study Platform for GCE A-Level",
+  title: "TiCLearn - Study Your Lecture Notes with Tip",
   description:
-    "Transform your notes into quizzes, prepare for GCE exams, compete on leaderboards, and chat with TiC our ai tutor. The ultimate study companion for Cameroonian students.",
+    "Upload your lecture notes, turn them into quizzes, and learn with Tip, the tutor that teaches from your own material. Built for university students in Cameroon.",
   keywords: [
-    "GCE",
-    "A-Level",
     "Cameroon",
+    "university",
     "study",
     "quiz",
-    "AI",
+    "AI tutor",
+    "lecture notes",
     "education",
-    "exam preparation",
   ],
   authors: [{ name: "TiCLearn Team", url: "https://ticlearn.ticsummit.org" }],
   manifest: "/manifest.json",
@@ -57,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "TiCLearn - Study Smarter, Score Higher",
     description:
-      "AI-powered study platform for Cameroonian GCE A-Level students",
+      "Study your own lecture notes with quizzes and Tip, the AI tutor",
     type: "website",
     locale: "en_CM",
     siteName: "TiCLearn",
@@ -66,7 +65,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "TiCLearn - Study Smarter, Score Higher",
     description:
-      "AI-powered study platform for Cameroonian GCE A-Level students",
+      "Study your own lecture notes with quizzes and Tip, the AI tutor",
   },
   robots: {
     index: true,

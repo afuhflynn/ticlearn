@@ -1,8 +1,8 @@
-import { api } from "@/lib/api-client";
-import { queryKeys } from "@/lib/query-keys";
-import { PaymentSettingsData } from "@/types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { api } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
+import type { PaymentSettingsData } from "@/types";
 
 export function usePaymentSettings() {
   return useQuery({

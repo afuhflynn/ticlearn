@@ -2,10 +2,10 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { pollPaymentStatusUntilReady } from "@/lib/fapshi";
-import { prisma } from "@/lib/prisma";
 import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
+import { pollPaymentStatusUntilReady } from "@/lib/fapshi";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
+import { prisma } from "@/lib/prisma";
 
 const bodySchema = z.object({
   transId: z.string().min(1).max(200),
@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     const transId = parsed.data.transId.trim();
     const redirectHint = parsed.data.redirectHint;
 
-    let gatewayParsed = await pollPaymentStatusUntilReady(transId, {
+    const gatewayParsed = await pollPaymentStatusUntilReady(transId, {
       maxAttempts: 12,
     });
 

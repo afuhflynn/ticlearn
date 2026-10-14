@@ -1,5 +1,10 @@
 import { ChatLanding } from "@/components/chat/chat-landing";
 
-export default function ChatLandingPage() {
-  return <ChatLanding />;
+export default async function ChatLandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ note?: string }>;
+}) {
+  const { note } = await searchParams;
+  return <ChatLanding noteId={note ?? null} />;
 }

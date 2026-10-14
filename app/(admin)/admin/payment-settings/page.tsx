@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSession } from "@/lib/auth-client";
-import { Loader2, Save, Phone } from "lucide-react";
+import { Loader2, Phone, Save } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -13,10 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   usePaymentSettings,
   useUpdatePaymentSettings,
 } from "@/hooks/usePayment";
+import { useSession } from "@/lib/auth-client";
 
 interface PaymentSettings {
   mtnNumber: string | null;

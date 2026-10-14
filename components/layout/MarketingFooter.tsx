@@ -1,12 +1,11 @@
-import Link from "next/link";
-import { GraduationCap, Mail, Globe, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { FaWhatsapp } from "react-icons/fa6";
+import { ExternalLink, Globe, GraduationCap, Mail } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
+import { FaWhatsapp } from "react-icons/fa6";
+import { Button } from "@/components/ui/button";
 
 const footerLinks = {
   product: [
-    { href: "/#ready-mocks", label: "Mocks" },
     { href: "/pricing", label: "Pricing" },
     { href: "/about", label: "About" },
     { href: "/faq", label: "FAQ" },
@@ -51,8 +50,8 @@ export function MarketingFooter() {
               <span className="text-xl font-bold">TiCLearn</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              AI-powered study platform for Cameroonian GCE A-Level students.
-              Study smarter, score higher.
+              Study your own lecture notes with quizzes and Tip, the tutor that
+              teaches from your material.
             </p>
             <div className="flex gap-2">
               {socialLinks.map((social) => (

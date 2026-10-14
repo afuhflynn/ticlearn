@@ -6,9 +6,9 @@ import {
   BotMessageSquare,
   ChevronDown,
   ChevronRight,
-  Crown,
   ClipboardCheck,
   Coins,
+  Crown,
   Flame,
   GraduationCap,
   HeartHandshake,
@@ -16,17 +16,17 @@ import {
   Link2,
   MessageCircle,
   NotebookPen,
-  ScrollText,
   Settings,
   Sparkles,
   Target,
   Trophy,
   Upload,
   Users,
-  FileStack,
 } from "lucide-react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
@@ -42,11 +42,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useCredits, usePlan, useUsage, useUserStats } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
-import { useCredits, usePlan, useUsage, useUserStats } from "@/hooks";
 
 interface NavItem {
   href: string;
@@ -56,8 +54,6 @@ interface NavItem {
 }
 
 const studyNav: NavItem[] = [
-  { href: "/practice/mock", label: "GCE Paper 1 & 2", icon: FileStack },
-  { href: "/practice", label: "AcePaper 3", icon: ScrollText },
   { href: "/upload", label: "Upload Notes", icon: Upload },
   { href: "/quizzes", label: "My Quizzes", icon: ClipboardCheck },
   { href: "/progress", label: "Progress", icon: BarChart3 },
@@ -98,20 +94,16 @@ export function AppSidebar() {
   const { usage, chatDailyUsage } = useUsage();
   const { stats, isLoading: statsLoading } = useUserStats();
 
-  const [readiness, setReadiness] = useState<{
-    readiness: number;
-    daysUntilExam: number | null;
-  } | null>(null);
+  const [readiness, setReadiness] = useState<{ readiness: number } | null>(
+    null,
+  );
 
   useEffect(() => {
     fetch("/api/readiness")
       .then((r) => r.json())
       .then((d) => {
         if (!d.needsAssessment) {
-          setReadiness({
-            readiness: d.readiness,
-            daysUntilExam: d.daysUntilExam,
-          });
+          setReadiness({ readiness: d.readiness });
         }
       })
       .catch(() => {});
@@ -138,14 +130,6 @@ export function AppSidebar() {
   };
 
   const isActive = (href: string) => {
-    if (href === "/practice/mock") {
-      return (
-        pathname === "/practice/mock" || pathname.startsWith("/practice/mock/")
-      );
-    }
-    if (href === "/practice") {
-      return pathname === "/practice" || pathname.startsWith("/practice/");
-    }
     if (href === "/admin") {
       return pathname.startsWith("/admin");
     }
@@ -215,20 +199,12 @@ export function AppSidebar() {
                 </div>
               </>
             )}
-            {readiness?.daysUntilExam && (
-              <>
-                <span className="text-muted-foreground/40">|</span>
-                <span className="text-xs tabular-nums text-muted-foreground">
-                  {readiness.daysUntilExam}d
-                </span>
-              </>
-            )}
           </div>
         )}
       </SidebarHeader>
 
       <SidebarContent>
-        {/* ⚡ TiC AI Tutor — Hero Item */}
+        {/* Tip is the tutor, and chat is the first thing a student wants */}
         <div className="px-3 pt-3 pb-1">
           <Link
             href="/chat"
@@ -265,7 +241,7 @@ export function AppSidebar() {
                     : "text-foreground",
                 )}
               >
-                TiC AI Tutor
+                Tip
               </p>
               {!isPremium && (
                 <p

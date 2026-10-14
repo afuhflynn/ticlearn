@@ -1,4 +1,7 @@
+import type { User } from "better-auth";
 import { LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { signOut } from "@/lib/auth-client";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import {
@@ -9,9 +12,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { User } from "better-auth";
-import { useRouter } from "next/navigation";
-import { signOut } from "@/lib/auth-client";
 
 export const UserButton = ({ user }: { user: User }) => {
   const router = useRouter();

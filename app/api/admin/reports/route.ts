@@ -1,14 +1,14 @@
-import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 import {
-  UserReport,
+  AffiliateReport,
   FeedbackReport,
   SubscriptionReport,
-  AffiliateReport,
+  UserReport,
 } from "@/components/pdf";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const REPORT_TYPES = {
   users: "users",
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
           title: "User Report",
           subtitle: `Generated on ${new Date().toLocaleDateString()}`,
         });
-        // @ts-ignore
+        // @ts-expect-error
         pdfBuffer = await renderToBuffer(report);
         break;
       }
@@ -98,7 +98,7 @@ export async function POST(req: Request) {
           title: "Feedback Report",
           subtitle: `Generated on ${new Date().toLocaleDateString()}`,
         });
-        // @ts-ignore
+        // @ts-expect-error
         pdfBuffer = await renderToBuffer(report);
         break;
       }
@@ -121,7 +121,7 @@ export async function POST(req: Request) {
           title: "Subscription Report",
           subtitle: `Generated on ${new Date().toLocaleDateString()}`,
         });
-        // @ts-ignore
+        // @ts-expect-error
         pdfBuffer = await renderToBuffer(report);
         break;
       }
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
           title: "Affiliate Report",
           subtitle: `Generated on ${new Date().toLocaleDateString()}`,
         });
-        // @ts-ignore
+        // @ts-expect-error
         pdfBuffer = await renderToBuffer(report);
         break;
       }

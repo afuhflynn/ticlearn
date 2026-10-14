@@ -6,9 +6,6 @@ import type {
   AffiliateEarning,
   AffiliateStatus,
   EarningStatus,
-  ExamMode,
-  ExamStatus,
-  ExamSubject,
   FeedbackStatus,
   FeedbackType,
   FileType,
@@ -26,7 +23,6 @@ import type {
 
 export type { UserRole, Plan, SubscriptionStatus };
 export type { FileType, NoteStatus, QuizStatus, QuestionType };
-export type { ExamSubject, ExamMode, ExamStatus };
 export type { FeedbackType, FeedbackStatus };
 export type { AffiliateStatus, EarningStatus };
 
@@ -132,72 +128,6 @@ export interface QuizGenerationOptions {
 }
 
 // ===========================================
-// Exam Types
-// ===========================================
-
-export type ALevelSubject =
-  | "CS"
-  | "ICT"
-  | "BIO"
-  | "CHEM"
-  | "PHY"
-  | "PMM"
-  | "PMS"
-  | "FM"
-  | "FSN"
-  | "GEOL"
-  | "ENG"
-  | "LIT"
-  | "FRENCH"
-  | "SBE_FR"
-  | "HIST"
-  | "GEOG"
-  | "RS"
-  | "PHIL"
-  | "ECONS"
-  | "ACCT";
-
-export interface ExamSessionWithRelations {
-  id: string;
-  userId: string;
-  subject: ALevelSubject;
-  subjectLabel: string;
-  mode: "MOCK" | "SIMULATION";
-  topic: string;
-  status: "GENERATING" | "READY" | "COMPLETED";
-  score: number | null;
-  timeLimit: number;
-  timeTaken: number | null;
-  questions: ExamQuestion[];
-  answers: ExamAnswer[] | null;
-  createdAt: Date;
-  updatedAt: Date;
-  user?: SafeUser;
-}
-
-export interface ExamQuestion {
-  id: string;
-  type: "MCQ" | "OPEN";
-  question: string;
-  options?: string[];
-  correctAnswer: string;
-  explanation: string;
-}
-
-export interface ExamAnswer {
-  questionId: string;
-  userAnswer: string;
-  isCorrect: boolean;
-}
-
-export interface ExamGenerationOptions {
-  subject: ALevelSubject;
-  topic: string;
-  mode: "MOCK" | "SIMULATION";
-  questionCount: number;
-}
-
-// ===========================================
 // User Stats Types
 // ===========================================
 
@@ -240,96 +170,6 @@ export interface SubscriptionWithUser {
   createdAt: Date;
   user?: SafeUser;
 }
-
-export interface PlanLimits {
-  pdfUploads: number;
-  quizGenerations: number;
-  aiTutorMessages: number;
-  canAccessCommunity: boolean;
-  canAccessLeaderboard: boolean;
-  canAccessGCE: boolean;
-  paper3ExamLimit: number;
-  paper3RetakeLimit: number;
-  paper3AIExamMessages: number;
-  canViewCorrectAnswers: boolean;
-  canAccessPaper3AI: boolean;
-  canShareResults: boolean;
-}
-
-export const PLAN_LIMITS: Record<Exclude<Plan, "PREMIUM">, PlanLimits> = {
-  STARTER: {
-    pdfUploads: 10,
-    quizGenerations: 20,
-    aiTutorMessages: 50,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
-    canAccessGCE: true,
-    paper3ExamLimit: 3,
-    paper3RetakeLimit: 0,
-    paper3AIExamMessages: 4,
-    canViewCorrectAnswers: false,
-    canAccessPaper3AI: false,
-    canShareResults: false,
-  },
-  STANDARD: {
-    pdfUploads: 30,
-    quizGenerations: 60,
-    aiTutorMessages: -1,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
-    canAccessGCE: true,
-    paper3ExamLimit: -1,
-    paper3RetakeLimit: 0,
-    paper3AIExamMessages: -1,
-    canViewCorrectAnswers: true,
-    canAccessPaper3AI: true,
-    canShareResults: true,
-  },
-  PRO: {
-    pdfUploads: -1,
-    quizGenerations: -1,
-    aiTutorMessages: -1,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
-    canAccessGCE: true,
-    paper3ExamLimit: -1,
-    paper3RetakeLimit: -1,
-    paper3AIExamMessages: -1,
-    canViewCorrectAnswers: true,
-    canAccessPaper3AI: true,
-    canShareResults: true,
-  },
-};
-
-export const PREMIUM_LIMITS: PlanLimits = {
-  pdfUploads: -1, // Unlimited
-  quizGenerations: -1, // Unlimited
-  aiTutorMessages: -1, // Unlimited
-  canAccessCommunity: true,
-  canAccessLeaderboard: true,
-  canAccessGCE: true,
-  paper3ExamLimit: -1,
-  paper3RetakeLimit: -1,
-  paper3AIExamMessages: -1,
-  canViewCorrectAnswers: true,
-  canAccessPaper3AI: true,
-  canShareResults: true,
-};
-
-export const FREE_LIMITS: PlanLimits = {
-  pdfUploads: 2,
-  quizGenerations: 4,
-  aiTutorMessages: 8,
-  canAccessCommunity: false,
-  canAccessLeaderboard: true,
-  canAccessGCE: false,
-  paper3ExamLimit: 1,
-  paper3RetakeLimit: 0,
-  paper3AIExamMessages: 4,
-  canViewCorrectAnswers: false,
-  canAccessPaper3AI: false,
-  canShareResults: false,
-};
 
 // ===========================================
 // Feedback Types
@@ -462,37 +302,19 @@ export interface UsageData {
     pdfUploads: number;
     quizGenerations: number;
     aiTutorMessages: number;
+    maxConversationMessages: number;
     canAccessCommunity: boolean;
     canAccessLeaderboard: boolean;
-    canAccessGCE: boolean;
-    paper3ExamLimit: number;
-    paper3RetakeLimit: number;
-    paper3AIExamMessages: number;
-    canViewCorrectAnswers: boolean;
-    canAccessPaper3AI: boolean;
-    canShareResults: boolean;
   };
   usage: {
     pdfUploads: number;
     quizGenerations: number;
     aiTutorMessages: number;
-    paper3ExamsUsed: number;
-    paper3RetakesUsed: number;
   };
   canUpload: boolean;
   canGenerateQuiz: boolean;
   canUseAIChat: boolean;
-  canTakePaper3Exam: boolean;
-  canRetakePaper3Exam: boolean;
-  paper3Usage: {
-    examsUsed: number;
-    examsLimit: number;
-    retakesUsed: number;
-    retakesLimit: number;
-    remaining: number;
-    canRetake: boolean;
-    canTake: boolean;
-  } | null;
+  remainingUploads: number;
   chatDailyUsage: {
     used: number;
     limit: number;
@@ -589,17 +411,6 @@ export interface Feedback {
   subject?: string;
   message: string;
   status: string;
-  createdAt: string;
-}
-
-export interface ExamSession {
-  id: string;
-  title: string;
-  subject: string;
-  status: "GENERATING" | "READY" | "COMPLETED";
-  questions: unknown[];
-  answers?: unknown;
-  score?: number;
   createdAt: string;
 }
 

@@ -16,7 +16,6 @@ export default function robots(): MetadataRoute.Robots {
         "/progress/",
         "/community/",
         "/leaderboard/",
-        "/gce-exams/",
         "/feedback/",
         "/affiliate/",
         "/subscription/",

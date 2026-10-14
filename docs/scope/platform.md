@@ -45,8 +45,17 @@ Every AI prompt is an inline template literal in about ten files. Move them all 
 (basis: research/chat-experience.md §14 and research/web-search-tooling.md §6 both landed on the same front matter shape, so it is designed once and reused)
 
 ### 4. AI model chain through OpenRouter · GA
-Today every AI task hardcoded one Gemini model and there is no fallback. Routed through OpenRouter with an ordered chain of twelve models across frontier and open weight labs, a circuit breaker so a dead model is never retried, and a per request deadline.
+Today every AI task hardcoded one Gemini model and there is no fallback. Routed through OpenRouter with an ordered chain across open weight labs, a circuit breaker so a dead model is never retried, and a per request deadline. The chain is now open weight only and ordered per task in `lib/ai/registry.ts`, so the platform carries no bill for a proprietary model.
 **Done when:** a forced failure on the head of the chain falls through to the next model within the deadline, a dead model is skipped for a cool down window, schema failures do not trip the breaker, and per student AI cost is measurable in XAF.
+- [x] Design it (spec): [0003](../specs/0003-ai-model-chain/index.md) · code in `lib/ai/` (`chain.ts`, `breaker.ts`, `usage.ts`, `pricing.ts`, `fusion.ts`, `orchestrator.ts`)
+- [x] Build it: /feature-build AI model chain through OpenRouter
+  - [x] Chain plus breaker plus deadline (covers AC-1, AC-2, AC-3, AC-5)
+  - [x] Usage ledger plus XAF reads (covers AC-4)
+  - [x] Streaming plus all down plus Paper3 cutover (covers AC-6, AC-7, AC-8)
+- [x] Verify it: /verify-release AI model chain through OpenRouter (PASS 2026-10-12 run 3: all eight AC met with evidence after the review blockers were fixed. Run 1 and run 2 both passed, but run 2's AC-6 evidence was invalid and run 3 re proved it against a lazy stream mock matching the real SDK, plus a live streaming check)
+- [x] Test it: /test-engineer AI model chain through OpenRouter (231 passed 2026-10-12: nine new files covering chain order and error classification, breaker trip and probe, XAF math, ledger attribution, the chain walk, the Fusion gate, both usage routes, plus the AC-4 wiring regression guard and the provider import gate)
+- [x] Review it (fresh model): /peer-review AI model chain through OpenRouter (BLOCKED 2026-10-12: 3 blockers, 11 majors, 11 minors, 5 nits; three blockers independently confirmed on the streaming path, the probe leak on the fail fast path, and the chat timeout cut from 120s to 10s; findings in `docs/reviews/2026-10-12-ai-model-chain.md`)
+- [x] Document it: /tech-writer AI model chain through OpenRouter (changelog entry under Unreleased: Added for the chain, breaker, per student XAF and Fusion, Fixed for the eight defects the review surfaced, Security for the key check and route scoping, Developer Experience for the provider import gate and the test suite)
 - [x] Design it (spec): [0003](../specs/0003-ai-model-chain/index.md) · code in `lib/ai/` (`chain.ts`, `breaker.ts`, `usage.ts`, `pricing.ts`, `fusion.ts`, `orchestrator.ts`)
 - [x] Build it: /feature-build AI model chain through OpenRouter
   - [x] Chain plus breaker plus deadline (covers AC-1, AC-2, AC-3, AC-5)
@@ -63,11 +72,25 @@ Today every AI task hardcoded one Gemini model and there is no fallback. Routed 
 - Schema landed via `db:push`, not a migration file, because pre existing drift on `affiliate_earnings` blocks `pnpm db:migrate` in this database. The written migration is still owed.
 - No migration file means a fresh environment cannot build these two tables from migrations alone; worth resolving before deploy.
 - Budget rule changed during the build and is now settled in code but not yet in the spec: an even split of the 10 second budget gives each of twelve models under a second, so each object attempt uses the time left up to a six second cap, and streaming uses its own 120 second budget for the five step tool loop. The spec's Key invariants still say an even split, and it still prescribes rounding XAF per ledger row, which is what inflated totals before run 3. Both spec lines want a `/solution-architect AI model chain` pass.
+- Shipped twelve ids across eight labs rather than six, verified live against the OpenRouter catalog with zero expiry dates, head `google/gemini-3.7-flash` after research found `google/gemini-2.5-flash` expires 2026-10-20.
+- Review returned BLOCKED (2026-10-12): 3 blockers, 11 majors. All three blockers fixed and re verified in run 3: streaming fallback had been dead code because `streamText` returns lazily and reports failure through `onError` rather than throwing, so the walk now gates on the first text token; the probe no longer leaks on the fail fast path; chat streaming got its own 120 second budget again. Of the majors, the failed probe no longer marks a model healthy, fail fast is limited to request scoped statuses, unclassified errors no longer trip the breaker, chat titles are attributed, per row XAF rounding no longer inflates student totals, and `USD_TO_XAF_RATE` plus the missing key check are now live. The remaining majors are tracked in `docs/reviews/2026-10-12-ai-model-chain.md`.
+- Schema landed via `db:push`, not a migration file, because pre existing drift on `affiliate_earnings` blocks `pnpm db:migrate` in this database. The written migration is still owed.
+- No migration file means a fresh environment cannot build these two tables from migrations alone; worth resolving before deploy.
+- Budget rule changed during the build and is now settled in code but not yet in the spec: an even split of the 10 second budget gives each of twelve models under a second, so each object attempt uses the time left up to a six second cap, and streaming uses its own 120 second budget for the five step tool loop. The spec's Key invariants still say an even split, and it still prescribes rounding XAF per ledger row, which is what inflated totals before run 3. Both spec lines want a `/solution-architect AI model chain` pass.
 
-### 7. Design system and UI toolkit convention · needs a decision · GA
+### 7. Design system and UI toolkit convention · GA
 The tokens and the rounded radius are a real asset every kit would replace, so keep them. Document a rule: shadcn and AI Elements are the default, components are owned locally and customised, and a new primitive is built only where shadcn genuinely lacks one. Also switch the shadcn base off the slowing Radix fork and record which of the twenty three unused AI Elements come in.
 **Done when:** `docs/research/ui-toolkit.md` §7 is turned into a written convention, the shadcn base is current, the custom primitives the rebuild needs exist as owned components, focus rings pass contrast, no screen hand rolls a control that shadcn already ships, and the responsive contract for every breakpoint is written down once rather than invented per screen.
-- [ ] Design it (spec): `/solution-architect design system and UI toolkit convention`
+- [x] Design it (spec): [0004](../specs/0004-design-system-and-ui-toolkit-convention/index.md) · a cross cutting standard: Base UI base, the token and control rules, a CI check with a legacy baseline, a gallery plus axe scan, 6 new primitives, the AI Elements prune, and the AI SDK bump
+- [ ] Build it: /feature-build design system and UI toolkit convention
+  - [ ] The rule and the guardrails: `docs/design-system.md` written, `AGENTS.md` pointed at it, `components.json` style moved to Base UI so a later `shadcn add` cannot regenerate Radix (satisfies AC-1, AC-2)
+  - [ ] The gate: `pnpm ui:check` over 4 pinned rules with a committed baseline, the inventory file, and the Playwright plus axe harness in CI (satisfies AC-4, AC-6, AC-7, AC-13)
+  - [ ] The base switch: the 33 Radix primitives ported one per slice, focus contrast fixed first, tokens and radius protected, the 11 sidebar and command importers compiling unchanged (satisfies AC-2, AC-3, AC-8)
+  - [ ] The cleanup: 6 new primitives with 4 call sites moved to one markdown renderer, 23 dead AI Elements pruned, the referral overlay converted, `--spacing` deleted (satisfies AC-9, AC-10, AC-11, AC-12)
+- [ ] Verify it: /verify-release design system and UI toolkit convention
+- [ ] Test it: /test-engineer design system and UI toolkit convention
+- [ ] Review it (fresh model): /peer-review design system and UI toolkit convention
+- [ ] Document it: /tech-writer design system and UI toolkit convention
 
 (basis: research/ui-toolkit.md · forty six of fifty five UI files have diverged from upstream, which is right for design and fatal for future accessibility fixes, so the convention must say rebase rather than drift)
 
@@ -84,8 +107,8 @@ Forty six variables are read across the app. Five are stale, three of them sitti
 - [ ] Write the template: `/feature-build environment variables documented`
 
 ### 10. Database indexes and query rewrites · needs a decision · GA
-Leaderboards run a count per view, admin metrics recompute from raw events with up to sixty two queries per request, the exam endpoint returns whole question rows with answers attached, and there are genuine N plus one loops in the stats route.
-**Done when:** the exact composite indexes exist for every leaderboard sort key and every lookup path, the exam endpoint returns questions without answers, counts and metrics come from rollups rather than live aggregation, and no request runs an unbounded query or a loop with a query inside it.
+Leaderboards run a count per view, admin metrics recompute from raw events with up to sixty two queries per request, and there are genuine N plus one loops in the stats route. The exam endpoint that used to return whole question rows with answers attached is deleted with the pivot.
+**Done when:** the exact composite indexes exist for every leaderboard sort key and every lookup path, counts and metrics come from rollups rather than live aggregation, and no request runs an unbounded query or a loop with a query inside it.
 - [ ] Design it (spec): `/solution-architect database indexes and query rewrites`
 
 (basis: research/performance-and-database.md §1 · every recommendation carries exact DDL with column order, so this is design plus execution, not judgement)
@@ -118,7 +141,9 @@ Two layouts block the entire page, including the navigation, on a database call 
 
 ### 35. Loading states and perceived speed
 There are no route level loading boundaries anywhere, so any slow layout shows nothing at all. Sixty eight skeleton usages sit inside client components where they do not help, and a long AI answer cannot honestly be a skeleton because a student reads that as broken.
-**Done when:** every route that can be slow has a boundary that shows something honest, nothing under a second shows a loader, a skeleton appears only where the shape is genuinely known, the AI answer streams into place rather than sitting behind a placeholder, and the exam runner shows no loading state that could read as a lost answer.
+**Done when:** every route that can be slow has a boundary that shows something honest, nothing under a second shows a loader, a skeleton appears only where the shape is genuinely known, the AI answer streams into place rather than sitting behind a placeholder, and no loading state can read as a lost answer.
+
+NOTE: But if we actually need loading states, we are going to prioritize the shadcn ui rule and make use of skeletons only, not just blocking the whole page with some loading boundary but display what doesn't truly needs loading and bor ui components, or cards or sections or any button or text or icons or any shit that needs loading, we will prioritize using shadcn skeletons to make the ui more modern like most modern top notch uis and ux like on chatgpt, claude, youtube, etc...
 - [ ] Design it (spec): `/solution-architect loading states and perceived speed`
 
 (basis: research/seo-and-rendering.md §7 · the thresholds are published and cheap to hit, the rule that matters is the last one, a loader inside a timed exam is a correctness risk not a polish item)

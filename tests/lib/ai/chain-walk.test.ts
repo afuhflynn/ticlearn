@@ -1,14 +1,14 @@
 import { generateObject, generateText, streamText } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import { markProbeStart as realMarkProbeStart } from "@/lib/ai/breaker";
 import { clearCache } from "@/lib/ai/cache";
+import { CHAIN_DEADLINE_MS, CHAIN_STREAM_DEADLINE_MS } from "@/lib/ai/chain";
 import {
   generate,
   generateTextWithFallback,
   streamChat,
 } from "@/lib/ai/orchestrator";
-import { CHAIN_DEADLINE_MS, CHAIN_STREAM_DEADLINE_MS } from "@/lib/ai/chain";
-import { markProbeStart as realMarkProbeStart } from "@/lib/ai/breaker";
 
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
@@ -91,9 +91,7 @@ beforeEach(() => {
     usage: { promptTokens: 10, completionTokens: 5 },
   } as never);
   vi.mocked(generateText).mockResolvedValue({ text: "answer" } as never);
-  vi.mocked(streamText).mockReturnValue(
-    lazyStream({ chunks: ["hel", "lo"] }),
-  );
+  vi.mocked(streamText).mockReturnValue(lazyStream({ chunks: ["hel", "lo"] }));
   chainOf(["google/gemini-3.7-flash", "openai/gpt-5-nano"]);
 });
 
@@ -372,7 +370,9 @@ describe("streamChat (covers: AC-6)", () => {
 
   it("falls through to the next model when the head stream yields no token", async () => {
     vi.mocked(streamText)
-      .mockReturnValueOnce(lazyStream({ chunks: [], error: transportFailure() }))
+      .mockReturnValueOnce(
+        lazyStream({ chunks: [], error: transportFailure() }),
+      )
       .mockReturnValueOnce(lazyStream({ chunks: ["ok"] }));
 
     await streamChat({ task: "fast_chat", messages: [] });
@@ -383,8 +383,9 @@ describe("streamChat (covers: AC-6)", () => {
   it("returns the stream whose first token it already proved", async () => {
     const result = await streamChat({ task: "fast_chat", messages: [] });
     let text = "";
-    for await (const chunk of (result as unknown as { textStream: AsyncIterable<string> })
-      .textStream) {
+    for await (const chunk of (
+      result as unknown as { textStream: AsyncIterable<string> }
+    ).textStream) {
       text += chunk;
     }
     expect(text).toBe("hello");
@@ -419,7 +420,9 @@ describe("streamChat (covers: AC-6)", () => {
 
   it("records a transport failure for the model whose stream died", async () => {
     vi.mocked(streamText)
-      .mockReturnValueOnce(lazyStream({ chunks: [], error: transportFailure() }))
+      .mockReturnValueOnce(
+        lazyStream({ chunks: [], error: transportFailure() }),
+      )
       .mockReturnValueOnce(lazyStream({ chunks: ["ok"] }));
 
     await streamChat({ task: "fast_chat", messages: [] });
@@ -455,7 +458,7 @@ describe("streamChat (covers: AC-6)", () => {
 
   it("passes tools through to the stream, so chat keeps its tools", async () => {
     const tools = { searchNotes: {} };
-    await streamChat({ task: "reasoning", messages: [], tools });
+    await streamChat({ task: "fast_chat", messages: [], tools });
 
     expect(vi.mocked(streamText).mock.calls[0][0].tools).toBe(tools);
   });

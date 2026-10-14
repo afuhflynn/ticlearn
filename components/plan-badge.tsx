@@ -1,8 +1,8 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { usePlan } from "@/hooks/usePlan";
-import { Sparkles } from "lucide-react";
 
 export function PlanBadge() {
   const { plan, isPaid, isLoading } = usePlan();

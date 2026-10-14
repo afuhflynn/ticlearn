@@ -1,8 +1,7 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
-import { getActiveProfileId } from "@/lib/exam-profile";
 
 export async function GET() {
   try {
@@ -15,8 +14,7 @@ export async function GET() {
     }
 
     const userId = session.user.id;
-    const profileId = await getActiveProfileId(userId);
-    const attemptFilter = profileId ? { examProfileId: profileId } : { userId };
+    const attemptFilter = { userId };
 
     const [userStats, noteCount, quizCount, attemptCount, avgScore] =
       await Promise.all([

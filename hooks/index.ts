@@ -49,7 +49,6 @@ export {
   useLikePost,
 } from "./useCommunity";
 export { useCredits } from "./useCredits";
-export { useExam, useExams, useGenerateExam, useSubmitExam } from "./useExams";
 export { useFeedbacks, useSubmitFeedback } from "./useFeedback";
 export { useAcceptInvite } from "./useInvite";
 export {
@@ -61,38 +60,6 @@ export {
   useUploadNote,
 } from "./useNotes";
 export { useMarkNotificationRead, useNotifications } from "./useNotifications";
-export {
-  useApprovePaper3Question,
-  useCheckPaper3Answer,
-  useCreatePaper3Mock,
-  useDeletePaper3Mock,
-  useDeletePaper3Source,
-  useGeneratePaper3Mock,
-  useGlobalPaper3Leaderboard,
-  usePaper3Chat,
-  usePaper3Leaderboard,
-  usePaper3Mock,
-  usePaper3MockAttempt,
-  usePaper3Mocks,
-  usePaper3MyAttempts,
-  usePaper3PracticeQuestion,
-  usePaper3PracticeQuestions,
-  usePaper3Question,
-  usePaper3Questions,
-  usePaper3Recommendations,
-  usePaper3Source,
-  usePaper3Sources,
-  usePaper3Stats,
-  useProcessPaper3Source,
-  usePublishPaper3Mock,
-  useRejectPaper3Question,
-  useStartPaper3MockExam,
-  useSubmitPaper3MockExam,
-  useUpdatePaper3Mock,
-  useUpdatePaper3Question,
-  useUploadPaper3Source,
-  useViewPaper3CorrectAnswer,
-} from "./usePaper3";
 export { usePaymentSettings, useUpdatePaymentSettings } from "./usePayment";
 export { usePlan } from "./usePlan";
 export {
@@ -102,11 +69,9 @@ export {
   useUpdateProfile,
   useUpdateSettings,
 } from "./useProfile";
-export { usePracticeQuestions } from "./useQuestions";
 export {
   useDeleteQuiz,
   useGenerateQuiz,
-  useGenerateQuizFromWeakAreas,
   useQuiz,
   useQuizAttempt,
   useQuizAttempts,

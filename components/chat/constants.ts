@@ -1,10 +1,13 @@
 export const PENDING_CHAT_MESSAGE_PREFIX = "ticlearn-pending-chat";
 
+/** The tutor's visible name. Every student facing surface reads it from here. */
+export const TIP_NAME = "Tip";
+
 export const CHAT_SUGGESTIONS = [
   "Explain my weakest topic like I am revising tonight",
-  "Turn this uploaded question into a step-by-step solution",
+  "Walk me through this note step by step",
   "Build a 7-day study sprint from my progress",
-  "Quiz me from my notes with exam-style questions",
+  "Quiz me from my notes with real questions",
 ];
 
 export const QUICK_ACTIONS = [
@@ -16,24 +19,24 @@ export const QUICK_ACTIONS = [
     icon: "progress" as const,
   },
   {
-    title: "Past-paper lens",
-    description: "Upload a question image or PDF and unpack it.",
+    title: "Photo of your notes",
+    description: "Attach a photo and Tip reads it back to you.",
     prompt:
-      "I am going to attach a past-paper question. Read it, identify the topic, explain the solution, and show what examiners expect.",
+      "I am going to attach a photo of my notes. Read it, tell me what it covers, then teach me the hardest part of it.",
     icon: "image" as const,
   },
   {
     title: "Note transformer",
     description: "Convert notes into flashcards, summaries, or quizzes.",
     prompt:
-      "Use my uploaded note or my note library to create a concise summary, 10 flashcards, and 5 exam-style questions.",
+      "Use my uploaded note or my note library to create a concise summary, 10 flashcards, and 5 practice questions.",
     icon: "notes" as const,
   },
   {
-    title: "Mock debrief",
+    title: "Mistake debrief",
     description: "Review mistakes and decide what to do next.",
     prompt:
-      "Analyze my recent mock or quiz performance and give me a mistake debrief with next actions.",
+      "Analyze my recent quiz performance and give me a mistake debrief with next actions.",
     icon: "quiz" as const,
   },
 ];

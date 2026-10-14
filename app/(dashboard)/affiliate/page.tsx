@@ -1,21 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSession } from "@/lib/auth-client";
-import { useAffiliate, useUpdateAffiliate, useRequestPayout } from "@/hooks";
-import type { AffiliateData } from "@/types";
 import {
-  Copy,
-  TrendingUp,
-  DollarSign,
-  Users,
-  Loader2,
-  CheckCircle,
-  Wallet,
-  Gift,
   Calendar,
+  CheckCircle,
+  Copy,
+  DollarSign,
+  Gift,
+  Loader2,
   Mail,
+  TrendingUp,
+  Users,
+  Wallet,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -26,8 +25,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
+import { useAffiliate, useRequestPayout, useUpdateAffiliate } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
+import type { AffiliateData } from "@/types";
 
 export default function AffiliatePage() {
   const { data: session, isPending: sessionLoading } = useSession();

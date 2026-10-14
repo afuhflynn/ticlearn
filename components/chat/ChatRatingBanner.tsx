@@ -1,11 +1,11 @@
 "use client";
 
-import { type UIMessage } from "ai";
-import { ThumbsUp, ThumbsDown, Loader2 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import type { UIMessage } from "ai";
+import { Loader2, ThumbsDown, ThumbsUp } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 
 const IDLE_DELAY = 3000;

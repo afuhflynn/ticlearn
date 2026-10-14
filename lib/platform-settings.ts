@@ -9,15 +9,10 @@ export const CREDIT_PURCHASE_EXTERNAL_ID_PREFIX = "cpo_";
 export type PlatformSettingsSnapshot = Pick<
   PlatformSettings,
   | "creditCostQuizGeneration"
-  | "creditCostMockQuestion"
-  | "creditCostMockGeneration"
   | "creditCostPracticeQuestion"
   | "creditCostRevisionGuideView"
   | "creditCostRevisionGuideGen"
   | "creditCostAiTutorMessage"
-  | "mockMinQuestions"
-  | "mockMaxQuestions"
-  | "enforceCreditsForMocks"
   | "enforceCreditsForPractice"
   | "enforceCreditsForRevisionGuides"
   | "enforceCreditsForAiTutor"
@@ -29,22 +24,16 @@ export type PlatformSettingsSnapshot = Pick<
   | "creditCostMultiplierStandard"
   | "creditCostMultiplierPremium"
   | "creditCostMultiplierPro"
-  | "useAceShortAnswerGrading"
   | "usdToXafRate"
   | "aiFusionAllow"
 >;
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostQuizGeneration: 50,
-  creditCostMockQuestion: 10,
-  creditCostMockGeneration: 40,
   creditCostPracticeQuestion: 5,
   creditCostRevisionGuideView: 0,
   creditCostRevisionGuideGen: 0,
   creditCostAiTutorMessage: 5,
-  mockMinQuestions: 5,
-  mockMaxQuestions: 50,
-  enforceCreditsForMocks: true,
   enforceCreditsForPractice: true,
   enforceCreditsForRevisionGuides: false,
   enforceCreditsForAiTutor: true,
@@ -56,13 +45,11 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostMultiplierStandard: 0.6,
   creditCostMultiplierPremium: 0.4,
   creditCostMultiplierPro: 0.4,
-  useAceShortAnswerGrading: true,
   usdToXafRate: 650,
   aiFusionAllow: false,
 };
 
 export type CreditEnforcementEffective = {
-  mocks: boolean;
   practice: boolean;
   revisionGuides: boolean;
   aiTutor: boolean;
@@ -73,7 +60,6 @@ export function creditEnforcementEffective(
 ): CreditEnforcementEffective {
   const all = settings.enforceCreditsAll;
   return {
-    mocks: all || settings.enforceCreditsForMocks,
     practice: all || settings.enforceCreditsForPractice,
     revisionGuides: all || settings.enforceCreditsForRevisionGuides,
     aiTutor: all || settings.enforceCreditsForAiTutor,
@@ -86,14 +72,6 @@ export function quizCreditsRequired(
 ): boolean {
   const e = creditEnforcementEffective(settings);
   return e.practice && settings.creditCostQuizGeneration > 0;
-}
-
-/** Paper 1/2 mock assembly debits when practice enforcement is on and generation cost is positive. */
-export function practiceMockGenerationCreditsRequired(
-  settings: PlatformSettingsSnapshot,
-): boolean {
-  const e = creditEnforcementEffective(settings);
-  return e.practice && settings.creditCostMockGeneration > 0;
 }
 
 /** Credits from XAF using floor (same as pay-as-you-go purchase calculation). */
@@ -116,15 +94,10 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
 
   return {
     creditCostQuizGeneration: settings.creditCostQuizGeneration,
-    creditCostMockQuestion: settings.creditCostMockQuestion,
-    creditCostMockGeneration: settings.creditCostMockGeneration,
     creditCostPracticeQuestion: settings.creditCostPracticeQuestion,
     creditCostRevisionGuideView: settings.creditCostRevisionGuideView,
     creditCostRevisionGuideGen: settings.creditCostRevisionGuideGen,
     creditCostAiTutorMessage: settings.creditCostAiTutorMessage,
-    mockMinQuestions: settings.mockMinQuestions,
-    mockMaxQuestions: settings.mockMaxQuestions,
-    enforceCreditsForMocks: settings.enforceCreditsForMocks,
     enforceCreditsForPractice: settings.enforceCreditsForPractice,
     enforceCreditsForRevisionGuides: settings.enforceCreditsForRevisionGuides,
     enforceCreditsForAiTutor: settings.enforceCreditsForAiTutor,
@@ -136,7 +109,6 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
     creditCostMultiplierStandard: settings.creditCostMultiplierStandard,
     creditCostMultiplierPremium: settings.creditCostMultiplierPremium,
     creditCostMultiplierPro: settings.creditCostMultiplierPro,
-    useAceShortAnswerGrading: settings.useAceShortAnswerGrading,
     usdToXafRate: settings.usdToXafRate,
     aiFusionAllow: settings.aiFusionAllow,
   };
@@ -148,23 +120,4 @@ export async function ensurePlatformSettings() {
     create: { key: PLATFORM_SETTINGS_KEY, ...DEFAULT_PLATFORM_SETTINGS },
     update: {},
   });
-}
-
-export function maxAffordableMockQuestions(
-  credits: number,
-  settings: PlatformSettingsSnapshot,
-): number {
-  if (settings.creditCostMockQuestion <= 0) {
-    return settings.mockMaxQuestions;
-  }
-
-  const affordable = Math.floor(credits / settings.creditCostMockQuestion);
-  return Math.min(settings.mockMaxQuestions, Math.max(0, affordable));
-}
-
-export function mockCreditCost(
-  questionCount: number,
-  settings: PlatformSettingsSnapshot,
-): number {
-  return questionCount * settings.creditCostMockQuestion;
 }

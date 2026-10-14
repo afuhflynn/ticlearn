@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
-import { api } from "@/lib/api-client";
 import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect, useState } from "react";
+import { api } from "@/lib/api-client";
 
 interface SearchableUser {
   id: string;

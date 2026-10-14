@@ -1,6 +1,6 @@
-import { auth } from "./auth";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { auth } from "./auth";
 
 export async function requireAdmin(): Promise<
   | { user: { id: string; role: string; email: string; name: string | null } }

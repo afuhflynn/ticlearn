@@ -1,19 +1,20 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import { generateQuizFromNote } from "@/lib/ai";
-import {
-  getPlatformSettings,
-  quizCreditsRequired,
-} from "@/lib/platform-settings";
+import { auth } from "@/lib/auth";
 import {
   getEffectiveCreditCost,
   getUserCreditBalance,
   spendCredits,
 } from "@/lib/credits";
-import { trackEvent, EVENTS } from "@/lib/kpi";
+import { EVENTS, trackEvent } from "@/lib/kpi";
+import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
+import {
+  getPlatformSettings,
+  quizCreditsRequired,
+} from "@/lib/platform-settings";
+import { prisma } from "@/lib/prisma";
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),
@@ -67,21 +68,13 @@ export async function POST(req: Request) {
       orderBy: { createdAt: "desc" },
     });
 
-    const plan = subscription?.status === "ACTIVE" ? subscription.plan : "FREE";
-    const quizLimits: Record<string, number> = {
-      FREE: 4,
-      STARTER: 20,
-      STANDARD: 60,
-      PREMIUM: -1,
-      PRO: -1,
-    };
-
-    const quizLimit = quizLimits[plan] ?? quizLimits.FREE;
+    const plan = resolvePlan(subscription);
+    const quizLimit = getPlanLimits(plan).quizGenerations;
     const quizCount = await prisma.quiz.count({
       where: { userId: session.user.id },
     });
 
-    if (quizLimit !== -1 && quizCount >= quizLimit) {
+    if (limitReached(quizLimit, quizCount)) {
       return NextResponse.json(
         {
           error: `Quiz generation limit reached (${quizLimit}). Upgrade to generate more quizzes.`,

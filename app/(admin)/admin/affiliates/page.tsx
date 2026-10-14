@@ -1,28 +1,25 @@
 "use client";
 
-import { useState } from "react";
 import {
-  useAdminAffiliates,
-  useAdminAffiliate,
-  useUpdateAdminAffiliate,
-} from "@/hooks/useAdmin";
-import { UserCommandSelector } from "@/components/user-command-selector";
-import {
+  AlertCircle,
+  CheckCircle,
+  Copy,
+  DollarSign,
+  Eye,
   Link2,
-  Plus,
   Loader2,
+  Mail,
   MoreVertical,
-  Users,
+  Plus,
   Search,
   TrendingUp,
-  DollarSign,
-  AlertCircle,
-  Copy,
-  Mail,
-  CheckCircle,
+  Users,
   XCircle,
-  Eye,
 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -30,25 +27,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -58,8 +36,30 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { UserCommandSelector } from "@/components/user-command-selector";
+import {
+  useAdminAffiliate,
+  useAdminAffiliates,
+  useUpdateAdminAffiliate,
+} from "@/hooks/useAdmin";
 import { useConfirmEarnings, useCreateAffiliate } from "@/hooks/useAffiliate";
 
 export default function AdminAffiliatesPage() {

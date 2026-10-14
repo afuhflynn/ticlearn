@@ -1,18 +1,15 @@
 import { openrouter } from "./instances";
 
-export const DEFAULT_CHAIN: string[] = [
-  "google/gemini-3.7-flash",
-  "openai/gpt-5-nano",
-  "deepseek/deepseek-v4.1-flash",
-  "anthropic/claude-haiku-5.5",
-  "z-ai/glm-4.7-flash",
-  "openai/gpt-5-mini",
-  "google/gemini-3.8-flash",
-  "anthropic/claude-haiku-4.5",
+/**
+ * Open weight models only, cheapest first. The platform cannot carry a bill for
+ * proprietary models, so no task chain may name one. `lib/ai/registry.ts` orders
+ * these per task, and `MODEL_PRICES` prices every id here.
+ */
+export const OPEN_WEIGHT_CHAIN: string[] = [
   "openai/gpt-oss-120b",
+  "z-ai/glm-4.7-flash",
+  "deepseek/deepseek-v4.1-flash",
   "meta-llama/llama-3.3-70b-instruct",
-  "mistralai/mistral-medium-3.1",
-  "x-ai/grok-4.7",
 ];
 
 export const CHAIN_DEADLINE_MS = 10_000;
@@ -24,15 +21,6 @@ export const CHAIN_DEADLINE_MS = 10_000;
 export const CHAIN_STREAM_DEADLINE_MS = 120_000;
 export const TRIP_THRESHOLD = 3;
 export const COOLDOWN_MS = 2 * 60_000;
-
-export function getChain(): string[] {
-  const raw = process.env.AI_CHAIN_ORDER ?? "";
-  const ids = raw
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-  return ids.length > 0 ? ids : [...DEFAULT_CHAIN];
-}
 
 export function chainModel(modelId: string) {
   return openrouter()(modelId);

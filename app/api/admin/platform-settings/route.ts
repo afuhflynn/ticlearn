@@ -11,8 +11,6 @@ import { prisma } from "@/lib/prisma";
 
 const updateSchema = z.object({
   creditCostQuizGeneration: z.number().int().min(0).max(10_000).optional(),
-  creditCostMockQuestion: z.number().int().min(0).max(1_000).optional(),
-  creditCostMockGeneration: z.number().int().min(0).max(10_000).optional(),
   creditCostPracticeQuestion: z.number().int().min(0).max(1_000).optional(),
   creditCostRevisionGuideView: z.number().int().min(0).max(10_000).optional(),
   creditCostRevisionGuideGen: z.number().int().min(0).max(10_000).optional(),
@@ -21,9 +19,6 @@ const updateSchema = z.object({
   creditCostMultiplierStandard: z.number().min(0.01).max(5).optional(),
   creditCostMultiplierPremium: z.number().min(0.01).max(5).optional(),
   creditCostMultiplierPro: z.number().min(0.01).max(5).optional(),
-  mockMinQuestions: z.number().int().min(1).max(100).optional(),
-  mockMaxQuestions: z.number().int().min(1).max(100).optional(),
-  enforceCreditsForMocks: z.boolean().optional(),
   enforceCreditsForPractice: z.boolean().optional(),
   enforceCreditsForRevisionGuides: z.boolean().optional(),
   enforceCreditsForAiTutor: z.boolean().optional(),
@@ -31,7 +26,6 @@ const updateSchema = z.object({
   creditsPer1000Xaf: z.number().int().min(1).max(100_000).optional(),
   minCreditPurchaseXaf: z.number().int().min(100).max(1_000_000).optional(),
   maxCreditPurchaseXaf: z.number().int().min(100).max(10_000_000).optional(),
-  useAceShortAnswerGrading: z.boolean().optional(),
 });
 
 async function requireAdmin() {
@@ -69,17 +63,6 @@ export async function PUT(req: Request) {
     }
 
     const body = updateSchema.parse(await req.json());
-
-    if (
-      body.mockMinQuestions !== undefined &&
-      body.mockMaxQuestions !== undefined &&
-      body.mockMinQuestions > body.mockMaxQuestions
-    ) {
-      return NextResponse.json(
-        { error: "mockMinQuestions cannot exceed mockMaxQuestions" },
-        { status: 400 },
-      );
-    }
 
     if (
       body.minCreditPurchaseXaf !== undefined &&

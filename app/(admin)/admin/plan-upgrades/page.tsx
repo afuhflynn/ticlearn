@@ -74,7 +74,6 @@ const PLAN_BADGE_VARIANTS: Record<
 };
 
 function getOnboardingLabel(user: AdminPlanUser) {
-  if (!user.activeProfileId) return "No profile";
   if (user.onboardingSkipped) return "Skipped";
   if (user.onboardingCompleted) return "Completed";
   return "Incomplete";
@@ -84,7 +83,6 @@ function getOnboardingVariant(user: AdminPlanUser) {
   const label = getOnboardingLabel(user);
   if (label === "Completed") return "default" as const;
   if (label === "Skipped") return "secondary" as const;
-  if (label === "No profile") return "destructive" as const;
   return "outline" as const;
 }
 
@@ -350,35 +348,11 @@ export default function AdminPlanUpgradesPage() {
                                 {getOnboardingLabel(user)}
                               </Badge>
                               <div className="text-xs text-muted-foreground">
-                                Step {user.onboardingStep ?? 0} ·{" "}
-                                {user.phoneCountryCode || ""}{" "}
-                                {user.phoneNumber || "No phone"}
-                              </div>
-                              <div className="text-xs text-muted-foreground">
-                                Exam: {formatDate(user.examDate)}
+                                Level: {user.levelOfStudy ?? "Not set"}
                               </div>
                             </div>
                           </TableCell>
-                          <TableCell>
-                            <div className="max-w-56 space-y-1">
-                              {user.programs.length ? (
-                                user.programs.slice(0, 2).map((program) => (
-                                  <Badge key={program.id} variant="secondary">
-                                    {program.code}
-                                  </Badge>
-                                ))
-                              ) : (
-                                <span className="text-sm text-muted-foreground">
-                                  No programs
-                                </span>
-                              )}
-                              {user.programs.length > 2 ? (
-                                <div className="text-xs text-muted-foreground">
-                                  +{user.programs.length - 2} more
-                                </div>
-                              ) : null}
-                            </div>
-                          </TableCell>
+
                           <TableCell>
                             <div className="space-y-1">
                               <Badge

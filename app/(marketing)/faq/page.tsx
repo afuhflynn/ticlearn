@@ -1,13 +1,13 @@
 "use client";
 
-import { FAQ_ITEMS } from "@/constants";
+import { ArrowRight } from "lucide-react";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { ArrowRight } from "lucide-react";
+import { FAQ_ITEMS } from "@/constants";
 
 export default function FAQPage() {
   return (
