@@ -178,12 +178,12 @@ describe("orchestrator prompt trace logs (covers: spec standard traceability)", 
     const debugSpy = vi.spyOn(console, "debug").mockImplementation(() => {});
     try {
       await generateTextWithFallback({
-        task: "reasoning",
+        task: "fast_chat",
         prompt: "p",
         promptRef: ref,
       });
       await generateTextCritical({
-        task: "reasoning",
+        task: "fast_chat",
         prompt: "p",
         promptRef: ref,
       });

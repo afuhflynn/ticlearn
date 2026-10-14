@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signIn, useSession } from "@/lib/auth-client";
 import { motion } from "framer-motion";
 import {
-  GraduationCap,
-  Mail,
-  Lock,
-  Eye,
-  EyeOff,
-  Loader2,
   AlertCircle,
   ArrowRight,
+  Eye,
+  EyeOff,
+  GraduationCap,
+  Loader2,
+  Lock,
+  Mail,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -26,10 +26,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
-import { useQueryStates } from "nuqs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { signIn, useSession } from "@/lib/auth-client";
 import { searchParamsSchema } from "@/nuqs";
-import Image from "next/image";
 
 export default function SignInPage() {
   const router = useRouter();

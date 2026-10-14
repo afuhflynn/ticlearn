@@ -1,12 +1,12 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
 import { Bell, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { UserButton } from "../user/user-button";
+import { useSession } from "@/lib/auth-client";
 import { PlanBadge } from "../plan-badge";
+import { UserButton } from "../user/user-button";
 
 export function DashboardHeader() {
   const { data: session } = useSession();

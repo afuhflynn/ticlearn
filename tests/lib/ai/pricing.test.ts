@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CHAIN } from "@/lib/ai/chain";
+import { OPEN_WEIGHT_CHAIN } from "@/lib/ai/chain";
 import {
   DEFAULT_USD_TO_XAF_RATE,
   estimateCostUsd,
@@ -24,7 +24,7 @@ describe("priceFor (covers: AC-4)", () => {
   });
 
   it("prices every shipped chain model so XAF never silently becomes zero", () => {
-    for (const id of DEFAULT_CHAIN) {
+    for (const id of OPEN_WEIGHT_CHAIN) {
       expect(MODEL_PRICES[id], `no price for ${id}`).toBeDefined();
     }
   });

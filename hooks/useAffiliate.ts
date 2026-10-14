@@ -1,8 +1,8 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
-import { CreateAffiliateParams } from "@/types";
+import { queryKeys } from "@/lib/query-keys";
+import type { CreateAffiliateParams } from "@/types";
 
 export function useAffiliate() {
   const { data, isLoading, error } = useQuery({

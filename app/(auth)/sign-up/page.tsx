@@ -1,23 +1,23 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { signIn, signUp } from "@/lib/auth-client";
 import { motion } from "framer-motion";
 import {
-  GraduationCap,
-  Mail,
-  Lock,
+  AlertCircle,
   Eye,
   EyeOff,
+  GraduationCap,
   Loader2,
+  Lock,
+  Mail,
   User,
-  AlertCircle,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -26,10 +26,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
-import { useQueryStates } from "nuqs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { signIn, signUp } from "@/lib/auth-client";
 import { searchParamsSchema } from "@/nuqs";
-import Image from "next/image";
 
 function SignUpForm() {
   const router = useRouter();

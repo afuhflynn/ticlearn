@@ -1,23 +1,15 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
-import { useAdminStats } from "@/hooks/useAdmin";
 import {
-  Shield,
-  Users,
-  MessageCircle,
   CreditCard,
   Link2,
-  ListChecks,
   Loader2,
-  GraduationCap,
-  FileText,
-  Upload,
-  ClipboardList,
-  BarChart3,
-  Sparkles,
+  MessageCircle,
+  Shield,
+  Users,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -25,7 +17,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import Link from "next/link";
+import { useAdminStats } from "@/hooks/useAdmin";
+import { useSession } from "@/lib/auth-client";
 
 const navItems = [
   {
@@ -58,70 +51,6 @@ const navItems = [
     icon: Link2,
     href: "/admin/affiliates",
     description: "Manage affiliate program",
-  },
-  {
-    title: "GCE Papers 1–2 upload",
-    icon: Upload,
-    href: "/admin/upload",
-    description:
-      "Upload past papers; questions are extracted into the syllabus bank for mock generation.",
-  },
-  {
-    title: "Exam blueprints",
-    icon: ClipboardList,
-    href: "/admin/blueprints",
-    description:
-      "Paper 1 & 2 mock structure—who sees each blueprint on Practice vs Community.",
-  },
-  {
-    title: "Paper 1 & 2 — generate mocks",
-    icon: Sparkles,
-    href: "/admin/mocks/p1-p2",
-    description:
-      "Run the same timed mock generation as learners, then publish a standard blueprint with visibility.",
-  },
-  {
-    title: "Questions",
-    icon: ListChecks,
-    href: "/admin/questions",
-    description: "Browse and manage ingested syllabus questions.",
-  },
-  {
-    title: "Paper 3 uploads",
-    icon: Upload,
-    href: "/admin/paper3/upload",
-    description: "Upload Paper 3 practical source PDFs.",
-  },
-  {
-    title: "Paper3 Sources",
-    icon: FileText,
-    href: "/admin/paper3/sources",
-    description: "Manage Paper3 question sources",
-  },
-  {
-    title: "Paper3 Questions",
-    icon: ListChecks,
-    href: "/admin/paper3/questions",
-    description: "Review and approve Paper3 questions",
-  },
-  {
-    title: "Paper3 Mocks",
-    icon: GraduationCap,
-    href: "/admin/paper3/mocks",
-    description: "Create and manage mock exams",
-  },
-  {
-    title: "Paper3 Modules",
-    icon: ClipboardList,
-    href: "/admin/paper3/modules",
-    description:
-      "Group mocks into bundles and control visibility for students.",
-  },
-  {
-    title: "Paper3 Analytics",
-    icon: BarChart3,
-    href: "/admin/paper3/analytics",
-    description: "Mock starts, completions, and scores.",
   },
 ];
 

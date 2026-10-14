@@ -1,24 +1,23 @@
 "use client";
 
+import { GraduationCap, Menu, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { GraduationCap, Menu, X } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetTrigger,
-  SheetClose,
 } from "@/components/ui/sheet";
-import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
 import { Skeleton } from "../ui/skeleton";
 import { UserButton } from "../user/user-button";
-import Image from "next/image";
 
 const navLinks = [
-  { href: "/#ready-mocks", label: "Mocks" },
   { href: "/pricing", label: "Pricing" },
   { href: "/about", label: "About" },
   { href: "/faq", label: "FAQ" },

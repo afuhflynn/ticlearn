@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
-import { prisma } from "@/lib/prisma";
+import { NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const updateProfileSchema = z
   .object({

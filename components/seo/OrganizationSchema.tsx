@@ -6,7 +6,7 @@ export function OrganizationSchema() {
     url: "https://ticlearn.ticsummit.org",
     logo: "https://ticlearn.ticsummit.org/icons/icon-512.png",
     description:
-      "AI-powered study platform for Cameroonian GCE A-Level students. Transform notes into quizzes, prepare for exams with AI, and track your progress.",
+      "Study platform for Cameroonian university students. Upload lecture notes, generate quizzes from them, and learn with Tip, the AI tutor.",
     sameAs: ["https://www.linkedin.com/company/tic-foundation"],
     parentOrganization: {
       "@type": "Organization",

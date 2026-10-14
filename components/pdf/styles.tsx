@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, StyleSheet, Font } from "@react-pdf/renderer";
+import { Font, StyleSheet, Text, View } from "@react-pdf/renderer";
+import type React from "react";
 
 Font.register({
   family: "Plus Jakarta Sans",

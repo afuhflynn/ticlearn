@@ -3,13 +3,13 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { initiatePayment } from "@/lib/fapshi";
-import { prisma } from "@/lib/prisma";
 import {
   CREDIT_PURCHASE_EXTERNAL_ID_PREFIX,
   creditsFromXaf,
   ensurePlatformSettings,
   getPlatformSettings,
 } from "@/lib/platform-settings";
+import { prisma } from "@/lib/prisma";
 
 const bodySchema = z.object({
   amountXaf: z.number().int().positive(),

@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import {
+  getPlanLimits,
+  isUnlimited,
+  limitReached,
+  UNLIMITED,
+} from "@/lib/plan-limits";
 import { queryKeys } from "@/lib/query-keys";
 
 interface UsePlanResult {
@@ -13,94 +19,12 @@ interface UsePlanResult {
   uploadLimit: number;
   canAccessCommunity: boolean;
   canAccessLeaderboard: boolean;
-  canAccessGCE: boolean;
   aiTutorLimit: number;
   quizLimit: number;
-  mockLimitPerWeek: number;
-  aiSolvesPerDay: number;
-  canViewCorrectAnswers: boolean;
-  canAccessAdvancedReadiness: boolean;
-  paper3ExamLimit: number;
-  paper3RetakeLimit: number;
-  paper3AIExamMessages: number;
-  canAccessPaper3AI: boolean;
-  canShareResults: boolean;
+  chatReached: (used: number) => boolean;
+  quizReached: (used: number) => boolean;
+  uploadReached: (used: number) => boolean;
 }
-
-const FREE_LIMITS = {
-  pdfUploads: 2,
-  quizGenerations: 4,
-  aiTutorMessages: 8,
-  canAccessCommunity: false,
-  canAccessLeaderboard: true,
-  canAccessGCE: true,
-  mockLimitPerWeek: 1,
-  aiSolvesPerDay: 10,
-  canViewCorrectAnswers: false,
-  canAccessAdvancedReadiness: false,
-  paper3ExamLimit: 1,
-  paper3RetakeLimit: 0,
-  paper3AIExamMessages: 4,
-  canAccessPaper3AI: false,
-  canShareResults: false,
-};
-
-const PRO_LIMITS = {
-  pdfUploads: -1,
-  quizGenerations: -1,
-  aiTutorMessages: -1,
-  canAccessCommunity: true,
-  canAccessLeaderboard: true,
-  canAccessGCE: true,
-  mockLimitPerWeek: -1,
-  aiSolvesPerDay: -1,
-  canViewCorrectAnswers: true,
-  canAccessAdvancedReadiness: true,
-  paper3ExamLimit: -1,
-  paper3RetakeLimit: -1,
-  paper3AIExamMessages: -1,
-  canAccessPaper3AI: true,
-  canShareResults: true,
-};
-
-const PLAN_MAP: Record<string, typeof PRO_LIMITS> = {
-  PRO: PRO_LIMITS,
-  PREMIUM: PRO_LIMITS,
-  STANDARD: {
-    pdfUploads: 30,
-    quizGenerations: 60,
-    aiTutorMessages: -1,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
-    canAccessGCE: true,
-    mockLimitPerWeek: 3,
-    aiSolvesPerDay: 30,
-    canViewCorrectAnswers: true,
-    canAccessAdvancedReadiness: false,
-    paper3ExamLimit: -1,
-    paper3RetakeLimit: 0,
-    paper3AIExamMessages: -1,
-    canAccessPaper3AI: true,
-    canShareResults: true,
-  },
-  STARTER: {
-    pdfUploads: 10,
-    quizGenerations: 20,
-    aiTutorMessages: 50,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
-    canAccessGCE: true,
-    mockLimitPerWeek: 2,
-    aiSolvesPerDay: 15,
-    canViewCorrectAnswers: false,
-    canAccessAdvancedReadiness: false,
-    paper3ExamLimit: 3,
-    paper3RetakeLimit: 0,
-    paper3AIExamMessages: 4,
-    canAccessPaper3AI: false,
-    canShareResults: false,
-  },
-};
 
 export function usePlan(): UsePlanResult {
   const { data, isLoading } = useQuery({
@@ -117,12 +41,12 @@ export function usePlan(): UsePlanResult {
   const planName = subscription?.plan || "FREE";
   const status = subscription?.status || "NONE";
 
-  const isPaid = (status === "ACTIVE" && planName !== "FREE") || false;
+  const isPaid = status === "ACTIVE" && planName !== "FREE";
   const isPending =
     status === "PENDING" || (previousPlan && !subscription) || false;
 
   const displayPlan = isPending && previousPlan ? previousPlan : planName;
-  const limits = PLAN_MAP[displayPlan] || FREE_LIMITS;
+  const limits = getPlanLimits(displayPlan);
 
   return {
     plan: displayPlan,
@@ -135,17 +59,12 @@ export function usePlan(): UsePlanResult {
     uploadLimit: limits.pdfUploads,
     canAccessCommunity: limits.canAccessCommunity,
     canAccessLeaderboard: limits.canAccessLeaderboard,
-    canAccessGCE: limits.canAccessGCE,
     aiTutorLimit: limits.aiTutorMessages,
     quizLimit: limits.quizGenerations,
-    mockLimitPerWeek: limits.mockLimitPerWeek,
-    aiSolvesPerDay: limits.aiSolvesPerDay,
-    canViewCorrectAnswers: limits.canViewCorrectAnswers,
-    canAccessAdvancedReadiness: limits.canAccessAdvancedReadiness,
-    paper3ExamLimit: limits.paper3ExamLimit,
-    paper3RetakeLimit: limits.paper3RetakeLimit,
-    paper3AIExamMessages: limits.paper3AIExamMessages,
-    canAccessPaper3AI: limits.canAccessPaper3AI,
-    canShareResults: limits.canShareResults,
+    chatReached: (used: number) => limitReached(limits.aiTutorMessages, used),
+    quizReached: (used: number) => limitReached(limits.quizGenerations, used),
+    uploadReached: (used: number) => limitReached(limits.pdfUploads, used),
   };
 }
+
+export { UNLIMITED, isUnlimited };

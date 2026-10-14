@@ -1,9 +1,9 @@
+import { nanoid } from "nanoid";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { nanoid } from "nanoid";
-import { requireAdmin } from "@/lib/require-admin";
 import { limit } from "@/lib/rate-limit";
+import { requireAdmin } from "@/lib/require-admin";
 
 async function adminRateLimit(request: Request): Promise<NextResponse | null> {
   const nextReq = new Request(request.url, {

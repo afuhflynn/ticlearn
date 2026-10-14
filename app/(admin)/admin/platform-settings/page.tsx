@@ -1,11 +1,9 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
-import { useEffect, useState } from "react";
 import { Loader2, Save, SlidersHorizontal } from "lucide-react";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -13,13 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { toast } from "sonner";
+import { useSession } from "@/lib/auth-client";
 
 type PlatformSettings = {
   creditCostQuizGeneration: number;
-  creditCostMockQuestion: number;
-  creditCostMockGeneration: number;
   creditCostPracticeQuestion: number;
   creditCostRevisionGuideView: number;
   creditCostRevisionGuideGen: number;
@@ -28,17 +26,13 @@ type PlatformSettings = {
   creditCostMultiplierStandard: number;
   creditCostMultiplierPremium: number;
   creditCostMultiplierPro: number;
-  mockMinQuestions: number;
-  mockMaxQuestions: number;
   enforceCreditsAll: boolean;
-  enforceCreditsForMocks: boolean;
   enforceCreditsForPractice: boolean;
   enforceCreditsForRevisionGuides: boolean;
   enforceCreditsForAiTutor: boolean;
   creditsPer1000Xaf: number;
   minCreditPurchaseXaf: number;
   maxCreditPurchaseXaf: number;
-  useAceShortAnswerGrading: boolean;
 };
 
 export default function AdminPlatformSettingsPage() {
@@ -123,9 +117,9 @@ export default function AdminPlatformSettingsPage() {
         </h1>
         <p className="text-muted-foreground mt-2">
           Configure pay-as-you-go credit pricing, per-feature costs, and when
-          users must spend credits. Enforcement defaults are on for mocks,
-          practice (quizzes + Paper 1/2 mock builds), and AI tutor messages;
-          revision guides stay optional until you enable them.
+          users must spend credits. Enforcement defaults are on for quizzes and
+          AI tutor messages; revision guides stay optional until you enable
+          them.
         </p>
       </div>
 
@@ -203,13 +197,6 @@ export default function AdminPlatformSettingsPage() {
             />
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="font-medium">Paper 3 mocks</span>
-            <Switch
-              checked={settings.enforceCreditsForMocks}
-              onCheckedChange={(v) => update({ enforceCreditsForMocks: v })}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4">
             <span className="font-medium">Practice</span>
             <Switch
               checked={settings.enforceCreditsForPractice}
@@ -247,8 +234,6 @@ export default function AdminPlatformSettingsPage() {
           {(
             [
               ["creditCostQuizGeneration", "Quiz generation"],
-              ["creditCostMockGeneration", "Paper 1/2 — mock build"],
-              ["creditCostMockQuestion", "Paper 3 — per question"],
               ["creditCostPracticeQuestion", "Practice — per question"],
               ["creditCostRevisionGuideView", "Revision guide — view"],
               ["creditCostRevisionGuideGen", "Revision guide — generate"],
@@ -309,49 +294,6 @@ export default function AdminPlatformSettingsPage() {
               </p>
             </div>
           ))}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Mock exam bounds</CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label>Min questions</Label>
-            <Input
-              type="number"
-              min={1}
-              value={settings.mockMinQuestions}
-              onChange={(e) =>
-                update({ mockMinQuestions: Number(e.target.value) || 1 })
-              }
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Max questions</Label>
-            <Input
-              type="number"
-              min={1}
-              value={settings.mockMaxQuestions}
-              onChange={(e) =>
-                update({ mockMaxQuestions: Number(e.target.value) || 1 })
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Paper 3 marking</CardTitle>
-        </CardHeader>
-        <CardContent className="flex items-center justify-between gap-4">
-          <p className="text-sm">Use ACE-style short-answer grading</p>
-          <Switch
-            checked={settings.useAceShortAnswerGrading}
-            onCheckedChange={(v) => update({ useAceShortAnswerGrading: v })}
-          />
         </CardContent>
       </Card>
 

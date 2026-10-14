@@ -1,13 +1,12 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { BarChart3, Loader2, Plus, Target, TrendingUp } from "lucide-react";
 import Link from "next/link";
-import { BarChart3, TrendingUp, Target, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useUserStats, useRecentAttempts } from "@/hooks";
-import { Loader2 } from "lucide-react";
+import { useRecentAttempts, useUserStats } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
 
 export default function ProgressPage() {
   const { data: session, isPending } = useSession();

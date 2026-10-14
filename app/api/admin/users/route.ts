@@ -30,28 +30,17 @@ export async function GET(req: Request) {
     const onboardingWhere =
       onboardingStatus === "completed"
         ? {
-            activeProfile: {
-              onboardingCompleted: true,
-              onboardingSkipped: false,
-            },
+            onboardingCompleted: true,
+            onboardingSkipped: false,
           }
         : onboardingStatus === "skipped"
           ? {
-              activeProfile: {
-                onboardingSkipped: true,
-              },
+              onboardingSkipped: true,
             }
           : onboardingStatus === "not_completed"
             ? {
-                OR: [
-                  { activeProfile: null },
-                  {
-                    activeProfile: {
-                      onboardingCompleted: false,
-                      onboardingSkipped: false,
-                    },
-                  },
-                ],
+                onboardingCompleted: false,
+                onboardingSkipped: false,
               }
             : {};
 
@@ -91,19 +80,12 @@ export async function GET(req: Request) {
           email: true,
           image: true,
           role: true,
-          activeProfileId: true,
           createdAt: true,
           referredBy: true,
           refApplied: true,
-          activeProfile: {
-            select: {
-              onboardingCompleted: true,
-              onboardingSkipped: true,
-              onboardingStep: true,
-              phoneNumber: true,
-              phoneCountryCode: true,
-            },
-          },
+          levelOfStudy: true,
+          onboardingCompleted: true,
+          onboardingSkipped: true,
           _count: {
             select: {
               notes: true,
@@ -131,11 +113,6 @@ export async function GET(req: Request) {
           notesCount: u._count.notes,
           quizzesCount: u._count.quizzes,
           attemptsCount: u._count.quizAttempts,
-          onboardingCompleted: u.activeProfile?.onboardingCompleted ?? null,
-          onboardingSkipped: u.activeProfile?.onboardingSkipped ?? null,
-          onboardingStep: u.activeProfile?.onboardingStep ?? null,
-          phoneNumber: u.activeProfile?.phoneNumber ?? null,
-          phoneCountryCode: u.activeProfile?.phoneCountryCode ?? null,
           referredByName: referredByUser?.userName || null,
           referredByEmail: referredByUser?.userEmail || null,
         };

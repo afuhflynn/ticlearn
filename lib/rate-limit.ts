@@ -1,5 +1,5 @@
-import arcjet, { tokenBucket, detectBot, shield } from "@arcjet/next";
 import ip from "@arcjet/ip";
+import arcjet, { detectBot, shield, tokenBucket } from "@arcjet/next";
 import { NextResponse } from "next/server";
 import { auth } from "./auth";
 import { arcjetKey } from "./env";

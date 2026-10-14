@@ -1,24 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
+  BotMessageSquare,
+  Brain,
   FileText,
   ListTodo,
   Plus,
-  TrendingUp,
-  Zap,
-  Brain,
-  AlertCircle,
-  AlertTriangle,
   Target,
-  Clock,
-  NotebookPen,
-  BotMessageSquare,
+  TrendingUp,
   Trophy,
-  GraduationCap,
+  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -29,7 +25,6 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
 import { useNotes, useQuizzes, useUserStats } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 
@@ -37,10 +32,7 @@ interface ReadinessData {
   readiness: number;
   weakestTopic: { name: string; score: number } | null;
   strongestTopic: { name: string; score: number } | null;
-  programReadiness: Array<{ program: string; readiness: number }>;
-  topicReadiness: Array<{ topic: string; score: number; program: string }>;
-  highRisk: boolean;
-  daysUntilExam: number | null;
+  topicReadiness: Array<{ topic: string; score: number; notes: number }>;
   recommendations: string[];
   needsAssessment: boolean;
 }
@@ -168,29 +160,6 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {!loading && !readiness && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950">
-          <div className="flex items-start justify-between">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-yellow-600" />
-              <div>
-                <p className="font-medium text-yellow-800 dark:text-yellow-200">
-                  Your profile is incomplete
-                </p>
-                <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                  Complete onboarding to unlock personalized study
-                  recommendations, readiness tracking, and adaptive mock exams.
-                </p>
-              </div>
-            </div>
-            <Link href="/onboarding">
-              <Button size="sm" variant="outline" className="shrink-0">
-                Complete Profile
-              </Button>
-            </Link>
-          </div>
-        </div>
-      )}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">
           Welcome back, {session.user.name?.split(" ")[0] || "Student"}!
@@ -202,8 +171,8 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {readiness && (
-        <Card className={readiness.highRisk ? "border-red-400" : ""}>
+      {readiness && !readiness.needsAssessment && (
+        <Card>
           <CardContent className="p-6">
             <div className="flex flex-wrap items-start gap-6">
               <div className="flex flex-col items-center">
@@ -219,27 +188,13 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex-1 space-y-3 min-w-[200px]">
-                {readiness.highRisk && (
-                  <div className="flex items-center gap-2 text-red-600 font-medium">
-                    <AlertTriangle className="h-4 w-4" />
-                    High Risk Zone - {readiness.daysUntilExam} days until exam
-                  </div>
-                )}
-
-                {readiness.daysUntilExam !== null && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" /> {readiness.daysUntilExam} days
-                    until exam
-                  </div>
-                )}
-
-                {readiness.programReadiness.map((p) => (
-                  <div key={p.program} className="space-y-1">
+                {readiness.topicReadiness.slice(0, 5).map((t) => (
+                  <div key={t.topic} className="space-y-1">
                     <div className="flex justify-between text-sm">
-                      <span>{p.program}</span>
-                      <span className="font-mono">{p.readiness}%</span>
+                      <span>{t.topic}</span>
+                      <span className="font-mono">{t.score}%</span>
                     </div>
-                    <Progress value={p.readiness} className="h-2" />
+                    <Progress value={t.score} className="h-2" />
                   </div>
                 ))}
 
@@ -276,7 +231,7 @@ export default function DashboardPage() {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg">Quick actions</CardTitle>
           <CardDescription>
-            Paper 1 &amp; 2 mocks, Ace Paper 3, chat, uploads, leaderboard.
+            Chat with Tip, upload notes, practise with quizzes, leaderboard.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -285,37 +240,9 @@ export default function DashboardPage() {
             className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
             asChild
           >
-            <Link href="/practice/mock">
-              <NotebookPen className="h-5 w-5 text-primary" />
-              <span className="font-semibold leading-tight">
-                GCE Paper 1 &amp; 2 mocks
-              </span>
-              <span className="text-muted-foreground text-xs font-normal">
-                Blueprint exams from official-style questions.
-              </span>
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
-            asChild
-          >
-            <Link href="/practice">
-              <GraduationCap className="h-5 w-5 text-primary" />
-              <span className="font-semibold leading-tight">AcePaper 3</span>
-              <span className="text-muted-foreground text-xs font-normal">
-                Practical ICT / CS tasks.
-              </span>
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
-            asChild
-          >
             <Link href="/chat">
               <BotMessageSquare className="h-5 w-5 text-primary" />
-              <span className="font-semibold leading-tight">Ask TiC</span>
+              <span className="font-semibold leading-tight">Ask Tip</span>
               <span className="text-muted-foreground text-xs font-normal">
                 Get explanations anytime.
               </span>
@@ -330,7 +257,7 @@ export default function DashboardPage() {
               <Trophy className="h-5 w-5 text-primary" />
               <span className="font-semibold leading-tight">Leaderboard</span>
               <span className="text-muted-foreground text-xs font-normal">
-                Compare mock scores with peers.
+                Compare quiz scores with peers.
               </span>
             </Link>
           </Button>

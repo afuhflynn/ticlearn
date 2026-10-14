@@ -4,9 +4,10 @@ import {
   extractTextFromWord,
   summarizeText,
 } from "@/lib/ai";
+import { grantCredits } from "@/lib/credits";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
-import { grantCredits } from "@/lib/credits";
+import { attachTopicsToNote } from "@/lib/topics";
 
 export const processNote = inngest.createFunction(
   {
@@ -120,16 +121,15 @@ export const processNote = inngest.createFunction(
       console.log("[Inngest] Generating summary...");
       const summaryResult = await summarizeText(extractedText, note.userId);
 
+      console.log("[Inngest] Attaching topics to the note...");
+      await attachTopicsToNote(noteId, summaryResult.topics);
+
       console.log("[Inngest] Updating note in database...");
       await prisma.note.update({
         where: { id: noteId },
         data: {
           extractedText,
           summary: summaryResult.summary,
-          topics:
-            summaryResult.topics.length > 0
-              ? summaryResult.topics
-              : [note.subject],
           keyPoints: summaryResult.keyPoints,
           status: "READY",
         },
@@ -254,111 +254,6 @@ export const generateQuiz = inngest.createFunction(
         where: { id: quizId },
         data: { status: "ERROR" },
       });
-
-      return { success: false, error: "Quiz generation failed" };
-    }
-  },
-);
-
-export const generateQuizFromWeakAreas = inngest.createFunction(
-  {
-    name: "Generate Quiz from Weak Areas",
-    id: "generate-quiz-from-weak-areas",
-    triggers: {
-      event: "quiz/generate-from-weak-areas",
-    },
-  },
-  async ({ event }) => {
-    const {
-      quizId,
-      userId,
-      weakConcepts,
-      notes,
-      questionCount,
-      readinessScore,
-    } = event.data;
-    console.log(
-      `[Inngest] Generating quiz from weak areas for user: ${userId}, quiz: ${quizId}`,
-    );
-    console.log(`[Inngest] Weak concepts: ${weakConcepts.join(", ")}`);
-    console.log(`[Inngest] Readiness score: ${readinessScore}%`);
-    console.log(`[Inngest] Using ${notes.length} notes`);
-
-    try {
-      const { generateQuizFromWeakAreas } = await import("@/lib/ai");
-      console.log(`[Inngest] Calling AI to generate quiz from weak areas...`);
-
-      const generatedQuestions = await generateQuizFromWeakAreas(
-        notes,
-        weakConcepts,
-        {
-          questionCount: questionCount || 10,
-          readinessScore: readinessScore || 0,
-        },
-        userId,
-      );
-
-      console.log(
-        `[Inngest] AI returned ${generatedQuestions.length} questions`,
-      );
-
-      if (generatedQuestions.length === 0) {
-        console.error(
-          `[Inngest] AI returned 0 questions - marking quiz as ERROR`,
-        );
-        await prisma.quiz.update({
-          where: { id: quizId },
-          data: { status: "ERROR" },
-        });
-        return { success: false, error: "AI returned no questions" };
-      }
-
-      await prisma.quiz.update({
-        where: { id: quizId },
-        data: {
-          questionCount: generatedQuestions.length,
-          status: "READY",
-          questions: {
-            create: generatedQuestions.map((q, index) => ({
-              type: q.type,
-              question: q.question,
-              options: q.type === "MCQ" ? q.options : [],
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation,
-              order: index,
-            })),
-          },
-        },
-      });
-
-      console.log(`[Inngest] Quiz generated successfully: ${quizId}`);
-
-      return {
-        success: true,
-        quizId,
-        questionCount: generatedQuestions.length,
-      };
-    } catch (error) {
-      console.error(`[Inngest] Quiz from weak areas generation failed:`, error);
-
-      await prisma.quiz.update({
-        where: { id: quizId },
-        data: { status: "ERROR" },
-      });
-
-      const quizCost = event.data.quizCost ?? 0;
-      if (quizCost > 0) {
-        try {
-          await grantCredits({
-            userId,
-            amount: quizCost,
-            type: "BONUS",
-            description: `Refund: quiz from weak areas generation failed (${quizId})`,
-          });
-        } catch (refundErr) {
-          console.error("[Inngest] Failed to refund credits:", refundErr);
-        }
-      }
 
       return { success: false, error: "Quiz generation failed" };
     }
@@ -669,131 +564,6 @@ export const deleteUnverifiedAccounts = inngest.createFunction(
   },
 );
 
-export const generateDefaultQuiz = inngest.createFunction(
-  {
-    name: "Generate Default Quiz",
-    id: "generate-default-quiz",
-    triggers: {
-      event: "quiz/generate-default",
-    },
-  },
-
-  async ({ event }) => {
-    const { userId } = event.data;
-    console.log(`[Inngest] Generating default quizzes for user: ${userId}`);
-
-    try {
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-      });
-
-      if (!user) {
-        console.error(`[Inngest] User not found: ${userId}`);
-        return { success: false, error: "User not found" };
-      }
-
-      const existingQuizzes = await prisma.quiz.count({
-        where: { userId },
-      });
-
-      if (existingQuizzes > 0) {
-        console.log(
-          `[Inngest] User already has ${existingQuizzes} quizzes, skipping`,
-        );
-        return {
-          success: true,
-          skipped: true,
-          reason: "User already has quizzes",
-        };
-      }
-
-      const { generateQuizFromTopic, DEFAULT_QUIZ_TOPICS } = await import(
-        "@/lib/ai"
-      );
-
-      const shuffledTopics = [...DEFAULT_QUIZ_TOPICS].sort(
-        () => Math.random() - 0.5,
-      );
-      const selectedTopics = shuffledTopics.slice(0, 3);
-
-      console.log(`[Inngest] Selected topics: ${selectedTopics.join(", ")}`);
-
-      const questionsPerQuiz = 20;
-      const _questionDistribution = {
-        mcq: 8,
-        mixed: 8,
-        open: 4,
-      };
-
-      for (const topic of selectedTopics) {
-        const quizTitle = `Default Quiz: ${topic}`;
-
-        let questionTypes: "MCQ" | "OPEN" | "MIXED";
-        if (topic === selectedTopics[0]) {
-          questionTypes = "MCQ";
-        } else if (topic === selectedTopics[1]) {
-          questionTypes = "MIXED";
-        } else {
-          questionTypes = "OPEN";
-        }
-
-        console.log(
-          `[Inngest] Generating quiz for topic: ${topic} with ${questionTypes} questions`,
-        );
-
-        const questions = await generateQuizFromTopic(
-          topic,
-          {
-            questionCount: questionsPerQuiz,
-            questionTypes,
-          },
-          userId,
-        );
-
-        if (questions.length === 0) {
-          console.error(
-            `[Inngest] Failed to generate questions for topic: ${topic}`,
-          );
-          continue;
-        }
-
-        await prisma.quiz.create({
-          data: {
-            userId,
-            noteTitle: topic,
-            title: quizTitle,
-            questionCount: questions.length,
-            status: "READY",
-            isPublic: false,
-            questions: {
-              create: questions.map((q, index) => ({
-                type: q.type,
-                question: q.question,
-                options: q.type === "MCQ" ? q.options : [],
-                correctAnswer: q.correctAnswer,
-                explanation: q.explanation,
-                order: index,
-              })),
-            },
-          },
-        });
-
-        console.log(
-          `[Inngest] Created quiz: ${quizTitle} with ${questions.length} questions`,
-        );
-      }
-
-      console.log(
-        `[Inngest] Default quizzes generated successfully for user: ${userId}`,
-      );
-      return { success: true, userId, quizCount: selectedTopics.length };
-    } catch (error) {
-      console.error("[Inngest] Default quiz generation failed:", error);
-      return { success: false, error: "Failed to generate default quizzes" };
-    }
-  },
-);
-
 export const sendPlatformUpdateEmail = inngest.createFunction(
   {
     name: "Send Platform Update Email",
@@ -880,9 +650,8 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "ACTIVATE") {
-      const { sendSubscriptionActivatedEmail } = await import(
-        "@/lib/email/send"
-      );
+      const { sendSubscriptionActivatedEmail } =
+        await import("@/lib/email/send");
 
       await sendSubscriptionActivatedEmail({
         email: user.email,
@@ -897,9 +666,8 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "REJECT") {
-      const { sendSubscriptionRejectedEmail } = await import(
-        "@/lib/email/send"
-      );
+      const { sendSubscriptionRejectedEmail } =
+        await import("@/lib/email/send");
 
       await sendSubscriptionRejectedEmail({
         email: user.email,

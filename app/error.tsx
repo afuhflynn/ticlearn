@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect } from "react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 import { AlertCircle, ArrowLeft, RefreshCw } from "lucide-react";
+import Link from "next/link";
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 interface ErrorProps {
   error: Error & { digest?: string };

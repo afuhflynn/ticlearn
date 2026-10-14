@@ -14,7 +14,6 @@ import type {
   ContactFormData,
   ContactResponse,
   CreateAffiliateParams,
-  ExamSession,
   Feedback,
   FeedbackData,
   LeaderboardEntry,
@@ -197,15 +196,6 @@ export const api = {
     feedback: () =>
       apiRequest<{ feedbacks: Feedback[] }>("/feedback", { method: "GET" }),
 
-    exams: {
-      getAll: () =>
-        apiRequest<{ exams: ExamSession[] }>("/exams", {
-          method: "GET",
-        }),
-      getById: (id: string) =>
-        apiRequest<{ exam: ExamSession }>(`/exams/${id}`, { method: "GET" }),
-    },
-
     stats: {
       userStats: () =>
         apiRequest<{ stats: UserStats }>("/stats", {
@@ -279,7 +269,6 @@ export const api = {
     notes: {
       create: (data: {
         title: string;
-        subject: string;
         fileUrl: string;
         fileName: string;
         fileType: "PDF" | "IMAGE" | "WORD";
@@ -288,7 +277,7 @@ export const api = {
           method: "POST",
           body: data,
         }),
-      update: (id: string, data: { title?: string; subject?: string }) =>
+      update: (id: string, data: { title?: string }) =>
         apiRequest<{ note: NoteSummary }>(`/notes/${id}`, {
           method: "PUT",
           body: data,
@@ -314,22 +303,6 @@ export const api = {
         isPublic?: boolean;
       }) =>
         apiRequest<{ quiz: Quiz; success: boolean }>("/quizzes/generate", {
-          method: "POST",
-          body: data,
-        }),
-      generateFromWeakAreas: (data: {
-        questionCount?: number;
-        timed?: boolean;
-        timeLimit?: number;
-        isPublic?: boolean;
-      }) =>
-        apiRequest<{
-          quizId: string;
-          status: string;
-          creditsUsed: number;
-          weakAreasTargeted: string[];
-          message: string;
-        }>("/quizzes/generate/from-weak-areas", {
           method: "POST",
           body: data,
         }),
@@ -359,23 +332,6 @@ export const api = {
           `/quizzes/attempts/recent${limit ? `?limit=${limit}` : ""}`,
           { method: "GET" },
         ),
-    },
-
-    exams: {
-      create: (data: {
-        subject: string;
-        topic: string;
-        questionCount: number;
-      }) =>
-        apiRequest<{ exam: ExamSession }>("/exams", {
-          method: "POST",
-          body: data,
-        }),
-      submit: (examId: string, data: { answers: Record<string, string> }) =>
-        apiRequest<{ exam: ExamSession }>(`/exams/${examId}`, {
-          method: "PUT",
-          body: data,
-        }),
     },
 
     feedback: {
@@ -528,9 +484,10 @@ export const api = {
     },
 
     chat: {
-      createConversation: () =>
+      createConversation: (noteId?: string) =>
         apiRequest<{ conversation: ChatConversation }>("/chat/conversations", {
           method: "POST",
+          body: noteId ? { noteId } : undefined,
         }),
       updateConversation: (id: string, data: { title: string }) =>
         apiRequest<{ success: boolean }>(`/chat/conversations/${id}`, {

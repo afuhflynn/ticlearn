@@ -1,8 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import type { ReactNode } from "react";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { ReactNode } from "react";
 
 export default async function OnboardingLayout({
   children,
@@ -16,28 +16,11 @@ export default async function OnboardingLayout({
   if (session?.user) {
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
-      include: {
-        examProfiles: {
-          select: {
-            id: true,
-            onboardingCompleted: true,
-            onboardingSkipped: true,
-            phoneNumber: true,
-          },
-        },
-      },
+      select: { levelOfStudy: true, onboardingSkipped: true },
     });
 
-    if (user?.activeProfileId) {
-      const activeProfile = user.examProfiles.find(
-        (p) => p.id === user.activeProfileId,
-      );
-      if (
-        activeProfile?.onboardingCompleted &&
-        (activeProfile.onboardingSkipped || !!activeProfile.phoneNumber)
-      ) {
-        redirect("/chat");
-      }
+    if (user?.levelOfStudy || user?.onboardingSkipped) {
+      redirect("/chat");
     }
   }
 

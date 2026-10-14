@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { queryKeys } from "@/lib/query-keys";
 import { api } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 
 type QuizScope = "all" | "my" | "public";
 
@@ -66,37 +66,6 @@ export function useGenerateQuiz() {
       queryClient.invalidateQueries({ queryKey: queryKeys.notes });
       queryClient.invalidateQueries({ queryKey: queryKeys.credits });
       toast.success("Quiz generation started");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-}
-
-export function useGenerateQuizFromWeakAreas() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: {
-      questionCount?: number;
-      timed?: boolean;
-      timeLimit?: number;
-      isPublic?: boolean;
-    }) => {
-      const result = await api.mutations.quizzes.generateFromWeakAreas(data);
-      return result;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-      queryClient.invalidateQueries({ queryKey: queryKeys.credits });
-      const debit =
-        typeof data.creditsUsed === "number" && data.creditsUsed > 0
-          ? `${data.creditsUsed} credits debited. `
-          : "";
-      toast.success(
-        `Quiz generation started! ${debit}Targeted areas: ${data.weakAreasTargeted?.join(", ") || "general"}`,
-      );
     },
     onError: (error: Error) => {
       toast.error(error.message);

@@ -7,10 +7,7 @@ import {
 import Tesseract from "tesseract.js";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
-import {
-  MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS,
-  MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
-} from "@/constants";
+import { MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT } from "@/constants";
 import {
   generate,
   generateCritical,
@@ -18,7 +15,6 @@ import {
 } from "@/lib/ai/orchestrator";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
-import { getSubjectLabel } from "@/lib/subject-labels";
 
 const utapi = new UTApi();
 
@@ -519,157 +515,6 @@ interface NoteContext {
   extractedText: string | null;
 }
 
-export async function generateQuizFromWeakAreas(
-  notes: NoteContext[],
-  weakConcepts: string[],
-  options: {
-    questionCount: number;
-    readinessScore: number;
-  },
-  userId?: string | null,
-) {
-  console.log(
-    `[AI] Generating quiz from weak areas with ${options.questionCount} questions`,
-  );
-  console.log(`[AI] Weak concepts: ${weakConcepts.join(", ")}`);
-  console.log(`[AI] Readiness score: ${options.readinessScore}%`);
-  console.log(`[AI] Using ${notes.length} notes`);
-
-  const noteContext = notes
-    .map(
-      (n) =>
-        `Subject: ${n.subject}\nTitle: ${n.title}\nContent: ${n.extractedText?.slice(0, MAX_CHARACTERS_FOR_GENERATE_QUIZ_FROM_WEEK_AREAS) || "No content"}\n---\n`,
-    )
-    .join("\n");
-
-  const difficultyLevel =
-    options.readinessScore < 30
-      ? "basic foundational questions"
-      : options.readinessScore < 60
-        ? "medium difficulty questions that bridge basic and advanced concepts"
-        : "challenging advanced questions";
-
-  const { text: prompt, settings } = await getPrompt(
-    "quiz",
-    "quiz_from_weak_areas",
-    {
-      questionCount: options.questionCount,
-      readinessScore: options.readinessScore,
-      weakAreas: weakConcepts.join(", ") || "General topics",
-      weakAreasGuideline:
-        weakConcepts.join(", ") || "topics where student shows weakness",
-      difficultyLevel,
-      noteContext: noteContext.slice(0, 15000),
-    },
-  );
-
-  const schema = z.object({
-    questions: z.array(generatedQuestionSchema),
-  });
-
-  try {
-    const { object } = await generateCritical({
-      task: "quiz_gen",
-      schema,
-      prompt,
-      ...promptCallFields(settings),
-      userId,
-    });
-
-    const questions = normalizeGeneratedQuestions(object.questions);
-    console.log(
-      `[AI] Sample:`,
-      JSON.stringify(questions[0], null, 2).slice(0, 500),
-    );
-
-    return questions;
-  } catch (error) {
-    console.error("[AI] Quiz generation from weak areas failed:", error);
-    return [];
-  }
-}
-
-export const DEFAULT_QUIZ_TOPICS = [
-  "Cell Biology and Genetics",
-  "Chemistry of Life - Biomolecules",
-  "Motion and Energy in Physics",
-  "Waves and Optics",
-  "Ecosystems and Ecology",
-  "Human Physiology",
-  "Mathematical Techniques",
-  "Statistics and Probability",
-];
-
-const DEFAULT_QUIZ_TOPIC_PROMPTS: Record<string, string> = {
-  "Cell Biology and Genetics":
-    "Topics covering cell structure, cell division (mitosis/meiosis), genetics, DNA, RNA, protein synthesis, inheritance patterns, and molecular biology for GCE A-Level.",
-  "Chemistry of Life - Biomolecules":
-    "Topics covering carbohydrates, proteins, lipids, enzymes, nucleic acids, bioenergetics, and biochemical reactions for GCE A-Level.",
-  "Motion and Energy in Physics":
-    "Topics covering kinematics, Newton's laws, work, energy, power, momentum, and conservation laws for GCE A-Level Physics.",
-  "Waves and Optics":
-    "Topics covering wave properties, reflection, refraction, diffraction, interference, lenses, and optical instruments for GCE A-Level Physics.",
-  "Ecosystems and Ecology":
-    "Topics covering ecosystems, energy flow, nutrient cycles, population dynamics, conservation, biodiversity, and environmental science for GCE A-Level.",
-  "Human Physiology":
-    "Topics covering the human digestive system, circulatory system, respiratory system, nervous system, excretory system, and homeostasis for GCE A-Level Biology.",
-  "Mathematical Techniques":
-    "Topics covering algebra, calculus, trigonometry, logarithms, sequences, series, and mathematical reasoning for GCE A-Level.",
-  "Statistics and Probability":
-    "Topics covering probability theory, random variables, statistical distributions, hypothesis testing, and data analysis for GCE A-Level.",
-};
-
-export async function generateQuizFromTopic(
-  topic: string,
-  options: {
-    questionCount: number;
-    questionTypes: "MCQ" | "OPEN" | "MIXED";
-  },
-  userId?: string | null,
-) {
-  console.log(`[AI] Generating default quiz for topic: ${topic}`);
-
-  const topicPrompt = DEFAULT_QUIZ_TOPIC_PROMPTS[topic] || topic;
-  const questionTypeText =
-    options.questionTypes === "MIXED"
-      ? "Generate a mix of MCQ and Open-ended questions."
-      : options.questionTypes === "MCQ"
-        ? "Generate only Multiple Choice Questions (MCQ)."
-        : "Generate only Open-ended questions.";
-
-  const { text: prompt, settings } = await getPrompt(
-    "quiz",
-    "quiz_from_topic",
-    {
-      questionCount: options.questionCount,
-      topic,
-      topicDescription: topicPrompt,
-      questionTypeText,
-    },
-  );
-
-  const schema = z.object({
-    questions: z.array(generatedQuestionSchema),
-  });
-
-  try {
-    const { object } = await generateCritical({
-      task: "quiz_gen",
-      schema,
-      prompt,
-      ...promptCallFields(settings),
-      userId,
-    });
-
-    const questions = normalizeGeneratedQuestions(object.questions);
-
-    return questions;
-  } catch (error) {
-    console.error("[AI] Default quiz generation failed:", error);
-    return [];
-  }
-}
-
 export async function gradeOpenAnswer(
   question: string,
   userAnswer: string,
@@ -715,54 +560,13 @@ export async function explainMCQAnswer(
   );
 
   const { text } = await generateTextCritical({
-    task: "reasoning",
+    task: "grading",
     prompt,
     ...promptCallFields(settings),
     userId,
   });
 
   return text;
-}
-
-export async function generateExamQuestions(
-  subject: string,
-  topic: string,
-  questionCount: number,
-  userId?: string | null,
-) {
-  const subjectName = getSubjectLabel(subject);
-
-  const { text: prompt, settings } = await getPrompt("exam", "exam_questions", {
-    subjectName,
-    topic,
-    questionCount,
-  });
-
-  const schema = z.object({
-    questions: z.array(generatedQuestionSchema),
-  });
-
-  try {
-    const { object } = await generateCritical({
-      task: "exam_gen",
-      schema,
-      prompt,
-      ...promptCallFields(settings),
-      userId,
-    });
-
-    return normalizeGeneratedQuestions(object.questions);
-  } catch (error) {
-    console.error("Exam generation error:", error);
-    return [];
-  }
-}
-
-export async function processNoteContent(
-  content: string,
-  userId?: string | null,
-) {
-  return summarizeText(content, userId);
 }
 
 function normalizeExtractedText(text: string) {

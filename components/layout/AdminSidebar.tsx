@@ -2,18 +2,12 @@
 
 import {
   BarChart3,
-  ClipboardList,
   CreditCard,
-  FileText,
-  GraduationCap,
-  Layers,
   Link2,
-  ListChecks,
   MessageCircle,
   Shield,
   Sparkles,
   TrendingUp,
-  Upload,
   Users,
 } from "lucide-react";
 import Image from "next/image";
@@ -52,30 +46,6 @@ const adminNavItems = [
   },
   { href: "/admin/affiliates", icon: Link2, label: "Affiliates" },
 ];
-
-const paper12NavItems = [
-  { href: "/admin/upload", icon: Upload, label: "Upload Past Papers" },
-  { href: "/admin/blueprints", icon: ClipboardList, label: "Blueprints" },
-  {
-    href: "/admin/mocks/p1-p2",
-    icon: Sparkles,
-    label: "Mock Groups & Previews",
-  },
-];
-
-const paper3NavItems = [
-  { href: "/admin/paper3/upload", icon: Upload, label: "Upload Source" },
-  { href: "/admin/paper3/sources", icon: FileText, label: "Sources" },
-  { href: "/admin/paper3/questions", icon: ListChecks, label: "Questions" },
-  { href: "/admin/paper3/mocks", icon: GraduationCap, label: "Mock Exams" },
-  { href: "/admin/paper3/modules", icon: Layers, label: "Mock Groups" },
-  {
-    href: "/admin/paper3/analytics",
-    icon: TrendingUp,
-    label: "Analytics",
-  },
-];
-
 export function AdminSidebar() {
   const pathname = usePathname();
 
@@ -105,44 +75,6 @@ export function AdminSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {adminNavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                    <a href={item.href} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3">
-            Paper 1 &amp; 2
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {paper12NavItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                    <a href={item.href} className="flex items-center gap-3">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="px-3">Paper 3</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {paper3NavItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={isActive(item.href)}>
                     <a href={item.href} className="flex items-center gap-3">

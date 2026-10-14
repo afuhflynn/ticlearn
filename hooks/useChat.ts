@@ -1,7 +1,7 @@
 import {
-  useQuery,
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
@@ -60,7 +60,8 @@ export function useCreateConversation() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: api.mutations.chat.createConversation,
+    mutationFn: (variables?: { noteId?: string }) =>
+      api.mutations.chat.createConversation(variables?.noteId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
     },

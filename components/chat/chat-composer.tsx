@@ -27,6 +27,7 @@ import {
   PromptInputTools,
   usePromptInputAttachments,
 } from "@/components/ai-elements/prompt-input";
+import { TIP_NAME } from "@/components/chat/constants";
 import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 
@@ -209,7 +210,7 @@ export function ChatComposer({
             placeholder={
               uploading
                 ? "Uploading files..."
-                : "Ask TiC about your notes, quizzes, or studies..."
+                : `Ask ${TIP_NAME} about your notes, quizzes, or studies...`
             }
             value={text}
           />

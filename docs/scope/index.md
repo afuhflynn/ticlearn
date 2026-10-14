@@ -22,9 +22,9 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 2 | Security and integrity hardening | Foundation | in-progress |
 | 3 | Prompt registry | Foundation | done |
 | 4 | AI model chain through OpenRouter | Foundation | in-progress |
-| 5 | Delete GCE content, repoint the data model | Foundation | planned |
-| 6 | Generalise the exam and grading engine | Foundation | planned |
-| 7 | Design system and UI toolkit convention | Foundation | planned |
+| 5 | Delete GCE content, repoint the data model | Foundation | in-progress |
+| 6 | Delete the exam and grading engine | Foundation | done |
+| 7 | Design system and UI toolkit convention | Foundation | in-progress |
 | 8 | URL state convention | Foundation | planned |
 | 9 | Environment variables documented | Foundation | planned |
 | 10 | Database indexes and query rewrites | Foundation | planned |
@@ -50,8 +50,8 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 23 | Quiz generation flow | Slice 3 | planned |
 | 24 | Upload limits and usage tracking | Slice 3 | planned |
 | 25 | Offline packs and low data mode | Slice 3 | planned |
-| 26 | Timed exam runner | Slice 4 | planned |
-| 27 | Grading feedback and result review | Slice 4 | planned |
+| 26 | Timed exam runner | Slice 4 | dropped |
+| 27 | Grading feedback and result review | Slice 4 | dropped |
 | 28 | Semester pass plans and limits | Slice 5 | planned |
 | 29 | Mobile money payments for the pass | Slice 5 | planned |
 | 30 | Free tier conversion surfaces | Slice 5 | planned |
@@ -65,11 +65,11 @@ Each epic is one file with its own feature sections.
 
 - **[Platform](platform.md)** · 16 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email, and how every route renders. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
 - **[Carried over](carried-over.md)** · 7 features · what already exists in the codebase, enrolled for context only.
-- **[Pivot](pivot.md)** · 2 features, Foundations · removing the secondary school product and generalising the parts worth keeping.
+- **[Pivot](pivot.md)** · 2 features, Foundations · removing the secondary school product outright, mocks, exams and papers included.
 - **[Market](market.md)** · 9 features, Slice 1 · the landing page, the public pages, onboarding and pricing. What a stranger sees and what a new student does in the first two minutes. Plus the search surface: the public course catalogue, the technical SEO foundation, public guides, and readiness for AI answer engines.
 - **[Tutor](tutor.md)** · 3 features, Slice 2 · the chat interface, the web search tool and the controls students get over it.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
-- **[Exam](exam.md)** · 2 features, Slice 4 · the timed runner and the graded result review.
+- **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
 - **[Commerce](commerce.md)** · 5 features, Slice 5 · the semester pass, payments, the free tier, ambassadors and conversion analytics.
 
 ## Phasing in one line each
@@ -78,7 +78,7 @@ Each epic is one file with its own feature sections.
 - **Slice 1, first ten minutes** · a stranger lands, understands, signs up, and knows what the product is for, without uploading anything. And finds us on a search result, and gets a useful answer from an AI assistant.
 - **Slice 2, the tutor** · the chat works at the speed a student expects, with thinking and tool use disclosed the way ChatGPT does it, and web search behind a toggle.
 - **Slice 3, notes and quizzes** · the student uploads their own notes and turns them into practice. This is the killer loop the product is built around.
-- **Slice 4, exams** · timed practice with AI grading and written feedback.
+- **Slice 4, exams** · dropped. Timed practice with AI grading is not coming; study is notes, quizzes and the tutor.
 - **Slice 5, money** · the semester pass, mobile money, and a free tier designed to convert.
 
 ## Deferred

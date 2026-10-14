@@ -180,20 +180,14 @@ vi.mock("@/lib/chat-usage", () => ({
   })),
 }));
 
-vi.mock("@/lib/exam-profile", () => ({
-  getActiveProfileId: vi.fn(() => Promise.resolve("profile-id")),
-}));
-
 vi.mock("@/lib/readiness", () => ({
   computeReadiness: vi.fn(() =>
     Promise.resolve({
       readiness: 75,
-      programReadiness: [],
       topicReadiness: [],
       weakestTopic: null,
       strongestTopic: null,
-      daysUntilExam: 30,
-      highRisk: false,
+      needsAssessment: false,
     }),
   ),
 }));

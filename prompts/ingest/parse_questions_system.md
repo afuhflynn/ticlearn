@@ -1,6 +1,6 @@
 ---
 name: parse_questions_system
-model: gemini-2.5-flash
+model: deepseek/deepseek-v4.1-flash
 version: 1
 heat: 0.4
 cap: 4096

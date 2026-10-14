@@ -10,7 +10,7 @@ import { useUsage } from "@/hooks";
 import { useCreateConversation } from "@/hooks/useChat";
 import { useSession } from "@/lib/auth-client";
 import { ChatComposer } from "./chat-composer";
-import { CHAT_SUGGESTIONS, QUICK_ACTIONS } from "./constants";
+import { CHAT_SUGGESTIONS, QUICK_ACTIONS, TIP_NAME } from "./constants";
 import { storePendingChatMessage } from "./pending-message";
 
 const actionIcons = {
@@ -20,7 +20,7 @@ const actionIcons = {
   image: ImageIcon,
 };
 
-export function ChatLanding() {
+export function ChatLanding({ noteId }: { noteId?: string | null }) {
   const router = useRouter();
   const createConversation = useCreateConversation();
   const { canUseAIChat } = useUsage();
@@ -28,7 +28,9 @@ export function ChatLanding() {
 
   const startConversation = async (text: string) => {
     try {
-      const result = await createConversation.mutateAsync();
+      const result = await createConversation.mutateAsync({
+        noteId: noteId ?? undefined,
+      });
       storePendingChatMessage(result.conversation.id, { text });
       router.push(`/chat/${result.conversation.id}`);
     } catch {
@@ -40,7 +42,9 @@ export function ChatLanding() {
     if (!message.text?.trim() && !message.files?.length) return;
 
     try {
-      const result = await createConversation.mutateAsync();
+      const result = await createConversation.mutateAsync({
+        noteId: noteId ?? undefined,
+      });
       storePendingChatMessage(result.conversation.id, {
         text: message.text || "",
         files: message.files as FileUIPart[],
@@ -56,17 +60,21 @@ export function ChatLanding() {
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-8 md:py-12">
         <div className="space-y-4 text-center">
           <div className="mx-auto inline-flex items-center rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-            TiC study cockpit · notes, mocks, images, documents, progress
+            {TIP_NAME} · your notes, your quizzes, your progress
           </div>
           <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-5xl">
             Hello {session?.user.name.split(" ")[0]}, let's turn confusion into
             a study move.
           </h1>
           <p className="mx-auto max-w-2xl text-sm text-muted-foreground md:text-base">
-            Ask from your learning data, attach a past-paper image, drop a PDF
-            or DOCX, and TiC will explain, quiz, plan, or debrief like a focused
-            GCE tutor.
+            Ask from your learning data, drop a PDF or DOCX, and {TIP_NAME} will
+            quote your own notes back to you, then teach you what they mean.
           </p>
+          {noteId && (
+            <p className="mx-auto inline-flex w-fit items-center rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
+              Talking about one of your notes
+            </p>
+          )}
         </div>
 
         <div className="mx-auto w-full max-w-2xl space-y-4">

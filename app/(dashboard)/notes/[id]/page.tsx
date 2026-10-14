@@ -5,6 +5,7 @@ import {
   ExternalLink,
   FileText,
   Loader2,
+  MessageCircle,
   RefreshCw,
   Sparkles,
   Trash2,
@@ -134,9 +135,7 @@ export default function NoteDetailPage() {
                   {note.status}
                 </Badge>
               </div>
-              <p className="text-muted-foreground">
-                {note.subject} • {note.fileName}
-              </p>
+              <p className="text-muted-foreground">{note.fileName}</p>
             </div>
           </div>
 
@@ -148,6 +147,15 @@ export default function NoteDetailPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 lg:justify-end">
+          {note.status === "READY" ? (
+            <Button variant="outline" asChild>
+              <Link href={`/chat?note=${note.id}`}>
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Learn This With Tip
+              </Link>
+            </Button>
+          ) : null}
+
           {note.status === "READY" && note.latestQuiz?.status === "READY" ? (
             <Button asChild>
               <Link href={`/quiz/${note.latestQuiz.id}`}>

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
+import { EVENTS, trackEvent } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
-import { trackEvent, EVENTS } from "@/lib/kpi";
 
 export async function GET(req: Request) {
   try {

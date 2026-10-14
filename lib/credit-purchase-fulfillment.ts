@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
+import { prisma } from "@/lib/prisma";
 
 export type FulfillCreditPurchaseResult = {
   ok: boolean;

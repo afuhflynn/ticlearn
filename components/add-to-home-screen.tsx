@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Plus, Smartphone } from "lucide-react";
+import { Plus, Smartphone, X } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogFooter,
 } from "@/components/ui/dialog";
 
 interface AddToHomeScreenProps {

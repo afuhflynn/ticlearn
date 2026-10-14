@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-
+import { useState } from "react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,6 @@ import {
   useQuizzes,
 } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
-import { toast } from "sonner";
 
 type CommunityPost = {
   id: string;
@@ -51,106 +50,18 @@ type PublicQuiz = {
   };
 };
 
-type CommunityBlueprint = {
-  id: string;
-  name: string;
-  description: string | null;
-  totalMarks: number;
-  durationMin: number;
-  sections: Array<{
-    name: string;
-    questionCount: number;
-    questionType: string;
-  }>;
-  component: { name: string; program: { name: string } };
-};
-
-const subjects = [
-  "All",
-  "Computer Science",
-  "ICT",
-  "Mathematics",
-  "Physics",
-  "Chemistry",
-  "Biology",
-  "Human Biology",
-  "Additional Mathematics",
-  "Pure Mathematics with Mechanics",
-  "Pure Mathematics with Statistics",
-  "Further Mathematics",
-  "English Language",
-  "Literature in English",
-  "French",
-  "History",
-  "Geography",
-  "Economics",
-  "Accounting",
-  "Commerce",
-  "Religious Studies",
-  "Philosophy",
-  "Geology",
-  "Food Science and Nutrition",
-  "Food and Nutrition",
-  "Agricultural Science",
-  "Citizenship Education",
-  "Logic",
-];
-
 export default function CommunityPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
-  const [selectedSubject, setSelectedSubject] = useState("All");
   const [newPostContent, setNewPostContent] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [featuredMocks, setFeaturedMocks] = useState<CommunityBlueprint[]>([]);
-  const [featuredMocksLoading, setFeaturedMocksLoading] = useState(true);
-  const [startingMockId, setStartingMockId] = useState<string | null>(null);
-
-  const subjectFilter = selectedSubject === "All" ? undefined : selectedSubject;
-  const { posts, isLoading, total } = useCommunityPosts(subjectFilter);
+  const { posts, isLoading, total } = useCommunityPosts();
   const { quizzes: publicQuizzes, isLoading: quizzesLoading } =
     useQuizzes("public");
   const createPost = useCreatePost();
   const likePost = useLikePost();
   const publicQuizList = publicQuizzes as PublicQuiz[];
   const communityPosts = posts as CommunityPost[];
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/blueprints/community");
-        if (!res.ok) throw new Error("bad");
-        const data = await res.json();
-        if (!cancelled) setFeaturedMocks(data.blueprints ?? []);
-      } catch {
-        if (!cancelled) setFeaturedMocks([]);
-      } finally {
-        if (!cancelled) setFeaturedMocksLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const startFeaturedMock = async (blueprintId: string) => {
-    setStartingMockId(blueprintId);
-    try {
-      const res = await fetch("/api/mocks/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blueprintId }),
-      });
-      if (!res.ok) throw new Error("failed");
-      const data = await res.json();
-      router.push(`/practice/mock/exam/${data.mock.attemptId}`);
-    } catch {
-      toast.error("Could not start mock. Check onboarding / active profile.");
-    } finally {
-      setStartingMockId(null);
-    }
-  };
 
   if (sessionPending) {
     return (
@@ -167,7 +78,6 @@ export default function CommunityPage() {
     setIsCreating(true);
     await createPost.mutateAsync({
       content: newPostContent,
-      subject: selectedSubject === "All" ? undefined : selectedSubject,
     });
     setNewPostContent("");
     setIsCreating(false);
@@ -197,74 +107,6 @@ export default function CommunityPage() {
           Connect with other learners, discover public quizzes, and share
           knowledge.
         </p>
-      </div>
-
-      <div className="space-y-4">
-        <h2 className="text-xl font-semibold">
-          Featured GCE mock exams{" "}
-          <span className="text-muted-foreground text-sm font-normal">
-            Paper 1 &amp; 2 — curated blueprints
-          </span>
-        </h2>
-
-        {featuredMocksLoading ? (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <Skeleton key={i} className="h-40" />
-            ))}
-          </div>
-        ) : featuredMocks.length === 0 ? (
-          <Card>
-            <CardContent className="py-10 text-center text-sm text-muted-foreground">
-              No community mocks published yet.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {featuredMocks.map((bp) => (
-              <Card key={bp.id}>
-                <CardHeader className="space-y-1">
-                  <CardTitle className="line-clamp-2 text-lg">
-                    {bp.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-muted-foreground text-sm">
-                    {bp.component.program.name} · {bp.component.name}
-                  </p>
-                  {bp.description ? (
-                    <p className="text-muted-foreground line-clamp-2 text-xs">
-                      {bp.description}
-                    </p>
-                  ) : null}
-                  <ul className="text-muted-foreground text-xs space-y-1">
-                    {bp.sections.slice(0, 3).map((s, i) => (
-                      <li key={`${bp.id}-${i}-${s.name}`}>
-                        {s.name}: {s.questionCount} × {s.questionType}
-                      </li>
-                    ))}
-                    {bp.sections.length > 3 ? <li>+ more sections…</li> : null}
-                  </ul>
-                  {!isGuest && (
-                    <Button
-                      size="sm"
-                      type="button"
-                      disabled={startingMockId !== null}
-                      onClick={() => startFeaturedMock(bp.id)}
-                    >
-                      {startingMockId === bp.id ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <Play className="mr-2 h-4 w-4" />
-                      )}
-                      Start mock
-                    </Button>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
       </div>
 
       <div className="space-y-4">
@@ -319,19 +161,6 @@ export default function CommunityPage() {
         )}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {subjects.map((subject) => (
-          <Button
-            key={subject}
-            variant={selectedSubject === subject ? "default" : "outline"}
-            size="sm"
-            onClick={() => setSelectedSubject(subject)}
-          >
-            {subject}
-          </Button>
-        ))}
-      </div>
-
       {!isGuest && (
         <Card>
           <CardHeader>
@@ -345,12 +174,7 @@ export default function CommunityPage() {
                 onChange={(e) => setNewPostContent(e.target.value)}
                 rows={3}
               />
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground">
-                  {selectedSubject !== "All"
-                    ? `Posting in: ${selectedSubject}`
-                    : "Public post"}
-                </span>
+              <div className="flex justify-end items-center">
                 <Button
                   onClick={handleCreatePost}
                   disabled={!newPostContent.trim() || isCreating}

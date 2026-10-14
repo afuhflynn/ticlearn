@@ -7,13 +7,14 @@ import { Loader2 } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { TIP_NAME } from "@/components/chat/constants";
 import { useCheckLimit, useUsage } from "@/hooks";
 import { useMessagesPaginated } from "@/hooks/useChat";
 import { normalizeStoredParts } from "@/lib/chat-messages";
 import { queryKeys } from "@/lib/query-keys";
+import { ChatRatingBanner } from "./ChatRatingBanner";
 import { ChatComposer } from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
-import { ChatRatingBanner } from "./ChatRatingBanner";
 import { CHAT_SUGGESTIONS } from "./constants";
 import { consumePendingChatMessage } from "./pending-message";
 
@@ -45,7 +46,7 @@ function ConversationSession({
     experimental_throttle: 50,
     onFinish: ({ messages: updatedMessages, isError }) => {
       if (isError) {
-        toast.error("TiC could not finish that response.");
+        toast.error(`${TIP_NAME} could not finish that response.`);
         queryClient.invalidateQueries({ queryKey: queryKeys.usage });
         return;
       }
@@ -130,7 +131,8 @@ function ConversationSession({
         <ChatMessageList
           emptyState={
             <div className="px-4 py-10 text-center text-muted-foreground">
-              This conversation is empty. Ask TiC anything to get started.
+              This conversation is empty. Ask {TIP_NAME} anything to get
+              started.
             </div>
           }
           messages={messages}

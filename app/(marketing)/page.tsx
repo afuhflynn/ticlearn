@@ -1,16 +1,13 @@
-import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa6";
 import { LandingHero } from "@/components/marketing/landing-hero";
-import { getGceCountdownSnapshot } from "@/lib/gce-countdown";
+import { Button } from "@/components/ui/button";
 
 export default function HomePage() {
-  const countdown = getGceCountdownSnapshot();
-
   return (
     <div className="flex flex-col">
-      <LandingHero countdown={countdown} />
+      <LandingHero />
 
       <section className="border-t py-12 md:py-14">
         <div className="container flex max-w-4xl flex-col items-start justify-between gap-8 px-4 md:flex-row md:items-center md:px-6">
@@ -45,8 +42,8 @@ export default function HomePage() {
       <section className="border-t bg-muted/30 py-10">
         <div className="container px-4 text-center md:px-6">
           <p className="text-muted-foreground text-sm">
-            Get tips, exam reminders, and help from other students in the
-            WhatsApp community.
+            Get study tips and help from other students in the WhatsApp
+            community.
           </p>
           <Button
             variant="outline"

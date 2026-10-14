@@ -1,28 +1,28 @@
+import {
+  ArrowRight,
+  GraduationCap,
+  Sparkles,
+  Target,
+  Users,
+} from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import {
-  GraduationCap,
-  Users,
-  Target,
-  Sparkles,
-  ArrowRight,
-} from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "About TiCLearn - AI Study Platform by Tic Foundation",
   description:
-    "Learn about TiCLearn, developed by Tic Foundation to transform GCE A-Level exam preparation for Cameroonian students through AI-powered study tools.",
+    "Learn about TiCLearn, developed by Tic Foundation to help Cameroonian university students study their own lecture notes with AI-powered tools.",
   keywords: [
     "TiCLearn about",
     "Tic Foundation",
-    "GCE education Cameroon",
+    "University study Cameroon",
     "AI study platform Cameroon",
   ],
   openGraph: {
-    title: "About TiCLearn - Transforming GCE Education",
+    title: "About TiCLearn - Study Help for University Students",
     description:
-      "Discover how TiCLearn is revolutionizing GCE A-Level exam preparation for students in Cameroon.",
+      "Discover how TiCLearn helps university students in Cameroon learn from their own lecture notes.",
   },
 };
 
@@ -36,8 +36,8 @@ export default function AboutPage() {
             About <span className="text-primary">TiCLearn</span>
           </h1>
           <p className="text-lg text-muted-foreground md:text-xl">
-            Empowering Cameroonian students with AI-powered learning tools
-            designed specifically for GCE A-Level success.
+            Empowering Cameroonian university students with AI tools that teach
+            from their own lecture notes.
           </p>
         </section>
 
@@ -52,7 +52,7 @@ export default function AboutPage() {
               We believe every Cameroonian student deserves access to
               high-quality educational resources. TiCLearn bridges the gap
               between traditional learning and modern AI technology, helping
-              students achieve their full potential in GCE A-Level exams.
+              students understand their own courses instead of memorising.
             </p>
           </div>
           <div className="space-y-4">
@@ -73,10 +73,10 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-center">Our Story</h2>
           <div className="prose prose-stone dark:prose-invert mx-auto">
             <p className="text-muted-foreground">
-              TiCLearn was born from a simple observation: Cameroonian GCE
-              A-Level students often lack access to quality study materials and
-              personalized guidance. Traditional tutoring is expensive, and many
-              students struggle to find relevant resources.
+              TiCLearn was born from a simple observation: Cameroonian
+              university students sit on piles of lecture notes and still study
+              alone. Private tutoring is expensive, and generic study apps know
+              nothing about their courses.
             </p>
             <p className="text-muted-foreground">
               Founded by TIC Foundation, a nonprofit organization dedicated to
@@ -84,7 +84,7 @@ export default function AboutPage() {
               the power of artificial intelligence with deep understanding of
               the local educational context. Our team includes experienced
               educators, software engineers, and passionate students who
-              remember the challenges of preparing for A-Level exams.
+              remember the challenges of keeping up with university courses.
             </p>
             <p className="text-muted-foreground">
               Today, we serve thousands of students across Cameroon and beyond,

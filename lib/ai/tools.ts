@@ -13,6 +13,7 @@ import {
   getUserCreditBalance,
   spendCredits,
 } from "@/lib/credits";
+import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
 import {
   getPlatformSettings,
   quizCreditsRequired,
@@ -38,12 +39,10 @@ type TavilySearchResult = {
 const notePreviewSelect = {
   id: true,
   title: true,
-  subject: true,
   fileName: true,
   fileType: true,
   status: true,
   summary: true,
-  topics: true,
   keyPoints: true,
   updatedAt: true,
 } as const;
@@ -163,10 +162,8 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
           userId,
           OR: [
             { title: { contains: query, mode: "insensitive" } },
-            { subject: { contains: query, mode: "insensitive" } },
             { summary: { contains: query, mode: "insensitive" } },
             { extractedText: { contains: query, mode: "insensitive" } },
-            { topics: { has: query } },
           ],
         },
         orderBy: { updatedAt: "desc" },
@@ -217,13 +214,11 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
         note: {
           id: note.id,
           title: note.title,
-          subject: note.subject,
           fileName: note.fileName,
           fileType: note.fileType,
           fileUrl: note.fileUrl,
           status: note.status,
           summary: note.summary,
-          topics: note.topics,
           keyPoints: note.keyPoints,
           quizzes: note.quizzes,
         },
@@ -257,7 +252,6 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
             select: {
               id: true,
               title: true,
-              subject: true,
             },
           },
           _count: {
@@ -291,9 +285,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
             select: {
               id: true,
               title: true,
-              subject: true,
               summary: true,
-              topics: true,
               keyPoints: true,
             },
           },
@@ -403,17 +395,11 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
       title: z.string().min(3).max(120).describe("Quiz title."),
       noteId: z
         .string()
-        .optional()
-        .describe(
-          "ID of the user's note to link this quiz to. Omit for a standalone topic quiz.",
-        ),
+        .describe("ID of the user's note this quiz comes from."),
       noteTitle: z
         .string()
         .max(120)
-        .default("General")
-        .describe(
-          "Human-readable note/topic title shown on the quiz card. Use the note title if noteId is provided, otherwise a short topic label.",
-        ),
+        .describe("Note title shown on the quiz card."),
       timed: z.boolean().default(false).describe("Whether the quiz is timed."),
       timeLimit: z
         .number()
@@ -459,16 +445,14 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
       timeLimit,
       questions,
     }) => {
-      if (noteId) {
-        const note = await prisma.note.findFirst({
-          where: { id: noteId, userId },
-          select: { id: true },
-        });
-        if (!note) {
-          throw new Error(
-            "Note not found or does not belong to the current user.",
-          );
-        }
+      const note = await prisma.note.findFirst({
+        where: { id: noteId, userId },
+        select: { id: true },
+      });
+      if (!note) {
+        throw new Error(
+          "Note not found or does not belong to the current user.",
+        );
       }
 
       if (timed && !timeLimit) {
@@ -479,19 +463,11 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
         where: { userId },
         orderBy: { createdAt: "desc" },
       });
-      const plan =
-        subscription?.status === "ACTIVE" ? subscription.plan : "FREE";
+      const plan = resolvePlan(subscription);
 
-      const quizLimits: Record<string, number> = {
-        FREE: 4,
-        STARTER: 20,
-        STANDARD: 60,
-        PREMIUM: -1,
-        PRO: -1,
-      };
-      const quizLimit = quizLimits[plan] ?? quizLimits.FREE;
+      const quizLimit = getPlanLimits(plan).quizGenerations;
       const quizCount = await prisma.quiz.count({ where: { userId } });
-      if (quizLimit !== -1 && quizCount >= quizLimit) {
+      if (limitReached(quizLimit, quizCount)) {
         throw new Error(
           `Quiz generation limit reached (${quizLimit}). Upgrade your plan to generate more quizzes.`,
         );
@@ -519,7 +495,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
         const created = await tx.quiz.create({
           data: {
             userId,
-            noteId: noteId || null,
+            noteId,
             noteTitle,
             title,
             questionCount: questions.length,

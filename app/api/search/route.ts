@@ -37,10 +37,10 @@ export async function GET(req: Request) {
           userId: session.user.id,
           OR: [
             { title: { contains: searchQuery } },
-            { subject: { contains: searchQuery } },
+            { summary: { contains: searchQuery } },
           ],
         },
-        select: { id: true, title: true, subject: true },
+        select: { id: true, title: true, summary: true },
         take: 10,
       });
       results.push(
@@ -48,7 +48,7 @@ export async function GET(req: Request) {
           type: "note",
           id: n.id,
           title: n.title,
-          description: n.subject,
+          description: n.summary?.slice(0, 120) ?? "",
           url: `/upload?id=${n.id}`,
         })),
       );

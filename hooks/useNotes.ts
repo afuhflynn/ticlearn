@@ -6,7 +6,6 @@ import type { NoteSummary, NoteWithRelations } from "@/types";
 
 type NoteMutationPayload = {
   title: string;
-  subject: string;
   fileUrl: string;
   uploadthingKey?: string;
   fileName: string;
@@ -86,14 +85,9 @@ export function useUpdateNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (data: {
-      id: string;
-      title?: string;
-      subject?: string;
-    }) => {
+    mutationFn: async (data: { id: string; title?: string }) => {
       const result = await api.mutations.notes.update(data.id, {
         title: data.title,
-        subject: data.subject,
       });
       return result;
     },

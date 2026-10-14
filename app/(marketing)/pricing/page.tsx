@@ -1,10 +1,10 @@
 "use client";
 
-import { useSession } from "@/lib/auth-client";
-import { useRouter } from "next/navigation";
+import { Check, CreditCard, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { Check, Loader2, CreditCard } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -14,8 +14,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { useSession } from "@/lib/auth-client";
 
 interface Subscription {
   plan: string;
@@ -30,11 +30,11 @@ const plans = [
     priceKey: "FREE",
     description: "Perfect for getting started",
     features: [
-      "1 full mock exam per week",
-      "10 AI question solves per day",
+      "2 notes",
+      "4 quizzes from your notes",
+      "8 Tip messages a day",
       "Basic readiness score",
-      "8 TiC messages/day",
-      "Notes & quizzes",
+      "Leaderboard",
     ],
     cta: "Get Started",
     popular: false,
@@ -45,14 +45,13 @@ const plans = [
     price: "3,500",
     period: "/month",
     priceKey: "PRO",
-    description: "For serious exam preparation",
+    description: "For serious study",
     features: [
-      "Unlimited mock exams",
-      "Unlimited AI question solving",
-      "Adaptive mock targeting weak areas",
+      "Unlimited notes",
+      "Unlimited quizzes from your notes",
+      "Unlimited Tip messages",
       "Advanced readiness analytics & trends",
-      "Unlimited TiC messages",
-      "View correct answers & explanations",
+      "Community and leaderboards",
     ],
     cta: "Start Free Trial",
     popular: true,

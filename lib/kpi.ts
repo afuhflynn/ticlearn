@@ -318,18 +318,18 @@ export async function computeSubjectDistribution(
 
   const userIds = activeUserIds.map((u) => u.userId);
 
-  const profiles = await prisma.examProfileProgram.findMany({
-    where: { examProfile: { userId: { in: userIds } } },
-    select: { program: { select: { name: true } } },
+  const users = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { levelOfStudy: true },
   });
 
-  const subjectCount = new Map<string, number>();
-  for (const p of profiles) {
-    const name = p.program.name;
-    subjectCount.set(name, (subjectCount.get(name) ?? 0) + 1);
+  const levelCount = new Map<string, number>();
+  for (const u of users) {
+    const name = u.levelOfStudy ?? "Unset";
+    levelCount.set(name, (levelCount.get(name) ?? 0) + 1);
   }
 
-  return Array.from(subjectCount.entries())
+  return Array.from(levelCount.entries())
     .map(([subject, activeUsers]) => ({ subject, activeUsers }))
     .sort((a, b) => b.activeUsers - a.activeUsers);
 }
@@ -355,13 +355,13 @@ export async function computeActivationFunnel() {
   const onboardingSkipped = await prisma.user.count({
     where: {
       role: "USER",
-      examProfiles: { some: { onboardingSkipped: true } },
+      onboardingSkipped: true,
     },
   });
   const onboardingCompleted = await prisma.user.count({
     where: {
       role: "USER",
-      examProfiles: { some: { onboardingCompleted: true } },
+      onboardingCompleted: true,
     },
   });
   const firstQuiz = await prisma.quiz.groupBy({

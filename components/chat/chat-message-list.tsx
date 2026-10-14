@@ -41,6 +41,7 @@ import {
   ToolInput,
   ToolOutput,
 } from "@/components/ai-elements/tool";
+import { TIP_NAME } from "@/components/chat/constants";
 import { cn } from "@/lib/utils";
 
 function normalizeMarkdownForDisplay(content: string) {
@@ -244,7 +245,7 @@ function MessageBody({ message }: { message: UIMessage }) {
       {message.role === "assistant" ? (
         <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
           <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-            TiC
+            {TIP_NAME}
           </span>
           Study assistant
         </div>
@@ -328,7 +329,7 @@ export function ChatMessageList({
         messages[messages.length - 1]?.role !== "assistant" ? (
           <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
             <Loader size={14} />
-            <span>TiC is thinking…</span>
+            <span>{TIP_NAME} is thinking…</span>
           </div>
         ) : null}
       </ConversationContent>

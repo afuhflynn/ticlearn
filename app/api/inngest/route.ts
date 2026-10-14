@@ -1,37 +1,29 @@
 import { serve } from "inngest/next";
+import {} from "@/lib/inngest";
 import { inngest } from "@/lib/inngest/client";
+import { dispatchEngagementCampaigns } from "@/lib/inngest/engagement-functions";
 import {
-  processNote,
-  generateQuiz,
-  generateQuizFromWeakAreas,
-  sendVerificationEmail,
-  sendWelcomeEmail,
-  sendPasswordResetEmail,
-  sendMagicLinkEmail,
-  sendUnverifiedWarning,
   deleteUnverifiedAccounts,
-  sendAdminInviteEmail,
-  sendRoleUpdateEmail,
-  generateDefaultQuiz,
-  sendPlatformUpdateEmail,
+  generateQuiz,
   handleSubscriptionAction,
   monthlyCreditBonus,
+  processNote,
+  sendAdminInviteEmail,
+  sendMagicLinkEmail,
+  sendPasswordResetEmail,
+  sendPlatformUpdateEmail,
+  sendRoleUpdateEmail,
+  sendUnverifiedWarning,
+  sendVerificationEmail,
+  sendWelcomeEmail,
 } from "@/lib/inngest/functions";
-import {
-  processPaper3Source,
-  generatePaper3Mock,
-  ingestQuestions,
-} from "@/lib/inngest";
-import { evaluatePaper3Exam } from "@/lib/inngest/paper3-exam-functions";
 import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
-import { dispatchEngagementCampaigns } from "@/lib/inngest/engagement-functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
   functions: [
     processNote,
     generateQuiz,
-    generateQuizFromWeakAreas,
     sendVerificationEmail,
     sendWelcomeEmail,
     sendPasswordResetEmail,
@@ -40,14 +32,9 @@ export const { GET, POST, PUT } = serve({
     deleteUnverifiedAccounts,
     sendAdminInviteEmail,
     sendRoleUpdateEmail,
-    generateDefaultQuiz,
     sendPlatformUpdateEmail,
     handleSubscriptionAction,
     monthlyCreditBonus,
-    processPaper3Source,
-    generatePaper3Mock,
-    evaluatePaper3Exam,
-    ingestQuestions,
     computeDailyMetricsJob,
     dispatchEngagementCampaigns,
   ],

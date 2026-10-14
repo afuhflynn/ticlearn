@@ -13,11 +13,13 @@ import {
   Trash2,
   UploadCloud,
 } from "lucide-react";
+
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { TIP_NAME } from "@/components/chat/constants";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -98,7 +100,7 @@ export function ChatSidebar() {
 
   const handleCreateConversation = async () => {
     try {
-      const result = await createConversation.mutateAsync();
+      const result = await createConversation.mutateAsync({});
       router.push(`/chat/${result.conversation.id}`);
     } catch {
       toast.error("Failed to create conversation");
@@ -182,7 +184,7 @@ export function ChatSidebar() {
                 height={32}
                 className="h-8 w-8 text-primary"
               />
-              <span className="text-xl font-bold">TiC</span>
+              <span className="text-xl font-bold">{TIP_NAME}</span>
             </Link>
             <Button
               onClick={handleCreateConversation}

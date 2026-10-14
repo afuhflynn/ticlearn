@@ -1,25 +1,20 @@
 "use client";
 
-import { useState, Suspense, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  useSession,
-  sendVerificationOTP,
-  verifyEmailOTP,
-} from "@/lib/auth-client";
-import { triggerWelcomeEmail } from "@/lib/inngest/trigger";
 import { motion } from "framer-motion";
 import {
-  GraduationCap,
-  Mail,
-  Loader2,
   ArrowLeft,
   CheckCircle,
+  GraduationCap,
+  Loader2,
+  Mail,
 } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { Suspense, useEffect, useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Card,
   CardContent,
@@ -28,10 +23,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { toast } from "sonner";
-import { useQueryStates } from "nuqs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  sendVerificationOTP,
+  useSession,
+  verifyEmailOTP,
+} from "@/lib/auth-client";
+import { triggerWelcomeEmail } from "@/lib/inngest/trigger";
 import { searchParamsSchema } from "@/nuqs";
-import Image from "next/image";
 
 function VerifyEmailForm() {
   const router = useRouter();

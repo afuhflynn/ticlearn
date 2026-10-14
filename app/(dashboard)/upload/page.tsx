@@ -68,7 +68,6 @@ import { cn } from "@/lib/utils";
 type NoteItem = {
   id: string;
   title: string;
-  subject: string;
   fileUrl: string;
   fileName: string;
   fileType: "PDF" | "IMAGE" | "WORD";
@@ -119,10 +118,8 @@ function UploadContent() {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
-  const [subject, setSubject] = useState("");
   const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
   const [editTitle, setEditTitle] = useState("");
-  const [editSubject, setEditSubject] = useState("");
   const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [quizConfig, setQuizConfig] = useState<QuizConfig>(defaultQuizConfig());
 
@@ -143,7 +140,6 @@ function UploadContent() {
       try {
         await uploadNoteMutation.mutateAsync({
           title: title.trim(),
-          subject: subject.trim(),
           fileUrl: uploadedFile.url,
           uploadthingKey:
             "key" in uploadedFile && typeof uploadedFile.key === "string"
@@ -171,7 +167,6 @@ function UploadContent() {
 
         setFile(null);
         setTitle("");
-        setSubject("");
       } catch (error) {
         console.error("Upload error:", error);
       }
@@ -236,8 +231,8 @@ function UploadContent() {
   };
 
   const handleUpload = () => {
-    if (!file || !title.trim() || !subject.trim()) {
-      toast.error("Add a file, title, and subject first");
+    if (!file || !title.trim()) {
+      toast.error("Add a file and a title first");
       return;
     }
 
@@ -255,7 +250,6 @@ function UploadContent() {
   const openEditDialog = (note: NoteItem) => {
     setEditingNote(note);
     setEditTitle(note.title);
-    setEditSubject(note.subject);
   };
 
   const saveEdit = async () => {
@@ -264,7 +258,6 @@ function UploadContent() {
     await updateNoteMutation.mutateAsync({
       id: editingNote.id,
       title: editTitle.trim(),
-      subject: editSubject.trim(),
     });
 
     setEditingNote(null);
@@ -445,15 +438,6 @@ function UploadContent() {
                     onChange={(e) => setTitle(e.target.value)}
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="subject">Subject</Label>
-                  <Input
-                    id="subject"
-                    placeholder="e.g. Biology"
-                    value={subject}
-                    onChange={(e) => setSubject(e.target.value)}
-                  />
-                </div>
               </div>
             )}
 
@@ -463,8 +447,7 @@ function UploadContent() {
                 isUploading ||
                 uploadNoteMutation.isPending ||
                 !file ||
-                !title.trim() ||
-                !subject.trim()
+                !title.trim()
               }
               onClick={handleUpload}
             >
@@ -552,7 +535,7 @@ function UploadContent() {
                                 ) : null}
                               </div>
                               <p className="text-sm text-muted-foreground">
-                                {note.subject} • {note.quizCount ?? 0} quiz
+                                {note.quizCount ?? 0} quiz
                                 {note.quizCount === 1 ? "" : "zes"}
                               </p>
                             </div>
@@ -699,7 +682,7 @@ function UploadContent() {
           <DialogHeader>
             <DialogTitle>Edit Note</DialogTitle>
             <DialogDescription>
-              Update the note title or subject. This does not reprocess the file
+              Update the note title. This does not reprocess the file
               contents.
             </DialogDescription>
           </DialogHeader>
@@ -713,14 +696,6 @@ function UploadContent() {
                 onChange={(e) => setEditTitle(e.target.value)}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="edit-subject">Subject</Label>
-              <Input
-                id="edit-subject"
-                value={editSubject}
-                onChange={(e) => setEditSubject(e.target.value)}
-              />
-            </div>
           </div>
 
           <DialogFooter>
@@ -730,9 +705,7 @@ function UploadContent() {
             <Button
               onClick={saveEdit}
               disabled={
-                updateNoteMutation.isPending ||
-                !editTitle.trim() ||
-                !editSubject.trim()
+                updateNoteMutation.isPending || !editTitle.trim()
               }
             >
               {updateNoteMutation.isPending ? (

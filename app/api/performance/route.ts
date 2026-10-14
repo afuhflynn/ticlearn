@@ -1,8 +1,15 @@
-import { NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getActiveProfileId } from "@/lib/exam-profile";
+
+const recordSchema = z.object({
+  noteId: z.string().min(1),
+  topicId: z.string().min(1),
+  result: z.enum(["CORRECT", "NEEDED_HELP"]),
+  weight: z.enum(["quiz", "mock"]).optional(),
+});
 
 export async function POST(req: Request) {
   try {
@@ -10,25 +17,23 @@ export async function POST(req: Request) {
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { topicId, result, weight } = await req.json();
-    if (!topicId || !result)
-      return NextResponse.json(
-        { error: "topicId and result required" },
-        { status: 400 },
-      );
-    if (result !== "CORRECT" && result !== "NEEDED_HELP")
-      return NextResponse.json(
-        { error: "result must be CORRECT or NEEDED_HELP" },
-        { status: 400 },
-      );
+    const { noteId, topicId, result, weight } = recordSchema.parse(
+      await req.json(),
+    );
+
+    const topicNote = await prisma.topicNote.findUnique({
+      where: { topicId_noteId: { topicId, noteId } },
+      select: { note: { select: { userId: true } } },
+    });
+
+    if (!topicNote || topicNote.note.userId !== session.user.id) {
+      return NextResponse.json({ error: "Topic not found" }, { status: 404 });
+    }
 
     const questionWeight = weight === "mock" ? 2 : 1;
-    const profileId = await getActiveProfileId(session.user.id);
-    if (!profileId)
-      return NextResponse.json({ error: "No active profile" }, { status: 400 });
 
     const performance = await prisma.topicPerformance.upsert({
-      where: { examProfileId_topicId: { examProfileId: profileId, topicId } },
+      where: { noteId_topicId: { noteId, topicId } },
       update: {
         totalAttempts: { increment: questionWeight },
         correctAttempts:
@@ -40,7 +45,7 @@ export async function POST(req: Request) {
         lastPracticedAt: new Date(),
       },
       create: {
-        examProfileId: profileId,
+        noteId,
         topicId,
         totalAttempts: questionWeight,
         correctAttempts: result === "CORRECT" ? questionWeight : 0,
@@ -67,6 +72,12 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("Performance POST error:", error);
+    if (error instanceof z.ZodError) {
+      return NextResponse.json(
+        { error: error.issues[0]?.message ?? "Invalid performance payload" },
+        { status: 400 },
+      );
+    }
     return NextResponse.json(
       { error: "Failed to record performance" },
       { status: 500 },
@@ -80,19 +91,36 @@ export async function GET() {
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const profileId = await getActiveProfileId(session.user.id);
-    if (!profileId)
-      return NextResponse.json({ error: "No active profile" }, { status: 400 });
-
-    const performances = await prisma.topicPerformance.findMany({
-      where: { examProfileId: profileId },
-      include: {
-        topic: {
-          select: { name: true, component: { select: { name: true } } },
-        },
+    const rows = await prisma.topicPerformance.findMany({
+      where: { note: { userId: session.user.id } },
+      select: {
+        noteId: true,
+        masteryScore: true,
+        topic: { select: { name: true } },
       },
       orderBy: { masteryScore: "asc" },
     });
+
+    const byTopic = new Map<string, { score: number[]; notes: Set<string> }>();
+    for (const row of rows) {
+      const bucket = byTopic.get(row.topic.name) ?? {
+        score: [],
+        notes: new Set<string>(),
+      };
+      bucket.score.push(row.masteryScore);
+      bucket.notes.add(row.noteId);
+      byTopic.set(row.topic.name, bucket);
+    }
+
+    const performances = [...byTopic.entries()]
+      .map(([topic, bucket]) => ({
+        topic,
+        score: Math.round(
+          bucket.score.reduce((sum, s) => sum + s, 0) / bucket.score.length,
+        ),
+        notes: bucket.notes.size,
+      }))
+      .sort((a, b) => a.score - b.score);
 
     return NextResponse.json({ performances });
   } catch (error) {

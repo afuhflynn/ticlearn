@@ -4,10 +4,10 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { deleteFile, getUploadThingFileKey } from "@/lib/file";
 import { prisma } from "@/lib/prisma";
+import { pruneOrphanTopics } from "@/lib/topics";
 
 const updateNoteSchema = z.object({
   title: z.string().min(1).optional(),
-  subject: z.string().min(1).optional(),
 });
 
 export async function GET(
@@ -34,6 +34,10 @@ export async function GET(
         user: {
           select: { id: true, name: true, image: true },
         },
+        topicNotes: {
+          include: { topic: { select: { id: true, name: true } } },
+          orderBy: { createdAt: "asc" },
+        },
       },
     });
 
@@ -44,6 +48,7 @@ export async function GET(
     return NextResponse.json({
       note: {
         ...note,
+        topics: note.topicNotes.map((link) => link.topic.name),
         latestQuiz: note.quizzes[0] ?? null,
       },
     });
@@ -73,6 +78,7 @@ export async function DELETE(
 
     const note = await prisma.note.findFirst({
       where: { id, userId: session.user.id },
+      include: { topicNotes: { select: { topicId: true } } },
     });
 
     if (!note) {
@@ -97,6 +103,8 @@ export async function DELETE(
     await prisma.note.delete({
       where: { id: note.id },
     });
+
+    await pruneOrphanTopics(note.topicNotes.map((link) => link.topicId));
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -124,7 +132,7 @@ export async function PUT(
     const { id } = await params;
     const data = updateNoteSchema.parse(await req.json());
 
-    if (!data.title && !data.subject) {
+    if (!data.title) {
       return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
     }
 

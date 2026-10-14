@@ -13,7 +13,7 @@ export function extractMcqFromPlainText(full: string): ParsedMcq | null {
   if (!trimmed) return null;
   const rawLines = trimmed.split(/\r?\n/);
   const lines = rawLines.map((l) => l.trim()).filter(Boolean);
-  const optRe = /^([A-Da-d])[\).\:\s]\s*(.+)$/;
+  const optRe = /^([A-Da-d])[).:\s]\s*(.+)$/;
   const options: ParsedMcqOption[] = [];
   const stemLines: string[] = [];
   let seenOption = false;
@@ -32,14 +32,14 @@ export function extractMcqFromPlainText(full: string): ParsedMcq | null {
   if (options.length < 2) return null;
 
   const answerMatch = trimmed.match(
-    /(?:^|\n)\s*(?:correct|answer|key)\s*[:\u2013\-]\s*([A-Da-d])\b/im,
+    /(?:^|\n)\s*(?:correct|answer|key)\s*[:\u2013-]\s*([A-Da-d])\b/im,
   );
   const correctOption = answerMatch ? answerMatch[1].toUpperCase() : undefined;
 
   let stem = stemLines.join("\n").trim();
   stem = stem
     .replace(
-      /\s*(?:correct|correct answer|answer|key)\s*[:\u2013\-]\s*[A-Da-d]\b\s*$/i,
+      /\s*(?:correct|correct answer|answer|key)\s*[:\u2013-]\s*[A-Da-d]\b\s*$/i,
       "",
     )
     .trim();

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { queryKeys } from "@/lib/query-keys";
 import { api } from "@/lib/api-client";
+import { queryKeys } from "@/lib/query-keys";
 
 export function useUserStats() {
   const { data, isLoading, error } = useQuery({

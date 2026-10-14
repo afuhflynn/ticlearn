@@ -31,12 +31,9 @@ export function useAdminUsers(
       email: string;
       image: string | null;
       role: string;
-      activeProfileId: string | null;
+      levelOfStudy: string | null;
       onboardingCompleted: boolean | null;
       onboardingSkipped: boolean | null;
-      onboardingStep: number | null;
-      phoneNumber: string | null;
-      phoneCountryCode: string | null;
       createdAt: string;
       notesCount: number;
       quizzesCount: number;
@@ -100,21 +97,9 @@ export type AdminPlanUser = {
   image: string | null;
   role: string;
   createdAt: string;
-  activeProfileId: string | null;
+  levelOfStudy: string | null;
   onboardingCompleted: boolean | null;
   onboardingSkipped: boolean | null;
-  onboardingStep: number | null;
-  examYear: number | null;
-  examDate: string | null;
-  phoneCountryCode: string | null;
-  phoneNumber: string | null;
-  programs: Array<{
-    id: string;
-    name: string;
-    code: string;
-    level: string;
-    confidence: number | null;
-  }>;
   currentPlan: string;
   subscription: null | {
     id: string;

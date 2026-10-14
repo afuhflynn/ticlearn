@@ -1,28 +1,23 @@
 import type { Metadata } from "next";
-import { MarketingNav } from "@/components/layout/MarketingNav";
 import { MarketingFooter } from "@/components/layout/MarketingFooter";
+import { MarketingNav } from "@/components/layout/MarketingNav";
 
 export const metadata: Metadata = {
-  title: "TiCLearn - AI-Powered Study Platform for GCE A-Level Cameroon",
+  title: "TiCLearn - Study Your Lecture Notes with Tip",
   description:
-    "Transform your notes into quizzes, prepare for GCE A-Level exams, and track your progress with TiCLearn. The ultimate AI study companion for Cameroonian students.",
+    "Upload your lecture notes, turn them into quizzes, and learn with Tip. Built for university students in Cameroon.",
   keywords: [
-    "GCE A-Level",
     "Cameroon",
+    "university",
     "study platform",
     "AI quiz",
-    "exam preparation",
-    "Computer Science",
-    "ICT",
-    "Mathematics",
-    "Biology",
-    "Chemistry",
-    "Physics",
+    "AI tutor",
+    "lecture notes",
   ],
   openGraph: {
     title: "TiCLearn - Study Smarter, Score Higher",
     description:
-      "AI-powered study platform for Cameroonian GCE A-Level students",
+      "Study your own lecture notes with quizzes and Tip, the AI tutor",
     type: "website",
     locale: "en_CM",
     siteName: "TiCLearn",

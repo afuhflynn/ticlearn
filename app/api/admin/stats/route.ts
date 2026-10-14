@@ -1,6 +1,6 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -22,7 +22,6 @@ export async function GET() {
       totalUsers,
       totalNotes,
       totalQuizzes,
-      totalExams,
       totalSubscriptions,
       activeSubscriptions,
       totalRevenue,
@@ -33,12 +32,10 @@ export async function GET() {
       freeUsers,
       proSubscriptions,
       recentRegistrations,
-      mocksCompleted,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.note.count(),
       prisma.quiz.count(),
-      prisma.examSession.count(),
       prisma.subscription.count(),
       prisma.subscription.count({ where: { status: "ACTIVE" } }),
       prisma.subscription.aggregate({ _sum: { amount: true } }),
@@ -55,7 +52,6 @@ export async function GET() {
           createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
         },
       }),
-      prisma.mockAttempt.count(),
     ]);
 
     const conversionRate =
@@ -66,7 +62,6 @@ export async function GET() {
         totalUsers,
         totalNotes,
         totalQuizzes,
-        totalExams,
         totalSubscriptions,
         activeSubscriptions,
         totalRevenue: totalRevenue._sum.amount || 0,
@@ -79,7 +74,6 @@ export async function GET() {
         proSubscriptions,
         conversionRate: `${conversionRate}%`,
         recentRegistrations,
-        mocksCompleted,
         revenueThisMonth: totalRevenue._sum.amount || 0,
       },
     });

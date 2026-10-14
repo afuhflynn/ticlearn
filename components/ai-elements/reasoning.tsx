@@ -1,17 +1,17 @@
 "use client";
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
+import { createMathPlugin } from "@streamdown/math";
+import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import type { ComponentProps, ReactNode } from "react";
+import { createContext, memo, useContext, useEffect, useState } from "react";
+import { Streamdown } from "streamdown";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
-import { createContext, memo, useContext, useEffect, useState } from "react";
-import { Streamdown } from "streamdown";
-import { createMathPlugin } from "@streamdown/math";
 import "katex/dist/katex.min.css";
 import { normalizeMathNotation } from "@/lib/math-format";
 import { Shimmer } from "./shimmer";

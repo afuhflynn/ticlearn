@@ -1,6 +1,6 @@
+import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -19,8 +19,6 @@ export async function GET(req: Request) {
 
     const skip = (page - 1) * limit;
 
-    const profileFilter = { examProfileId: { not: null } };
-
     const [leaderboard, total] = await Promise.all([
       prisma.userStats.findMany({
         orderBy: { totalPoints: "desc" },
@@ -32,13 +30,11 @@ export async function GET(req: Request) {
           },
         },
         where: {
-          ...profileFilter,
           user: { role: { not: "ADMIN" } },
         },
       }),
       prisma.userStats.count({
         where: {
-          ...profileFilter,
           user: { role: { not: "ADMIN" } },
         },
       }),
@@ -46,7 +42,6 @@ export async function GET(req: Request) {
 
     const currentUserRank = await prisma.userStats.count({
       where: {
-        ...profileFilter,
         user: { role: { not: "ADMIN" } },
         totalPoints: {
           gt:
