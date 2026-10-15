@@ -1,13 +1,8 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP } from "better-auth/plugins";
-import {
-  sendPasswordResetEmail,
-  sendSignInEmail,
-  sendVerificationEmail,
-} from "./email/send";
 import { trustedOrigins } from "./env";
-import { triggerWelcomeEmail } from "./inngest/trigger";
+import { inngest } from "@/lib/inngest/client";
 import { trackEvent } from "./kpi";
 import { prisma } from "./prisma";
 import { limitOtpSend } from "./rate-limit";
@@ -95,9 +90,12 @@ export const auth = betterAuth({
 
           // If Google sign-up, send welcome email (providerId will be "google")
           if (account?.providerId === "google") {
-            await triggerWelcomeEmail(user.email, user.name || "Student").catch(
-              console.error,
-            );
+            await inngest
+              .send({
+                name: "email.send.welcome",
+                data: { email: user.email, name: user.name || "Student" },
+              })
+              .catch(console.error);
           }
 
           trackEvent(user.id, "user_signed_up").catch(() => {});
@@ -117,11 +115,20 @@ export const auth = betterAuth({
         const name = user?.name || "Student";
 
         if (type === "sign-in") {
-          await sendSignInEmail({ email, name, otp });
+          await inngest.send({
+            name: "email.send.sign-in",
+            data: { email, name, otp },
+          });
         } else if (type === "email-verification") {
-          await sendVerificationEmail({ email, name, otp });
+          await inngest.send({
+            name: "email.send.verification",
+            data: { email, name, otp },
+          });
         } else if (type === "forget-password") {
-          await sendPasswordResetEmail({ email, name, otp });
+          await inngest.send({
+            name: "email.send.password-reset",
+            data: { email, name, otp },
+          });
         }
       },
       sendVerificationOnSignUp: true,

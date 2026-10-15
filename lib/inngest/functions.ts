@@ -171,7 +171,7 @@ export const generateQuiz = inngest.createFunction(
     },
   },
   async ({ event }) => {
-    const { noteId, quizId, questionCount, questionTypes } = event.data;
+    const { noteId, quizId, questionCount, questionTypes, wantsDebit, quizCost, userId, noteTitle } = event.data;
     console.log(
       `[Inngest] Generating quiz for note: ${noteId}, quiz: ${quizId}`,
     );
@@ -244,6 +244,21 @@ export const generateQuiz = inngest.createFunction(
           },
         },
       });
+
+      if (wantsDebit && userId) {
+        try {
+          const { spendCredits } = await import("@/lib/credits");
+          await spendCredits({
+            userId,
+            amount: quizCost,
+            type: "QUIZ_GENERATION",
+            description: `Quiz from note: ${noteTitle || note.title}`,
+            referenceId: quizId,
+          });
+        } catch (err) {
+          console.error("[Inngest] Quiz credit debit failed:", err);
+        }
+      }
 
       console.log(`[Inngest] Quiz generated and saved successfully: ${quizId}`);
       return { success: true, quizId };
@@ -758,3 +773,132 @@ export const monthlyCreditBonus = inngest.createFunction(
 );
 
 export { inngest };
+
+export const sendSignInEmail = inngest.createFunction(
+  { name: "Send Sign In Email", id: "send-sign-in-email", triggers: { event: "email.send.sign-in" } },
+  async ({ event }) => {
+    const { email, name, otp } = event.data;
+    try {
+      const { sendSignInEmail } = await import("@/lib/email/send");
+      await sendSignInEmail({ email, name, otp });
+      return { success: true };
+    } catch (error) {
+      console.error("Sign in email send error:", error);
+      return { success: false, error: "Failed to send sign in email" };
+    }
+  },
+);
+
+export const sendContactEmail = inngest.createFunction(
+  { name: "Send Contact Email", id: "send-contact-email", triggers: { event: "email.send.contact" } },
+  async ({ event }) => {
+    const { name, email, subject, message, adminEmail } = event.data;
+    const escapeHtml = (text: string) => {
+      const map: Record<string, string> = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      };
+      return text.replace(/[&<>"']/g, (char) => map[char] || char);
+    };
+    try {
+      const { sendEmail } = await import("@/lib/email/send");
+      const safeName = escapeHtml(name);
+      const safeEmail = escapeHtml(email);
+      const safeSubject = escapeHtml(subject);
+      const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
+      const html = `
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head><body>
+<div style="max-width:600px;margin:0 auto;padding:20px;">
+  <div style="background:#7c3aed;padding:24px;color:#fff;"><h1>New Contact Form Submission</h1></div>
+  <div style="padding:24px;">
+    <p><strong>Name</strong><br>${safeName}</p>
+    <p><strong>Email</strong><br>${safeEmail}</p>
+    <p><strong>Subject</strong><br>${safeSubject}</p>
+    <div style="background:#f3e8ff;padding:16px;border-radius:8px;">${safeMessage}</div>
+  </div>
+</div>
+</body></html>`;
+      await sendEmail({ to: adminEmail, subject: `[TiCLearn Contact] ${safeSubject}`, html });
+      return { success: true };
+    } catch (error) {
+      console.error("Contact email send error:", error);
+      return { success: false, error: "Failed to send contact email" };
+    }
+  },
+);
+
+export const generateChatTitle = inngest.createFunction(
+  { name: "Generate Chat Title", id: "generate-chat-title", triggers: { event: "chat/generate-title" } },
+  async ({ event }) => {
+    const { conversationId, userContent, userId } = event.data;
+    try {
+      const { getPromptOrFallback } = await import("@/lib/prompts/loader");
+      const { generateTextWithFallback } = await import("@/lib/ai/orchestrator");
+      const prompt = await getPromptOrFallback("chat", "chat_title", {
+        userMessage: userContent,
+      });
+      const result = await generateTextWithFallback({
+        task: "fast_chat",
+        prompt,
+        userId: userId ?? null,
+      });
+      const newTitle = result.text.trim().slice(0, 50) || "New Chat";
+      const { prisma } = await import("@/lib/prisma");
+      await prisma.chatConversation.update({
+        where: { id: conversationId },
+        data: { title: newTitle },
+      });
+      return { success: true, title: newTitle };
+    } catch (error) {
+      console.error("Chat title generation error:", error);
+      return { success: false, error: "Failed to generate chat title" };
+    }
+  },
+);
+
+export const generateAdminReport = inngest.createFunction(
+  { name: "Generate Admin Report", id: "generate-admin-report", triggers: { event: "admin/report.generate" } },
+  async ({ event }) => {
+    const { reportId, type } = event.data;
+    const { setReport } = await import("@/lib/reports/store");
+    setReport(reportId, { status: "PROCESSING" });
+    try {
+      const { renderToBuffer } = await import("@react-pdf/renderer");
+      const { AffiliateReport, FeedbackReport, SubscriptionReport, UserReport } = await import("@/components/pdf");
+      const { prisma } = await import("@/lib/prisma");
+      const formatDate = (date: Date | string | null | undefined) => {
+        if (!date) return "-";
+        const d = typeof date === "string" ? new Date(date) : date;
+        return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+      };
+      let pdfBuffer: Buffer;
+      if (type === "users") {
+        const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, name: true, email: true, role: true, createdAt: true, _count: { select: { notes: true, quizzes: true, quizAttempts: true } } } });
+        // @ts-expect-error
+        pdfBuffer = await renderToBuffer(UserReport({ users: users.map((u) => ({ id: u.id, name: u.name || "", email: u.email, role: u.role, createdAt: formatDate(u.createdAt), notesCount: u._count.notes, quizzesCount: u._count.quizzes, attemptsCount: u._count.quizAttempts })), title: "User Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+      } else if (type === "feedback") {
+        const feedbacks = await prisma.feedback.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } } } });
+        // @ts-expect-error
+        pdfBuffer = await renderToBuffer(FeedbackReport({ feedbacks: feedbacks.map((f) => ({ id: f.id, type: f.type || "OTHER", content: f.subject || "", status: f.status || "OPEN", createdAt: formatDate(f.createdAt), user: { name: f.user?.name || "", email: f.user?.email || "" } })), title: "Feedback Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+      } else if (type === "subscriptions") {
+        const subscriptions = await prisma.subscription.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } } } });
+        // @ts-expect-error
+        pdfBuffer = await renderToBuffer(SubscriptionReport({ subscriptions: subscriptions.map((s) => ({ id: s.id, plan: s.plan || "FREE", status: s.status || "PENDING", amount: s.amount || 0, startDate: formatDate(s.activatedAt), endDate: "N/A", user: { name: s.user?.name || "", email: s.user?.email || "" } })), title: "Subscription Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+      } else {
+        const affiliates = await prisma.affiliate.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+        // @ts-expect-error
+        pdfBuffer = await renderToBuffer(AffiliateReport({ affiliates: affiliates.map((a) => ({ id: a.id, code: a.code || "", status: a.status || "PENDING", commissionRate: 10, createdAt: formatDate(a.createdAt), user: { name: a.userName, email: a.userEmail }, referralsCount: a.totalConversions })), title: "Affiliate Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+      }
+      setReport(reportId, { status: "COMPLETED", buffer: (pdfBuffer as Buffer).toString("base64") });
+      return { success: true, reportId };
+    } catch (error) {
+      console.error("Admin report generation error:", error);
+      setReport(reportId, { status: "FAILED", error: "Failed to generate PDF" });
+      return { success: false, error: "Failed to generate PDF" };
+    }
+  },
+);

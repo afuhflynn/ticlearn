@@ -1,7 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { generateQuizFromNote } from "@/lib/ai";
 import { auth } from "@/lib/auth";
 import {
   getEffectiveCreditCost,
@@ -15,6 +14,7 @@ import {
   quizCreditsRequired,
 } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
+import { inngest } from "@/lib/inngest/client";
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),
@@ -123,84 +123,30 @@ export async function POST(req: Request) {
       },
     });
 
-    console.log(
-      `[API] Created quiz: ${quiz.id}, attempting synchronous generation...`,
-    );
-
-    console.log(`[API] Calling quiz generation AI...`);
-
-    const generatedQuestions = await generateQuizFromNote(
-      note.extractedText,
-      {
-        questionCount: resolvedQuestionCount,
-        questionTypes: resolvedQuestionTypes,
-      },
-      session.user.id,
-    );
-
-    console.log(`[API] AI returned ${generatedQuestions.length} questions`);
-
-    if (generatedQuestions.length > 0) {
-      await prisma.quiz.update({
-        where: { id: quiz.id },
+    try {
+      await inngest.send({
+        name: "quiz/generate",
         data: {
-          questionCount: generatedQuestions.length,
-          status: "READY",
-          questions: {
-            create: generatedQuestions.map((q, index) => ({
-              type: q.type,
-              question: q.question,
-              options: q.type === "MCQ" ? q.options : [],
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation,
-              order: index,
-            })),
-          },
+          noteId,
+          quizId: quiz.id,
+          questionCount: resolvedQuestionCount,
+          questionTypes: resolvedQuestionTypes,
+          wantsDebit,
+          quizCost,
+          userId: session.user.id,
+          noteTitle: note.title,
         },
       });
-      console.log(
-        `[API] Quiz saved successfully with ${generatedQuestions.length} questions`,
-      );
-
-      if (wantsDebit) {
-        try {
-          await spendCredits({
-            userId: session.user.id,
-            amount: quizCost,
-            type: "QUIZ_GENERATION",
-            description: `Quiz from note: ${note.title}`,
-            referenceId: quiz.id,
-          });
-        } catch (err) {
-          console.error("[API] Quiz credit debit failed:", err);
-        }
-      }
-    } else {
-      console.error("[API] AI returned 0 valid questions", {
-        quizId: quiz.id,
-        noteId,
-        questionCount: resolvedQuestionCount,
-        questionTypes: resolvedQuestionTypes,
-      });
-      await prisma.quiz.update({
-        where: { id: quiz.id },
-        data: { status: "ERROR" },
-      });
-      return NextResponse.json(
-        {
-          error:
-            "Quiz generation failed because the AI response did not produce any valid questions. Please try again.",
-        },
-        { status: 500 },
-      );
+    } catch (inngestError) {
+      console.error("Inngest send error:", inngestError);
     }
 
     trackEvent(session.user.id, EVENTS.QUIZ_GENERATED, {
       noteId,
-      questionCount: generatedQuestions.length,
+      questionCount: resolvedQuestionCount,
     }).catch(() => {});
 
-    return NextResponse.json({ quiz, success: true });
+    return NextResponse.json({ quiz, success: true, status: "GENERATING" });
   } catch (error) {
     console.error("Quiz generation error:", error);
     if (error instanceof z.ZodError) {
