@@ -104,7 +104,7 @@ The tokens and the rounded radius are a real asset every kit would replace, so k
 ### 9. Environment variables documented
 Forty six variables are read across the app. Five are stale, three of them sitting in the live `.env` doing nothing, and one of those is a real OpenAI key worth revoking. Two template files disagree with each other. Consolidate into one well commented `.env.example` with per provider signup instructions.
 **Done when:** one template file, every variable the code reads is in it, stale ones are gone, and each entry says what it is for, its format, whether it is safe to publish, and where to get it.
-- [ ] Write the template: `/feature-build environment variables documented`
+- [x] Write the template: `/feature-build environment variables documented` · code in `.env.example` (`example.env` deleted, single template)
 
 ### 10. Database indexes and query rewrites · needs a decision · GA
 Leaderboards run a count per view, admin metrics recompute from raw events with up to sixty two queries per request, and there are genuine N plus one loops in the stats route. The exam endpoint that used to return whole question rows with answers attached is deleted with the pivot.
