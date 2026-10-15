@@ -650,8 +650,9 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "ACTIVATE") {
-      const { sendSubscriptionActivatedEmail } =
-        await import("@/lib/email/send");
+      const { sendSubscriptionActivatedEmail } = await import(
+        "@/lib/email/send"
+      );
 
       await sendSubscriptionActivatedEmail({
         email: user.email,
@@ -666,8 +667,9 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "REJECT") {
-      const { sendSubscriptionRejectedEmail } =
-        await import("@/lib/email/send");
+      const { sendSubscriptionRejectedEmail } = await import(
+        "@/lib/email/send"
+      );
 
       await sendSubscriptionRejectedEmail({
         email: user.email,

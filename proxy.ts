@@ -42,6 +42,7 @@ const publicPaths = [
   "/privacy",
   "/terms",
   "/pricing",
+  "/primitive-gallery",
   "/api/auth",
   "/api/webhooks",
   "/api/inngest",

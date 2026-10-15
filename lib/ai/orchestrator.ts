@@ -135,7 +135,10 @@ export async function generate<T>(
 
   const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
-  if (runnable.length === 0) throw friendlyDown(opts.task, [{ model: "all", error: "All models are in cooldown." }]);
+  if (runnable.length === 0)
+    throw friendlyDown(opts.task, [
+      { model: "all", error: "All models are in cooldown." },
+    ]);
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];
   const failHeadOnce = headFailArmed() && process.env.NODE_ENV !== "production";
@@ -339,7 +342,10 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
   logPromptUse(opts.task, opts.promptRef);
   const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
-  if (runnable.length === 0) throw friendlyDown(opts.task, [{ model: "all", error: "All models are in cooldown." }]);
+  if (runnable.length === 0)
+    throw friendlyDown(opts.task, [
+      { model: "all", error: "All models are in cooldown." },
+    ]);
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];
   const failHeadOnce = headFailArmed() && process.env.NODE_ENV !== "production";

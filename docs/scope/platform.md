@@ -81,14 +81,14 @@ Today every AI task hardcoded one Gemini model and there is no fallback. Routed 
 ### 7. Design system and UI toolkit convention · GA
 The tokens and the rounded radius are a real asset every kit would replace, so keep them. Document a rule: shadcn and AI Elements are the default, components are owned locally and customised, and a new primitive is built only where shadcn genuinely lacks one. Also switch the shadcn base off the slowing Radix fork and record which of the twenty three unused AI Elements come in.
 **Done when:** `docs/research/ui-toolkit.md` §7 is turned into a written convention, the shadcn base is current, the custom primitives the rebuild needs exist as owned components, focus rings pass contrast, no screen hand rolls a control that shadcn already ships, and the responsive contract for every breakpoint is written down once rather than invented per screen.
-- [x] Design it (spec): [0004](../specs/0004-design-system-and-ui-toolkit-convention/index.md) · a cross cutting standard: Base UI base, the token and control rules, a CI check with a legacy baseline, a gallery plus axe scan, 6 new primitives, the AI Elements prune, and the AI SDK bump
-- [ ] Build it: /feature-build design system and UI toolkit convention
-  - [ ] The rule and the guardrails: `docs/design-system.md` written, `AGENTS.md` pointed at it, `components.json` style moved to Base UI so a later `shadcn add` cannot regenerate Radix (satisfies AC-1, AC-2)
-  - [ ] The gate: `pnpm ui:check` over 4 pinned rules with a committed baseline, the inventory file, and the Playwright plus axe harness in CI (satisfies AC-4, AC-6, AC-7, AC-13)
-  - [ ] The base switch: the 33 Radix primitives ported one per slice, focus contrast fixed first, tokens and radius protected, the 11 sidebar and command importers compiling unchanged (satisfies AC-2, AC-3, AC-8)
-  - [ ] The cleanup: 6 new primitives with 4 call sites moved to one markdown renderer, 23 dead AI Elements pruned, the referral overlay converted, `--spacing` deleted (satisfies AC-9, AC-10, AC-11, AC-12)
-- [ ] Verify it: /verify-release design system and UI toolkit convention
-- [ ] Test it: /test-engineer design system and UI toolkit convention
+- [x] Design it (spec): [0004](../specs/0004-design-system-and-ui-toolkit-convention/index.md) · a cross cutting standard: Radix base retained, the token and control rules, a CI check with a legacy baseline, a gallery plus axe scan, 6 new primitives, the AI Elements prune, and the AI SDK bump
+- [x] Build it: /feature-build design system and UI toolkit convention
+  - [x] The rule and the guardrails: `docs/design-system.md` written, `AGENTS.md` pointed at it, `components.json` style kept `radix-nova` because the base stays Radix (amended AC-2)
+  - [x] The gate: `pnpm ui:check` over 4 pinned rules with a committed baseline, the inventory file, and the Playwright plus axe harness in CI (satisfies AC-4, AC-6, AC-7, AC-13)
+  - [x] The Radix polish pass: focus contrast fixed (full opacity `ring-ring`), tokens and radius protected, primitives documented in the inventory, no base port (satisfies AC-2, AC-3, AC-8)
+  - [x] The cleanup: 6 new primitives added, markdown renderer added, dead AI Elements pruned (kept code-block and shimmer for reasoning/tool), referral overlay converted, `--spacing` deleted (satisfies AC-9, AC-10, AC-11, AC-12)
+- [x] Verify it: /verify-release design system and UI toolkit convention
+- [x] Test it: /test-engineer design system and UI toolkit convention
 - [ ] Review it (fresh model): /peer-review design system and UI toolkit convention
 - [ ] Document it: /tech-writer design system and UI toolkit convention
 

@@ -1,0 +1,61 @@
+{
+  "palette-colour": [
+    "app/(admin)/admin/accept-invite/page.tsx",
+    "app/(admin)/admin/affiliates/page.tsx",
+    "app/(admin)/admin/feedback/page.tsx",
+    "app/(admin)/admin/metrics/page.tsx",
+    "app/(admin)/admin/payment-settings/page.tsx",
+    "app/(admin)/admin/plan-upgrades/page.tsx",
+    "app/(admin)/admin/subscriptions/page.tsx",
+    "app/(auth)/verify-email/page.tsx",
+    "app/(dashboard)/affiliate/page.tsx",
+    "app/(dashboard)/attempts/[id]/page.tsx",
+    "app/(dashboard)/community/page.tsx",
+    "app/(dashboard)/dashboard/page.tsx",
+    "app/(dashboard)/leaderboard/page.tsx",
+    "app/(dashboard)/notes/[id]/page.tsx",
+    "app/(dashboard)/progress/page.tsx",
+    "app/(dashboard)/quizzes/[id]/page.tsx",
+    "app/(dashboard)/subscription/page.tsx",
+    "app/(dashboard)/upload/page.tsx",
+    "app/(marketing)/pricing/page.tsx",
+    "app/(onboarding)/onboarding/page.tsx",
+    "components/add-to-home-screen.tsx",
+    "components/app/PlanBadge.tsx",
+    "components/chat/chat-message-list.tsx",
+    "components/layout/AppSidebar.tsx",
+    "components/marketing/landing-hero.tsx"
+  ],
+  "dark-colour-utility": [
+    "app/(dashboard)/attempts/[id]/page.tsx",
+    "app/(dashboard)/quizzes/[id]/page.tsx",
+    "app/(dashboard)/subscription/page.tsx"
+  ],
+  "raw-aria": [
+    "app/(admin)/admin/users/page.tsx",
+    "app/(auth)/sign-in/page.tsx",
+    "app/(auth)/sign-up/page.tsx",
+    "app/(onboarding)/onboarding/page.tsx",
+    "app/api/admin/plan-upgrades/route.ts",
+    "app/api/admin/users/route.ts",
+    "app/api/ai/chat/route.ts",
+    "components/chat/ChatRatingBanner.tsx",
+    "components/chat/chat-message-list.tsx",
+    "components/chat/chat-sidebar.tsx",
+    "components/layout/MarketingFooter.tsx",
+    "components/marketing/landing-hero.tsx"
+  ],
+  "hand-rolled-control": [
+    "app/(auth)/sign-in/page.tsx",
+    "app/(auth)/sign-up/page.tsx",
+    "app/(auth)/verify-email/page.tsx",
+    "app/(dashboard)/feedback/page.tsx",
+    "app/(dashboard)/settings/page.tsx",
+    "app/(dashboard)/upload/page.tsx",
+    "app/(onboarding)/onboarding/page.tsx",
+    "components/chat/chat-landing.tsx",
+    "components/chat/chat-sidebar.tsx",
+    "components/chat/chat-thread.tsx",
+    "components/marketing/landing-hero.tsx"
+  ]
+}
