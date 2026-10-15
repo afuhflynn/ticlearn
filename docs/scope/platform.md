@@ -122,10 +122,16 @@ Leaderboards run a count per view, admin metrics recompute from raw events with 
 
 (basis: research/performance-and-database.md §1 · every recommendation carries exact DDL with column order, so this is design plus execution, not judgement)
 
-### 11. Background work moved to Inngest
+### 11. Background work moved to Inngest · done
 Slow work sits inside request handlers: quiz submit grades every question with an AI call in the request, upload triggers a blocking one time pass code sign up, and OTP email send blocks sign up and swallows its own errors. Move it all to jobs so a request only enqueues.
 **Done when:** no AI call, PDF extraction, email send, or PDF render runs inline in a request handler, every job has a trigger, a retry policy and an idempotency key, and a failing job does not fail the user action that queued it.
-- [ ] Design it (spec): `/solution-architect background work moved to Inngest`
+- [x] Design it (spec): [0009](../specs/0009-background-work-moved-to-inngest.md)
+- [x] Build it: /feature-build background work moved to Inngest
+  - [x] Email background jobs (covers AC-4, AC-6)
+  - [x] AI quiz and note processing jobs (covers AC-1, AC-2, AC-6)
+  - [x] Chat title and admin report PDF jobs (covers AC-3, AC-5, AC-6)
+- [ ] Verify it: /verify-release background work moved to Inngest
+- [x] Test it: /test-engineer background work moved to Inngest
 
 ### 12. Caching and cold start speed
 The chat route makes about ten serial round trips before it starts streaming, then blocks on a title generation call. There is no caching anywhere, and the AI cache is an unbounded in memory map that is per instance on a serverless deploy.

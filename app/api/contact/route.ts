@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { limit } from "@/lib/rate-limit";
+import { inngest } from "@/lib/inngest/client";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -9,17 +10,6 @@ const contactSchema = z.object({
   message: z.string().min(20, "Message must be at least 20 characters"),
   website: z.string().optional(),
 });
-
-function escapeHtml(text: string): string {
-  const map: Record<string, string> = {
-    "&": "&",
-    "<": "<",
-    ">": ">",
-    '"': "",
-    "'": "&#039;",
-  };
-  return text.replace(/[&<>"']/g, (char) => map[char] || char);
-}
 
 export async function POST(request: NextRequest) {
   const rateLimitResponse = await limit("contact", request);
@@ -45,66 +35,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const safeName = escapeHtml(name);
-    const safeEmail = escapeHtml(email);
-    const safeSubject = escapeHtml(subject);
-    const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
-
-    const { sendEmail } = await import("@/lib/email/send");
-    const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Contact Form Submission</title>
-  <style>
-    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f9fafb; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); padding: 24px; }
-    .header h1 { color: white; margin: 0; font-size: 20px; }
-    .content { padding: 24px; }
-    .field { margin-bottom: 16px; }
-    .field-label { font-weight: 600; color: #374151; margin-bottom: 4px; }
-    .field-value { color: #6b7280; }
-    .message-box { background: #f3e8ff; border-radius: 8px; padding: 16px; margin-top: 8px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <h1>New Contact Form Submission</h1>
-      </div>
-      <div class="content">
-        <div class="field">
-          <div class="field-label">Name</div>
-          <div class="field-value">${safeName}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Email</div>
-          <div class="field-value">${safeEmail}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Subject</div>
-          <div class="field-value">${safeSubject}</div>
-        </div>
-        <div class="field">
-          <div class="field-label">Message</div>
-          <div class="message-box">${safeMessage}</div>
-        </div>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-`;
-
-    await sendEmail({
-      to: adminEmail,
-      subject: `[TiCLearn Contact] ${safeSubject}`,
-      html,
+    await inngest.send({
+      name: "email.send.contact",
+      data: { name, email, subject, message, adminEmail },
     });
 
     return NextResponse.json({

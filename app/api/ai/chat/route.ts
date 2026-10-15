@@ -16,6 +16,7 @@ import {
   getPlatformSettings,
 } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
+import { inngest } from "@/lib/inngest/client";
 import { getPrompt, getPromptOrFallback } from "@/lib/prompts/loader";
 import { limit } from "@/lib/rate-limit";
 import { computeReadiness } from "@/lib/readiness";
@@ -259,13 +260,12 @@ export async function POST(req: Request) {
       conversation.title === "New Chat"
     ) {
       try {
-        const newTitle = await generateTitle(userContent, userId);
-        await prisma.chatConversation.update({
-          where: { id: conversationId },
-          data: { title: newTitle },
+        await inngest.send({
+          name: "chat/generate-title",
+          data: { conversationId, userContent, userId },
         });
       } catch (titleError) {
-        console.error("[CHAT] Failed to generate title:", titleError);
+        console.error("[CHAT] Failed to enqueue chat title:", titleError);
       }
     }
 
