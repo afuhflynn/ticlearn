@@ -1,0 +1,16 @@
+Limit  (cost=2.93..2.98 rows=20 width=33)
+  ->  Sort  (cost=2.93..2.99 rows=25 width=33)
+        Sort Key: user_stats.total_points DESC
+        ->  Hash Join  (cost=1.02..2.35 rows=25 width=33)
+              Hash Cond: (user_stats.user_id = users.id)
+              ->  Seq Scan on user_stats  (cost=0.00..1.25 rows=25 width=33)
+              ->  Hash  (cost=1.01..1.01 rows=1 width=19)
+                    ->  Seq Scan on users  (cost=0.00..1.01 rows=1 width=19)
+                          Filter: (role <> 'ADMIN'::"UserRole")
+
+Query: SELECT "user_stats"."id", "user_stats"."total_points", "user_stats"."user_id"
+FROM "user_stats" LEFT JOIN "users" ON ("users"."id" = "user_stats"."user_id")
+WHERE "users"."role" <> 'ADMIN'
+ORDER BY "user_stats"."total_points" DESC LIMIT 20
+Note: sequential scans on both tables, no role index, no composite sort index.
+Captured 2026-10-15 before slice 1 changes.

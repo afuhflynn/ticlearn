@@ -106,10 +106,19 @@ Forty six variables are read across the app. Five are stale, three of them sitti
 **Done when:** one template file, every variable the code reads is in it, stale ones are gone, and each entry says what it is for, its format, whether it is safe to publish, and where to get it.
 - [x] Write the template: `/feature-build environment variables documented` · code in `.env.example` (`example.env` deleted, single template)
 
-### 10. Database indexes and query rewrites · needs a decision · GA
+### 10. Database indexes and query rewrites · in-progress · GA
 Leaderboards run a count per view, admin metrics recompute from raw events with up to sixty two queries per request, and there are genuine N plus one loops in the stats route. The exam endpoint that used to return whole question rows with answers attached is deleted with the pivot.
 **Done when:** the exact composite indexes exist for every leaderboard sort key and every lookup path, counts and metrics come from rollups rather than live aggregation, and no request runs an unbounded query or a loop with a query inside it.
-- [ ] Design it (spec): `/solution-architect database indexes and query rewrites`
+- [x] Design it (spec): [0008](../specs/0008-database-indexes-query-rewrites.md)
+- [ ] Build it: /feature-build database indexes and query rewrites · code in `scripts/db-indexes/`, `app/api/leaderboard/route.ts`, `app/api/usage/route.ts`, `app/api/quizzes/attempts/route.ts`, `app/api/admin/metrics/route.ts`, `app/api/admin/users/route.ts`, `app/api/community/posts/`, `app/api/search/route.ts`, `app/api/readiness/route.ts`, `lib/kpi.ts`, `lib/readiness.ts`, `prisma/schema.prisma`
+  - [x] Harness plus leaderboard slice (covers AC-10, AC-1)
+  - [x] Usage plus quiz race plus per user indexes (covers AC-2, AC-7, AC-8, AC-9)
+  - [x] Admin metrics plus users plus analytics indexes (covers AC-3, AC-4, AC-8, AC-9)
+  - [x] Community plus search plus final proof (covers AC-5, AC-6, AC-8, AC-9, AC-10, AC-11)
+- [x] Verify it: /verify-release database indexes and query rewrites
+- [x] Test it: /test-engineer database indexes and query rewrites
+- [x] Review it (fresh model): /peer-review database indexes and query rewrites
+- [x] Document it: /tech-writer database indexes and query rewrites
 
 (basis: research/performance-and-database.md §1 · every recommendation carries exact DDL with column order, so this is design plus execution, not judgement)
 

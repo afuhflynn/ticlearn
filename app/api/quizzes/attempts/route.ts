@@ -24,6 +24,20 @@ export async function POST(req: Request) {
       );
     }
 
+    if (!Array.isArray(answers) || answers.length === 0) {
+      return NextResponse.json(
+        { error: "Answers must be a non empty array" },
+        { status: 422 },
+      );
+    }
+
+    if (answers.length > 200) {
+      return NextResponse.json(
+        { error: "Too many answers in one submit" },
+        { status: 422 },
+      );
+    }
+
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
       include: { questions: true },
@@ -34,7 +48,14 @@ export async function POST(req: Request) {
     }
 
     let correctCount = 0;
-    const attemptAnswers = [];
+    const attemptAnswers: Array<{
+      questionId: string;
+      question: string;
+      userAnswer: string;
+      correctAnswer: string;
+      isCorrect: boolean;
+      explanation: string | null;
+    }> = [];
 
     for (const answer of answers) {
       const question = quiz.questions.find((q) => q.id === answer.questionId);
@@ -89,73 +110,78 @@ export async function POST(req: Request) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
 
-    const attempt = await prisma.quizAttempt.create({
-      data: {
-        userId: session.user.id,
-        quizId,
-        quizTitle: quiz.title,
-        noteTitle: quiz.noteTitle,
-        score,
-        totalQuestions: quiz.questions.length,
-        correctAnswers: correctCount,
-        answers: {
-          create: attemptAnswers,
-        },
-      },
-      include: {
-        answers: true,
-      },
-    });
-
-    const userStats = await prisma.userStats.findFirst({
-      where: { userId: session.user.id },
-    });
-
     const pointsEarned = score >= 80 ? 20 : score >= 50 ? 10 : 5;
-    let currentStreak = 1;
-    let longestStreak = 1;
 
-    if (userStats?.lastActivityDate) {
-      const lastActivityDate = new Date(userStats.lastActivityDate);
-      lastActivityDate.setHours(0, 0, 0, 0);
-
-      if (lastActivityDate.getTime() === today.getTime()) {
-        currentStreak = userStats.currentStreak || 1;
-      } else if (lastActivityDate.getTime() === yesterday.getTime()) {
-        currentStreak = (userStats.currentStreak || 0) + 1;
-      }
-
-      longestStreak = Math.max(userStats.longestStreak, currentStreak);
-    }
-
-    if (userStats) {
-      await prisma.userStats.updateMany({
-        where: { userId: session.user.id },
-        data: {
-          totalPoints: userStats.totalPoints + pointsEarned,
-          quizzesTaken: userStats.quizzesTaken + 1,
-          currentStreak,
-          longestStreak,
-          lastActivityDate: new Date(),
-          avgScore: Math.round(
-            (userStats.avgScore * userStats.quizzesTaken + score) /
-              (userStats.quizzesTaken + 1),
-          ),
-        },
-      });
-    } else {
-      await prisma.userStats.create({
+    const { attempt, currentStreak } = await prisma.$transaction(async (tx) => {
+      const attempt = await tx.quizAttempt.create({
         data: {
           userId: session.user.id,
-          totalPoints: pointsEarned,
-          quizzesTaken: 1,
-          avgScore: score,
-          currentStreak,
-          longestStreak,
-          lastActivityDate: new Date(),
+          quizId,
+          quizTitle: quiz.title,
+          noteTitle: quiz.noteTitle,
+          score,
+          totalQuestions: quiz.questions.length,
+          correctAnswers: correctCount,
+          answers: {
+            create: attemptAnswers,
+          },
+        },
+        include: {
+          answers: true,
         },
       });
-    }
+
+      const existing = await tx.userStats.findFirst({
+        where: { userId: session.user.id },
+      });
+
+      let nextStreak = 1;
+      let nextLongest = 1;
+
+      if (existing?.lastActivityDate) {
+        const lastActivityDate = new Date(existing.lastActivityDate);
+        lastActivityDate.setHours(0, 0, 0, 0);
+
+        if (lastActivityDate.getTime() === today.getTime()) {
+          nextStreak = existing.currentStreak || 1;
+        } else if (lastActivityDate.getTime() === yesterday.getTime()) {
+          nextStreak = (existing.currentStreak || 0) + 1;
+        }
+
+        nextLongest = Math.max(existing.longestStreak, nextStreak);
+      }
+
+      if (existing) {
+        await tx.userStats.updateMany({
+          where: { userId: session.user.id },
+          data: {
+            totalPoints: { increment: pointsEarned },
+            quizzesTaken: { increment: 1 },
+            currentStreak: nextStreak,
+            longestStreak: nextLongest,
+            lastActivityDate: new Date(),
+            avgScore: Math.round(
+              (existing.avgScore * existing.quizzesTaken + score) /
+                (existing.quizzesTaken + 1),
+            ),
+          },
+        });
+      } else {
+        await tx.userStats.create({
+          data: {
+            userId: session.user.id,
+            totalPoints: pointsEarned,
+            quizzesTaken: 1,
+            avgScore: score,
+            currentStreak: nextStreak,
+            longestStreak: nextLongest,
+            lastActivityDate: new Date(),
+          },
+        });
+      }
+
+      return { attempt, currentStreak: nextStreak };
+    });
 
     trackEvent(session.user.id, "quiz_taken", {
       quizId,

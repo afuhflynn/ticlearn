@@ -27,7 +27,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 7 | Design system and UI toolkit convention | Foundation | in-progress |
 | 8 | URL state convention | Foundation | in-progress |
 | 9 | Environment variables documented | Foundation | planned |
-| 10 | Database indexes and query rewrites | Foundation | planned |
+| 10 | Database indexes and query rewrites | Foundation | in-progress |
 | 11 | Background work moved to Inngest | Foundation | planned |
 | 12 | Caching and cold start speed | Foundation | planned |
 | 13 | Email system rebuild | Foundation | planned |

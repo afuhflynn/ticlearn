@@ -31,19 +31,25 @@ export async function POST(
       return NextResponse.json({ error: "Post not found" }, { status: 404 });
     }
 
-    const comment = await prisma.comment.create({
-      data: {
-        postId: id,
-        userId: session.user.id,
-        content,
-        parentId,
-      },
-      include: {
-        user: {
-          select: { id: true, name: true, image: true },
+    const [comment] = await prisma.$transaction([
+      prisma.comment.create({
+        data: {
+          postId: id,
+          userId: session.user.id,
+          content,
+          parentId,
         },
-      },
-    });
+        include: {
+          user: {
+            select: { id: true, name: true, image: true },
+          },
+        },
+      }),
+      prisma.post.update({
+        where: { id },
+        data: { commentCount: { increment: 1 } },
+      }),
+    ]);
 
     return NextResponse.json({ comment, success: true });
   } catch (error) {
@@ -73,12 +79,14 @@ export async function GET(
     const comments = await prisma.comment.findMany({
       where: { postId: id, parentId: null },
       orderBy: { createdAt: "asc" },
+      take: 100,
       include: {
         user: {
           select: { id: true, name: true, image: true },
         },
         replies: {
           orderBy: { createdAt: "asc" },
+          take: 100,
           include: {
             user: {
               select: { id: true, name: true, image: true },

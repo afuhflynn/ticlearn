@@ -20,13 +20,33 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const page = parseInt(searchParams.get("page") || "1", 10);
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const rawLimit = parseInt(searchParams.get("limit") || "20", 10);
+    const page =
+      Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+    const limit =
+      Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(100, Math.floor(rawLimit))
+        : 20;
     const search = searchParams.get("search") || "";
     const role = searchParams.get("role") || "USER";
     const onboardingStatus = searchParams.get("onboardingStatus") || "all";
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
+
+    const allowedSort: Record<string, "createdAt" | "name" | "credits" | "email"> = {
+      createdAt: "createdAt",
+      name: "name",
+      credits: "credits",
+      email: "email",
+    };
+    const sortColumn = allowedSort[sortBy];
+    if (!sortColumn || (sortOrder !== "asc" && sortOrder !== "desc")) {
+      return NextResponse.json(
+        { error: "Invalid sort column or direction" },
+        { status: 422 },
+      );
+    }
     const onboardingWhere =
       onboardingStatus === "completed"
         ? {
@@ -73,7 +93,7 @@ export async function GET(req: Request) {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { [sortBy]: sortOrder },
+        orderBy: { [sortColumn]: sortOrder },
         select: {
           id: true,
           name: true,
@@ -98,26 +118,30 @@ export async function GET(req: Request) {
       prisma.user.count({ where }),
     ]);
 
-    const usersWithReferralInfo = await Promise.all(
-      users.map(async (u) => {
-        let referredByUser = null;
-        if (u.referredBy) {
-          const affiliate = await prisma.affiliate.findUnique({
-            where: { code: u.referredBy },
-            select: { userName: true, userEmail: true },
-          });
-          referredByUser = affiliate;
-        }
-        return {
-          ...u,
-          notesCount: u._count.notes,
-          quizzesCount: u._count.quizzes,
-          attemptsCount: u._count.quizAttempts,
-          referredByName: referredByUser?.userName || null,
-          referredByEmail: referredByUser?.userEmail || null,
-        };
-      }),
+    // One fetch for every affiliate code on this page, null when none.
+    const codes = Array.from(
+      new Set(users.map((u) => u.referredBy).filter((c): c is string => !!c)),
     );
+    const affiliates =
+      codes.length > 0
+        ? await prisma.affiliate.findMany({
+            where: { code: { in: codes } },
+            select: { code: true, userName: true, userEmail: true },
+          })
+        : [];
+    const byCode = new Map(affiliates.map((a) => [a.code, a]));
+
+    const usersWithReferralInfo = users.map((u) => {
+      const referredByUser = u.referredBy ? byCode.get(u.referredBy) : undefined;
+      return {
+        ...u,
+        notesCount: u._count.notes,
+        quizzesCount: u._count.quizzes,
+        attemptsCount: u._count.quizAttempts,
+        referredByName: referredByUser?.userName || null,
+        referredByEmail: referredByUser?.userEmail || null,
+      };
+    });
 
     return NextResponse.json({
       users: usersWithReferralInfo,

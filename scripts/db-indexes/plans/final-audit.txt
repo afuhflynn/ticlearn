@@ -1,0 +1,34 @@
+# Final proof audit: spec 0008, captured 2026-10-15
+
+## Bounded reads on every rewritten hot path
+- leaderboard: take limit, max 100
+- usage: counts only, no lists
+- quiz submit: answers max 200
+- admin metrics list: take limit max 100, monthly fetch take 5000, chart take 2000, export take 10000
+- admin users: take limit max 100
+- community list: take limit max 100, stored totals, no per row count
+- community comments: take 100 top plus take 100 replies
+- search: take 10 per surface, 422 on empty before any read
+- readiness: take 200
+- conversation delete: batches of 200 with cursor loop
+- mastery plus subject helpers: take 5000
+
+## Left as is, out of this spec
+- Inngest job reads in lib inngest plus lib email: background work, not request paths, owned by a later plan item
+- Chat tool reads in lib ai tools plus lib ai usage: scoped by conversation, small by shape
+- Admins lookup in lib email send: tiny table
+
+## Loop query check
+- No query inside a loop on any rewritten request path. Cohort retention loop is gone, replaced by one stored row read. Conversation delete loops over bounded batches, one read per batch with a cursor. Backfill scripts loop by design, off the request path.
+
+## Paper and exam names
+- No new paper or exam table or column in any slice script or rewrite. Grep over scripts db indexes slice SQL plus drift check shows zero hits for paper3, mock attempt, or exam names. Pre existing leftovers (Feedback attempt and mock columns, EXAM feedback type, settings comments) stay for the later deletion pass.
+
+## Redundant indexes dropped live
+- affiliates_code_idx, admin_invites_email_idx, admin_invites_token_idx, each covered by its unique. Verified absent after apply.
+
+## Plans
+- plans leaderboard before txt plus leaderboard after txt
+- plans usage quiz before txt plus usage quiz after txt
+- plans admin before txt plus admin after txt
+- plans community search before txt plus community search after txt

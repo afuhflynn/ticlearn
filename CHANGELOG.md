@@ -13,8 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 2. **Circuit breaker** — a Postgres backed breaker (`ai_model_health`) skips a model after three transport faults and lets exactly one probe back in after a 2 minute cool down, so a dead lab is never retried on every request. Only transport faults trip it; a schema mismatch, a bad request, an auth or credit error fails fast without touching the breaker. State is shared across instances and fails open to the head if the read fails.
 3. **Per student AI cost in XAF** — every served call writes an `ai_usage_events` row with the serving model, task, tokens, USD cost, and whole XAF at the rate in effect at the time. `GET /api/me/ai-usage` returns a signed in student's daily totals in Africa/Douala time; `GET /api/admin/ai-usage` returns totals split by model and task, admin only. Admin work with no student in scope, such as revision guides and question bank ingest, stays anonymous by design.
 4. **Gated Fusion research** — an opt in `runFusionResearch` path for rare high value deep research, off by default, admin only, with its own cost guard and its own task tag so consensus spend never hides inside tutoring. Everyday quiz, exam, chat, and marking never touch it.
+5. **Database index and query rewrite pass** (see spec 0008): concurrent index scripts under `scripts/db-indexes/`, with before and after query plans stored beside them, a stored notes search vector plus trigram search helpers, and stored post like and comment totals with a backfill and drift check. The live apply stays outside the normal migrate path.
+
+### Changed
+
+- **Hot route reads now use those indexes**: the leaderboard orders by total points desc then user id asc, excludes admin rows, caps pages at 100, and ranks by counting higher totals. Usage answers from five parallel scoped reads.
+- **Admin screens answer from database aggregates**: active users come from `COUNT DISTINCT`, MRR comes from a grouped sum of active subscriptions by plan, and cohort data comes from stored metric rows. Lists and chart reads stay bounded.
+- **Community and search use stored totals and indexes**: post lists return stored like and comment totals instead of per row counts, search uses the stored notes vector plus trigram matching, and an empty search returns 422 before any database read.
+- **Long reads are batched or capped**: conversation delete scans messages in batches of 200, readiness reads at most 200 topic rows, and quiz submits accept at most 200 answers.
+- **Three duplicate indexes are dropped** where a unique index already covers them, so writes carry less index overhead.
 
 ### Fixed
+
+- **Concurrent quiz submits no longer lose points**: total points and quizzes taken now use atomic increments inside the same transaction as the attempt, so two submissions cannot overwrite each other.
 
 - **Streaming fallback was dead code**: `streamText` returns before the provider is called and reports failure through `onError`, never as a throw, so the fallback loop around it could never fire. Chat, the only streaming surface, showed no fallback at all and wrote no cost row for a failed stream. The walk now reads the first text token before committing to a model, so a dead head is abandoned for the next one, and a failed stream records the transport failure plus a zero cost row.
 - **Chat answers truncated mid sentence**: the chat route's stream budget had been cut from 120s to 10s while still running a five step tool loop. Streaming has its own budget again.
@@ -73,6 +84,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 5. **Test infrastructure**: suite at 49 passing, incl. loader conformance, orchestrator cache plus trace, and check script CLI suites.
 6. **Provider import gate** — `pnpm prompts:check` now fails when any file outside `lib/ai/instances.ts` imports `@ai-sdk/google`, `@ai-sdk/openai`, or `@ai-sdk/openai-compatible` directly, so no AI call can quietly bypass the chain and its breaker.
 7. **Chain test suite** — 237 tests across 13 files. Covers chain order and override parsing, error classification (schema vs transport vs fail fast), breaker trip, cool down, probe single flight and the failed probe staying open, XAF math, ledger attribution, the chain walk on object and stream paths, the Fusion gate, and both usage routes with their 401 and 403 cases. A static guard fails if an AI helper accepts or forwards a student id without it reaching the ledger, which is the bug that made per student cost read empty.
+8. **Database performance test suite** — 77 tests across 15 files. Covers leaderboard caps and rank, usage read scoping, admin sort responses, search before and after the indexed path, chat delete batching, quiz atomic point increments, KPI aggregates, the readiness cap, and the index script rules.
 
 - **Type safety** — `lib/env.ts` split into Edge/Node validation with Zod schemas. `lib/require-admin.ts` shared admin guard. `lib/ai/tool-policy.ts` typed `wrapTool` with policy sets. `lib/rate-limit.ts` typed bucket configs and security event logging.
 

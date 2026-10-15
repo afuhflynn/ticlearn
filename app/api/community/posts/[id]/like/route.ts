@@ -28,18 +28,30 @@ export async function POST(
     });
 
     if (existingLike) {
-      await prisma.postLike.delete({
-        where: { id: existingLike.id },
-      });
+      await prisma.$transaction([
+        prisma.postLike.delete({
+          where: { id: existingLike.id },
+        }),
+        prisma.post.update({
+          where: { id },
+          data: { likeCount: { decrement: 1 } },
+        }),
+      ]);
       return NextResponse.json({ liked: false, success: true });
     }
 
-    await prisma.postLike.create({
-      data: {
-        postId: id,
-        userId: session.user.id,
-      },
-    });
+    await prisma.$transaction([
+      prisma.postLike.create({
+        data: {
+          postId: id,
+          userId: session.user.id,
+        },
+      }),
+      prisma.post.update({
+        where: { id },
+        data: { likeCount: { increment: 1 } },
+      }),
+    ]);
 
     return NextResponse.json({ liked: true, success: true });
   } catch (error) {

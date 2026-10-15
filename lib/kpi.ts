@@ -33,6 +33,22 @@ export async function trackEvent(
   });
 }
 
+export async function countDistinctActiveUsers(
+  start: Date,
+  end: Date,
+): Promise<number> {
+  // Daily and monthly active users as COUNT DISTINCT over user id in the
+  // database, over all events inside server local day boundaries.
+  const rows = await prisma.$queryRaw<Array<{ count: number }>>`
+    SELECT COUNT(DISTINCT k."user_id")::int AS count
+    FROM "kpi_events" k
+    INNER JOIN "users" u ON u."id" = k."user_id"
+    WHERE u."role" = 'USER'
+      AND k."createdAt" >= ${start} AND k."createdAt" <= ${end}
+  `;
+  return rows[0]?.count ?? 0;
+}
+
 async function countEventsByType(
   startOfDay: Date,
   endOfDay: Date,
@@ -160,6 +176,8 @@ export async function computeDailyMetrics(date: Date) {
     });
   }
 
+  await snapshotCohortMetrics(start);
+
   return metrics;
 }
 
@@ -174,87 +192,125 @@ export interface CohortRetentionRow {
 }
 
 export async function computeCohortRetention(): Promise<CohortRetentionRow[]> {
-  const now = new Date();
-  const users = await prisma.user.findMany({
-    where: { role: "USER" },
-    select: { id: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
-    take: 5000,
+  // Reads stored cohort snapshot rows, never live events. Rows are keyed
+  // cohort:<week>:w<offset> plus cohort:<week>:size and are written by
+  // snapshotCohortMetrics during the daily compute. Latest snapshot wins.
+  const rows = await prisma.dailyMetric.findMany({
+    where: { metric: { startsWith: "cohort:" } },
+    orderBy: [{ date: "desc" }],
+    take: 500,
   });
 
-  const userEvents = await prisma.kpiEvent.groupBy({
-    by: ["userId"],
-    where: {
-      userId: { in: users.map((u) => u.id) },
-    },
-    _count: true,
-  });
+  const seen = new Set<string>();
+  const byCohort = new Map<string, { size: number; weeks: Map<string, number> }>();
 
-  const userEventSet = new Set(userEvents.map((e) => e.userId));
-
-  const cohorts = new Map<
-    string,
-    { users: Array<{ id: string; createdAt: Date }> }
-  >();
-
-  for (const user of users) {
-    if (!userEventSet.has(user.id)) continue;
-    const d = new Date(user.createdAt);
-    const weekStart = new Date(d);
-    weekStart.setDate(d.getDate() - d.getDay());
-    weekStart.setHours(0, 0, 0, 0);
-    const key = weekStart.toISOString().split("T")[0];
-    if (!cohorts.has(key)) cohorts.set(key, { users: [] });
-    cohorts.get(key)!.users.push(user);
-  }
-
-  const sortedCohorts = Array.from(cohorts.entries())
-    .sort(([a], [b]) => b.localeCompare(a))
-    .slice(0, 12);
-
-  const rows: CohortRetentionRow[] = [];
-
-  for (const [cohortKey, { users: cohortUsers }] of sortedCohorts) {
-    if (cohortUsers.length < 3) continue;
-
-    const cohortStart = new Date(cohortKey);
-    const weekIntervals = [0, 1, 2, 4, 8];
-    const counts: number[] = [];
-
-    for (const weeks of weekIntervals) {
-      const wStart = new Date(cohortStart);
-      wStart.setDate(wStart.getDate() + weeks * 7);
-      const wEnd = new Date(wStart);
-      wEnd.setDate(wEnd.getDate() + 7);
-
-      if (wEnd > now) {
-        counts.push(-1);
-        continue;
-      }
-
-      const activeInWeek = await prisma.kpiEvent.groupBy({
-        by: ["userId"],
-        where: {
-          userId: { in: cohortUsers.map((u) => u.id) },
-          createdAt: { gte: wStart, lt: wEnd },
-        },
-      });
-
-      counts.push(activeInWeek.length);
+  for (const row of rows) {
+    if (seen.has(row.metric)) continue;
+    seen.add(row.metric);
+    const parts = row.metric.split(":");
+    if (parts.length !== 3) continue;
+    const key = parts[1];
+    const tail = parts[2];
+    let entry = byCohort.get(key);
+    if (!entry) {
+      entry = { size: 0, weeks: new Map() };
+      byCohort.set(key, entry);
     }
-
-    rows.push({
-      cohort: cohortKey,
-      cohortSize: cohortUsers.length,
-      week0: counts[0],
-      week1: counts[1],
-      week2: counts[2],
-      week4: counts[3],
-      week8: counts[4],
-    });
+    if (tail === "size") {
+      entry.size = Math.round(row.autoValue ?? 0);
+    } else if (tail.startsWith("w")) {
+      entry.weeks.set(tail, Math.round(row.autoValue ?? 0));
+    }
   }
 
-  return rows;
+  return Array.from(byCohort.entries())
+    .sort(([a], [b]) => b.localeCompare(a))
+    .slice(0, 12)
+    .filter(([, e]) => e.size >= 3)
+    .map(([cohort, e]) => ({
+      cohort,
+      cohortSize: e.size,
+      week0: e.weeks.get("w0") ?? -1,
+      week1: e.weeks.get("w1") ?? -1,
+      week2: e.weeks.get("w2") ?? -1,
+      week4: e.weeks.get("w4") ?? -1,
+      week8: e.weeks.get("w8") ?? -1,
+    }));
+}
+
+const COHORT_OFFSETS = [0, 1, 2, 4, 8];
+
+function sundayStart(d: Date): Date {
+  const out = new Date(d);
+  out.setDate(d.getDate() - d.getDay());
+  out.setHours(0, 0, 0, 0);
+  return out;
+}
+
+async function countCohortActive(
+  cohortStart: Date,
+  cohortEnd: Date,
+  windowStart: Date,
+  windowEnd: Date,
+): Promise<number> {
+  const rows = await prisma.$queryRaw<Array<{ count: number }>>`
+    SELECT COUNT(DISTINCT k."user_id")::int AS count
+    FROM "kpi_events" k
+    INNER JOIN "users" u ON u."id" = k."user_id"
+    WHERE u."role" = 'USER'
+      AND u."createdAt" >= ${cohortStart} AND u."createdAt" < ${cohortEnd}
+      AND k."createdAt" >= ${windowStart} AND k."createdAt" < ${windowEnd}
+  `;
+  return rows[0]?.count ?? 0;
+}
+
+export async function snapshotCohortMetrics(snapshotDay: Date) {
+  // Bounded writer for the stored cohort rows the retention read serves.
+  // Twelve recent cohorts, only windows that fully elapsed, one distinct
+  // count per window through the KpiEvent composites.
+  const day = new Date(snapshotDay);
+  day.setHours(0, 0, 0, 0);
+  const thisWeek = sundayStart(day);
+
+  for (let w = 0; w < 12; w++) {
+    const cohortStart = new Date(thisWeek);
+    cohortStart.setDate(cohortStart.getDate() - w * 7);
+    const cohortEnd = new Date(cohortStart);
+    cohortEnd.setDate(cohortEnd.getDate() + 7);
+    const key = cohortStart.toISOString().split("T")[0];
+
+    const size = await prisma.user.count({
+      where: {
+        role: "USER",
+        createdAt: { gte: cohortStart, lt: cohortEnd },
+      },
+    });
+    await prisma.dailyMetric.upsert({
+      where: { date_metric: { date: day, metric: `cohort:${key}:size` } },
+      update: { autoValue: size },
+      create: { date: day, metric: `cohort:${key}:size`, autoValue: size },
+    });
+
+    for (const offset of COHORT_OFFSETS) {
+      const windowStart = new Date(cohortStart);
+      windowStart.setDate(windowStart.getDate() + offset * 7);
+      const windowEnd = new Date(windowStart);
+      windowEnd.setDate(windowEnd.getDate() + 7);
+      if (windowEnd > day) continue;
+      const active = await countCohortActive(
+        cohortStart,
+        cohortEnd,
+        windowStart,
+        windowEnd,
+      );
+      const metric = `cohort:${key}:w${offset}`;
+      await prisma.dailyMetric.upsert({
+        where: { date_metric: { date: day, metric } },
+        update: { autoValue: active },
+        create: { date: day, metric, autoValue: active },
+      });
+    }
+  }
 }
 
 export async function computeMasteryMetrics() {
@@ -265,6 +321,7 @@ export async function computeMasteryMetrics() {
     where: { lastUpdated: { gte: thirtyDaysAgo } },
     select: { masteryScore: true, lastUpdated: true, id: true },
     orderBy: { lastUpdated: "desc" },
+    take: 5000,
   });
 
   const scores = performances.map((p) => p.masteryScore);
@@ -274,6 +331,8 @@ export async function computeMasteryMetrics() {
   const previousPeriod = await prisma.topicPerformance.findMany({
     where: { lastUpdated: { lt: thirtyDaysAgo } },
     select: { masteryScore: true },
+    orderBy: { lastUpdated: "desc" },
+    take: 5000,
   });
   const prevScores = previousPeriod.map((p) => p.masteryScore);
   const prevAvg =
@@ -321,6 +380,7 @@ export async function computeSubjectDistribution(
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
     select: { levelOfStudy: true },
+    take: 5000,
   });
 
   const levelCount = new Map<string, number>();
@@ -335,19 +395,26 @@ export async function computeSubjectDistribution(
 }
 
 export async function computeMRR() {
-  const activeSubs = await prisma.subscription.findMany({
+  // Current active base with no renewal math: one grouped sum of amount
+  // over subscriptions with status ACTIVE by plan, straight in the database.
+  const groups = await prisma.subscription.groupBy({
+    by: ["plan"],
     where: { status: "ACTIVE", user: { role: "USER" } },
-    select: { amount: true, plan: true },
+    _sum: { amount: true },
+    _count: true,
   });
 
-  const mrr = activeSubs.reduce((sum, s) => sum + s.amount, 0);
-
+  let mrr = 0;
+  let totalSubscribers = 0;
   const byPlan: Record<string, number> = {};
-  for (const s of activeSubs) {
-    byPlan[s.plan] = (byPlan[s.plan] ?? 0) + s.amount;
+  for (const g of groups) {
+    const subtotal = g._sum.amount ?? 0;
+    mrr += subtotal;
+    totalSubscribers += g._count;
+    byPlan[g.plan] = subtotal;
   }
 
-  return { mrr, byPlan, totalSubscribers: activeSubs.length };
+  return { mrr, byPlan, totalSubscribers };
 }
 
 export async function computeActivationFunnel() {

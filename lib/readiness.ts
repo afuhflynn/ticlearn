@@ -43,8 +43,11 @@ function clamp(score: number): number {
 export async function computeReadiness(
   userId: string,
 ): Promise<ReadinessResult> {
+  // One flat capped read per user over the live topic tables.
   const performances = await prisma.topicPerformance.findMany({
     where: { note: { userId } },
+    orderBy: { lastUpdated: "desc" },
+    take: 200,
     select: {
       noteId: true,
       masteryScore: true,
