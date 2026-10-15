@@ -1,8 +1,9 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const COMMIT_PAUSE_MS = 300;
 
@@ -25,6 +26,7 @@ export function UrlSearchInput({
   ariaLabel = "Search",
 }: UrlSearchInputProps) {
   const [local, setLocal] = useState(value);
+  const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const commitRef = useRef(onCommit);
@@ -63,10 +65,13 @@ export function UrlSearchInput({
   return (
     <div className={className ?? "relative"}>
       <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      <Label htmlFor={inputId} className="sr-only">
+        {ariaLabel}
+      </Label>
       <Input
+        id={inputId}
         ref={inputRef}
         placeholder={placeholder}
-        aria-label={ariaLabel}
         className="pl-8"
         value={local}
         onChange={(e) => {
