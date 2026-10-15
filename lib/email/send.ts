@@ -1068,7 +1068,8 @@ export async function hydrateEngagementData(
     email: user.email,
     streak: userStats?.currentStreak ?? 0,
     daysSinceActive,
-    readiness: readiness && !readiness.needsAssessment ? readiness.readiness : null,
+    readiness:
+      readiness && !readiness.needsAssessment ? readiness.readiness : null,
     weakestTopic: readiness?.weakestTopic?.name ?? null,
     weakestTopicScore: readiness?.weakestTopic?.score ?? null,
     strongestTopic: readiness?.strongestTopic?.name ?? null,

@@ -682,8 +682,7 @@ function UploadContent() {
           <DialogHeader>
             <DialogTitle>Edit Note</DialogTitle>
             <DialogDescription>
-              Update the note title. This does not reprocess the file
-              contents.
+              Update the note title. This does not reprocess the file contents.
             </DialogDescription>
           </DialogHeader>
 
@@ -704,9 +703,7 @@ function UploadContent() {
             </Button>
             <Button
               onClick={saveEdit}
-              disabled={
-                updateNoteMutation.isPending || !editTitle.trim()
-              }
+              disabled={updateNoteMutation.isPending || !editTitle.trim()}
             >
               {updateNoteMutation.isPending ? (
                 <>

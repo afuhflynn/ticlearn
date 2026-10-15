@@ -31,6 +31,7 @@ pnpm build
 # Lint and format
 pnpm lint
 pnpm format
+pnpm ui:check
 
 # Database
 pnpm db:up          # Postgres on 5435, pgAdmin on 5050
@@ -253,3 +254,6 @@ Keep AI calls fast and predictable on a single model: one Gemini model, a 10 sec
 <!-- END:ai-orchestration-rework -->
 
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
+## Design system
+
+Must follow: `docs/design-system.md`. Radix UI base, tokens only in `app/globals.css`, mobile first, four breakpoints.

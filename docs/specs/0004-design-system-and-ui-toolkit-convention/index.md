@@ -1,11 +1,11 @@
 # 0004. Design system and UI toolkit convention
 
 **Date**: 2026-10-12
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
-Every screen in TiCLearn is built from one owned set of components, and there is a written rule plus an automated check that stops it drifting. We move the shadcn base from Radix to Base UI (the accessible primitives library shadcn now defaults to) because the Radix fork is slowing down, while keeping your violet tinted buttons, your 1.4rem corner radius and your custom shadow scale. We prune the 23 AI Elements nobody imports, build the 6 primitives you are missing, and add a CI check plus an accessibility audit. Everything is captured once in `docs/design-system.md` so nobody invents the pattern again per screen.
+Every screen in TiCLearn is built from one owned set of components, and there is a written rule plus an automated check that stops it drifting. We keep the shadcn base on Radix UI, since that is what the 33 primitives already use and what the team has chosen to stay on. No base port. The violet tinted buttons, 1.4rem corner radius and custom shadow scale stay, and accessibility and convention work happen on the Radix base. We prune the 23 AI Elements nobody imports, build the 6 primitives you are missing, and add a CI check plus an accessibility audit. Everything is captured once in `docs/design-system.md` so nobody invents the pattern again per screen.
 
 ## Requirements
 
@@ -19,7 +19,7 @@ Every screen in TiCLearn is built from one owned set of components, and there is
 **Acceptance criteria** (the contract, each criterion is IDed and independently checkable):
 
 - **AC-1**: `docs/design-system.md` exists and states the component ownership rule, the token rule, the responsive contract for every breakpoint, the accessibility floor, and the boundary rules, and root `AGENTS.md` carries a short must follow summary plus a pointer to it.
-- **AC-2**: The 33 Radix backed files in `components/ui/` are Base UI backed at the end, including a rebuilt `sidebar.tsx` and `command.tsx` taken from the current shadcn registry and re-skinned to our tokens. The 11 files that import `sidebar.tsx` or `command.tsx` (8 and 3 respectively, including the navigation shell of every layout and the `PromptInput` composer) compile unchanged against the rebuilt versions, with no edit to the importing files. `components.json` `style` is the Base UI style, so a future `shadcn add` cannot regenerate Radix files.
+- **AC-2 (amended, Radix base retained)**: The 33 Radix backed files in `components/ui/` remain Radix backed; no base port is performed. `components.json` `style` stays `radix-nova` (the current Radix style), so a future `shadcn add` regenerates Radix files consistent with the base. The rebuild requirements for `sidebar.tsx` and `command.tsx` and the unchanged importer constraint no longer apply, since there is no base switch to survive.
 - **AC-3**: Our visual design survives the base switch. The violet tinted button variants, `--radius: 1.4rem`, `--font-sans` Plus Jakarta Sans, the `--shadow-*` scale and `--tracking-normal` are all still in `app/globals.css` after the switch.
 - **AC-4**: `docs/design-system-inventory.md` holds a fenced `json` block, parsed by `pnpm ui:check`, with one object per file in `components/ui/` carrying exactly the keys `file`, `base`, `registryVersion`, `lastRebase`, `exception`. Every file in the directory has an entry and no entry names a file that does not exist.
 - **AC-5**: A gallery page at `app/(dev)/primitive-gallery/page.tsx` renders every primitive in `components/ui/`, is reachable without authentication and without a database, and accepts `?theme=light` or `?theme=dark`, forcing the theme by toggling the `dark` class on `<html>` (via the installed `next-themes`, or a direct class toggle, whichever `next-themes` supports for a forced value). Every primitive renders in both themes without a console error.
@@ -46,7 +46,7 @@ Every screen in TiCLearn is built from one owned set of components, and there is
 
 **Chosen option**: Option 1: Document, enforce going forward, and clean the layers that are already drifting.
 
-shadcn/ui stays the only primitive layer and AI Elements stays the only AI surface layer, both owned locally in this repo and customised in place. The 33 Radix backed primitives move to Base UI, brought current on the existing Radix base first so the diff is reviewable, with the design tokens and the rounded radius protected throughout. A node script in CI enforces the colour, `dark:`, ARIA and control rules against a committed baseline, and a Playwright plus axe scan over a primitive gallery proves the accessibility floor. Six missing primitives get built, 23 unused AI Elements get pruned, the referral overlay gets converted, `--spacing` returns to the Tailwind default, and the AI SDK is upgraded against vendored element files rather than a live registry fetch.
+shadcn/ui stays the only primitive layer and AI Elements stays the only AI surface layer, both owned locally in this repo and customised in place. The 33 Radix backed primitives stay on Radix, tokens and radius protected, no base port. Convention, checks, gallery, spacing reset and overlay conversion happen on the existing Radix base. A node script in CI enforces the colour, `dark:`, ARIA and control rules against a committed baseline, and a Playwright plus axe scan over a primitive gallery proves the accessibility floor. Six missing primitives get built, 23 unused AI Elements get pruned, the referral overlay gets converted, `--spacing` returns to the Tailwind default, and the AI SDK is upgraded against vendored element files rather than a live registry fetch.
 
 ## Standard definition
 
@@ -98,7 +98,7 @@ export default async function QuizPage({ params }: { params: Promise<{ id: strin
 The rules, in the order they bind:
 
 1. **`components/ui/` is the only primitive layer.** Check `ls components/ui/` before writing a control. A styled `<button>`, a raw `<input>`, a modal, a dropdown or a table row style is a defect, not a shortcut.
-2. **The base is Base UI.** Every Radix backed primitive is Base UI backed, with a named, reasoned exception list for anything with no Base UI equivalent.
+2. **The base is Radix UI.** `components/ui/` stays on Radix (the 33 files today), Radix stays the base for every primitive, and any new primitive is built on Radix unless Radix has no equivalent. `combobox.tsx` remains Base UI backed as the noted exception and keeps its Base UI implementation.
 3. **Colour is tokens only.** No hex, no `oklch()` literal, no `bg-white`, no `text-slate-500`. In dark mode only the `.dark` block changes, never a `dark:` utility for a colour that exists as a token.
 4. **Semantic pairs only.** `bg-primary` with `text-primary-foreground`, `bg-muted` with `text-muted-foreground`. Never a surface with a mismatched foreground.
 5. **Tokens are only declared in `app/globals.css`,** under both `:root` and `.dark`, exposed through `@theme inline`. Never override a `--*` token from a component.
@@ -129,7 +129,7 @@ The rules, in the order they bind:
 
 **Rollout**:
 
-Enforce immediately for new code, with existing violations tracked as debt in the committed baseline. The Base UI migration is a one time migration, sliced one primitive per slice (port it, capture the gallery screenshot before and after, compare, move on), so any single primitive that goes wrong is isolated and cheap to revert.
+Enforce immediately for new code, with existing violations tracked as debt in the committed baseline. There is no base migration. Convention and accessibility work is applied to the Radix primitives directly, one primitive at a time, with gallery screenshots for any visual change.
 
 **Exceptions**:
 
@@ -138,13 +138,13 @@ Named, each with a written reason in `docs/design-system.md`, and each recorded 
 - `sonner.tsx`: a toast library, not a Radix primitive, with no Base UI equivalent. Stays because `app/layout.tsx` mounts the `<Toaster />`.
 - `calendar.tsx`: backed by `react-day-picker`, not a Radix primitive. Stays because `date-picker.tsx` is built on it.
 - `carousel.tsx`: backed by `embla-carousel-react`, currently with no live consumer. Stays available; its one importer (`components/ai-elements/inline-citation.tsx`) is pruned by AC-10.
-- `combobox.tsx`: already Base UI backed, and is the reference implementation for the base choice.
+- `combobox.tsx`: Base UI backed; it stays as the one exception, not a precedent for a base switch.
 - Raw ARIA inside `components/ui/` and `components/ai-elements/` is expected and correct: that is where the semantics are implemented.
 - The 21 primitives with zero importers are **kept**, not grandfathered. They are available stock, several are needed by the migration itself (`alert-dialog`, `popover`, `pagination`), and `calendar` and `combobox` are load bearing. The only deletions are the four with neither a Base UI equivalent nor a consumer: `drawer.tsx`, `resizable.tsx`, `input-otp.tsx`, `chart.tsx`. (Note: `chart.tsx` is a dependency question, not a styling one; admin metrics currently renders with raw colour, so if a chart component is wanted it is a separate decision. See Follow-up.)
 
 **Sequencing constraints** (binding on the build, derived from Tracer Bullet. Three constraints only; `/feature-build` derives the rest and the slice order):
 
-1. **`components.json` `style` moves to the Base UI style first, before any port.** Otherwise the next `shadcn add` regenerates Radix files and silently reverts the migration.
+1. **`components.json` `style` stays `radix-nova`.** No style change is needed because the base is not changing; a future `shadcn add` regenerates Radix files, matching the base we keep.
 2. **The focus ring contrast fix lands before the migration, not after.** It touches 15 files that the migration then touches again; doing it first means those files are edited once.
 3. **The element re add and the SDK bump are separate commits, vendored first.** A commit that mixes a live registry fetch with a breaking SDK bump cannot be bisected or reverted if the registry changes mid migration.
 
@@ -164,7 +164,7 @@ Named, each with a written reason in `docs/design-system.md`, and each recorded 
 
 **Negative / tradeoffs**:
 
-- The Base UI migration rebases 33 hand tuned files and will surface real visual differences. That is the cost of the choice and it is paid once.
+- No base migration is performed, so the big visual risk of rebasing 33 hand tuned files is avoided. Convention and accessibility still land on the Radix primitives.
 - The `--spacing` reset shrinks every unprefixed gap in the app by about 7 percent in a single change. Shared surfaces need a spacing pass afterwards.
 - The AI SDK major upgrade is a breaking migration touching the chat route, the tools and every element. It is the highest risk task and it is unrelated to the design system itself.
 - Rebuilding `sidebar.tsx` and `command.tsx` touches the navigation shell of every layout and the `PromptInput` composer, so both need a real manual pass, not only a screenshot.

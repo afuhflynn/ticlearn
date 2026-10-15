@@ -4,10 +4,18 @@ import { resolveChain } from "@/lib/ai/registry";
 async function main() {
   const stamp = Date.now();
   const owner = await prisma.user.create({
-    data: { name: "Note Owner", email: `m2-owner-${stamp}@example.com`, emailVerified: true },
+    data: {
+      name: "Note Owner",
+      email: `m2-owner-${stamp}@example.com`,
+      emailVerified: true,
+    },
   });
   const other = await prisma.user.create({
-    data: { name: "Other", email: `m2-other-${stamp}@example.com`, emailVerified: true },
+    data: {
+      name: "Other",
+      email: `m2-other-${stamp}@example.com`,
+      emailVerified: true,
+    },
   });
 
   const note = await prisma.note.create({
@@ -32,7 +40,11 @@ async function main() {
 
   const found = await prisma.chatConversation.findFirst({
     where: { id: own.id, userId: owner.id },
-    include: { note: { select: { id: true, title: true, extractedText: true, userId: true } } },
+    include: {
+      note: {
+        select: { id: true, title: true, extractedText: true, userId: true },
+      },
+    },
   });
   console.log(
     "owner resolves their own note:",
@@ -45,7 +57,10 @@ async function main() {
     where: { id: own.id, userId: other.id },
     include: { note: { select: { userId: true } } },
   });
-  console.log("another student cannot load that conversation:", stolen === null);
+  console.log(
+    "another student cannot load that conversation:",
+    stolen === null,
+  );
 
   const groundable = await prisma.knowledgeChunk.findMany({
     where: { sourceType: "note", sourceId: note.id },
