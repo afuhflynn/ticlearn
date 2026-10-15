@@ -11,7 +11,9 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useQueryState } from "nuqs";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,11 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDeleteNote, useNote, useProcessNote } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+import { correctionsForKeys } from "@/nuqs";
+import {
+  noteDetailViewDefaults,
+  noteDetailViewParsers,
+} from "@/nuqs/note-detail";
 import type { NoteWithRelations } from "@/types";
 
 type NoteDetails = NoteWithRelations & {
@@ -42,6 +49,25 @@ export default function NoteDetailPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { data: session, isPending: sessionLoading } = useSession();
+  // The content tab lives in the URL, so refresh, back, forward, and
+  // shared links reproduce the same view.
+  const [tab, setTab] = useQueryState(
+    "tab",
+    noteDetailViewParsers.tab.withOptions({ history: "push" }),
+  );
+  const rawParams = useSearchParams();
+
+  // A raw key that disagrees with the canonical value corrects itself
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      { tab },
+      noteDetailViewDefaults,
+    );
+    if (patch.tab !== undefined && patch.tab !== tab) setTab(patch.tab);
+  }, [rawParams, tab, setTab]);
+
   const { data, isLoading, error } = useNote(params.id);
   const processNoteMutation = useProcessNote();
   const deleteNoteMutation = useDeleteNote();
@@ -224,7 +250,15 @@ export default function NoteDetailPage() {
           </CardContent>
         </Card>
 
-        <Tabs defaultValue="overview" className="w-full">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => {
+            if (v === "overview" || v === "text" || v === "topics") {
+              setTab(v);
+            }
+          }}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="text">Extracted Text</TabsTrigger>

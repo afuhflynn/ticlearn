@@ -19,8 +19,9 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,8 @@ import {
 import { useSession } from "@/lib/auth-client";
 import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
+import { correctionsForKeys } from "@/nuqs";
+import { uploadViewDefaults, uploadViewParsers } from "@/nuqs/upload";
 
 type NoteItem = {
   id: string;
@@ -118,10 +121,63 @@ function UploadContent() {
   const [dragActive, setDragActive] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState("");
-  const [editingNote, setEditingNote] = useState<NoteItem | null>(null);
+  // The rename and quiz setup dialogs live in the URL as one modal
+  // name plus the note id, so back steps out of a dialog and shared
+  // links reproduce it. Titles and quiz setup stay local drafts.
+  const [view, setView] = useQueryStates(
+    {
+      modal: uploadViewParsers.modal,
+      selectedId: uploadViewParsers.selectedId,
+    },
+    { history: "push" },
+  );
+  const rawParams = useSearchParams();
+
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      { modal: view.modal, selectedId: view.selectedId },
+      uploadViewDefaults,
+    );
+    if (Object.keys(patch).length > 0) {
+      setView(patch, { history: "replace" });
+    }
+  }, [rawParams, view.modal, view.selectedId, setView]);
+
+  const dialogNote = ((notes as NoteItem[]).find(
+    (note) => note.id === view.selectedId,
+  ) ?? null) as NoteItem | null;
   const [editTitle, setEditTitle] = useState("");
-  const [quizDialogOpen, setQuizDialogOpen] = useState(false);
   const [quizConfig, setQuizConfig] = useState<QuizConfig>(defaultQuizConfig());
+
+  // Reseed the local drafts whenever the dialog row changes. The
+  // guard keeps a background refetch from clobbering typed drafts.
+  const seededFor = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${view.modal}:${dialogNote?.id ?? ""}`;
+    if (dialogNote && seededFor.current !== key) {
+      seededFor.current = key;
+      if (view.modal === "edit") setEditTitle(dialogNote.title);
+      if (view.modal === "quiz")
+        setQuizConfig(defaultQuizConfig(dialogNote.id));
+    }
+    if (view.modal === "") seededFor.current = null;
+  }, [view.modal, dialogNote]);
+
+  // A dialog id with no row behind it (stale link, or a note that no
+  // longer exists) closes the dialog and corrects the URL, once the
+  // list has loaded.
+  useEffect(() => {
+    if (view.modal !== "" && !notesLoading && !dialogNote) {
+      setView({ modal: "", selectedId: "" }, { history: "replace" });
+    }
+  }, [view.modal, notesLoading, dialogNote, setView]);
+
+  const closeDialog = () => {
+    setView({ modal: "", selectedId: "" }, { history: "replace" });
+  };
 
   const { isLoading, plan } = usePlan();
   const { data: session, isPending } = useSession();
@@ -248,24 +304,22 @@ function UploadContent() {
   };
 
   const openEditDialog = (note: NoteItem) => {
-    setEditingNote(note);
-    setEditTitle(note.title);
+    setView({ modal: "edit", selectedId: note.id });
   };
 
   const saveEdit = async () => {
-    if (!editingNote) return;
+    if (!dialogNote) return;
 
     await updateNoteMutation.mutateAsync({
-      id: editingNote.id,
+      id: dialogNote.id,
       title: editTitle.trim(),
     });
 
-    setEditingNote(null);
+    closeDialog();
   };
 
   const openQuizDialog = (note: NoteItem) => {
-    setQuizConfig(defaultQuizConfig(note.id));
-    setQuizDialogOpen(true);
+    setView({ modal: "quiz", selectedId: note.id });
   };
 
   // Auto-calculate time limit based on question count (1.5 mins per question)
@@ -290,7 +344,7 @@ function UploadContent() {
       isPublic: quizConfig.isPublic,
     });
 
-    setQuizDialogOpen(false);
+    closeDialog();
   };
 
   const processingMessage =
@@ -671,10 +725,10 @@ function UploadContent() {
       </div>
 
       <Dialog
-        open={editingNote !== null}
+        open={view.modal === "edit" && dialogNote !== null}
         onOpenChange={(open) => {
           if (!open) {
-            setEditingNote(null);
+            closeDialog();
           }
         }}
       >
@@ -698,7 +752,7 @@ function UploadContent() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingNote(null)}>
+            <Button variant="outline" onClick={closeDialog}>
               Cancel
             </Button>
             <Button
@@ -718,7 +772,14 @@ function UploadContent() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={quizDialogOpen} onOpenChange={setQuizDialogOpen}>
+      <Dialog
+        open={view.modal === "quiz" && dialogNote !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeDialog();
+          }
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Generate A Quiz</DialogTitle>
@@ -921,10 +982,7 @@ function UploadContent() {
               )}
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setQuizDialogOpen(false)}
-              >
+              <Button variant="outline" onClick={closeDialog}>
                 Cancel
               </Button>
               <Button

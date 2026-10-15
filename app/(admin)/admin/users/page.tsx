@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import {
   Loader2,
   MoreVertical,
-  Search,
   Shield,
   UserCheck,
   UserPlus,
@@ -13,7 +12,9 @@ import {
   UserX,
   X,
 } from "lucide-react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useQueryState, useQueryStates } from "nuqs";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -58,29 +59,129 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UrlSearchInput } from "@/components/url-search-input";
 import { useAdminUsers } from "@/hooks/useAdmin";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  adminUsersViewDefaults,
+  adminUsersViewParsers,
+} from "@/nuqs/admin-users";
 
 export default function AdminUsersPage() {
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("USER");
-  const [onboardingFilter, setOnboardingFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  // View state lives in the URL, so refresh, back, forward, and shared
+  // links reproduce the same view. Search text writes with replace
+  // history; tab, filter, page, and modal changes push history.
+  const [q, setQ] = useQueryState(
+    "q",
+    adminUsersViewParsers.q.withOptions({ history: "replace" }),
+  );
+  const [view, setView] = useQueryStates(
+    {
+      role: adminUsersViewParsers.role,
+      onboarding: adminUsersViewParsers.onboarding,
+      page: adminUsersViewParsers.page,
+      limit: adminUsersViewParsers.limit,
+      modal: adminUsersViewParsers.modal,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const isInviteOpen = view.modal === "invite";
   const [inviteEmail, setInviteEmail] = useState("");
   const [isInviting, setIsInviting] = useState(false);
+  const rawParams = useSearchParams();
+
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history. This covers range faults (page 0) and
+  // unparsable input (role bogus, which already reads as the default).
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      {
+        q,
+        role: view.role,
+        onboarding: view.onboarding,
+        page: safePage,
+        limit: safeLimit,
+        modal: view.modal,
+      },
+      adminUsersViewDefaults,
+    );
+    if (typeof patch.q === "string" && patch.q !== q) setQ(patch.q);
+    const next: {
+      role?: "USER" | "ADMIN" | "all";
+      onboarding?: "completed" | "not_completed" | "skipped" | "all";
+      page?: number;
+      limit?: number;
+      modal?: "invite" | "";
+    } = {};
+    if (
+      patch.role === "USER" ||
+      patch.role === "ADMIN" ||
+      patch.role === "all"
+    ) {
+      next.role = patch.role;
+    }
+    if (
+      patch.onboarding === "completed" ||
+      patch.onboarding === "not_completed" ||
+      patch.onboarding === "skipped" ||
+      patch.onboarding === "all"
+    ) {
+      next.onboarding = patch.onboarding;
+    }
+    if (typeof patch.page === "number") next.page = patch.page;
+    if (typeof patch.limit === "number") next.limit = patch.limit;
+    if (patch.modal === "invite" || patch.modal === "") {
+      next.modal = patch.modal;
+    }
+    if (Object.keys(next).length > 0) {
+      setView(next, { history: "replace" });
+    }
+  }, [
+    rawParams,
+    q,
+    setQ,
+    view.role,
+    view.onboarding,
+    view.modal,
+    safePage,
+    safeLimit,
+    setView,
+  ]);
+
+  // A new search resets to the first page in a replace update, so the
+  // back button is not polluted by the reset.
+  const handleSearchCommit = (next: string) => {
+    setQ(next);
+    if (view.page !== 1) setView({ page: 1 }, { history: "replace" });
+  };
+
+  const handleRoleChange = (v: string) => {
+    const role = v === "ADMIN" || v === "all" ? v : "USER";
+    setView({ role, page: 1 });
+  };
+
+  const handleOnboardingChange = (v: string) => {
+    const onboarding =
+      v === "completed" ||
+      v === "not_completed" ||
+      v === "skipped" ||
+      v === "all"
+        ? v
+        : "all";
+    setView({ onboarding, page: 1 });
+  };
 
   const queryClient = useQueryClient();
 
   const { users, total, totalPages, isLoading } = useAdminUsers({
-    search,
-    role: roleFilter,
-    onboardingStatus: onboardingFilter as
-      | "completed"
-      | "not_completed"
-      | "skipped"
-      | "all",
-    limit: 20,
-    page,
+    search: q,
+    role: view.role,
+    onboardingStatus: view.onboarding,
+    limit: safeLimit,
+    page: safePage,
   });
 
   const { data: invitesData, isLoading: invitesLoading } = useQuery({
@@ -130,7 +231,7 @@ export default function AdminUsersPage() {
       }
 
       toast.success("Invitation sent successfully");
-      setIsInviteOpen(false);
+      setView({ modal: "" }, { history: "replace" });
       setInviteEmail("");
       queryClient.invalidateQueries({ queryKey: ["admin", "invites"] });
     } catch (error) {
@@ -159,7 +260,13 @@ export default function AdminUsersPage() {
             Manage user roles and administrator invitations
           </p>
         </div>
-        <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
+        <Dialog
+          open={isInviteOpen}
+          onOpenChange={(open) => {
+            if (open) setView({ modal: "invite" });
+            else setView({ modal: "" }, { history: "replace" });
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="gap-2">
               <UserPlus className="h-4 w-4" />
@@ -211,13 +318,7 @@ export default function AdminUsersPage() {
             <div className="flex items-center justify-between flex-wrap gap-3">
               <CardTitle>Platform Users</CardTitle>
               <div className="flex items-center gap-2">
-                <Select
-                  value={roleFilter}
-                  onValueChange={(v) => {
-                    setRoleFilter(v);
-                    setPage(1);
-                  }}
-                >
+                <Select value={view.role} onValueChange={handleRoleChange}>
                   <SelectTrigger className="w-32">
                     <SelectValue />
                   </SelectTrigger>
@@ -228,11 +329,8 @@ export default function AdminUsersPage() {
                   </SelectContent>
                 </Select>
                 <Select
-                  value={onboardingFilter}
-                  onValueChange={(v) => {
-                    setOnboardingFilter(v);
-                    setPage(1);
-                  }}
+                  value={view.onboarding}
+                  onValueChange={handleOnboardingChange}
                 >
                   <SelectTrigger className="w-40">
                     <SelectValue />
@@ -244,15 +342,13 @@ export default function AdminUsersPage() {
                     <SelectItem value="skipped">Skipped</SelectItem>
                   </SelectContent>
                 </Select>
-                <div className="relative w-64">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users..."
-                    className="pl-8"
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                  />
-                </div>
+                <UrlSearchInput
+                  value={q}
+                  onCommit={handleSearchCommit}
+                  placeholder="Search users..."
+                  ariaLabel="Search users"
+                  className="relative w-64"
+                />
               </div>
             </div>
           </CardHeader>
@@ -369,18 +465,18 @@ export default function AdminUsersPage() {
                 <div className="flex justify-center gap-2 mt-4">
                   <Button
                     variant="outline"
-                    disabled={page === 1}
-                    onClick={() => setPage((p) => p - 1)}
+                    disabled={safePage === 1}
+                    onClick={() => setView({ page: safePage - 1 })}
                   >
                     Previous
                   </Button>
                   <span className="py-2">
-                    Page {page} of {totalPages}
+                    Page {safePage} of {totalPages}
                   </span>
                   <Button
                     variant="outline"
-                    disabled={page === totalPages}
-                    onClick={() => setPage((p) => p + 1)}
+                    disabled={safePage === totalPages}
+                    onClick={() => setView({ page: safePage + 1 })}
                   >
                     Next
                   </Button>

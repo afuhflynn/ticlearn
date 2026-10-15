@@ -17,7 +17,8 @@ import {
   Upload,
   Zap,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryStates } from "nuqs";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,11 @@ import {
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { usePlan, useUsage } from "@/hooks";
+import { correctionsForKeys } from "@/nuqs";
+import {
+  subscriptionViewDefaults,
+  subscriptionViewParsers,
+} from "@/nuqs/subscription";
 
 const MONTHLY_CREDIT_BONUS: Record<string, number> = {
   STARTER: 400,
@@ -142,7 +148,31 @@ export default function SubscriptionPage() {
     chatDailyUsage,
     isLoading: usageLoading,
   } = useUsage();
-  const [isUpgradeOpen, setIsUpgradeOpen] = useState(false);
+  // Payment method tabs and the upgrade dialog live in the URL, so
+  // refresh, back, forward, and shared links reproduce the same view.
+  // Plan picks, payment drafts, and purchase setup stay local.
+  const [view, setView] = useQueryStates(
+    {
+      tab: subscriptionViewParsers.tab,
+      modal: subscriptionViewParsers.modal,
+    },
+    { history: "push" },
+  );
+  const rawParams = useSearchParams();
+
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      { tab: view.tab, modal: view.modal },
+      subscriptionViewDefaults,
+    );
+    if (Object.keys(patch).length > 0) {
+      setView(patch, { history: "replace" });
+    }
+  }, [rawParams, view.tab, view.modal, setView]);
+
   const [isProcessing, setIsProcessing] = useState(false);
   const router = useRouter();
 
@@ -484,7 +514,13 @@ export default function SubscriptionPage() {
             features
           </p>
         </div>
-        <Dialog open={isUpgradeOpen} onOpenChange={setIsUpgradeOpen}>
+        <Dialog
+          open={view.modal === "upgrade"}
+          onOpenChange={(open) => {
+            if (open) setView({ modal: "upgrade" });
+            else setView({ modal: "" }, { history: "replace" });
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               size="lg"
@@ -739,7 +775,15 @@ export default function SubscriptionPage() {
         </CardContent>
       </Card>
 
-      <Tabs defaultValue="auto" className="w-full">
+      <Tabs
+        value={view.tab}
+        onValueChange={(v) => {
+          if (v === "auto" || v === "manual") {
+            setView({ tab: v });
+          }
+        }}
+        className="w-full"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="auto" className="gap-2">
             <CreditCard className="h-4 w-4" />

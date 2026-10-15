@@ -2,8 +2,9 @@
 
 import { Download, Loader2, MessageCircle, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { useEffect } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,11 @@ import {
   useUpdateAdminFeedback,
 } from "@/hooks/useAdmin";
 import { useSession } from "@/lib/auth-client";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  adminFeedbackViewDefaults,
+  adminFeedbackViewParsers,
+} from "@/nuqs/admin-feedback";
 
 function StarRating({ rating }: { rating: number | null }) {
   if (!rating || rating === 0) {
@@ -67,14 +73,43 @@ function getTypeBadgeVariant(type: string) {
 export default function AdminFeedbackPage() {
   const { data: session, isPending: sessionLoading } = useSession();
   const router = useRouter();
-  const [status, setStatus] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [page, setPage] = useState(1);
+  // Filters and page live in the URL, so refresh, back, forward, and
+  // shared links reproduce the same view.
+  const [view, setView] = useQueryStates(
+    {
+      status: adminFeedbackViewParsers.status,
+      type: adminFeedbackViewParsers.type,
+      page: adminFeedbackViewParsers.page,
+      limit: adminFeedbackViewParsers.limit,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const rawParams = useSearchParams();
+
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      {
+        status: view.status,
+        type: view.type,
+        page: safePage,
+        limit: safeLimit,
+      },
+      adminFeedbackViewDefaults,
+    );
+    if (Object.keys(patch).length > 0) {
+      setView(patch, { history: "replace" });
+    }
+  }, [rawParams, view.status, view.type, safePage, safeLimit, setView]);
 
   const { feedbacks, totalPages, isLoading, refetch } = useAdminFeedback({
-    page,
-    limit: 20,
-    status: status || undefined,
+    page: safePage,
+    limit: safeLimit,
+    status: view.status === "ALL" ? undefined : view.status,
   });
   const updateFeedback = useUpdateAdminFeedback();
   const deleteFeedback = useDeleteAdminFeedback();
@@ -110,9 +145,10 @@ export default function AdminFeedbackPage() {
     }
   };
 
-  const filteredFeedbacks = typeFilter
-    ? feedbacks.filter((fb) => fb.type === typeFilter)
-    : feedbacks;
+  const filteredFeedbacks =
+    view.type === "ALL"
+      ? feedbacks
+      : feedbacks.filter((fb) => fb.type === view.type);
 
   return (
     <div className="space-y-6">
@@ -138,10 +174,16 @@ export default function AdminFeedbackPage() {
         <CardHeader>
           <div className="flex items-center gap-4 flex-wrap">
             <Select
-              value={status}
+              value={view.status}
               onValueChange={(v) => {
-                setStatus(v === "ALL" ? "" : v);
-                setPage(1);
+                if (
+                  v === "ALL" ||
+                  v === "OPEN" ||
+                  v === "IN_REVIEW" ||
+                  v === "RESOLVED"
+                ) {
+                  setView({ status: v, page: 1 });
+                }
               }}
             >
               <SelectTrigger className="w-[150px]">
@@ -155,10 +197,18 @@ export default function AdminFeedbackPage() {
               </SelectContent>
             </Select>
             <Select
-              value={typeFilter}
+              value={view.type}
               onValueChange={(v) => {
-                setTypeFilter(v === "ALL" ? "" : v);
-                setPage(1);
+                if (
+                  v === "ALL" ||
+                  v === "EXAM" ||
+                  v === "CHAT" ||
+                  v === "BUG" ||
+                  v === "FEATURE" ||
+                  v === "GENERAL"
+                ) {
+                  setView({ type: v, page: 1 });
+                }
               }}
             >
               <SelectTrigger className="w-[150px]">
@@ -291,18 +341,18 @@ export default function AdminFeedbackPage() {
               <div className="flex justify-center gap-2 mt-4">
                 <Button
                   variant="outline"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
+                  disabled={safePage === 1}
+                  onClick={() => setView({ page: safePage - 1 })}
                 >
                   Previous
                 </Button>
                 <span className="py-2">
-                  Page {page} of {totalPages}
+                  Page {safePage} of {totalPages}
                 </span>
                 <Button
                   variant="outline"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => p + 1)}
+                  disabled={safePage === totalPages}
+                  onClick={() => setView({ page: safePage + 1 })}
                 >
                   Next
                 </Button>

@@ -7,12 +7,13 @@ import {
   Loader2,
   MessageSquare,
   RefreshCw,
-  Search,
   TrendingDown,
   TrendingUp,
   Users,
 } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useQueryState, useQueryStates } from "nuqs";
+import { useCallback, useEffect } from "react";
 import {
   Area,
   AreaChart,
@@ -58,7 +59,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UrlSearchInput } from "@/components/url-search-input";
 import { useAdminMetrics, useExportMetrics } from "@/hooks/useAdminMetrics";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  adminMetricsViewDefaults,
+  adminMetricsViewParsers,
+} from "@/nuqs/admin-metrics";
 
 const METRIC_LABELS: Record<string, string> = {
   active_users: "Active Users",
@@ -229,20 +236,70 @@ function MetricChart({
 }
 
 export default function AnalyticsPage() {
-  const today = new Date().toISOString().split("T")[0];
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0];
+  // View state lives in the URL, so refresh, back, forward, and shared
+  // links reproduce the same view. Tab, filter, page, and sort changes
+  // push history; typing and date edits use replace history.
+  const [q, setQ] = useQueryState(
+    "q",
+    adminMetricsViewParsers.q.withOptions({ history: "replace" }),
+  );
+  const [view, setView] = useQueryStates(
+    {
+      tab: adminMetricsViewParsers.tab,
+      from: adminMetricsViewParsers.from,
+      to: adminMetricsViewParsers.to,
+      granularity: adminMetricsViewParsers.granularity,
+      metric: adminMetricsViewParsers.metric,
+      page: adminMetricsViewParsers.page,
+      limit: adminMetricsViewParsers.limit,
+      sort: adminMetricsViewParsers.sort,
+      order: adminMetricsViewParsers.order,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const rawParams = useSearchParams();
 
-  const [tab, setTab] = useState("overview");
-  const [fromDate, setFromDate] = useState(thirtyDaysAgo);
-  const [toDate, setToDate] = useState(today);
-  const [granularity, setGranularity] = useState("daily");
-  const [page, setPage] = useState(1);
-  const [sort, setSort] = useState("date");
-  const [order, setOrder] = useState<"asc" | "desc">("desc");
-  const [search, setSearch] = useState("");
-  const [metricFilter, setMetricFilter] = useState("all");
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      {
+        tab: view.tab,
+        from: view.from,
+        to: view.to,
+        granularity: view.granularity,
+        metric: view.metric,
+        q,
+        page: safePage,
+        limit: safeLimit,
+        sort: view.sort,
+        order: view.order,
+      },
+      adminMetricsViewDefaults,
+    );
+    if (patch.q !== undefined && patch.q !== q) setQ(patch.q);
+    const { q: _q, ...rest } = patch;
+    if (Object.keys(rest).length > 0) {
+      setView(rest, { history: "replace" });
+    }
+  }, [
+    rawParams,
+    q,
+    setQ,
+    view.tab,
+    view.from,
+    view.to,
+    view.granularity,
+    view.metric,
+    view.sort,
+    view.order,
+    safePage,
+    safeLimit,
+    setView,
+  ]);
 
   const {
     summary,
@@ -258,30 +315,31 @@ export default function AnalyticsPage() {
     isLoading,
     refetch,
   } = useAdminMetrics({
-    from: fromDate,
-    to: toDate,
-    tab,
-    granularity,
-    metric: tab === "data" ? metricFilter : undefined,
-    page,
-    sort,
-    order,
-    search: search || undefined,
+    from: view.from,
+    to: view.to,
+    tab: view.tab,
+    granularity: view.granularity,
+    metric: view.tab === "data" ? view.metric : undefined,
+    page: safePage,
+    limit: safeLimit,
+    sort: view.sort,
+    order: view.order,
+    search: q || undefined,
   });
 
   const exportMetrics = useExportMetrics();
 
   const handleExport = useCallback(async () => {
-    await exportMetrics({ from: fromDate, to: toDate });
+    await exportMetrics({ from: view.from, to: view.to });
     toast.success("CSV exported");
-  }, [fromDate, toDate, exportMetrics]);
+  }, [view.from, view.to, exportMetrics]);
 
   const handleRecalculate = async () => {
     toast.promise(
       fetch("/api/admin/metrics", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ date: toDate }),
+        body: JSON.stringify({ date: view.to }),
       }).then(() => refetch()),
       {
         loading: "Recalculating metrics...",
@@ -291,17 +349,24 @@ export default function AnalyticsPage() {
     );
   };
 
-  const handleSort = (col: string) => {
-    if (sort === col) {
-      setOrder(order === "asc" ? "desc" : "asc");
+  const handleSort = (col: "date" | "metric" | "value") => {
+    if (view.sort === col) {
+      setView({
+        order: view.order === "asc" ? "desc" : "asc",
+        page: 1,
+      });
     } else {
-      setSort(col);
-      setOrder("desc");
+      setView({ sort: col, order: "desc", page: 1 });
     }
   };
 
+  const handleSearchCommit = (next: string) => {
+    setQ(next);
+    if (view.page !== 1) setView({ page: 1 }, { history: "replace" });
+  };
+
   const chartData = metrics
-    .filter((m) => metricFilter === "all" || m.metric === metricFilter)
+    .filter((m) => view.metric === "all" || m.metric === view.metric)
     .reduce<Array<Record<string, unknown>>>((acc, m) => {
       const day = m.date?.split("T")[0] ?? "";
       const existing = acc.find((r) => r.date === day);
@@ -386,8 +451,15 @@ export default function AnalyticsPage() {
           <Label>From</Label>
           <Input
             type="date"
-            value={fromDate}
-            onChange={(e) => setFromDate(e.target.value)}
+            value={view.from}
+            onChange={(e) => {
+              if (e.target.value) {
+                setView(
+                  { from: e.target.value, page: 1 },
+                  { history: "replace" },
+                );
+              }
+            }}
             className="w-40"
           />
         </div>
@@ -395,18 +467,26 @@ export default function AnalyticsPage() {
           <Label>To</Label>
           <Input
             type="date"
-            value={toDate}
-            onChange={(e) => setToDate(e.target.value)}
+            value={view.to}
+            onChange={(e) => {
+              if (e.target.value) {
+                setView(
+                  { to: e.target.value, page: 1 },
+                  { history: "replace" },
+                );
+              }
+            }}
             className="w-40"
           />
         </div>
         <div className="space-y-1">
           <Label>Granularity</Label>
           <Select
-            value={granularity}
+            value={view.granularity}
             onValueChange={(v) => {
-              setGranularity(v);
-              setPage(1);
+              if (v === "daily" || v === "monthly" || v === "yearly") {
+                setView({ granularity: v, page: 1 });
+              }
             }}
           >
             <SelectTrigger className="w-32">
@@ -422,7 +502,7 @@ export default function AnalyticsPage() {
         <Button
           variant="default"
           onClick={() => {
-            setPage(1);
+            setView({ page: 1 });
             refetch();
           }}
         >
@@ -432,10 +512,19 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <Tabs
-        value={tab}
+        value={view.tab}
         onValueChange={(v) => {
-          setTab(v);
-          setPage(1);
+          if (
+            v === "overview" ||
+            v === "engagement" ||
+            v === "learning" ||
+            v === "growth" ||
+            v === "monetization" ||
+            v === "retention" ||
+            v === "data"
+          ) {
+            setView({ tab: v, page: 1 });
+          }
         }}
       >
         <TabsList className="flex-wrap">
@@ -450,7 +539,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Overview */}
         <TabsContent value="overview" className="space-y-6">
-          {tab === "overview" &&
+          {view.tab === "overview" &&
             (isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -474,11 +563,20 @@ export default function AnalyticsPage() {
                       ].map((m) => (
                         <Badge
                           key={m}
-                          variant={metricFilter === m ? "default" : "outline"}
+                          variant={view.metric === m ? "default" : "outline"}
                           className="cursor-pointer"
-                          onClick={() =>
-                            setMetricFilter(metricFilter === m ? "all" : m)
-                          }
+                          onClick={() => {
+                            if (view.metric === m) {
+                              setView({ metric: "all", page: 1 });
+                            } else if (
+                              m === "active_users" ||
+                              m === "paid_users" ||
+                              m === "revenue" ||
+                              m === "chat_messages"
+                            ) {
+                              setView({ metric: m, page: 1 });
+                            }
+                          }}
                         >
                           {METRIC_LABELS[m] || m}
                         </Badge>
@@ -487,11 +585,11 @@ export default function AnalyticsPage() {
                     <MetricChart
                       data={chartData}
                       dataKey={
-                        metricFilter !== "all" ? metricFilter : "active_users"
+                        view.metric !== "all" ? view.metric : "active_users"
                       }
                       name={
-                        metricFilter !== "all"
-                          ? METRIC_LABELS[metricFilter] || metricFilter
+                        view.metric !== "all"
+                          ? METRIC_LABELS[view.metric] || view.metric
                           : "Active Users"
                       }
                       chartType="area"
@@ -533,7 +631,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Engagement */}
         <TabsContent value="engagement" className="space-y-6">
-          {tab === "engagement" &&
+          {view.tab === "engagement" &&
             (isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -644,7 +742,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Learning */}
         <TabsContent value="learning" className="space-y-6">
-          {tab === "learning" &&
+          {view.tab === "learning" &&
             (isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -728,7 +826,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Growth */}
         <TabsContent value="growth" className="space-y-6">
-          {tab === "growth" &&
+          {view.tab === "growth" &&
             (isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -829,7 +927,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Monetization */}
         <TabsContent value="monetization" className="space-y-6">
-          {tab === "monetization" &&
+          {view.tab === "monetization" &&
             (isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -989,7 +1087,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Retention */}
         <TabsContent value="retention" className="space-y-6">
-          {tab === "retention" &&
+          {view.tab === "retention" &&
             (isLoading ? (
               <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1195,7 +1293,7 @@ export default function AnalyticsPage() {
 
         {/* Tab: Data */}
         <TabsContent value="data" className="space-y-6">
-          {tab === "data" && (
+          {view.tab === "data" && (
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1206,21 +1304,26 @@ export default function AnalyticsPage() {
                     </CardDescription>
                   </div>
                   <div className="flex items-center gap-2">
-                    <div className="relative w-48">
-                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search metrics..."
-                        className="pl-8"
-                        value={search}
-                        onChange={(e) => {
-                          setSearch(e.target.value);
-                          setPage(1);
-                        }}
-                      />
-                    </div>
+                    <UrlSearchInput
+                      value={q}
+                      onCommit={handleSearchCommit}
+                      placeholder="Search metrics..."
+                      ariaLabel="Search metrics"
+                      className="relative w-48"
+                    />
                     <Select
-                      value={metricFilter}
-                      onValueChange={setMetricFilter}
+                      value={view.metric}
+                      onValueChange={(v) => {
+                        // The options come from METRIC_CATEGORIES, so
+                        // membership is guaranteed at runtime; the
+                        // assertion only bridges what TS cannot narrow.
+                        if (v === "all" || v in METRIC_LABELS) {
+                          setView({
+                            metric: v as typeof view.metric,
+                            page: 1,
+                          });
+                        }
+                      }}
                     >
                       <SelectTrigger className="w-40">
                         <SelectValue placeholder="All Metrics" />
@@ -1279,8 +1382,7 @@ export default function AnalyticsPage() {
                         {metrics
                           .filter(
                             (m) =>
-                              metricFilter === "all" ||
-                              m.metric === metricFilter,
+                              view.metric === "all" || m.metric === view.metric,
                           )
                           .map((entry) => (
                             <TableRow key={entry.id}>
@@ -1315,8 +1417,7 @@ export default function AnalyticsPage() {
                         {
                           metrics.filter(
                             (m) =>
-                              metricFilter === "all" ||
-                              m.metric === metricFilter,
+                              view.metric === "all" || m.metric === view.metric,
                           ).length
                         }{" "}
                         of {total} entries
@@ -1325,19 +1426,19 @@ export default function AnalyticsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={page === 1}
-                          onClick={() => setPage((p) => p - 1)}
+                          disabled={safePage === 1}
+                          onClick={() => setView({ page: safePage - 1 })}
                         >
                           Previous
                         </Button>
                         <span className="text-sm text-muted-foreground">
-                          Page {page} of {totalPages}
+                          Page {safePage} of {totalPages}
                         </span>
                         <Button
                           variant="outline"
                           size="sm"
-                          disabled={page === totalPages}
-                          onClick={() => setPage((p) => p + 1)}
+                          disabled={safePage === totalPages}
+                          onClick={() => setView({ page: safePage + 1 })}
                         >
                           Next
                         </Button>

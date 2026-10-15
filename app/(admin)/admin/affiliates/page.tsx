@@ -11,12 +11,13 @@ import {
   Mail,
   MoreVertical,
   Plus,
-  Search,
   TrendingUp,
   Users,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useQueryState, useQueryStates } from "nuqs";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -54,6 +55,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UrlSearchInput } from "@/components/url-search-input";
 import { UserCommandSelector } from "@/components/user-command-selector";
 import {
   useAdminAffiliate,
@@ -61,24 +63,85 @@ import {
   useUpdateAdminAffiliate,
 } from "@/hooks/useAdmin";
 import { useConfirmEarnings, useCreateAffiliate } from "@/hooks/useAffiliate";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  adminAffiliatesViewDefaults,
+  adminAffiliatesViewParsers,
+} from "@/nuqs/admin-affiliates";
 
 export default function AdminAffiliatesPage() {
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
-
-  // View Details modal
-  const [viewDetailsId, setViewDetailsId] = useState<string | null>(null);
-  const { affiliate: selectedAffiliate, isLoading: detailsLoading } =
-    useAdminAffiliate(viewDetailsId || "");
-
-  // Pay Earnings modal
-  const [payEarningsId, setPayEarningsId] = useState<string | null>(null);
-
-  // Suspend/Activate modal
-  const [suspendActivateId, setSuspendActivateId] = useState<string | null>(
-    null,
+  // Search text writes with replace history. Page and the four dialogs
+  // push history. The dialogs share one modal name plus the row id in
+  // selectedId, so back steps out of a dialog. Create form drafts stay
+  // local and never enter the URL.
+  const [q, setQ] = useQueryState(
+    "q",
+    adminAffiliatesViewParsers.q.withOptions({ history: "replace" }),
   );
+  const [view, setView] = useQueryStates(
+    {
+      page: adminAffiliatesViewParsers.page,
+      limit: adminAffiliatesViewParsers.limit,
+      modal: adminAffiliatesViewParsers.modal,
+      selectedId: adminAffiliatesViewParsers.selectedId,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const rawParams = useSearchParams();
+
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      {
+        q,
+        page: safePage,
+        limit: safeLimit,
+        modal: view.modal,
+        selectedId: view.selectedId,
+      },
+      adminAffiliatesViewDefaults,
+    );
+    if (typeof patch.q === "string" && patch.q !== q) setQ(patch.q);
+    const { q: _q, ...rest } = patch;
+    if (Object.keys(rest).length > 0) {
+      setView(rest, { history: "replace" });
+    }
+  }, [
+    rawParams,
+    q,
+    setQ,
+    safePage,
+    safeLimit,
+    view.modal,
+    view.selectedId,
+    setView,
+  ]);
+
+  // A new search resets to the first page in a replace update, so the
+  // back button is not polluted by the reset.
+  const handleSearchCommit = (next: string) => {
+    setQ(next);
+    if (view.page !== 1) setView({ page: 1 }, { history: "replace" });
+  };
+
+  const closeModal = () => {
+    setView({ modal: "", selectedId: "" }, { history: "replace" });
+  };
+
+  // Opening a dialog for a row id that is gone closes the dialog and
+  // corrects the URL with replace history.
+  useEffect(() => {
+    if (view.modal !== "" && view.modal !== "create" && !view.selectedId) {
+      setView({ modal: "", selectedId: "" }, { history: "replace" });
+    }
+  }, [view.modal, view.selectedId, setView]);
+
+  const { affiliate: selectedAffiliate, isLoading: detailsLoading } =
+    useAdminAffiliate(view.modal === "details" ? view.selectedId : "");
   const [suspendActivateStatus, setSuspendActivateStatus] =
     useState<string>("");
 
@@ -91,9 +154,9 @@ export default function AdminAffiliatesPage() {
   const [momoName, setMomoName] = useState("");
 
   const { affiliates, total, totalPages, isLoading } = useAdminAffiliates({
-    search,
-    limit: 20,
-    page,
+    search: q,
+    limit: safeLimit,
+    page: safePage,
   });
 
   const updateAffiliateMutation = useUpdateAdminAffiliate();
@@ -132,7 +195,7 @@ export default function AdminAffiliatesPage() {
       },
       {
         onSuccess() {
-          setIsCreateOpen(false);
+          closeModal();
           resetForm();
         },
       },
@@ -140,34 +203,34 @@ export default function AdminAffiliatesPage() {
   };
 
   const handleViewDetails = (id: string) => {
-    setViewDetailsId(id);
+    setView({ modal: "details", selectedId: id });
   };
 
   const handlePayEarnings = (id: string) => {
-    setPayEarningsId(id);
+    setView({ modal: "pay", selectedId: id });
   };
 
   const confirmPayEarnings = async () => {
-    if (!payEarningsId) return;
-    confirmEarningsMutation(payEarningsId, {
+    if (view.modal !== "pay" || !view.selectedId) return;
+    confirmEarningsMutation(view.selectedId, {
       onSuccess() {
-        setPayEarningsId(null);
+        closeModal();
       },
     });
   };
 
   const handleSuspendActivate = (id: string, currentStatus: string) => {
-    setSuspendActivateId(id);
+    setView({ modal: "suspend", selectedId: id });
     setSuspendActivateStatus(
       currentStatus === "ACTIVE" ? "SUSPENDED" : "ACTIVE",
     );
   };
 
   const confirmSuspendActivate = async () => {
-    if (!suspendActivateId) return;
+    if (view.modal !== "suspend" || !view.selectedId) return;
     try {
       await updateAffiliateMutation.mutateAsync({
-        id: suspendActivateId,
+        id: view.selectedId,
         data: { status: suspendActivateStatus },
       });
       toast.success(
@@ -175,7 +238,7 @@ export default function AdminAffiliatesPage() {
           ? "Partner suspended"
           : "Partner activated",
       );
-      setSuspendActivateId(null);
+      closeModal();
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -200,8 +263,10 @@ export default function AdminAffiliatesPage() {
     <div className="space-y-6">
       {/* View Details Modal */}
       <Dialog
-        open={!!viewDetailsId}
-        onOpenChange={() => setViewDetailsId(null)}
+        open={view.modal === "details"}
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
       >
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -375,7 +440,7 @@ export default function AdminAffiliatesPage() {
             <p>No affiliate found.</p>
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setViewDetailsId(null)}>
+            <Button variant="outline" onClick={closeModal}>
               Close
             </Button>
           </DialogFooter>
@@ -384,8 +449,10 @@ export default function AdminAffiliatesPage() {
 
       {/* Pay Earnings Modal */}
       <Dialog
-        open={!!payEarningsId}
-        onOpenChange={() => setPayEarningsId(null)}
+        open={view.modal === "pay"}
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -401,7 +468,7 @@ export default function AdminAffiliatesPage() {
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPayEarningsId(null)}>
+            <Button variant="outline" onClick={closeModal}>
               Cancel
             </Button>
             <Button onClick={confirmPayEarnings} disabled={isPaying}>
@@ -420,8 +487,10 @@ export default function AdminAffiliatesPage() {
 
       {/* Suspend/Activate Modal */}
       <Dialog
-        open={!!suspendActivateId}
-        onOpenChange={() => setSuspendActivateId(null)}
+        open={view.modal === "suspend"}
+        onOpenChange={(open) => {
+          if (!open) closeModal();
+        }}
       >
         <DialogContent>
           <DialogHeader>
@@ -437,10 +506,7 @@ export default function AdminAffiliatesPage() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setSuspendActivateId(null)}
-            >
+            <Button variant="outline" onClick={closeModal}>
               Cancel
             </Button>
             <Button
@@ -468,7 +534,13 @@ export default function AdminAffiliatesPage() {
             Manage your affiliate marketing program and track performance
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog
+          open={view.modal === "create"}
+          onOpenChange={(open) => {
+            if (open) setView({ modal: "create" });
+            else closeModal();
+          }}
+        >
           <DialogTrigger asChild>
             <Button className="gap-2">
               <Plus className="h-4 w-4" />
@@ -618,15 +690,13 @@ export default function AdminAffiliatesPage() {
                 Track and manage individual affiliate performance
               </CardDescription>
             </div>
-            <div className="relative w-64">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search code or user..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+            <UrlSearchInput
+              value={q}
+              onCommit={handleSearchCommit}
+              placeholder="Search code or user..."
+              ariaLabel="Search affiliates"
+              className="relative w-64"
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -768,18 +838,18 @@ export default function AdminAffiliatesPage() {
               <div className="flex justify-center gap-2 mt-4">
                 <Button
                   variant="outline"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
+                  disabled={safePage === 1}
+                  onClick={() => setView({ page: safePage - 1 })}
                 >
                   Previous
                 </Button>
                 <span className="py-2">
-                  Page {page} of {totalPages}
+                  Page {safePage} of {totalPages}
                 </span>
                 <Button
                   variant="outline"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => p + 1)}
+                  disabled={safePage === totalPages}
+                  onClick={() => setView({ page: safePage + 1 })}
                 >
                   Next
                 </Button>

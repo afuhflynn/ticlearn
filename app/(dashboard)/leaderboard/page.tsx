@@ -1,21 +1,55 @@
 "use client";
 
 import { FileText, Loader2, Medal, Trophy } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLeaderboard } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  leaderboardViewDefaults,
+  leaderboardViewParsers,
+} from "@/nuqs/leaderboard";
 
 export default function LeaderboardPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
-  const [page, setPage] = useState(1);
+  // Page and size live in the URL, so refresh, back, forward, and
+  // shared links reproduce the same view. View changes push history.
+  const [view, setView] = useQueryStates(
+    {
+      page: leaderboardViewParsers.page,
+      limit: leaderboardViewParsers.limit,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const rawParams = useSearchParams();
 
-  const quizData = useLeaderboard(page, 20);
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history. This covers range faults (page 0) and
+  // unparsable input (page abc, which already reads as the default).
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      { page: safePage, limit: safeLimit },
+      leaderboardViewDefaults,
+    );
+    const next: { page?: number; limit?: number } = {};
+    if (typeof patch.page === "number") next.page = patch.page;
+    if (typeof patch.limit === "number") next.limit = patch.limit;
+    if (Object.keys(next).length > 0) {
+      setView(next, { history: "replace" });
+    }
+  }, [rawParams, safePage, safeLimit, setView]);
+
+  const quizData = useLeaderboard(safePage, safeLimit);
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Medal className="h-5 w-5 text-yellow-500" />;
@@ -70,19 +104,19 @@ export default function LeaderboardPage() {
         <Button
           variant="outline"
           size="sm"
-          disabled={page === 1}
-          onClick={() => setPage((p) => p - 1)}
+          disabled={safePage === 1}
+          onClick={() => setView({ page: safePage - 1 })}
         >
           Previous
         </Button>
         <span className="py-2 px-3 text-sm text-muted-foreground">
-          Page {page} of {totalPages}
+          Page {safePage} of {totalPages}
         </span>
         <Button
           variant="outline"
           size="sm"
-          disabled={page === totalPages}
-          onClick={() => setPage((p) => p + 1)}
+          disabled={safePage === totalPages}
+          onClick={() => setView({ page: safePage + 1 })}
         >
           Next
         </Button>

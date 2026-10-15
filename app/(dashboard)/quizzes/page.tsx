@@ -1,9 +1,10 @@
 "use client";
 
-import { ListTodo, Loader2, Play, Plus, Search, Trash2 } from "lucide-react";
+import { ListTodo, Loader2, Play, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryState } from "nuqs";
+import { useEffect, useRef } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -13,10 +14,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { UrlSearchInput } from "@/components/url-search-input";
 import { useDeleteQuiz, useQuizzes } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+import { correctionsForKeys } from "@/nuqs";
+import { quizzesViewDefaults, quizzesViewParsers } from "@/nuqs/quizzes";
 
 type QuizListItem = {
   id: string;
@@ -29,7 +32,20 @@ type QuizListItem = {
 export default function QuizzesPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
-  const [searchQuery, setSearchQuery] = useState("");
+  // Search text lives in the URL, so refresh, back, forward, and
+  // shared links reproduce the same filtered list.
+  const [q, setQ] = useQueryState(
+    "q",
+    quizzesViewParsers.q.withOptions({ history: "replace" }),
+  );
+  const rawParams = useSearchParams();
+
+  // A raw key that disagrees with the canonical value corrects
+  // itself with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(rawParams, { q }, quizzesViewDefaults);
+    if (patch.q !== undefined && patch.q !== q) setQ(patch.q);
+  }, [rawParams, q, setQ]);
 
   const { quizzes, isLoading } = useQuizzes("my");
   const deleteQuiz = useDeleteQuiz();
@@ -69,9 +85,9 @@ export default function QuizzesPage() {
   }
 
   const filteredQuizzes = (quizzes as QuizListItem[]).filter(
-    (q) =>
-      q.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      q.noteTitle?.toLowerCase().includes(searchQuery.toLowerCase()),
+    (quiz) =>
+      quiz.title.toLowerCase().includes(q.toLowerCase()) ||
+      quiz.noteTitle?.toLowerCase().includes(q.toLowerCase()),
   );
 
   const handleDelete = async (id: string) => {
@@ -105,15 +121,12 @@ export default function QuizzesPage() {
         </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search quizzes..."
-          className="pl-9"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
+      <UrlSearchInput
+        value={q}
+        onCommit={setQ}
+        placeholder="Search quizzes..."
+        ariaLabel="Search quizzes"
+      />
 
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
