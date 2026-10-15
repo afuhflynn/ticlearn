@@ -25,7 +25,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 5 | Delete GCE content, repoint the data model | Foundation | in-progress |
 | 6 | Delete the exam and grading engine | Foundation | done |
 | 7 | Design system and UI toolkit convention | Foundation | in-progress |
-| 8 | URL state convention | Foundation | planned |
+| 8 | URL state convention | Foundation | in-progress |
 | 9 | Environment variables documented | Foundation | planned |
 | 10 | Database indexes and query rewrites | Foundation | planned |
 | 11 | Background work moved to Inngest | Foundation | planned |

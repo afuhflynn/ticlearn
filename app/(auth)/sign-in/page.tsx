@@ -43,7 +43,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
-  const redirect = decodeURIComponent((callbackUrl as string) || "/chat");
+  const redirect = decodeURIComponent(callbackUrl || "/chat");
 
   useEffect(() => {
     if (refCode) {

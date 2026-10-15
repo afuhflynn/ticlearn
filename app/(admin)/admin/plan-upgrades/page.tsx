@@ -6,12 +6,13 @@ import {
   CheckCircle2,
   CreditCard,
   Loader2,
-  Search,
   ShieldCheck,
   UserRound,
   XCircle,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useQueryState, useQueryStates } from "nuqs";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -30,7 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -48,11 +48,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { UrlSearchInput } from "@/components/url-search-input";
 import {
   type AdminPlanUser,
   useAdminPlanUsers,
   useUpdateAdminUserPlan,
 } from "@/hooks/useAdmin";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  adminPlanUpgradesViewDefaults,
+  adminPlanUpgradesViewParsers,
+} from "@/nuqs/admin-plan-upgrades";
 
 const PLAN_OPTIONS = ["FREE", "STARTER", "STANDARD", "PREMIUM", "PRO"];
 const PLAN_LABELS: Record<string, string> = {
@@ -92,56 +98,142 @@ function formatDate(value: string | null | undefined) {
 }
 
 export default function AdminPlanUpgradesPage() {
-  const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("USER");
-  const [onboardingFilter, setOnboardingFilter] = useState("all");
-  const [planFilter, setPlanFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [page, setPage] = useState(1);
-  const [selectedUser, setSelectedUser] = useState<AdminPlanUser | null>(null);
-  const [selectedPlan, setSelectedPlan] = useState("FREE");
-  const [reason, setReason] = useState("");
-
-  const params = useMemo(
-    () => ({
-      search,
-      role: roleFilter,
-      onboardingStatus: onboardingFilter,
-      plan: planFilter,
-      subscriptionStatus: statusFilter,
-      limit: 20,
-      page,
-    }),
-    [search, roleFilter, onboardingFilter, planFilter, statusFilter, page],
+  // Search, filters, page, and the change plan dialog live in the
+  // URL, so refresh, back, forward, and shared links reproduce the
+  // same view. Search text writes with replace history, the rest
+  // pushes. The picked plan and the reason stay local drafts.
+  const [q, setQ] = useQueryState(
+    "q",
+    adminPlanUpgradesViewParsers.q.withOptions({ history: "replace" }),
   );
+  const [view, setView] = useQueryStates(
+    {
+      role: adminPlanUpgradesViewParsers.role,
+      onboarding: adminPlanUpgradesViewParsers.onboarding,
+      plan: adminPlanUpgradesViewParsers.plan,
+      status: adminPlanUpgradesViewParsers.status,
+      page: adminPlanUpgradesViewParsers.page,
+      limit: adminPlanUpgradesViewParsers.limit,
+      modal: adminPlanUpgradesViewParsers.modal,
+      selectedId: adminPlanUpgradesViewParsers.selectedId,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const rawParams = useSearchParams();
 
-  const { users, total, totalPages, isLoading, isFetching } =
-    useAdminPlanUsers(params);
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      {
+        q,
+        role: view.role,
+        onboarding: view.onboarding,
+        plan: view.plan,
+        status: view.status,
+        page: safePage,
+        limit: safeLimit,
+        modal: view.modal,
+        selectedId: view.selectedId,
+      },
+      adminPlanUpgradesViewDefaults,
+    );
+    if (typeof patch.q === "string" && patch.q !== q) setQ(patch.q);
+    const { q: _q, ...rest } = patch;
+    if (Object.keys(rest).length > 0) {
+      setView(rest, { history: "replace" });
+    }
+  }, [
+    rawParams,
+    q,
+    setQ,
+    view.role,
+    view.onboarding,
+    view.plan,
+    view.status,
+    view.modal,
+    view.selectedId,
+    safePage,
+    safeLimit,
+    setView,
+  ]);
+
+  // A new search resets to the first page in a replace update, so the
+  // back button is not polluted by the reset.
+  const handleSearchCommit = (next: string) => {
+    setQ(next);
+    if (view.page !== 1) setView({ page: 1 }, { history: "replace" });
+  };
+
+  const { users, total, totalPages, isLoading, isFetching } = useAdminPlanUsers(
+    {
+      search: q,
+      role: view.role,
+      onboardingStatus: view.onboarding,
+      plan: view.plan,
+      subscriptionStatus: view.status,
+      limit: safeLimit,
+      page: safePage,
+    },
+  );
   const updatePlanMutation = useUpdateAdminUserPlan();
 
-  const resetToFirstPage = (setter: (value: string) => void, value: string) => {
-    setter(value);
-    setPage(1);
+  // The dialog renders the row from the loaded list by id, so a shared
+  // link reproduces it whenever the row is on the current view. The
+  // picked plan and the reason stay local drafts, reseeded whenever
+  // the dialog row changes.
+  const dialogUser = users.find((user) => user.id === view.selectedId) ?? null;
+  const [selectedPlan, setSelectedPlan] = useState("FREE");
+  const [reason, setReason] = useState("");
+  useEffect(() => {
+    if (dialogUser) {
+      setSelectedPlan(dialogUser.currentPlan);
+      setReason("");
+    }
+  }, [dialogUser]);
+
+  // A dialog id with no row behind it (stale link, or filters that
+  // hide the row) closes the dialog and corrects the URL, once the
+  // list has loaded.
+  useEffect(() => {
+    if (view.modal === "change" && !isLoading && !dialogUser) {
+      setView({ modal: "", selectedId: "" }, { history: "replace" });
+    }
+  }, [view.modal, isLoading, dialogUser, setView]);
+
+  const closePlanDialog = () => {
+    setView({ modal: "", selectedId: "" }, { history: "replace" });
+  };
+
+  const resetToFirstPage = (
+    patch:
+      | { role: "USER" | "ADMIN" | "all" }
+      | { onboarding: "completed" | "not_completed" | "skipped" | "all" }
+      | { plan: "FREE" | "STARTER" | "STANDARD" | "PREMIUM" | "PRO" | "all" }
+      | { status: "all" | "ACTIVE" | "PENDING" | "FAILED" },
+  ) => {
+    setView({ ...patch, page: 1 });
   };
 
   const openPlanDialog = (user: AdminPlanUser) => {
-    setSelectedUser(user);
-    setSelectedPlan(user.currentPlan);
-    setReason("");
+    setView({ modal: "change", selectedId: user.id });
   };
 
   const confirmPlanChange = async () => {
-    if (!selectedUser) return;
+    if (!dialogUser) return;
     try {
       await updatePlanMutation.mutateAsync({
-        userId: selectedUser.id,
+        userId: dialogUser.id,
         plan: selectedPlan,
         reason: reason.trim() || undefined,
       });
       toast.success(
-        `${selectedUser.name || selectedUser.email} moved to ${PLAN_LABELS[selectedPlan]}`,
+        `${dialogUser.name || dialogUser.email} moved to ${PLAN_LABELS[selectedPlan]}`,
       );
-      setSelectedUser(null);
+      closePlanDialog();
       setReason("");
     } catch (error) {
       toast.error(
@@ -215,10 +307,16 @@ export default function AdminPlanUpgradesPage() {
             </div>
             <div className="grid gap-2 md:grid-cols-2 xl:flex xl:items-center">
               <Select
-                value={roleFilter}
-                onValueChange={(value) =>
-                  resetToFirstPage(setRoleFilter, value)
-                }
+                value={view.role}
+                onValueChange={(value) => {
+                  if (
+                    value === "USER" ||
+                    value === "ADMIN" ||
+                    value === "all"
+                  ) {
+                    resetToFirstPage({ role: value });
+                  }
+                }}
               >
                 <SelectTrigger className="w-full xl:w-32">
                   <SelectValue />
@@ -230,10 +328,17 @@ export default function AdminPlanUpgradesPage() {
                 </SelectContent>
               </Select>
               <Select
-                value={onboardingFilter}
-                onValueChange={(value) =>
-                  resetToFirstPage(setOnboardingFilter, value)
-                }
+                value={view.onboarding}
+                onValueChange={(value) => {
+                  if (
+                    value === "completed" ||
+                    value === "not_completed" ||
+                    value === "skipped" ||
+                    value === "all"
+                  ) {
+                    resetToFirstPage({ onboarding: value });
+                  }
+                }}
               >
                 <SelectTrigger className="w-full xl:w-44">
                   <SelectValue />
@@ -246,10 +351,19 @@ export default function AdminPlanUpgradesPage() {
                 </SelectContent>
               </Select>
               <Select
-                value={planFilter}
-                onValueChange={(value) =>
-                  resetToFirstPage(setPlanFilter, value)
-                }
+                value={view.plan}
+                onValueChange={(value) => {
+                  if (
+                    value === "FREE" ||
+                    value === "STARTER" ||
+                    value === "STANDARD" ||
+                    value === "PREMIUM" ||
+                    value === "PRO" ||
+                    value === "all"
+                  ) {
+                    resetToFirstPage({ plan: value });
+                  }
+                }}
               >
                 <SelectTrigger className="w-full xl:w-36">
                   <SelectValue />
@@ -264,10 +378,17 @@ export default function AdminPlanUpgradesPage() {
                 </SelectContent>
               </Select>
               <Select
-                value={statusFilter}
-                onValueChange={(value) =>
-                  resetToFirstPage(setStatusFilter, value)
-                }
+                value={view.status}
+                onValueChange={(value) => {
+                  if (
+                    value === "all" ||
+                    value === "ACTIVE" ||
+                    value === "PENDING" ||
+                    value === "FAILED"
+                  ) {
+                    resetToFirstPage({ status: value });
+                  }
+                }}
               >
                 <SelectTrigger className="w-full xl:w-36">
                   <SelectValue />
@@ -279,16 +400,12 @@ export default function AdminPlanUpgradesPage() {
                   <SelectItem value="FAILED">Failed</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="relative md:col-span-2 xl:w-72">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
+              <div className="md:col-span-2 xl:w-72">
+                <UrlSearchInput
+                  value={q}
+                  onCommit={handleSearchCommit}
                   placeholder="Search users..."
-                  className="pl-8"
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setPage(1);
-                  }}
+                  ariaLabel="Search users"
                 />
               </div>
             </div>
@@ -396,20 +513,20 @@ export default function AdminPlanUpgradesPage() {
 
               <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <p className="text-sm text-muted-foreground">
-                  Page {page} of {Math.max(totalPages, 1)} · {total} users
+                  Page {safePage} of {Math.max(totalPages, 1)} · {total} users
                 </p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    disabled={page <= 1}
-                    onClick={() => setPage((current) => current - 1)}
+                    disabled={safePage <= 1}
+                    onClick={() => setView({ page: safePage - 1 })}
                   >
                     Previous
                   </Button>
                   <Button
                     variant="outline"
-                    disabled={page >= totalPages}
-                    onClick={() => setPage((current) => current + 1)}
+                    disabled={safePage >= totalPages}
+                    onClick={() => setView({ page: safePage + 1 })}
                   >
                     Next
                   </Button>
@@ -420,7 +537,12 @@ export default function AdminPlanUpgradesPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
+      <Dialog
+        open={view.modal === "change" && dialogUser !== null}
+        onOpenChange={(open) => {
+          if (!open) closePlanDialog();
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change user plan</DialogTitle>
@@ -429,23 +551,21 @@ export default function AdminPlanUpgradesPage() {
               plans are activated immediately.
             </DialogDescription>
           </DialogHeader>
-          {selectedUser ? (
+          {dialogUser ? (
             <div className="space-y-4 py-2">
               <div className="rounded-lg border p-4">
                 <div className="font-medium">
-                  {selectedUser.name || selectedUser.email}
+                  {dialogUser.name || dialogUser.email}
                 </div>
                 <div className="text-sm text-muted-foreground">
-                  {selectedUser.email}
+                  {dialogUser.email}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge
-                    variant={PLAN_BADGE_VARIANTS[selectedUser.currentPlan]}
-                  >
-                    Current: {PLAN_LABELS[selectedUser.currentPlan]}
+                  <Badge variant={PLAN_BADGE_VARIANTS[dialogUser.currentPlan]}>
+                    Current: {PLAN_LABELS[dialogUser.currentPlan]}
                   </Badge>
-                  <Badge variant={getOnboardingVariant(selectedUser)}>
-                    {getOnboardingLabel(selectedUser)}
+                  <Badge variant={getOnboardingVariant(dialogUser)}>
+                    {getOnboardingLabel(dialogUser)}
                   </Badge>
                 </div>
               </div>
@@ -473,7 +593,7 @@ export default function AdminPlanUpgradesPage() {
                   placeholder="Optional note for the audit trail"
                 />
               </div>
-              {selectedPlan === selectedUser.currentPlan ? (
+              {selectedPlan === dialogUser.currentPlan ? (
                 <div className="flex items-center gap-2 rounded-md border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
                   <XCircle className="h-4 w-4" />
                   Select a different plan before submitting.
@@ -482,15 +602,15 @@ export default function AdminPlanUpgradesPage() {
             </div>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedUser(null)}>
+            <Button variant="outline" onClick={closePlanDialog}>
               Cancel
             </Button>
             <Button
               onClick={confirmPlanChange}
               disabled={
                 updatePlanMutation.isPending ||
-                !selectedUser ||
-                selectedPlan === selectedUser.currentPlan
+                !dialogUser ||
+                selectedPlan === dialogUser.currentPlan
               }
             >
               {updatePlanMutation.isPending ? (

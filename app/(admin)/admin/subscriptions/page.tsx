@@ -10,8 +10,9 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryStates } from "nuqs";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -52,6 +53,11 @@ import {
   useUpdateAdminSubscription,
 } from "@/hooks/useAdmin";
 import { useSession } from "@/lib/auth-client";
+import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
+import {
+  adminSubscriptionsViewDefaults,
+  adminSubscriptionsViewParsers,
+} from "@/nuqs/admin-subscriptions";
 
 const PLAN_OPTIONS = [
   { value: "STARTER", label: "Starter", price: 3000 },
@@ -62,17 +68,65 @@ const PLAN_OPTIONS = [
 export default function AdminSubscriptionsPage() {
   const { data: session, isPending: sessionLoading } = useSession();
   const router = useRouter();
-  const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
-  const [isChangePlanOpen, setIsChangePlanOpen] = useState(false);
-  const [selectedSub, setSelectedSub] = useState<string | null>(null);
+  // Status filter, page, and the change plan dialog live in the URL,
+  // so refresh, back, forward, and shared links reproduce the same
+  // view. The picked plan stays a local draft inside the dialog.
+  const [view, setView] = useQueryStates(
+    {
+      status: adminSubscriptionsViewParsers.status,
+      page: adminSubscriptionsViewParsers.page,
+      limit: adminSubscriptionsViewParsers.limit,
+      modal: adminSubscriptionsViewParsers.modal,
+      selectedId: adminSubscriptionsViewParsers.selectedId,
+    },
+    { history: "push" },
+  );
+  const safePage = clampPage(view.page);
+  const safeLimit = clampLimit(view.limit);
+  const isChangePlanOpen = view.modal === "change";
   const [newPlan, setNewPlan] = useState("STARTER");
+  const rawParams = useSearchParams();
+
+  // Raw keys that disagree with canonical values correct themselves
+  // with replace history.
+  useEffect(() => {
+    const patch = correctionsForKeys(
+      rawParams,
+      {
+        status: view.status,
+        page: safePage,
+        limit: safeLimit,
+        modal: view.modal,
+        selectedId: view.selectedId,
+      },
+      adminSubscriptionsViewDefaults,
+    );
+    if (Object.keys(patch).length > 0) {
+      setView(patch, { history: "replace" });
+    }
+  }, [
+    rawParams,
+    view.status,
+    view.modal,
+    view.selectedId,
+    safePage,
+    safeLimit,
+    setView,
+  ]);
+
+  // Opening the dialog for a row id that is gone closes the dialog
+  // and corrects the URL with replace history.
+  useEffect(() => {
+    if (view.modal === "change" && !view.selectedId) {
+      setView({ modal: "", selectedId: "" }, { history: "replace" });
+    }
+  }, [view.modal, view.selectedId, setView]);
 
   const { subscriptions, totalPages, isLoading, refetch } =
     useAdminSubscriptions({
-      page,
-      limit: 20,
-      status: status || undefined,
+      page: safePage,
+      limit: safeLimit,
+      status: view.status === "all" ? undefined : view.status,
     });
 
   const updateMutation = useUpdateAdminSubscription();
@@ -103,14 +157,14 @@ export default function AdminSubscriptionsPage() {
   };
 
   const handleChangePlan = async () => {
-    if (!selectedSub) return;
+    if (!view.selectedId) return;
     try {
       await updateMutation.mutateAsync({
-        id: selectedSub,
+        id: view.selectedId,
         data: { status: "ACTIVE", plan: newPlan },
       });
       toast.success("Plan changed and activated");
-      setIsChangePlanOpen(false);
+      setView({ modal: "", selectedId: "" }, { history: "replace" });
       refetch();
     } catch (_error) {
       toast.error("Failed to change plan");
@@ -188,8 +242,17 @@ export default function AdminSubscriptionsPage() {
         <CardHeader>
           <div className="flex gap-4">
             <Select
-              value={status}
-              onValueChange={(v) => setStatus(v === "all" ? "" : v)}
+              value={view.status}
+              onValueChange={(v) => {
+                if (
+                  v === "all" ||
+                  v === "PENDING" ||
+                  v === "ACTIVE" ||
+                  v === "FAILED"
+                ) {
+                  setView({ status: v, page: 1 });
+                }
+              }}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Filter by status" />
@@ -275,9 +338,11 @@ export default function AdminSubscriptionsPage() {
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
-                                  setSelectedSub(sub.id);
                                   setNewPlan(sub.plan);
-                                  setIsChangePlanOpen(true);
+                                  setView({
+                                    modal: "change",
+                                    selectedId: sub.id,
+                                  });
                                 }}
                               >
                                 <Edit className="mr-2 h-4 w-4" />
@@ -303,18 +368,18 @@ export default function AdminSubscriptionsPage() {
               <div className="flex justify-center gap-2 mt-4">
                 <Button
                   variant="outline"
-                  disabled={page === 1}
-                  onClick={() => setPage((p) => p - 1)}
+                  disabled={safePage === 1}
+                  onClick={() => setView({ page: safePage - 1 })}
                 >
                   Previous
                 </Button>
                 <span className="py-2">
-                  Page {page} of {totalPages}
+                  Page {safePage} of {totalPages}
                 </span>
                 <Button
                   variant="outline"
-                  disabled={page === totalPages}
-                  onClick={() => setPage((p) => p + 1)}
+                  disabled={safePage === totalPages}
+                  onClick={() => setView({ page: safePage + 1 })}
                 >
                   Next
                 </Button>
@@ -324,7 +389,13 @@ export default function AdminSubscriptionsPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isChangePlanOpen} onOpenChange={setIsChangePlanOpen}>
+      <Dialog
+        open={isChangePlanOpen}
+        onOpenChange={(open) => {
+          if (open) setView({ modal: "change" });
+          else setView({ modal: "", selectedId: "" }, { history: "replace" });
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Change Plan</DialogTitle>
@@ -350,7 +421,9 @@ export default function AdminSubscriptionsPage() {
           <div className="flex justify-end gap-2">
             <Button
               variant="outline"
-              onClick={() => setIsChangePlanOpen(false)}
+              onClick={() =>
+                setView({ modal: "", selectedId: "" }, { history: "replace" })
+              }
             >
               Cancel
             </Button>
