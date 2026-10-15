@@ -68,6 +68,8 @@ model User {
   engagementLogs       EngagementLog[]
   aiUsageEvents        AiUsageEvent[]        @relation("AiUsageEvents")
 
+  @@index([role, createdAt])
+  @@index([referredBy])
   @@map("users")
 }
 
@@ -236,6 +238,8 @@ model Quiz {
   attempts      QuizAttempt[]
 
   @@index([userId])
+  @@index([userId, createdAt])
+  @@index([noteId])
   @@index([isPublic])
   @@index([status])
   @@map("quizzes")
@@ -274,6 +278,7 @@ model QuizAttempt {
   answers        QuizAttemptAnswer[]
 
   @@index([userId])
+  @@index([userId, completedAt])
   @@index([quizId])
   @@index([completedAt])
   @@map("quiz_attempts")
@@ -329,6 +334,7 @@ model Subscription {
 
   @@index([userId])
   @@index([status])
+  @@index([status, createdAt])
   @@index([fapshiTransId])
   @@map("subscriptions")
 }
@@ -395,7 +401,6 @@ model Affiliate {
   clicks           AffiliateClick[]
   earnings         AffiliateEarning[]
 
-  @@index([code])
   @@index([status])
   @@map("affiliates")
 }
@@ -410,6 +415,7 @@ model AffiliateClick {
   affiliate         Affiliate @relation(fields: [affiliateCode], references: [code])
 
   @@index([affiliateCode])
+  @@index([affiliateCode, converted])
   @@map("affiliate_clicks")
 }
 
@@ -445,6 +451,8 @@ model Post {
   subject        String?
   isPinned       Boolean    @default(false) @map("is_pinned")
   isAnnouncement Boolean    @default(false) @map("is_announcement")
+  likeCount      Int        @default(0) @map("like_count")
+  commentCount   Int        @default(0) @map("comment_count")
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
   user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -453,6 +461,8 @@ model Post {
 
   @@index([userId])
   @@index([createdAt])
+  @@index([isPinned, createdAt])
+  @@index([subject, createdAt])
   @@map("posts")
 }
 
@@ -470,7 +480,9 @@ model Comment {
   replies   Comment[] @relation("CommentReplies")
 
   @@index([postId])
+  @@index([postId, createdAt])
   @@index([userId])
+  @@index([parentId, createdAt])
   @@map("comments")
 }
 
@@ -502,6 +514,7 @@ model Notification {
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@index([isRead])
   @@map("notifications")
 }
@@ -537,8 +550,6 @@ model AdminInvite {
 
   inviter User @relation("InvitedBy", fields: [invitedBy], references: [id], onDelete: Cascade)
 
-  @@index([email])
-  @@index([token])
   @@map("admin_invites")
 }
 
@@ -552,7 +563,9 @@ model KpiEvent {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@index([event])
+  @@index([event, createdAt])
   @@index([createdAt])
   @@map("kpi_events")
 }
@@ -568,6 +581,7 @@ model DailyMetric {
 
   @@unique([date, metric])
   @@index([date])
+  @@index([metric, date])
   @@map("daily_metrics")
 }
 
@@ -703,7 +717,9 @@ model ChatMessage {
   user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
+  @@index([conversationId, createdAt])
   @@index([userId])
+  @@index([userId, role, createdAt])
   @@map("chat_messages")
 }
 
@@ -834,6 +850,7 @@ model CreditTransaction {
   user User @relation("UserCredits", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, createdAt])
   @@index([createdAt])
   @@map("credit_transactions")
 }
@@ -895,5 +912,6 @@ model EngagementLog {
 
   @@unique([userId, campaign])
   @@index([campaign])
+  @@index([campaign, sentAt])
   @@map("engagement_log")
 }

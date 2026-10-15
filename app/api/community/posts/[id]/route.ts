@@ -26,12 +26,14 @@ export async function GET(
         },
         comments: {
           orderBy: { createdAt: "asc" },
+          take: 100,
           include: {
             user: {
               select: { id: true, name: true, image: true },
             },
             replies: {
               orderBy: { createdAt: "asc" },
+              take: 100,
               include: {
                 user: {
                   select: { id: true, name: true, image: true },
@@ -42,9 +44,6 @@ export async function GET(
         },
         likes: {
           select: { id: true },
-        },
-        _count: {
-          select: { likes: true, comments: true },
         },
       },
     });
@@ -61,8 +60,6 @@ export async function GET(
       post: {
         ...post,
         isLiked,
-        likeCount: post._count.likes,
-        commentCount: post._count.comments,
       },
     });
   } catch (error) {

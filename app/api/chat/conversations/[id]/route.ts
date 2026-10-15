@@ -127,25 +127,37 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
 
     const { id } = await params;
 
-    const messages = await prisma.chatMessage.findMany({
-      where: { conversationId: id },
-      select: { parts: true },
-    });
-
+    // Batched file key scan, 200 messages per batch, so giant threads
+    // never load in one unbounded read.
     const fileKeys: string[] = [];
-    for (const msg of messages) {
-      const parts = msg.parts as Array<Record<string, unknown>>;
-      if (!Array.isArray(parts)) continue;
-      for (const part of parts) {
-        if (
-          part?.type === "file" &&
-          typeof part?.url === "string" &&
-          part.url.startsWith("https://utfs.io/")
-        ) {
-          const key = getUploadThingFileKey(part.url);
-          if (key) fileKeys.push(key);
+    let cursor: string | undefined;
+    for (;;) {
+      const batch = await prisma.chatMessage.findMany({
+        where: { conversationId: id },
+        orderBy: { createdAt: "asc" },
+        take: 200,
+        ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+        select: { id: true, parts: true },
+      });
+      if (batch.length === 0) break;
+
+      for (const msg of batch) {
+        const parts = msg.parts as Array<Record<string, unknown>>;
+        if (!Array.isArray(parts)) continue;
+        for (const part of parts) {
+          if (
+            part?.type === "file" &&
+            typeof part?.url === "string" &&
+            part.url.startsWith("https://utfs.io/")
+          ) {
+            const key = getUploadThingFileKey(part.url);
+            if (key) fileKeys.push(key);
+          }
         }
       }
+
+      if (batch.length < 200) break;
+      cursor = batch[batch.length - 1].id;
     }
 
     if (fileKeys.length > 0) {

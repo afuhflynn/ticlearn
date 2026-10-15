@@ -20,23 +20,41 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const activeSubscription = await prisma.subscription.findFirst({
-      where: { userId: session.user.id, status: "ACTIVE" },
-      orderBy: { createdAt: "desc" },
-    });
+    const { nextResetAt, resetsInSeconds, windowStart } = getChatResetWindow();
 
-    const latestSubscription = await prisma.subscription.findFirst({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const noteCount = await prisma.note.count({
-      where: { userId: session.user.id },
-    });
-
-    const quizCount = await prisma.quiz.count({
-      where: { userId: session.user.id },
-    });
+    const [
+      activeSubscription,
+      latestSubscription,
+      noteCount,
+      quizCount,
+      chatsToday,
+    ] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: { userId: session.user.id, status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+        include: { user: { select: { id: true } } },
+      }),
+      prisma.subscription.findFirst({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.note.count({
+        where: { userId: session.user.id },
+      }),
+      prisma.quiz.count({
+        where: { userId: session.user.id },
+      }),
+      prisma.chatMessage.count({
+        where: {
+          userId: session.user.id,
+          role: "user",
+          createdAt: {
+            gte: windowStart,
+            lt: nextResetAt,
+          },
+        },
+      }),
+    ]);
 
     const plan = resolvePlan(activeSubscription);
     const currentStatus = latestSubscription?.status || "NONE";
@@ -45,17 +63,6 @@ export async function GET() {
       : latestSubscription?.plan || null;
 
     const limits = getPlanLimits(plan);
-    const { nextResetAt, resetsInSeconds, windowStart } = getChatResetWindow();
-    const chatsToday = await prisma.chatMessage.count({
-      where: {
-        userId: session.user.id,
-        role: "user",
-        createdAt: {
-          gte: windowStart,
-          lt: nextResetAt,
-        },
-      },
-    });
     const chatRemaining = getRemainingAllowance(
       limits.aiTutorMessages,
       chatsToday,

@@ -33,6 +33,7 @@ export async function GET(req: Request) {
     const metrics = await prisma.dailyMetric.findMany({
       where,
       orderBy: [{ date: "asc" }, { metric: "asc" }],
+      take: 10000,
     });
 
     const headers_row = ["date", "metric", "value"];

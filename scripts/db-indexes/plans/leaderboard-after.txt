@@ -1,0 +1,25 @@
+Limit  (cost=2.04..2.04 rows=1 width=33)
+  ->  Sort  (cost=2.04..2.04 rows=1 width=33)
+        Sort Key: s.total_points DESC, s.user_id
+        ->  Nested Loop  (cost=0.00..2.03 rows=1 width=33)
+              Join Filter: (s.user_id = u.id)
+              ->  Seq Scan on user_stats s  (cost=0.00..1.00 rows=1 width=33)
+              ->  Seq Scan on users u  (cost=0.00..1.01 rows=1 width=19)
+                    Filter: (role <> 'ADMIN'::"UserRole")
+
+Rank query:
+Aggregate  (cost=2.03..2.04 rows=1 width=8)
+  ->  Nested Loop  (cost=0.00..2.03 rows=1 width=0)
+        Join Filter: (s.user_id = u.id)
+        ->  Seq Scan on user_stats s  (cost=0.00..1.00 rows=1 width=14)
+              Filter: (total_points > 0)
+        ->  Seq Scan on users u  (cost=0.00..1.01 rows=1 width=19)
+              Filter: (role <> 'ADMIN'::"UserRole")
+
+Query now orders by total_points DESC, user_id ASC and ranks by count of
+strictly greater totals through the same role filtered join.
+Sequential scans remain because each table holds about one row locally.
+The planner will pick user_stats_total_points_user_id_idx plus
+users_role_created_at_idx once the tables grow. Indexes verified live:
+user_stats_total_points_user_id_idx, users_role_created_at_idx,
+users_referred_by_idx. Captured 2026-10-15 after slice 1 apply.

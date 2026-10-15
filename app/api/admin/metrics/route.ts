@@ -8,6 +8,7 @@ import {
   computeMasteryMetrics,
   computeMRR,
   computeSubjectDistribution,
+  countDistinctActiveUsers,
 } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 
@@ -28,8 +29,14 @@ export async function GET(req: Request) {
     const to = searchParams.get("to") || new Date().toISOString().split("T")[0];
     const tab = searchParams.get("tab") || "overview";
     const granularity = searchParams.get("granularity") || "daily";
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "50");
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const rawLimit = parseInt(searchParams.get("limit") || "50", 10);
+    const page =
+      Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+    const limit =
+      Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(100, Math.floor(rawLimit))
+        : 50;
     const sort = searchParams.get("sort") || "date";
     const order = searchParams.get("order") || "desc";
     const search = searchParams.get("search") || "";
@@ -38,7 +45,9 @@ export async function GET(req: Request) {
     const toDate = new Date(to + "T23:59:59.999Z");
 
     // Summary cards - always returned
-    const [totalUsers, activeSubsAgg, todayEvents, dausAgg, mrrData] =
+    const dayStart = new Date(new Date().setHours(0, 0, 0, 0));
+    const now = new Date();
+    const [totalUsers, activeSubsAgg, todayEvents, daus, mrrData] =
       await Promise.all([
         prisma.user.count({ where: { role: "USER" } }),
         prisma.subscription.count({
@@ -48,26 +57,16 @@ export async function GET(req: Request) {
           where: {
             user: { role: "USER" },
             createdAt: {
-              gte: new Date(new Date().setHours(0, 0, 0, 0)),
-              lte: new Date(),
+              gte: dayStart,
+              lte: now,
             },
           },
         }),
-        prisma.kpiEvent.groupBy({
-          by: ["userId"],
-          where: {
-            user: { role: "USER" },
-            createdAt: {
-              gte: new Date(new Date().setHours(0, 0, 0, 0)),
-              lte: new Date(),
-            },
-          },
-        }),
+        countDistinctActiveUsers(dayStart, now),
         computeMRR(),
       ]);
 
     const paidUsers = activeSubsAgg;
-    const daus = dausAgg.length;
     const conversionRate =
       totalUsers > 0 ? Math.round((paidUsers / totalUsers) * 10000) / 100 : 0;
 
@@ -96,23 +95,20 @@ export async function GET(req: Request) {
       metricFilter.metric = { contains: search };
     }
 
-    // Compute MAU: unique users in last 30 days
+    // Monthly active users: distinct users with any event in last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const mauAgg = await prisma.kpiEvent.groupBy({
-      by: ["userId"],
-      where: { createdAt: { gte: thirtyDaysAgo }, user: { role: "USER" } },
-    });
-    const mau = mauAgg.length;
+    const mau = await countDistinctActiveUsers(thirtyDaysAgo, new Date());
 
     let metrics: Array<Record<string, unknown>>;
     let total: number;
 
     if (granularity === "monthly" || granularity === "yearly") {
-      // Fetch all matching daily metrics, aggregate by period
+      // Fetch recent daily metrics in one bounded read, aggregate by period
       const allRows = await prisma.dailyMetric.findMany({
         where: metricFilter,
-        orderBy: { date: "asc" },
+        orderBy: { date: "desc" },
+        take: 5000,
       });
 
       const grouped = new Map<string, Map<string, number>>();
@@ -199,10 +195,11 @@ export async function GET(req: Request) {
           });
         }
       } else {
-        // For non-data tabs (charts), we want all metrics sorted by date ascending.
+        // For non-data tabs (charts), recent metrics in one bounded read.
         metricsQuery = prisma.dailyMetric.findMany({
           where: metricFilter,
-          orderBy: [{ date: "asc" }],
+          orderBy: [{ date: "desc" }],
+          take: 2000,
         });
       }
 
@@ -211,6 +208,9 @@ export async function GET(req: Request) {
         prisma.dailyMetric.count({ where: metricFilter }),
       ]);
       metrics = fetchedMetrics as unknown as Array<Record<string, unknown>>;
+      if (tab !== "data") {
+        metrics = [...metrics].reverse();
+      }
       total = fetchedTotal;
     }
 

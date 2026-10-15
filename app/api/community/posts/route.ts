@@ -15,8 +15,14 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const subject = searchParams.get("subject");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const rawPage = parseInt(searchParams.get("page") || "1", 10);
+    const rawLimit = parseInt(searchParams.get("limit") || "20", 10);
+    const page =
+      Number.isFinite(rawPage) && rawPage > 0 ? Math.floor(rawPage) : 1;
+    const limit =
+      Number.isFinite(rawLimit) && rawLimit > 0
+        ? Math.min(100, Math.floor(rawLimit))
+        : 20;
     const skip = (page - 1) * limit;
 
     const where = subject ? { subject } : {};
@@ -27,12 +33,19 @@ export async function GET(req: Request) {
         skip,
         take: limit,
         orderBy: [{ isPinned: "desc" }, { createdAt: "desc" }],
-        include: {
+        select: {
+          id: true,
+          content: true,
+          subject: true,
+          isPinned: true,
+          isAnnouncement: true,
+          likeCount: true,
+          commentCount: true,
+          createdAt: true,
+          updatedAt: true,
+          userId: true,
           user: {
             select: { id: true, name: true, image: true },
-          },
-          _count: {
-            select: { comments: true, likes: true },
           },
           likes: {
             where: { userId: session.user.id },
@@ -47,8 +60,6 @@ export async function GET(req: Request) {
       posts: posts.map((p) => ({
         ...p,
         isLiked: p.likes.length > 0,
-        likeCount: p._count.likes,
-        commentCount: p._count.comments,
       })),
       total,
       page,
