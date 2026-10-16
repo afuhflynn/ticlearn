@@ -107,7 +107,7 @@ describe("student attribution wiring (covers: AC-4)", () => {
       path.join(ROOT, "app", "api", "quizzes", "generate", "route.ts"),
       "utf8",
     );
-    expect(text).toMatch(/generateQuizFromNote\([\s\S]*?session\.user\.id/);
+    expect(text).toMatch(/inngest\.send\([\s\S]*?userId:\s*session\.user\.id/);
   });
 
   it("the quiz attempt route passes the signed in student through", () => {

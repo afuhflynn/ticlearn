@@ -17,7 +17,8 @@ export async function GET(
 
     const { id } = await params;
     const entry = getReport(id);
-    if (!entry) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    if (!entry)
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     if (entry.status === "COMPLETED" && entry.buffer) {
       return NextResponse.json({
@@ -29,6 +30,9 @@ export async function GET(
     return NextResponse.json({ id, status: entry.status, error: entry.error });
   } catch (error) {
     console.error("Report status error:", error);
-    return NextResponse.json({ error: "Failed to fetch report" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch report" },
+      { status: 500 },
+    );
   }
 }

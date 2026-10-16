@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useCommunityPosts(subject?: string) {
@@ -13,6 +14,7 @@ export function useCommunityPosts(subject?: string) {
         total: result.total || 0,
       };
     },
+    ...family("community"),
   });
 
   return {
@@ -36,7 +38,7 @@ export function useCreatePost() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.communityPosts });
+      void invalidateGroups(queryClient, "community");
       toast.success("Post created successfully");
     },
     onError: (error: Error) => {
@@ -54,7 +56,7 @@ export function useLikePost() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.communityPosts });
+      void invalidateGroups(queryClient, "community");
     },
   });
 }
@@ -68,7 +70,7 @@ export function useDeletePost() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.communityPosts });
+      void invalidateGroups(queryClient, "community");
       toast.success("Post deleted");
     },
   });

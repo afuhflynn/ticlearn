@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 type QuizScope = "all" | "my" | "public";
@@ -20,8 +21,7 @@ export function useQuizzes(scope: QuizScope = "all", noteId?: string) {
         ? 3000
         : false;
     },
-    gcTime: 0,
-    staleTime: 30 * 60 * 1000, // 30 minutes
+    ...family("quizzes"),
   });
 
   return {
@@ -41,8 +41,7 @@ export function useQuiz(id: string) {
     enabled: !!id,
     refetchInterval: (query) =>
       query.state.data?.quiz?.status === "GENERATING" ? 3000 : false,
-    gcTime: 0,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    ...family("quizzes"),
   });
 }
 
@@ -62,9 +61,7 @@ export function useGenerateQuiz() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.credits });
+      void invalidateGroups(queryClient, "quizzes", "notes", "credits");
       toast.success("Quiz generation started");
     },
     onError: (error: Error) => {
@@ -82,8 +79,7 @@ export function useDeleteQuiz() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      void invalidateGroups(queryClient, "quizzes", "notes");
       toast.success("Quiz deleted");
     },
     onError: (error: Error) => {
@@ -115,9 +111,7 @@ export function useSubmitQuizAttempt() {
       return result;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.userStats });
-      queryClient.invalidateQueries({ queryKey: queryKeys.leaderboard });
-      queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
+      void invalidateGroups(queryClient, "stats", "leaderboard", "quizzes");
       queryClient.invalidateQueries({
         queryKey: queryKeys.quiz(variables.quizId),
       });

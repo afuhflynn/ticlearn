@@ -1,7 +1,6 @@
 import { generateObject, generateText, streamText } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
-import { clearCache } from "@/lib/ai/cache";
 import {
   generate,
   generateCritical,
@@ -9,11 +8,27 @@ import {
   generateTextWithFallback,
   streamChat,
 } from "@/lib/ai/orchestrator";
+import { logUsage } from "@/lib/ai/usage";
+import { clearMemory } from "@/lib/cache";
+import { noteColdStart } from "@/lib/cache/cold-start";
 
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
   generateText: vi.fn(),
   streamText: vi.fn(),
+}));
+
+vi.mock("@/lib/cache/cold-start", () => ({
+  noteColdStart: vi.fn(() => false),
+}));
+
+vi.mock("@/lib/ai/usage", () => ({
+  usageFromResult: vi.fn(() => ({
+    promptTokens: 10,
+    completionTokens: 5,
+    costUsd: 0.001,
+  })),
+  logUsage: vi.fn(async () => {}),
 }));
 
 const schema = z.object({ ok: z.boolean() });
@@ -24,8 +39,10 @@ function mockGenerateObject(payload: unknown = { ok: true }) {
 }
 
 beforeEach(() => {
-  clearCache();
+  clearMemory();
   vi.clearAllMocks();
+  vi.mocked(logUsage).mockClear();
+  vi.mocked(noteColdStart).mockReturnValue(false);
   mockGenerateObject();
 });
 
@@ -201,5 +218,110 @@ describe("orchestrator task registry guard", () => {
     await expect(
       generate({ task: "nope", schema, prompt: "x" }),
     ).rejects.toThrow(/Unknown task/);
+  });
+});
+
+describe("orchestrator cold start tracking", () => {
+  it("counts every request toward warm up, not just cache hits", async () => {
+    await generate({
+      task: "quiz_gen",
+      schema,
+      prompt: "hello",
+      cacheTtlMs: 60_000,
+      promptRef: ref,
+    });
+    await generate({
+      task: "quiz_gen",
+      schema,
+      prompt: "hello",
+      cacheTtlMs: 60_000,
+      promptRef: ref,
+    });
+    // First call is a miss (empty memory), second is a hit. Without the fix
+    // noteColdStart only fires on the hit, so the count would be one instead
+    // of two.
+    expect(noteColdStart).toHaveBeenCalledTimes(2);
+  });
+
+  it("passes coldStart true to logUsage on a generate cache miss", async () => {
+    vi.mocked(noteColdStart).mockReturnValue(true);
+    await generate({
+      task: "quiz_gen",
+      schema,
+      prompt: "hello",
+      cacheTtlMs: 60_000,
+      promptRef: ref,
+    });
+    const call = vi.mocked(logUsage).mock.calls.at(-1)?.[0];
+    expect(call?.coldStart).toBe(true);
+  });
+
+  it("passes coldStart true to logUsage on a generate cache hit", async () => {
+    vi.mocked(noteColdStart).mockReturnValue(true);
+    await generate({
+      task: "quiz_gen",
+      schema,
+      prompt: "hello",
+      cacheTtlMs: 60_000,
+      promptRef: ref,
+    });
+    await generate({
+      task: "quiz_gen",
+      schema,
+      prompt: "hello",
+      cacheTtlMs: 60_000,
+      promptRef: ref,
+    });
+    const hitCalls = vi
+      .mocked(logUsage)
+      .mock.calls.map((call) => call[0])
+      .filter((row) => row.cacheHit === true);
+    expect(hitCalls).toHaveLength(1);
+    expect(hitCalls[0].coldStart).toBe(true);
+  });
+
+  it("streamChat calls noteColdStart once per request", async () => {
+    vi.mocked(streamText).mockReturnValue({
+      textStream: {
+        async *[Symbol.asyncIterator]() {
+          yield "hi";
+        },
+      },
+    } as never);
+    await streamChat({ task: "fast_chat", messages: [], promptRef: ref });
+    expect(noteColdStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("streamChat passes coldStart to logUsage on finish", async () => {
+    vi.mocked(noteColdStart).mockReturnValue(true);
+    vi.mocked(streamText).mockReturnValue({
+      textStream: {
+        async *[Symbol.asyncIterator]() {
+          yield "hi";
+        },
+      },
+    } as never);
+    await streamChat({ task: "fast_chat", messages: [], promptRef: ref });
+    const onFinish = vi.mocked(streamText).mock.calls[0][0].onFinish;
+    onFinish({ text: "hi", usage: {} });
+    const finishCalls = vi
+      .mocked(logUsage)
+      .mock.calls.map((call) => call[0])
+      .filter((row) => row.coldStart === true && row.cacheHit !== true);
+    expect(finishCalls).toHaveLength(1);
+  });
+
+  it("generateTextWithFallback calls noteColdStart once per request", async () => {
+    vi.mocked(generateText).mockResolvedValue({ text: "answer" } as never);
+    await generateTextWithFallback({ task: "fast_chat", prompt: "hi" });
+    expect(noteColdStart).toHaveBeenCalledTimes(1);
+  });
+
+  it("generateTextWithFallback passes coldStart to logUsage on success", async () => {
+    vi.mocked(noteColdStart).mockReturnValue(true);
+    vi.mocked(generateText).mockResolvedValue({ text: "answer" } as never);
+    await generateTextWithFallback({ task: "fast_chat", prompt: "hi" });
+    const call = vi.mocked(logUsage).mock.calls.at(-1)?.[0];
+    expect(call?.coldStart).toBe(true);
   });
 });

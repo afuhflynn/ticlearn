@@ -120,6 +120,16 @@ export const api = {
         apiRequest<{ quiz: Quiz }>(`/quizzes/${id}`, { method: "GET" }),
     },
 
+    readiness: () =>
+      apiRequest<{
+        readiness: number;
+        weakestTopic: { name: string; score: number } | null;
+        strongestTopic: { name: string; score: number } | null;
+        topicReadiness: Array<{ topic: string; score: number; notes: number }>;
+        needsAssessment: boolean;
+        recommendations: string[];
+      }>("/readiness", { method: "GET" }),
+
     usage: () => apiRequest<UsageData>("/usage", { method: "GET" }),
 
     credits: () =>

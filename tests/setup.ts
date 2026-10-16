@@ -63,6 +63,13 @@ vi.mock("@/lib/prisma", () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
+    appCache: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
     quiz: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -250,7 +257,9 @@ vi.mock("@/lib/ai", () => ({
   summarizeText: vi.fn(() =>
     Promise.resolve({ summary: "summary", topics: [], keyPoints: [] }),
   ),
-  generateQuizFromNote: vi.fn(() => Promise.resolve([])),
+  generateQuizFromNote: vi.fn(() =>
+    Promise.resolve({ questions: [], fromCache: false }),
+  ),
   generateQuizFromWeakAreas: vi.fn(() => Promise.resolve([])),
   generateQuizFromTopic: vi.fn(() => Promise.resolve([])),
   normalizeGeneratedQuestions: vi.fn((q) => q),

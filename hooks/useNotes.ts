@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 import type { NoteSummary, NoteWithRelations } from "@/types";
 
@@ -27,6 +28,7 @@ export function useNotes() {
 
       return shouldPoll ? 3000 : false;
     },
+    ...family("notes"),
   });
 
   return {
@@ -59,6 +61,7 @@ export function useNote(id: string) {
         ? 3000
         : false;
     },
+    ...family("notes"),
   });
 }
 
@@ -71,8 +74,7 @@ export function useUploadNote() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+      void invalidateGroups(queryClient, "notes", "usage");
       toast.success("Note uploaded successfully! It's being processed.");
     },
     onError: (error: Error) => {
@@ -92,8 +94,10 @@ export function useUpdateNote() {
       return result;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.note(variables.id) });
+      void invalidateGroups(queryClient, "notes");
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.note(variables.id),
+      });
       toast.success("Note updated");
     },
     onError: (error: Error) => {
@@ -108,8 +112,7 @@ export function useDeleteNote() {
   return useMutation({
     mutationFn: async (id: string) => api.mutations.notes.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
-      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+      void invalidateGroups(queryClient, "notes", "usage");
       toast.success("Note deleted");
     },
     onError: (error: Error) => {
@@ -124,7 +127,7 @@ export function useProcessNote() {
   return useMutation({
     mutationFn: async (noteId: string) => api.mutations.notes.process(noteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.notes });
+      void invalidateGroups(queryClient, "notes");
       queryClient.invalidateQueries({ queryKey: queryKeys.quizzes });
     },
     onError: (error: Error) => {

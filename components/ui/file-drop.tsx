@@ -10,7 +10,12 @@ export interface FileDropProps {
   className?: string;
 }
 
-export function FileDrop({ accept, multiple, onFiles, className }: FileDropProps) {
+export function FileDrop({
+  accept,
+  multiple,
+  onFiles,
+  className,
+}: FileDropProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
 
   function handleFiles(fileList: FileList | null) {

@@ -22,12 +22,18 @@ export async function POST(req: Request) {
 
     const { type } = await req.json();
     if (!type || !REPORT_TYPES[type as keyof typeof REPORT_TYPES]) {
-      return NextResponse.json({ error: "Invalid report type" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid report type" },
+        { status: 400 },
+      );
     }
 
     const reportId = randomUUID();
     try {
-      await inngest.send({ name: "admin/report.generate", data: { reportId, type } });
+      await inngest.send({
+        name: "admin/report.generate",
+        data: { reportId, type },
+      });
     } catch (e) {
       console.error("Inngest send error:", e);
     }
@@ -35,6 +41,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ reportId, status: "PROCESSING" });
   } catch (error) {
     console.error("Report request error:", error);
-    return NextResponse.json({ error: "Failed to request report" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to request report" },
+      { status: 500 },
+    );
   }
 }

@@ -5,12 +5,14 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useChatConversations() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.chatConversations,
     queryFn: api.queries.chat.getConversations,
+    ...family("chat"),
   });
 
   return {
@@ -45,6 +47,7 @@ export function useChatConversation(id: string) {
     queryKey: queryKeys.chatConversation(id),
     queryFn: () => api.queries.chat.getConversation(id),
     enabled: !!id,
+    ...family("chat"),
   });
 
   return {

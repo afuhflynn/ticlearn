@@ -1,5 +1,7 @@
 type ReportEntry = { status: string; buffer?: string; error?: string };
-const globalAny = globalThis as unknown as { __reportStore?: Map<string, ReportEntry> };
+const globalAny = globalThis as unknown as {
+  __reportStore?: Map<string, ReportEntry>;
+};
 if (!globalAny.__reportStore) globalAny.__reportStore = new Map();
 const store = globalAny.__reportStore;
 

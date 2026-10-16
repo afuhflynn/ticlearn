@@ -1,5 +1,6 @@
 import { serve } from "inngest/next";
 import {} from "@/lib/inngest";
+import { pruneAppCache } from "@/lib/inngest/cache-cleanup-functions";
 import { inngest } from "@/lib/inngest/client";
 import { dispatchEngagementCampaigns } from "@/lib/inngest/engagement-functions";
 import {
@@ -45,5 +46,6 @@ export const { GET, POST, PUT } = serve({
     generateChatTitle,
     generateAdminReport,
     dispatchEngagementCampaigns,
+    pruneAppCache,
   ],
 });

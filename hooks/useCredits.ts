@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useCredits() {
@@ -9,6 +10,6 @@ export function useCredits() {
       const result = await api.queries.credits();
       return result;
     },
-    staleTime: 60 * 1000, // 1 minute
+    ...family("credits"),
   });
 }

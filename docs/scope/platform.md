@@ -133,10 +133,17 @@ Slow work sits inside request handlers: quiz submit grades every question with a
 - [ ] Verify it: /verify-release background work moved to Inngest
 - [x] Test it: /test-engineer background work moved to Inngest
 
-### 12. Caching and cold start speed
-The chat route makes about ten serial round trips before it starts streaming, then blocks on a title generation call. There is no caching anywhere, and the AI cache is an unbounded in memory map that is per instance on a serverless deploy.
+### 12. Caching and cold start speed · in-progress (built, verified)
+The chat route makes about ten serial round trips before it starts streaming. There is no caching anywhere, and the AI cache is an unbounded in memory map that is per instance on a serverless deploy. The title call no longer blocks the first token, which has already moved to an Inngest job.
 **Done when:** a new chat starts streaming within the agreed budget, the title call no longer blocks the first token, cache hits are shared across instances, and the heaviest routes answer from cache with revalidation.
-- [ ] Design it (spec): `/solution-architect caching and cold start speed`
+- [x] Design it (spec): [0010](../specs/0010-caching-and-cold-start-speed/index.md)
+- [x] Build it: /feature-build caching and cold start speed · code in `lib/cache/`, `lib/query-families.ts`, `app/api/ai/chat/route.ts`, `lib/prompts/loader.ts`, `lib/ai/orchestrator.ts`, `lib/inngest/cache-cleanup-functions.ts`, `providers/QueryProvider.tsx`, `hooks/`, `prisma/schema.prisma`
+  - [x] Chat critical path plus the timing columns (covers AC-1, AC-2, AC-3, AC-4, AC-5, AC-20, AC-22) · code in `app/api/ai/chat/route.ts`, `lib/prompts/loader.ts`, `lib/ai/usage.ts`, `prisma/migrations/20261016090000_add_chat_first_byte_columns/`
+  - [x] Client cache convention plus the dashboard prefetch (covers AC-14, AC-15, AC-16, AC-17, AC-18, AC-19) · code in `lib/query-families.ts`, `providers/QueryProvider.tsx`, `hooks/`, `lib/dashboard-data.ts`, `lib/api-client.ts`, `app/(dashboard)/dashboard/`
+  - [x] Shared cache substrate, table plus module plus prune job (covers AC-6, AC-8, AC-9, AC-10) · code in `lib/cache/`, `lib/inngest/cache-cleanup-functions.ts`, `lib/ai/orchestrator.ts`, `lib/platform-settings.ts`, `app/api/inngest/route.ts`, `prisma/migrations/20261016100000_add_app_cache_table/`, `tests/lib/cache/store.test.ts`
+  - [x] AI cache behaviour, keys, purge, credit skip, hit logging (covers AC-7, AC-11, AC-12, AC-13, AC-21, AC-22) · code in `lib/ai/orchestrator.ts`, `lib/ai/index.ts`, `lib/inngest/functions.ts`, `lib/cache/`, `app/api/admin/cache/purge/route.ts`, `prisma/migrations/`
+- [x] Verify it: /verify-release caching and cold start speed
+- [x] Test it: /test-engineer caching and cold start speed
 
 (basis: research/performance-and-database.md §4 and research/chat-experience.md §5 · the budgets are published and cheap to hit, but only if the serial round trips go)
 
@@ -162,6 +169,13 @@ NOTE: But if we actually need loading states, we are going to prioritize the sha
 - [ ] Design it (spec): `/solution-architect loading states and perceived speed`
 
 (basis: research/seo-and-rendering.md §7 · the thresholds are published and cheap to hit, the rule that matters is the last one, a loader inside a timed exam is a correctness risk not a polish item)
+
+### 41. Data route caching with revalidation · from spec 0010
+Catalog, platform settings, readiness, and leaderboards are read on nearly every request and change rarely, so each one costs a query that arrives with the same answer it gave a minute ago. Spec 0010 deferred this deliberately so its own hit rate could be measured first.
+**Done when:** catalog, platform settings, readiness, and leaderboard reads come from cache with a written tag, every mutation that writes them invalidates that tag from inside the mutation, and a student never sees stale settings after an admin saves.
+- [ ] Design it (spec): `/solution-architect data route caching with revalidation`
+
+(basis: research/performance-and-database.md §3.1 and §3.2 · the tags and lifetimes are already tabulated there, this feature executes the table)
 
 ## Cross cutting
 

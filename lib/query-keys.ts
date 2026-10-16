@@ -16,6 +16,7 @@ export const queryKeys = {
 
   // User Stats
   userStats: ["user-stats"] as const,
+  readiness: ["readiness"] as const,
   leaderboard: ["leaderboard"] as const,
 
   // Subscriptions & Plans

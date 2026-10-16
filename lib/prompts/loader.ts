@@ -41,9 +41,24 @@ interface CacheEntry {
   mtimeMs: number;
   text: string;
   settings: PromptSettings;
+  /** When this parsed entry last served a read, for the hold window. */
+  heldAt: number;
 }
 
 const cache = new Map<string, CacheEntry>();
+
+/**
+ * How long a parsed prompt may answer reads without touching the disk. A stat
+ * per request is a syscall on the hot path for no gain, since prompt files
+ * change on a deploy rather than between two requests. Set to 0 to check the
+ * file on every read, which is what tests want.
+ */
+const DEFAULT_PROMPT_FILE_HOLD_MS = 60_000;
+
+function promptFileHoldMs(): number {
+  const raw = Number(process.env.PROMPT_FILE_HOLD_MS);
+  return Number.isFinite(raw) && raw >= 0 ? raw : DEFAULT_PROMPT_FILE_HOLD_MS;
+}
 
 function promptsDir(): string {
   return path.resolve(process.cwd(), process.env.PROMPTS_DIR ?? "prompts");
@@ -147,12 +162,29 @@ function loadFromDisk(
 /** Read plus parse plus cache, without rendering slots. For checks and tooling. */
 export function loadPromptRaw(area: string, name: string): LoadedPrompt {
   const key = `${area}/${name}`;
+  const now = Date.now();
+
+  // Inside the hold window the parsed entry answers straight from memory, so a
+  // warm request never touches the disk at all.
+  const held = cache.get(key);
+  if (held && now - held.heldAt < promptFileHoldMs()) {
+    return { text: held.text, settings: held.settings };
+  }
+
   const { raw, mtimeMs } = loadFromDisk(area, name);
   let entry = cache.get(key);
   if (!entry || entry.mtimeMs !== mtimeMs) {
     const parsed = parseFile(area, name, raw);
-    entry = { mtimeMs, text: parsed.text, settings: parsed.settings };
+    entry = {
+      mtimeMs,
+      text: parsed.text,
+      settings: parsed.settings,
+      heldAt: now,
+    };
     cache.set(key, entry);
+  } else {
+    // Same file, so only the hold clock moves.
+    entry.heldAt = now;
   }
   return { text: entry.text, settings: entry.settings };
 }

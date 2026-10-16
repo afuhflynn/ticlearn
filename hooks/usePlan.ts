@@ -6,6 +6,7 @@ import {
   limitReached,
   UNLIMITED,
 } from "@/lib/plan-limits";
+import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 interface UsePlanResult {
@@ -33,7 +34,7 @@ export function usePlan(): UsePlanResult {
       const result = await api.queries.subscription();
       return result;
     },
-    staleTime: 1000 * 60 * 5,
+    ...family("plan"),
   });
 
   const subscription = data?.subscription;

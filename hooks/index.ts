@@ -80,6 +80,11 @@ export {
   useSubmitQuizAttempt,
 } from "./useQuizzes";
 export {
+  type ReadinessData,
+  type ReadinessTopic,
+  useReadiness,
+} from "./useReadiness";
+export {
   useCanAccess as useCanAccessFeature,
   useCheckLimit,
   useUsage,

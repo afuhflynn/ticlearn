@@ -171,7 +171,16 @@ export const generateQuiz = inngest.createFunction(
     },
   },
   async ({ event }) => {
-    const { noteId, quizId, questionCount, questionTypes, wantsDebit, quizCost, userId, noteTitle } = event.data;
+    const {
+      noteId,
+      quizId,
+      questionCount,
+      questionTypes,
+      wantsDebit,
+      quizCost,
+      userId,
+      noteTitle,
+    } = event.data;
     console.log(
       `[Inngest] Generating quiz for note: ${noteId}, quiz: ${quizId}`,
     );
@@ -198,14 +207,15 @@ export const generateQuiz = inngest.createFunction(
       const { generateQuizFromNote } = await import("@/lib/ai");
       console.log(`[Inngest] Calling AI to generate quiz...`);
 
-      const generatedQuestions = await generateQuizFromNote(
-        note.extractedText,
-        {
-          questionCount: questionCount || 10,
-          questionTypes: questionTypes || "MIXED",
-        },
-        note.userId,
-      );
+      const { questions: generatedQuestions, fromCache } =
+        await generateQuizFromNote(
+          note.extractedText,
+          {
+            questionCount: questionCount || 10,
+            questionTypes: questionTypes || "MIXED",
+          },
+          note.userId,
+        );
 
       console.log(
         `[Inngest] AI returned ${generatedQuestions.length} questions`,
@@ -245,7 +255,13 @@ export const generateQuiz = inngest.createFunction(
         },
       });
 
-      if (wantsDebit && userId) {
+      // A cache hit means no model ran, so there is nothing to charge for. The
+      // quota was already counted when the student asked.
+      if (fromCache) {
+        console.log(
+          `[Inngest] Quiz ${quizId} served from cache, skipping the credit debit`,
+        );
+      } else if (wantsDebit && userId) {
         try {
           const { spendCredits } = await import("@/lib/credits");
           await spendCredits({
@@ -775,7 +791,11 @@ export const monthlyCreditBonus = inngest.createFunction(
 export { inngest };
 
 export const sendSignInEmail = inngest.createFunction(
-  { name: "Send Sign In Email", id: "send-sign-in-email", triggers: { event: "email.send.sign-in" } },
+  {
+    name: "Send Sign In Email",
+    id: "send-sign-in-email",
+    triggers: { event: "email.send.sign-in" },
+  },
   async ({ event }) => {
     const { email, name, otp } = event.data;
     try {
@@ -790,7 +810,11 @@ export const sendSignInEmail = inngest.createFunction(
 );
 
 export const sendContactEmail = inngest.createFunction(
-  { name: "Send Contact Email", id: "send-contact-email", triggers: { event: "email.send.contact" } },
+  {
+    name: "Send Contact Email",
+    id: "send-contact-email",
+    triggers: { event: "email.send.contact" },
+  },
   async ({ event }) => {
     const { name, email, subject, message, adminEmail } = event.data;
     const escapeHtml = (text: string) => {
@@ -822,7 +846,11 @@ export const sendContactEmail = inngest.createFunction(
   </div>
 </div>
 </body></html>`;
-      await sendEmail({ to: adminEmail, subject: `[TiCLearn Contact] ${safeSubject}`, html });
+      await sendEmail({
+        to: adminEmail,
+        subject: `[TiCLearn Contact] ${safeSubject}`,
+        html,
+      });
       return { success: true };
     } catch (error) {
       console.error("Contact email send error:", error);
@@ -832,12 +860,18 @@ export const sendContactEmail = inngest.createFunction(
 );
 
 export const generateChatTitle = inngest.createFunction(
-  { name: "Generate Chat Title", id: "generate-chat-title", triggers: { event: "chat/generate-title" } },
+  {
+    name: "Generate Chat Title",
+    id: "generate-chat-title",
+    triggers: { event: "chat/generate-title" },
+  },
   async ({ event }) => {
     const { conversationId, userContent, userId } = event.data;
     try {
       const { getPromptOrFallback } = await import("@/lib/prompts/loader");
-      const { generateTextWithFallback } = await import("@/lib/ai/orchestrator");
+      const { generateTextWithFallback } = await import(
+        "@/lib/ai/orchestrator"
+      );
       const prompt = await getPromptOrFallback("chat", "chat_title", {
         userMessage: userContent,
       });
@@ -860,44 +894,158 @@ export const generateChatTitle = inngest.createFunction(
   },
 );
 
+/**
+ * Render a PDF report to a buffer.
+ *
+ * `renderToBuffer` is typed to take a `ReactElement<DocumentProps>`, but React
+ * 19 lets a component return `ReactNode | Promise<ReactNode>`. The mismatch is
+ * real and harmless, so it is cast away once here rather than suppressed at each
+ * call site with a comment that only covers the line it sits on.
+ */
+async function renderReportPdf(
+  renderToBuffer: (document: never) => Promise<Buffer>,
+  document: unknown,
+): Promise<Buffer> {
+  return renderToBuffer(document as never);
+}
+
 export const generateAdminReport = inngest.createFunction(
-  { name: "Generate Admin Report", id: "generate-admin-report", triggers: { event: "admin/report.generate" } },
+  {
+    name: "Generate Admin Report",
+    id: "generate-admin-report",
+    triggers: { event: "admin/report.generate" },
+  },
   async ({ event }) => {
     const { reportId, type } = event.data;
     const { setReport } = await import("@/lib/reports/store");
     setReport(reportId, { status: "PROCESSING" });
     try {
       const { renderToBuffer } = await import("@react-pdf/renderer");
-      const { AffiliateReport, FeedbackReport, SubscriptionReport, UserReport } = await import("@/components/pdf");
+      const {
+        AffiliateReport,
+        FeedbackReport,
+        SubscriptionReport,
+        UserReport,
+      } = await import("@/components/pdf");
       const { prisma } = await import("@/lib/prisma");
       const formatDate = (date: Date | string | null | undefined) => {
         if (!date) return "-";
         const d = typeof date === "string" ? new Date(date) : date;
-        return d.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+        return d.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
       };
       let pdfBuffer: Buffer;
       if (type === "users") {
-        const users = await prisma.user.findMany({ orderBy: { createdAt: "desc" }, take: 100, select: { id: true, name: true, email: true, role: true, createdAt: true, _count: { select: { notes: true, quizzes: true, quizAttempts: true } } } });
-        // @ts-expect-error
-        pdfBuffer = await renderToBuffer(UserReport({ users: users.map((u) => ({ id: u.id, name: u.name || "", email: u.email, role: u.role, createdAt: formatDate(u.createdAt), notesCount: u._count.notes, quizzesCount: u._count.quizzes, attemptsCount: u._count.quizAttempts })), title: "User Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+        const users = await prisma.user.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true,
+            createdAt: true,
+            _count: {
+              select: { notes: true, quizzes: true, quizAttempts: true },
+            },
+          },
+        });
+        pdfBuffer = await renderReportPdf(
+          renderToBuffer,
+          UserReport({
+            users: users.map((u) => ({
+              id: u.id,
+              name: u.name || "",
+              email: u.email,
+              role: u.role,
+              createdAt: formatDate(u.createdAt),
+              notesCount: u._count.notes,
+              quizzesCount: u._count.quizzes,
+              attemptsCount: u._count.quizAttempts,
+            })),
+            title: "User Report",
+            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+          }),
+        );
       } else if (type === "feedback") {
-        const feedbacks = await prisma.feedback.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } } } });
-        // @ts-expect-error
-        pdfBuffer = await renderToBuffer(FeedbackReport({ feedbacks: feedbacks.map((f) => ({ id: f.id, type: f.type || "OTHER", content: f.subject || "", status: f.status || "OPEN", createdAt: formatDate(f.createdAt), user: { name: f.user?.name || "", email: f.user?.email || "" } })), title: "Feedback Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+        const feedbacks = await prisma.feedback.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          include: { user: { select: { name: true, email: true } } },
+        });
+        pdfBuffer = await renderReportPdf(
+          renderToBuffer,
+          FeedbackReport({
+            feedbacks: feedbacks.map((f) => ({
+              id: f.id,
+              type: f.type || "OTHER",
+              content: f.subject || "",
+              status: f.status || "OPEN",
+              createdAt: formatDate(f.createdAt),
+              user: { name: f.user?.name || "", email: f.user?.email || "" },
+            })),
+            title: "Feedback Report",
+            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+          }),
+        );
       } else if (type === "subscriptions") {
-        const subscriptions = await prisma.subscription.findMany({ orderBy: { createdAt: "desc" }, take: 100, include: { user: { select: { name: true, email: true } } } });
-        // @ts-expect-error
-        pdfBuffer = await renderToBuffer(SubscriptionReport({ subscriptions: subscriptions.map((s) => ({ id: s.id, plan: s.plan || "FREE", status: s.status || "PENDING", amount: s.amount || 0, startDate: formatDate(s.activatedAt), endDate: "N/A", user: { name: s.user?.name || "", email: s.user?.email || "" } })), title: "Subscription Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+        const subscriptions = await prisma.subscription.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 100,
+          include: { user: { select: { name: true, email: true } } },
+        });
+        pdfBuffer = await renderReportPdf(
+          renderToBuffer,
+          SubscriptionReport({
+            subscriptions: subscriptions.map((s) => ({
+              id: s.id,
+              plan: s.plan || "FREE",
+              status: s.status || "PENDING",
+              amount: s.amount || 0,
+              startDate: formatDate(s.activatedAt),
+              endDate: "N/A",
+              user: { name: s.user?.name || "", email: s.user?.email || "" },
+            })),
+            title: "Subscription Report",
+            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+          }),
+        );
       } else {
-        const affiliates = await prisma.affiliate.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
-        // @ts-expect-error
-        pdfBuffer = await renderToBuffer(AffiliateReport({ affiliates: affiliates.map((a) => ({ id: a.id, code: a.code || "", status: a.status || "PENDING", commissionRate: 10, createdAt: formatDate(a.createdAt), user: { name: a.userName, email: a.userEmail }, referralsCount: a.totalConversions })), title: "Affiliate Report", subtitle: `Generated on ${new Date().toLocaleDateString()}` }));
+        const affiliates = await prisma.affiliate.findMany({
+          orderBy: { createdAt: "desc" },
+          take: 100,
+        });
+        pdfBuffer = await renderReportPdf(
+          renderToBuffer,
+          AffiliateReport({
+            affiliates: affiliates.map((a) => ({
+              id: a.id,
+              code: a.code || "",
+              status: a.status || "PENDING",
+              commissionRate: 10,
+              createdAt: formatDate(a.createdAt),
+              user: { name: a.userName, email: a.userEmail },
+              referralsCount: a.totalConversions,
+            })),
+            title: "Affiliate Report",
+            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
+          }),
+        );
       }
-      setReport(reportId, { status: "COMPLETED", buffer: (pdfBuffer as Buffer).toString("base64") });
+      setReport(reportId, {
+        status: "COMPLETED",
+        buffer: (pdfBuffer as Buffer).toString("base64"),
+      });
       return { success: true, reportId };
     } catch (error) {
       console.error("Admin report generation error:", error);
-      setReport(reportId, { status: "FAILED", error: "Failed to generate PDF" });
+      setReport(reportId, {
+        status: "FAILED",
+        error: "Failed to generate PDF",
+      });
       return { success: false, error: "Failed to generate PDF" };
     }
   },

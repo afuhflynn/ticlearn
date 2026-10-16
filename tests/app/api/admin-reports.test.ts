@@ -65,7 +65,10 @@ describe("POST /api/admin/reports (covers: AC-5)", () => {
     expect(inngest.send).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "admin/report.generate",
-        data: expect.objectContaining({ type: "users", reportId: body.reportId }),
+        data: expect.objectContaining({
+          type: "users",
+          reportId: body.reportId,
+        }),
       }),
     );
   });

@@ -1,5 +1,7 @@
 import { generateObject, generateText, streamText } from "ai";
 import type { z } from "zod";
+import { type CacheKeyInput, withCache } from "@/lib/cache";
+import { noteColdStart } from "@/lib/cache/cold-start";
 import {
   markProbeDone,
   markProbeStart,
@@ -7,7 +9,6 @@ import {
   recordTransportFailure,
   splitChain,
 } from "./breaker";
-import { getCached, setCached } from "./cache";
 import {
   CHAIN_DEADLINE_MS,
   CHAIN_STREAM_DEADLINE_MS,
@@ -115,30 +116,98 @@ function friendlyDown(
   );
 }
 
+/**
+ * The cache key for one generation. The chain is resolved first, because an
+ * environment override can change which model answers, and the parameters and
+ * the prompt identity travel with it so a change to any of them makes a new key.
+ */
+function generationKey<T>(
+  opts: GenerateOptions<T>,
+  chain: string[],
+): CacheKeyInput {
+  return {
+    chain,
+    prompt: opts.prompt ?? JSON.stringify(opts.messages ?? []),
+    params: {
+      ...(opts.promptRef ? { ref: opts.promptRef } : {}),
+      system: opts.system ?? null,
+      modelOptions: opts.modelOptions ?? null,
+    },
+  };
+}
+
 export async function generate<T>(
   opts: GenerateOptions<T>,
-): Promise<{ object: T; modelId: string }> {
-  const rawKey = opts.prompt ?? JSON.stringify(opts.messages);
-  const cacheKey = opts.promptRef
-    ? `${opts.promptRef.name} v${opts.promptRef.version}:${rawKey}`
-    : rawKey;
+): Promise<{ object: T; modelId: string; fromCache: boolean }> {
   const config = getTaskConfig(opts.task);
   const ttlMs = opts.cacheTtlMs ?? config.cacheTtlMs ?? 0;
   logPromptUse(opts.task, opts.promptRef);
+  // Count every request toward the instance warm up, not just cache hits. A
+  // cold start with an empty memory layer is mostly misses, so counting only
+  // hits left servedSinceLoad stuck at zero and mislabeled later hits as cold.
+  const cold = noteColdStart();
 
-  if (ttlMs > 0) {
-    const cached = getCached(opts.task, cacheKey);
-    if (cached) {
-      return { object: cached as T, modelId: "cache" };
-    }
+  // A zero time to live means never cache. Grading sits here on purpose.
+  if (ttlMs <= 0) {
+    const produced = await runGenerate(opts, cold);
+    return { ...produced, fromCache: false };
   }
 
   const chain = resolveChain(opts.task);
+  const { value, fromCache } = await withCache<{ object: T; modelId: string }>(
+    opts.task,
+    generationKey(opts, chain),
+    ttlMs,
+    () => runGenerate(opts, cold),
+  );
+
+  // A miss already logged its own row from inside the chain walk. Only a hit
+  // needs a row of its own, because no model ran and nothing else would record
+  // that the call happened. That row is also how the hit rate is read, so one
+  // row per call is the whole contract.
+  if (fromCache) {
+    void logUsage({
+      userId: opts.userId ?? null,
+      task: opts.task,
+      modelId: "cache",
+      cacheHit: true,
+      cacheNamespace: opts.task,
+      coldStart: cold,
+      promptRef: opts.promptRef,
+    }).catch(() => {});
+  }
+
+  return {
+    object: value.object,
+    modelId: fromCache ? "cache" : value.modelId,
+    fromCache,
+  };
+}
+
+/** The chain walk itself, with no cache anywhere near it. */
+async function runGenerate<T>(
+  opts: GenerateOptions<T>,
+  coldStart: boolean,
+): Promise<{ object: T; modelId: string }> {
+  const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
-  if (runnable.length === 0)
+  if (runnable.length === 0) {
+    await logUsage({
+      userId: opts.userId ?? null,
+      task: opts.task,
+      modelId: chain[0] ?? "none",
+      promptTokens: 0,
+      completionTokens: 0,
+      costUsd: 0,
+      latencyMs: CHAIN_DEADLINE_MS,
+      errorCode: "all_open",
+      promptRef: opts.promptRef,
+      coldStart,
+    }).catch(() => {});
     throw friendlyDown(opts.task, [
       { model: "all", error: "All models are in cooldown." },
     ]);
+  }
   const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
   const modelErrors: Array<{ model: string; error: string }> = [];
   const failHeadOnce = headFailArmed() && process.env.NODE_ENV !== "production";
@@ -183,10 +252,8 @@ export async function generate<T>(
         costUsd: parsed.costUsd,
         latencyMs: Date.now() - started,
         promptRef: opts.promptRef,
+        coldStart,
       });
-      if (ttlMs > 0) {
-        setCached(opts.task, cacheKey, result.object, ttlMs);
-      }
       return { object: result.object, modelId };
     } catch (error) {
       if (isFailFastError(error)) {
@@ -218,6 +285,7 @@ export async function generate<T>(
     latencyMs: CHAIN_DEADLINE_MS,
     errorCode: runnable.length === 0 ? "all_open" : "all_failed",
     promptRef: opts.promptRef,
+    coldStart,
   });
   throw friendlyDown(opts.task, modelErrors);
 }
@@ -232,6 +300,7 @@ function logPromptUse(task: string, ref?: PromptRef): void {
 
 export async function streamChat(opts: StreamChatOptions) {
   logPromptUse(opts.task, opts.promptRef);
+  const cold = noteColdStart();
   const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
   const tried: Array<{ model: string; error: string }> = [];
@@ -265,6 +334,7 @@ export async function streamChat(opts: StreamChatOptions) {
             latencyMs: Date.now() - started,
             errorCode: "stream_error",
             promptRef: opts.promptRef,
+            coldStart: cold,
           });
         },
         onFinish: (finish) => {
@@ -282,6 +352,7 @@ export async function streamChat(opts: StreamChatOptions) {
             costUsd: parsed.costUsd,
             latencyMs: Date.now() - started,
             promptRef: opts.promptRef,
+            coldStart: cold,
           });
           opts.onFinish?.({ text: finish.text, usage: finish.usage });
         },
@@ -340,6 +411,7 @@ async function probeFirstToken(result: {
 
 export async function generateTextWithFallback(opts: TextGenOptions) {
   logPromptUse(opts.task, opts.promptRef);
+  const cold = noteColdStart();
   const chain = resolveChain(opts.task);
   const { runnable } = await splitChain(chain);
   if (runnable.length === 0)
@@ -389,6 +461,7 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
         costUsd: parsed.costUsd,
         latencyMs: Date.now() - started,
         promptRef: opts.promptRef,
+        coldStart: cold,
       });
       return result;
     } catch (error) {
@@ -417,6 +490,7 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
     latencyMs: CHAIN_DEADLINE_MS,
     errorCode: runnable.length === 0 ? "all_open" : "all_failed",
     promptRef: opts.promptRef,
+    coldStart: cold,
   });
   throw friendlyDown(opts.task, modelErrors);
 }

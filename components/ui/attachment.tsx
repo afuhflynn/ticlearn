@@ -8,9 +8,21 @@ export interface AttachmentProps extends React.HTMLAttributes<HTMLDivElement> {
   filename?: string;
 }
 
-export function Attachment({ filename, onRemove, className, children, ...props }: AttachmentProps) {
+export function Attachment({
+  filename,
+  onRemove,
+  className,
+  children,
+  ...props
+}: AttachmentProps) {
   return (
-    <div className={cn("inline-flex items-center gap-2 rounded-md border border-input px-2 py-1 text-sm", className)} {...props}>
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 rounded-md border border-input px-2 py-1 text-sm",
+        className,
+      )}
+      {...props}
+    >
       <span>{filename ?? children}</span>
       {onRemove ? (
         <button type="button" aria-label="Remove attachment" onClick={onRemove}>

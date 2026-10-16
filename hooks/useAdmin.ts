@@ -1,10 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import { family } from "@/lib/query-families";
 
 export function useAdminStats() {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "stats"],
     queryFn: () => api.mutations.admin.stats(),
+    ...family("admin"),
   });
   return { stats: data?.stats, isLoading, error, refetch };
 }
@@ -22,7 +29,10 @@ export function useAdminUsers(
 ) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "users", params],
+    // Keep the page a reader is looking at while the next one loads.
+    placeholderData: keepPreviousData,
     queryFn: () => api.mutations.admin.users.getAll(params),
+    ...family("admin"),
   });
   return {
     users: (data?.users ?? []) as unknown as {
@@ -53,6 +63,7 @@ export function useAdminUser(id: string) {
     queryKey: ["admin", "users", id],
     queryFn: () => api.mutations.admin.users.getById(id),
     enabled: !!id,
+    ...family("admin"),
   });
   return {
     user: data?.user,
@@ -131,7 +142,10 @@ export function useAdminPlanUsers(
 ) {
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["admin", "plan-upgrades", params],
+    // Keep the page a reader is looking at while the next one loads.
+    placeholderData: keepPreviousData,
     queryFn: () => api.mutations.admin.planUpgrades.getAll(params),
+    ...family("admin"),
   });
 
   return {
@@ -168,9 +182,11 @@ export function useAdminFeedback(
 ) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "feedback", params],
+    // Keep the page a reader is looking at while the next one loads.
+    placeholderData: keepPreviousData,
     queryFn: () => api.mutations.admin.feedback.getAll(params),
     refetchInterval: 30000,
-    staleTime: 0,
+    ...family("feedback"),
   });
   return {
     feedbacks: (data?.feedbacks ?? []) as unknown as {
@@ -223,7 +239,10 @@ export function useAdminSubscriptions(
 ) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "subscriptions", params],
+    // Keep the page a reader is looking at while the next one loads.
+    placeholderData: keepPreviousData,
     queryFn: () => api.mutations.admin.subscriptions.getAll(params),
+    ...family("admin"),
   });
   return {
     subscriptions: (data?.subscriptions ?? []) as unknown as {
@@ -297,7 +316,10 @@ export function useAdminAffiliates(
 ) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin", "affiliates", params],
+    // Keep the page a reader is looking at while the next one loads.
+    placeholderData: keepPreviousData,
     queryFn: () => api.mutations.admin.affiliates.getAll(params),
+    ...family("admin"),
   });
   return {
     affiliates: (data?.affiliates ?? []) as unknown as {
@@ -327,6 +349,7 @@ export function useAdminAffiliate(id: string) {
     queryKey: ["admin", "affiliates", id],
     queryFn: () => api.mutations.admin.affiliates.getById(id),
     enabled: !!id,
+    ...family("admin"),
   });
   return {
     affiliate: data?.affiliate,

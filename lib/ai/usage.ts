@@ -13,6 +13,16 @@ export interface UsageInput {
   errorCode?: string | null;
   promptRef?: PromptRef;
   usdToXafRate?: number;
+  /** Milliseconds from the request start to the first real stream content. */
+  firstByteMs?: number | null;
+  /** True when the answer came from the shared cache instead of a model call. */
+  cacheHit?: boolean | null;
+  /** The cache family an entry belonged to, when there was one. */
+  cacheNamespace?: string | null;
+  /** True when a keep alive frame was written before the first token. */
+  keepAliveSent?: boolean | null;
+  /** True when this request arrived on an instance that had barely warmed up. */
+  coldStart?: boolean | null;
 }
 
 function tokensOf(usage: unknown): {
@@ -78,6 +88,11 @@ export async function logUsage(input: UsageInput): Promise<void> {
         usdToXafRate: rate,
         latencyMs: input.latencyMs ?? 0,
         errorCode: input.errorCode ?? null,
+        firstByteMs: input.firstByteMs ?? null,
+        cacheHit: input.cacheHit ?? null,
+        cacheNamespace: input.cacheNamespace ?? null,
+        keepAliveSent: input.keepAliveSent ?? null,
+        coldStart: input.coldStart ?? null,
       },
     });
   } catch (error) {
@@ -97,6 +112,49 @@ async function resolveRate(): Promise<number> {
   } catch {
     return DEFAULT_USD_TO_XAF_RATE;
   }
+}
+
+/**
+ * The one home for the chat first byte budget. Reads `first_byte_ms` for new
+ * conversation posts over a rolling window, so p75 and p95 come from one query
+ * rather than a number each caller computes its own way.
+ */
+export async function chatFirstBytePercentiles(
+  windowHours = 24,
+): Promise<{ sample: number; p75: number | null; p95: number | null }> {
+  const since = new Date(Date.now() - windowHours * 60 * 60 * 1000);
+  const rows = await prisma.aiUsageEvent.findMany({
+    where: {
+      task: "fast_chat",
+      firstByteMs: { not: null },
+      createdAt: { gte: since },
+    },
+    select: { firstByteMs: true },
+    orderBy: { firstByteMs: "asc" },
+    take: 5000,
+  });
+
+  const values = rows
+    .map((row) => row.firstByteMs)
+    .filter((value): value is number => typeof value === "number");
+
+  if (values.length === 0) {
+    return { sample: 0, p75: null, p95: null };
+  }
+
+  return {
+    sample: values.length,
+    p75: percentileOf(values, 0.75),
+    p95: percentileOf(values, 0.95),
+  };
+}
+
+function percentileOf(sorted: number[], fraction: number): number {
+  const index = Math.min(
+    sorted.length - 1,
+    Math.max(0, Math.ceil(fraction * sorted.length) - 1),
+  );
+  return sorted[index];
 }
 
 export function doualaDay(value: Date): string {

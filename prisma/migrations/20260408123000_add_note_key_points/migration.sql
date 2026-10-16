@@ -1,2 +1,0 @@
-ALTER TABLE "notes"
-ADD COLUMN "key_points" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];

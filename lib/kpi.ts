@@ -202,7 +202,10 @@ export async function computeCohortRetention(): Promise<CohortRetentionRow[]> {
   });
 
   const seen = new Set<string>();
-  const byCohort = new Map<string, { size: number; weeks: Map<string, number> }>();
+  const byCohort = new Map<
+    string,
+    { size: number; weeks: Map<string, number> }
+  >();
 
   for (const row of rows) {
     if (seen.has(row.metric)) continue;

@@ -1,7 +1,8 @@
 "use client";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
+import { queryFamilies } from "@/lib/query-families";
 
 interface QueryProviderProps {
   children: ReactNode;
@@ -13,7 +14,11 @@ export function QueryProvider({ children }: QueryProviderProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 60_000,
+            // The floor for anything without a named family. Every hook that
+            // holds student data names one from lib/query-families.ts, so this
+            // only ever covers the rare unmapped read.
+            staleTime: queryFamilies.notes.staleTimeMs,
+            gcTime: queryFamilies.notes.gcTimeMs,
             retry: 1,
             refetchOnWindowFocus: false,
           },
