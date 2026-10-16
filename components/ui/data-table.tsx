@@ -2,7 +2,14 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export interface DataTableColumn<T> {
   key: string;
@@ -17,7 +24,12 @@ export interface DataTableProps {
   onRowClick?: (row: Record<string, any>) => void;
 }
 
-export function DataTable({ columns, rows, caption, onRowClick }: DataTableProps) {
+export function DataTable({
+  columns,
+  rows,
+  caption,
+  onRowClick,
+}: DataTableProps) {
   return (
     <div>
       <span aria-live="polite" className="sr-only">
@@ -28,7 +40,10 @@ export function DataTable({ columns, rows, caption, onRowClick }: DataTableProps
         <TableHeader>
           <TableRow>
             {columns.map((c) => (
-              <TableHead key={c.key} aria-sort={c.sortable ? "none" : undefined}>
+              <TableHead
+                key={c.key}
+                aria-sort={c.sortable ? "none" : undefined}
+              >
                 {c.header}
               </TableHead>
             ))}
@@ -36,7 +51,10 @@ export function DataTable({ columns, rows, caption, onRowClick }: DataTableProps
         </TableHeader>
         <TableBody>
           {rows.map((r, i) => (
-            <TableRow key={i} onClick={onRowClick ? () => onRowClick(r) : undefined}>
+            <TableRow
+              key={i}
+              onClick={onRowClick ? () => onRowClick(r) : undefined}
+            >
               {columns.map((c) => (
                 <TableCell key={c.key}>{r[c.key]}</TableCell>
               ))}

@@ -6,6 +6,7 @@ import { inngest } from "@/lib/inngest/client";
 import { trackEvent } from "@/lib/kpi";
 import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
 import { prisma } from "@/lib/prisma";
+import { getDashboardNotes } from "@/lib/dashboard-data";
 import { utapi } from "@/lib/uploadthing-server";
 
 const createNoteSchema = z.object({
@@ -25,36 +26,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const notes = await prisma.note.findMany({
-      where: { userId: session.user.id },
-      orderBy: { createdAt: "desc" },
-      include: {
-        user: {
-          select: { id: true, name: true, image: true },
-        },
-        _count: {
-          select: { quizzes: true },
-        },
-        quizzes: {
-          orderBy: { createdAt: "desc" },
-          take: 1,
-          select: {
-            id: true,
-            status: true,
-            title: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
+    const payload = await getDashboardNotes(session.user.id);
 
-    return NextResponse.json({
-      notes: notes.map((note) => ({
-        ...note,
-        quizCount: note._count.quizzes,
-        latestQuiz: note.quizzes[0] ?? null,
-      })),
-    });
+    return NextResponse.json(payload);
   } catch (error) {
     console.error("Notes GET error:", error);
     return NextResponse.json(

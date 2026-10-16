@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useState } from "react";
 import { api } from "@/lib/api-client";
+import { family } from "@/lib/query-families";
 
 interface SearchableUser {
   id: string;
@@ -27,8 +28,7 @@ export function useUserSearch(debounceMs: number = 300) {
     queryKey: ["admin", "users", "search", debouncedQuery],
     queryFn: () => api.mutations.admin.users.search(debouncedQuery),
     enabled: debouncedQuery.length > 0,
-    staleTime: 0,
-    gcTime: 0,
+    ...family("search"),
   });
 
   const search = useCallback((query: string) => {

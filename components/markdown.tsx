@@ -9,5 +9,9 @@ export interface MarkdownProps {
 }
 
 export function Markdown({ children }: MarkdownProps) {
-  return <Streamdown plugins={{ math }}>{normalizeMathNotation(children)}</Streamdown>;
+  return (
+    <Streamdown plugins={{ math }}>
+      {normalizeMathNotation(children)}
+    </Streamdown>
+  );
 }

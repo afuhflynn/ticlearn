@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { FREE_LIMITS, type PlanLimits, remainingOf } from "@/lib/plan-limits";
+import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 interface Usage {
@@ -42,7 +43,7 @@ export function useUsage(): UseUsageResult {
       const result = await api.queries.usage();
       return result;
     },
-    staleTime: 1000 * 60 * 2,
+    ...family("usage"),
   });
 
   const currentStatus = data?.status || "NONE";

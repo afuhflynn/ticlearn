@@ -3,7 +3,11 @@
 import * as React from "react";
 import { format } from "date-fns";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -14,12 +18,20 @@ export interface DatePickerProps {
   className?: string;
 }
 
-export function DatePicker({ value, onChange, placeholder, className }: DatePickerProps) {
+export function DatePicker({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" className={cn("justify-start text-left font-normal", className)}>
+        <Button
+          variant="outline"
+          className={cn("justify-start text-left font-normal", className)}
+        >
           {value ? format(value, "PPP") : (placeholder ?? "Pick a date")}
         </Button>
       </PopoverTrigger>

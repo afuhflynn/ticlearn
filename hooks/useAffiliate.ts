@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 import type { CreateAffiliateParams } from "@/types";
 
@@ -11,6 +12,7 @@ export function useAffiliate() {
       const result = await api.queries.affiliates.affiliate();
       return result;
     },
+    ...family("affiliate"),
   });
 
   return {

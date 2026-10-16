@@ -2,13 +2,13 @@ import { generateObject, generateText, streamText } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import { markProbeStart as realMarkProbeStart } from "@/lib/ai/breaker";
-import { clearCache } from "@/lib/ai/cache";
 import { CHAIN_DEADLINE_MS, CHAIN_STREAM_DEADLINE_MS } from "@/lib/ai/chain";
 import {
   generate,
   generateTextWithFallback,
   streamChat,
 } from "@/lib/ai/orchestrator";
+import { clearMemory } from "@/lib/cache";
 
 vi.mock("ai", () => ({
   generateObject: vi.fn(),
@@ -84,7 +84,7 @@ function lazyStream(opts: { chunks: string[]; error?: unknown }) {
 }
 
 beforeEach(() => {
-  clearCache();
+  clearMemory();
   vi.clearAllMocks();
   vi.mocked(generateObject).mockResolvedValue({
     object: { ok: true },
@@ -331,6 +331,42 @@ describe("generate usage ledger (covers: AC-4)", () => {
   it("records one row per served call", async () => {
     await generate({ task: "grading", schema, prompt: "hi" });
     expect(usage.logUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the hit row so the rate can be read off the log", async () => {
+    const opts = {
+      task: "quiz_gen",
+      schema,
+      prompt: "hit row",
+      cacheTtlMs: 60_000,
+    };
+
+    await generate(opts);
+    await generate(opts);
+
+    const hitRows = vi
+      .mocked(usage.logUsage)
+      .mock.calls.map((call) => call[0])
+      .filter((row) => row.cacheHit === true);
+
+    expect(hitRows).toHaveLength(1);
+    expect(hitRows[0].cacheNamespace).toBe("quiz_gen");
+  });
+
+  it("reports fromCache so a caller can skip charging", async () => {
+    const opts = {
+      task: "quiz_gen",
+      schema,
+      prompt: "debit",
+      cacheTtlMs: 60_000,
+    };
+
+    const first = await generate(opts);
+    const second = await generate(opts);
+
+    expect(first.fromCache).toBe(false);
+    expect(second.fromCache).toBe(true);
+    expect(second.modelId).toBe("cache");
   });
 });
 

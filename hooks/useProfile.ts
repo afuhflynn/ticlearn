@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 export function useProfile() {
@@ -10,8 +11,7 @@ export function useProfile() {
       const result = await api.queries.profile();
       return result;
     },
-    gcTime: 0,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    ...family("profile"),
   });
 
   return {
@@ -32,8 +32,7 @@ export function useUpdateProfile() {
       return result;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.profile });
-      queryClient.invalidateQueries({ queryKey: queryKeys.session });
+      void invalidateGroups(queryClient, "profile");
       toast.success("Profile updated");
     },
   });
@@ -46,8 +45,7 @@ export function useSettings() {
       const result = await api.queries.settings();
       return result;
     },
-    gcTime: 0,
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours
+    ...family("settings"),
   });
 
   return {

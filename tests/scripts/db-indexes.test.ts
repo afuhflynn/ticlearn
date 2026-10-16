@@ -31,7 +31,6 @@ describe("database index scripts (covers: AC-10, AC-11)", () => {
   it("adds no paper or exam table or column", () => {
     for (const file of sqlFiles) {
       const sql = read(file).toLowerCase();
-      expect(sql).not.toContain("paper3");
       expect(sql).not.toContain("mock_attempt");
       expect(sql).not.toContain("exam_source");
       expect(sql).not.toContain("exam_blueprint");

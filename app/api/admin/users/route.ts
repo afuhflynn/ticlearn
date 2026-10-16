@@ -34,7 +34,10 @@ export async function GET(req: Request) {
     const sortBy = searchParams.get("sortBy") || "createdAt";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
-    const allowedSort: Record<string, "createdAt" | "name" | "credits" | "email"> = {
+    const allowedSort: Record<
+      string,
+      "createdAt" | "name" | "credits" | "email"
+    > = {
       createdAt: "createdAt",
       name: "name",
       credits: "credits",
@@ -132,7 +135,9 @@ export async function GET(req: Request) {
     const byCode = new Map(affiliates.map((a) => [a.code, a]));
 
     const usersWithReferralInfo = users.map((u) => {
-      const referredByUser = u.referredBy ? byCode.get(u.referredBy) : undefined;
+      const referredByUser = u.referredBy
+        ? byCode.get(u.referredBy)
+        : undefined;
       return {
         ...u,
         notesCount: u._count.notes,

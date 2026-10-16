@@ -26,6 +26,7 @@ export type PlatformSettingsSnapshot = Pick<
   | "creditCostMultiplierPro"
   | "usdToXafRate"
   | "aiFusionAllow"
+  | "sharedCacheEnabled"
 >;
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
@@ -47,6 +48,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostMultiplierPro: 0.4,
   usdToXafRate: 650,
   aiFusionAllow: false,
+  sharedCacheEnabled: true,
 };
 
 export type CreditEnforcementEffective = {
@@ -111,6 +113,7 @@ export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
     creditCostMultiplierPro: settings.creditCostMultiplierPro,
     usdToXafRate: settings.usdToXafRate,
     aiFusionAllow: settings.aiFusionAllow,
+    sharedCacheEnabled: settings.sharedCacheEnabled,
   };
 }
 

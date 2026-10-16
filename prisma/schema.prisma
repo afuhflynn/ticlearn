@@ -745,10 +745,7 @@ model PlatformSettings {
   creditCostRevisionGuideView Int @default(0) @map("credit_cost_revision_guide_view")
   creditCostRevisionGuideGen  Int @default(0) @map("credit_cost_revision_guide_gen")
   creditCostAiTutorMessage    Int @default(5) @map("credit_cost_ai_tutor_message")
-  /// Paper 1 / Paper 2 student mock assembly (blueprint or custom generator).
-
-  /// When false, Paper 3 mock attempts skip credit checks (unless enforceCreditsAll).
-  /// Practice includes quiz generation + Paper 1/2 mock creation when costs are above zero.
+  /// Student mock assembly (blueprint or custom generator).
   enforceCreditsForPractice       Boolean @default(true) @map("enforce_credits_for_practice")
   enforceCreditsForRevisionGuides Boolean @default(false) @map("enforce_credits_for_revision_guides")
   enforceCreditsForAiTutor        Boolean @default(true) @map("enforce_credits_for_ai_tutor")
@@ -767,12 +764,16 @@ model PlatformSettings {
   creditCostMultiplierPremium  Float @default(0.4) @map("credit_cost_multiplier_premium")
   creditCostMultiplierPro      Float @default(0.4) @map("credit_cost_multiplier_pro")
 
-  /// Prefer ace-3 style AI short-answer marking for text-heavy Paper 3 items.
-
   /// USD to XAF rate used for AI cost math. Copied onto each usage row at write time.
   usdToXafRate  Int     @default(650) @map("usd_to_xaf_rate")
   /// Fusion path gate. Off by default, admin only with cost cap when on.
   aiFusionAllow Boolean @default(false) @map("ai_fusion_allow")
+
+  /// Shared cache gate. When false the cache store reads and writes nothing,
+  /// which is the rollback path for spec 0010. A settings row rather than an
+  /// environment variable, because an environment change on Vercel still needs
+  /// a redeploy to reach a running function.
+  sharedCacheEnabled Boolean @default(true) @map("shared_cache_enabled")
 
   updatedAt DateTime @updatedAt @map("updated_at")
   createdAt DateTime @default(now()) @map("created_at")
@@ -809,12 +810,32 @@ model AiUsageEvent {
   usdToXafRate     Int      @default(650) @map("usd_to_xaf_rate")
   latencyMs        Int      @default(0) @map("latency_ms")
   errorCode        String?  @map("error_code")
+  firstByteMs      Int?     @map("first_byte_ms")
+  cacheHit         Boolean? @map("cache_hit")
+  cacheNamespace   String?  @map("cache_namespace")
+  keepAliveSent    Boolean? @map("keep_alive_sent")
+  coldStart        Boolean? @map("cold_start")
   createdAt        DateTime @default(now()) @map("created_at")
 
   @@index([userId, createdAt])
   @@index([modelId, createdAt])
   @@index([task, createdAt])
+  @@index([createdAt])
   @@map("ai_usage_events")
+}
+
+/// The shared cache from spec 0010. Keys are hashes, so no prompt text or user
+/// data lands here, and nothing joins to it. Written by lib/cache/ only.
+model AppCache {
+  key       String   @id
+  namespace String   @map("namespace")
+  value     Json
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([expiresAt])
+  @@index([namespace])
+  @@map("app_cache")
 }
 
 model RevisionGuide {

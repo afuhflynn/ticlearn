@@ -49,7 +49,6 @@ export const adminMetricsViewParsers = {
     "chat_messages",
     "quizzes_taken",
     "exams_completed",
-    "paper3_completed",
     "practice_answered",
     "silent_churn_7d",
     "silent_churn_30d",

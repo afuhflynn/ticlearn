@@ -1,4 +1,5 @@
 import { OPEN_WEIGHT_CHAIN } from "./chain";
+import { priceFor } from "./pricing";
 
 export interface TaskConfig {
   /** Model ids in the order to try them. Open weight only, see OPEN_WEIGHT_CHAIN. */
@@ -9,54 +10,94 @@ export interface TaskConfig {
 }
 
 /**
- * Chat is the metered, high volume path, so it heads with the cheapest model
- * and falls back upward.
+ * All tasks walk the same power ordered open weight chain. Head is the most
+ * capable multimodal free model (Nemotron 3.5 Super VL), then down through the
+ * rest of the free list. Paid frontier models are never in these chains; they
+ * are gated behind AI_PAID_MODELS_ALLOW and appended only by the paid override.
  */
-const CHAT_CHAIN: string[] = [
+const OPEN_CHAIN: string[] = [...OPEN_WEIGHT_CHAIN];
+
+/**
+ * Agent tasks share the open chain but need tool calling enabled. The head
+ * model must support both multimodal input and tool use, which Nemotron 3.5
+ * Super VL does.
+ */
+const AGENT_CHAIN: string[] = [...OPEN_WEIGHT_CHAIN];
+
+/**
+ * Text only tasks start with pure text models so they never touch the
+ * multimodal head model unless every text model fails. Multimodal models
+ * sit at the bottom as fallbacks.
+ */
+export const TEXT_CHAIN: string[] = [
   "openai/gpt-oss-120b",
-  "z-ai/glm-4.7-flash",
   "meta-llama/llama-3.3-70b-instruct",
   "deepseek/deepseek-v4.1-flash",
+  "z-ai/glm-4.7-flash",
+  "nvidia/nemotron-3.5-super-vl:free",
 ];
 
 /**
- * Anything a student reads back as their own material heads with the strongest
- * open weight model. A wrong summary or a wrong quiz teaches the wrong thing,
- * and the note summary and quiz grading are the two places that shows.
+ * Known paid frontier models. Never reachable from the free chain; only
+ * usable when AI_PAID_MODELS_ALLOW=1 and explicitly opted into.
  */
-const QUALITY_CHAIN: string[] = [
-  "deepseek/deepseek-v4.1-flash",
-  "z-ai/glm-4.7-flash",
-  "meta-llama/llama-3.3-70b-instruct",
-  "openai/gpt-oss-120b",
+const PAID_MODEL_IDS: string[] = [
+  "anthropic/claude-haiku-5.5",
+  "anthropic/claude-haiku-4.5",
+  "anthropic/claude-opus-5.5",
+  "openai/gpt-5-nano",
+  "openai/gpt-5-mini",
+  "google/gemini-3.7-flash",
+  "google/gemini-3.8-flash",
+  "x-ai/grok-4.7",
 ];
+
+function isPaidModel(modelId: string): boolean {
+  if (PAID_MODEL_IDS.includes(modelId)) return true;
+  const price = priceFor(modelId);
+  return price.inputPerMillion > 0 || price.outputPerMillion > 0;
+}
 
 export const taskRegistry: Record<string, TaskConfig> = {
   fast_chat: {
-    chain: CHAT_CHAIN,
+    chain: OPEN_CHAIN,
     requiresTools: false,
     requiresMultimodal: false,
     cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
   },
 
   quiz_gen: {
-    chain: QUALITY_CHAIN,
+    chain: OPEN_CHAIN,
     requiresTools: false,
-    requiresMultimodal: false,
+    requiresMultimodal: true,
     cacheTtlMs: 14 * 24 * 60 * 60 * 1000,
   },
 
   summarize: {
-    chain: QUALITY_CHAIN,
+    chain: OPEN_CHAIN,
     requiresTools: false,
-    requiresMultimodal: false,
+    requiresMultimodal: true,
     cacheTtlMs: 30 * 24 * 60 * 60 * 1000,
   },
 
   grading: {
-    chain: QUALITY_CHAIN,
+    chain: OPEN_CHAIN,
     requiresTools: false,
-    requiresMultimodal: false,
+    requiresMultimodal: true,
+    cacheTtlMs: 0,
+  },
+
+  agent_reason: {
+    chain: AGENT_CHAIN,
+    requiresTools: true,
+    requiresMultimodal: true,
+    cacheTtlMs: 0,
+  },
+
+  agent_plan: {
+    chain: AGENT_CHAIN,
+    requiresTools: true,
+    requiresMultimodal: true,
     cacheTtlMs: 0,
   },
 };
@@ -74,13 +115,39 @@ export function getTaskConfig(task: string): TaskConfig {
 /**
  * The chain one task walks, in order. `AI_CHAIN_ORDER` overrides every task with
  * one global list, which is the lever to pull when a lab is down for everyone.
+ * When `multimodal` is true, the chain leads with multimodal models so images
+ * can be understood. When false, pure text models lead to save the multimodal
+ * head model for turns that actually need it.
  */
-export function resolveChain(task: string): string[] {
+export function resolveChain(
+  task: string,
+  options: { multimodal?: boolean } = {},
+): string[] {
   const override = (process.env.AI_CHAIN_ORDER ?? "")
     .split(",")
     .map((entry) => entry.trim())
     .filter(Boolean);
-  return override.length > 0 ? override : [...getTaskConfig(task).chain];
+  let chain: string[];
+  if (override.length > 0) {
+    chain = override;
+  } else if (options.multimodal) {
+    chain = [...getTaskConfig(task).chain];
+  } else {
+    chain = [...TEXT_CHAIN];
+  }
+  // Paid frontier models are never used unless the paid gate is explicitly open.
+  // This is defense in depth: even if AI_CHAIN_ORDER names a paid model, it is
+  // filtered out so no credit can ever be spent accidentally.
+  if (process.env.AI_PAID_MODELS_ALLOW !== "1") {
+    chain = chain.filter((modelId) => !isPaidModel(modelId));
+  }
+  if (chain.length === 0) {
+    throw new Error(
+      "No AI models available. Free open weight chain is empty and paid " +
+        "models are gated behind AI_PAID_MODELS_ALLOW=1.",
+    );
+  }
+  return chain;
 }
 
 /** Models a prompt file header may name. Owned here so loader and jobs agree. */

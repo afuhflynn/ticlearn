@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
+import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 import type { PaymentSettingsData } from "@/types";
 
@@ -16,8 +17,7 @@ export function usePaymentSettings() {
         orangeHolderName: result.settings.orangeHolderName || "",
       };
     },
-    gcTime: 0,
-    staleTime: Infinity,
+    ...family("settings"),
   });
 }
 
@@ -30,7 +30,7 @@ export function useUpdatePaymentSettings() {
       api.mutations.payments.updateSettings(data),
     onSuccess() {
       toast.success("Payment settings saved successfully");
-      queryClient.invalidateQueries({ queryKey: queryKeys.paymentSettings });
+      void invalidateGroups(queryClient, "paymentSettings");
     },
     onError(error: Error) {
       toast.error(error.message ?? "Failed to save payment settings");

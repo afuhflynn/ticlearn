@@ -63,6 +63,13 @@ vi.mock("@/lib/prisma", () => ({
       update: vi.fn(),
       count: vi.fn(),
     },
+    appCache: {
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
     quiz: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -106,12 +113,6 @@ vi.mock("@/lib/prisma", () => ({
     knowledgeChunk: { findMany: vi.fn() },
     topic: { findMany: vi.fn() },
     component: { findUnique: vi.fn() },
-    paper3Source: { findUnique: vi.fn(), update: vi.fn() },
-    paper3Mock: { findUnique: vi.fn() },
-    paper3MockAttempt: { findUnique: vi.fn() },
-    paper3Question: { findMany: vi.fn() },
-    paper3QuestionAttempt: { findMany: vi.fn() },
-    paper3UserStats: { findFirst: vi.fn() },
     platformSettings: { findUnique: vi.fn(async () => null) },
     aiModelHealth: {
       findMany: vi.fn(async () => []),
@@ -250,26 +251,13 @@ vi.mock("@/lib/ai", () => ({
   summarizeText: vi.fn(() =>
     Promise.resolve({ summary: "summary", topics: [], keyPoints: [] }),
   ),
-  generateQuizFromNote: vi.fn(() => Promise.resolve([])),
+  generateQuizFromNote: vi.fn(() =>
+    Promise.resolve({ questions: [], fromCache: false }),
+  ),
   generateQuizFromWeakAreas: vi.fn(() => Promise.resolve([])),
   generateQuizFromTopic: vi.fn(() => Promise.resolve([])),
   normalizeGeneratedQuestions: vi.fn((q) => q),
   DEFAULT_QUIZ_TOPICS: ["topic1", "topic2"],
-}));
-
-vi.mock("@/lib/paper3/evaluate", () => ({
-  evaluatePaper3Exam: vi.fn(() => Promise.resolve({ success: true })),
-}));
-
-vi.mock("@/lib/paper3/grade-short-answer", () => ({
-  gradeShortAnswer: vi.fn(() =>
-    Promise.resolve({
-      isCorrect: true,
-      marksEarned: 5,
-      totalMarks: 5,
-      feedback: "Good",
-    }),
-  ),
 }));
 
 vi.mock("@/tavily/core", () => ({

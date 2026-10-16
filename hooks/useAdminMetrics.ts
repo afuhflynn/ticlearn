@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
+import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
 interface MetricsParams {
@@ -19,6 +20,7 @@ export function useAdminMetrics(params: MetricsParams = {}) {
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: queryKeys.adminMetrics(params as Record<string, unknown>),
     queryFn: () => api.mutations.admin.metrics.getAll(params),
+    ...family("admin"),
   });
 
   const result = data as Record<string, unknown> | undefined;
@@ -102,6 +104,7 @@ export function useRetentionData(granularity = "weekly") {
   const { data, isLoading } = useQuery({
     queryKey: ["admin", "metrics", "retention", granularity],
     queryFn: () => api.mutations.admin.metrics.retention(granularity),
+    ...family("admin"),
   });
 
   const result = data as

@@ -29,8 +29,9 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 9 | Environment variables documented | Foundation | planned |
 | 10 | Database indexes and query rewrites | Foundation | in-progress |
 | 11 | Background work moved to Inngest | Foundation | planned |
-| 12 | Caching and cold start speed | Foundation | planned |
+| 12 | Caching and cold start speed | Foundation | in-progress |
 | 13 | Email system rebuild | Foundation | planned |
+| 41 | Data route caching with revalidation | Foundation | planned |
 | 34 | Rendering strategy and streaming boundaries | Foundation | planned |
 | 35 | Loading states and perceived speed | Foundation | planned |
 | 14 | Landing page rebuild | Slice 1 | planned |
@@ -63,7 +64,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 
 Each epic is one file with its own feature sections.
 
-- **[Platform](platform.md)** · 16 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email, and how every route renders. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
+- **[Platform](platform.md)** · 17 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email, and how every route renders. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
 - **[Carried over](carried-over.md)** · 7 features · what already exists in the codebase, enrolled for context only.
 - **[Pivot](pivot.md)** · 2 features, Foundations · removing the secondary school product outright, mocks, exams and papers included.
 - **[Market](market.md)** · 9 features, Slice 1 · the landing page, the public pages, onboarding and pricing. What a stranger sees and what a new student does in the first two minutes. Plus the search surface: the public course catalogue, the technical SEO foundation, public guides, and readiness for AI answer engines.
@@ -91,6 +92,7 @@ Out of scope for the current build pass, kept so the plan stays honest. Each is 
 - **Institution sponsorship** · selling seats to a faculty or student union. The research says this is how the students who can never pay get covered, and it is a bigger revenue line than individual sales. needs a decision · GA
 - **Community and affiliate pages** · exist today and were carried over. Both are built around secondary school content and need rethinking or removal alongside the pivot. needs a decision
 - **Price sensitivity survey** · the research found no Cameroonian student willingness to pay study. A short survey in the first weeks of the launch would replace every inferred price with a real one. no
+- **A Redis or Upstash cache backend** · deferred by choice for now, until the shared table has produced a real hit rate. The trigger is already decided in spec 0010: move when the p95 cache read crosses 30 ms, when hit volume passes roughly a million reads a month, or when we want Redis for a second job such as rate limiting or presence. The store sits behind `lib/cache/`, so the swap is one file and a dependency. no
 
 ## Research
 

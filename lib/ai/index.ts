@@ -450,6 +450,11 @@ export async function summarizeText(
   };
 }
 
+/**
+ * Returns the questions plus whether they came from the shared cache, so the
+ * caller can decide whether a credit should be spent. A hit means no model ran,
+ * so charging for it would charge a student for work that never happened.
+ */
 export async function generateQuizFromNote(
   noteContent: string,
   options: {
@@ -457,7 +462,10 @@ export async function generateQuizFromNote(
     questionTypes: "MCQ" | "OPEN" | "MIXED";
   },
   userId?: string | null,
-) {
+): Promise<{
+  questions: ReturnType<typeof normalizeGeneratedQuestions>;
+  fromCache: boolean;
+}> {
   console.log(
     `[AI] Generating quiz with ${options.questionCount} questions, type: ${options.questionTypes}`,
   );
@@ -485,7 +493,7 @@ export async function generateQuizFromNote(
   });
 
   try {
-    const { object } = await generateCritical({
+    const { object, fromCache } = await generateCritical({
       task: "quiz_gen",
       schema,
       prompt,
@@ -501,10 +509,10 @@ export async function generateQuizFromNote(
       );
     }
 
-    return questions;
+    return { questions, fromCache };
   } catch (error) {
     console.error("[AI] Quiz generation failed:", error);
-    return [];
+    return { questions: [], fromCache: false };
   }
 }
 

@@ -78,7 +78,6 @@ const METRIC_LABELS: Record<string, string> = {
   chat_messages: "Chat Messages",
   quizzes_taken: "Quizzes Taken",
   exams_completed: "Exams Completed",
-  paper3_completed: "Paper 3 Exams",
   practice_answered: "Practice Answered",
   silent_churn_7d: "Silent Churn (7d)",
   silent_churn_30d: "Silent Churn (30d)",
@@ -803,19 +802,6 @@ export default function AnalyticsPage() {
                         dataKey="practice_answered"
                         name="Practice"
                         color="#14b8a6"
-                      />
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Paper 3 Exams Completed</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <MetricChart
-                        data={chartData}
-                        dataKey="paper3_completed"
-                        name="Paper 3"
-                        color="#f97316"
                       />
                     </CardContent>
                   </Card>

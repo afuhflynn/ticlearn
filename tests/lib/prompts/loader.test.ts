@@ -42,11 +42,14 @@ describe("prompt loader", () => {
   beforeEach(() => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), "prompts-"));
     process.env.PROMPTS_DIR = dir;
+    // No hold here, so freshness on a file change is tested exactly.
+    process.env.PROMPT_FILE_HOLD_MS = "0";
     clearPromptCache();
   });
 
   afterEach(() => {
     delete process.env.PROMPTS_DIR;
+    delete process.env.PROMPT_FILE_HOLD_MS;
     clearPromptCache();
     fs.rmSync(dir, { recursive: true, force: true });
   });
@@ -90,6 +93,29 @@ describe("prompt loader", () => {
 
     const second = getPromptSync(AREA, "study_brief", { excerpt: "a" });
     expect(second.text).toContain("Second");
+  });
+
+  it("serves the parsed entry without a disk read inside the hold window", () => {
+    // A stat per request is a syscall on the critical path for no gain, so a
+    // parsed prompt answers reads from memory until the hold runs out.
+    process.env.PROMPT_FILE_HOLD_MS = "60000";
+    writePrompt(dir, "First {{excerpt}}\n", header);
+    const first = getPromptSync(AREA, "study_brief", { excerpt: "a" });
+    expect(first.text).toContain("First");
+
+    const file = path.join(dir, AREA, "study_brief.md");
+    const later = new Date(Date.now() + 2000);
+    fs.writeFileSync(file, `${header}\nSecond {{excerpt}}\n`);
+    fs.utimesSync(file, later, later);
+
+    const held = getPromptSync(AREA, "study_brief", { excerpt: "a" });
+    expect(held.text).toContain("First");
+
+    // The hold is a speed choice, not a correctness one. Turn it off and the
+    // file change lands on the next read.
+    process.env.PROMPT_FILE_HOLD_MS = "0";
+    const afterHold = getPromptSync(AREA, "study_brief", { excerpt: "a" });
+    expect(afterHold.text).toContain("Second");
   });
 
   it("keeps a static fallback with no student data", () => {

@@ -60,7 +60,9 @@ async function main() {
     `SELECT p."id" FROM "posts" p WHERE p."like_count" != (SELECT COUNT(*) FROM "post_likes" l WHERE l."post_id" = p."id") OR p."comment_count" != (SELECT COUNT(*) FROM "comments" c WHERE c."post_id" = p."id") LIMIT 20`,
   );
   if (drift.length > 0) {
-    console.error(`Drift found on ${drift.length} posts, sample: ${drift[0].id}`);
+    console.error(
+      `Drift found on ${drift.length} posts, sample: ${drift[0].id}`,
+    );
     process.exit(1);
   }
 

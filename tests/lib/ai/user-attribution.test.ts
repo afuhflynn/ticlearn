@@ -36,7 +36,6 @@ function rel(file: string): string {
 function helperCalls(): HelperCall[] {
   const files = [
     ...listSourceFiles(path.join(ROOT, "lib", "ai")),
-    ...listSourceFiles(path.join(ROOT, "lib", "paper3")),
     path.join(ROOT, "lib", "mock-generator.ts"),
   ].filter(
     (file) => path.basename(file) !== "orchestrator.ts" && fs.existsSync(file),
@@ -107,7 +106,7 @@ describe("student attribution wiring (covers: AC-4)", () => {
       path.join(ROOT, "app", "api", "quizzes", "generate", "route.ts"),
       "utf8",
     );
-    expect(text).toMatch(/generateQuizFromNote\([\s\S]*?session\.user\.id/);
+    expect(text).toMatch(/inngest\.send\([\s\S]*?userId:\s*session\.user\.id/);
   });
 
   it("the quiz attempt route passes the signed in student through", () => {

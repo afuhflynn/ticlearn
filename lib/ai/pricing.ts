@@ -9,24 +9,37 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
   "google/gemini-3.7-flash": { inputPerMillion: 0.75, outputPerMillion: 3.75 },
   "openai/gpt-5-nano": { inputPerMillion: 0.05, outputPerMillion: 0.4 },
   "deepseek/deepseek-v4.1-flash": {
-    inputPerMillion: 0.15,
-    outputPerMillion: 0.6,
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
   },
   "anthropic/claude-haiku-5.5": { inputPerMillion: 0.1, outputPerMillion: 0.5 },
-  "z-ai/glm-4.7-flash": { inputPerMillion: 0.0605, outputPerMillion: 0.4 },
+  "z-ai/glm-4.7-flash": { inputPerMillion: 0.0, outputPerMillion: 0.0 },
   "openai/gpt-5-mini": { inputPerMillion: 0.25, outputPerMillion: 2.0 },
   "google/gemini-3.8-flash": { inputPerMillion: 0.75, outputPerMillion: 3.75 },
   "anthropic/claude-haiku-4.5": { inputPerMillion: 1.0, outputPerMillion: 5.0 },
-  "openai/gpt-oss-120b": { inputPerMillion: 0.037, outputPerMillion: 0.17 },
+  "openai/gpt-oss-120b": { inputPerMillion: 0.0, outputPerMillion: 0.0 },
   "meta-llama/llama-3.3-70b-instruct": {
-    inputPerMillion: 0.22,
-    outputPerMillion: 0.5,
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
   },
   "mistralai/mistral-medium-3.1": {
     inputPerMillion: 0.4,
     outputPerMillion: 2.0,
   },
   "x-ai/grok-4.7": { inputPerMillion: 2.0, outputPerMillion: 6.0 },
+  // Free open weight models only on OpenRouter free tier. Zero cost until credits added.
+  "nvidia/nemotron-3.5-super-vl:free": {
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
+  },
+  "meituan/longcat-2.5-preview:free": {
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
+  },
+  "xiaomi/mimo-v2.6-flash:free": {
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
+  },
 };
 
 export const DEFAULT_USD_TO_XAF_RATE = 650;

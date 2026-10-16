@@ -1,7 +1,8 @@
+import type { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/contact/route";
-import { limit } from "@/lib/rate-limit";
 import { inngest } from "@/lib/inngest/client";
+import { limit } from "@/lib/rate-limit";
 
 function submit(body: unknown) {
   return POST(
@@ -9,7 +10,7 @@ function submit(body: unknown) {
       method: "POST",
       body: JSON.stringify(body),
       headers: { "content-type": "application/json" },
-    }),
+    }) as NextRequest,
   );
 }
 
