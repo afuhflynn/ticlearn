@@ -2,12 +2,8 @@ import crypto from "crypto";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
-import {
-  sendAdminPaymentAlert,
-  sendPaymentFailedEmail,
-  sendPaymentSuccessEmail,
-} from "@/lib/email/send";
 import { webhookSecret } from "@/lib/env";
+import { inngest } from "@/lib/inngest/client";
 import { EVENTS, trackEvent } from "@/lib/kpi";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
@@ -226,21 +222,36 @@ export async function POST(req: Request) {
         }
       }
 
-      console.log(`Sending success email to ${sub.userEmail}`);
-      await sendPaymentSuccessEmail({
-        email: sub.userEmail,
-        name: sub.userName || "Student",
-        planLabel: PLAN_LABELS[sub.plan],
-        amount: amount || sub.amount,
-        transId: transId,
+      console.log(`Enqueueing payment emails for ${sub.userEmail}`);
+      await inngest.send({
+        name: "email.send.payment",
+        data: {
+          template: "payment-received",
+          to: sub.userEmail,
+          props: {
+            firstName: sub.userName || "Student",
+            planLabel: PLAN_LABELS[sub.plan],
+            amountFcfa: amount || sub.amount,
+            reference: transId,
+            paidAt: new Date().toISOString(),
+            practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/practice`,
+          },
+        },
       });
 
-      await sendAdminPaymentAlert({
-        adminEmail: process.env.ADMIN_EMAIL!,
-        userName: sub.userName || "User",
-        userEmail: sub.userEmail,
-        planLabel: PLAN_LABELS[sub.plan],
-        amount: amount || sub.amount,
+      await inngest.send({
+        name: "email.send.payment",
+        data: {
+          template: "admin-payment-alert",
+          to: process.env.ADMIN_EMAIL!,
+          props: {
+            userName: sub.userName || "User",
+            userEmail: sub.userEmail,
+            planLabel: PLAN_LABELS[sub.plan],
+            amountFcfa: amount || sub.amount,
+            reference: transId,
+          },
+        },
       });
     } else if (status === "FAILED" || status === "EXPIRED") {
       await prisma.subscription.update({
@@ -248,11 +259,17 @@ export async function POST(req: Request) {
         data: { status: "FAILED", fapshiTransId: transId },
       });
 
-      await sendPaymentFailedEmail({
-        email: sub.userEmail,
-        name: sub.userName || "Student",
-        planLabel: PLAN_LABELS[sub.plan],
-        status: status,
+      await inngest.send({
+        name: "email.send.payment",
+        data: {
+          template: "payment-failed",
+          to: sub.userEmail,
+          props: {
+            firstName: sub.userName || "Student",
+            planLabel: PLAN_LABELS[sub.plan],
+            subscriptionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/subscription`,
+          },
+        },
       });
     }
 

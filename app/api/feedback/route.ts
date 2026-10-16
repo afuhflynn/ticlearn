@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import { notifyAllAdminsOfFeedback } from "@/lib/email/send";
+import { notifyAdminsOfFeedback } from "@/lib/email/send";
 import { EVENTS, trackEvent } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       subject,
     }).catch(() => {});
 
-    notifyAllAdminsOfFeedback({
+    notifyAdminsOfFeedback({
       userName: session.user.name || "User",
       userEmail: session.user.email,
       type,

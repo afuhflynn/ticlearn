@@ -66,6 +66,7 @@ model User {
   revisionGuides       RevisionGuide[]       @relation("RevisionGuideAuthor")
   kpiEvents            KpiEvent[]
   engagementLogs       EngagementLog[]
+  emailSuppression     EmailSuppression[]
   aiUsageEvents        AiUsageEvent[]        @relation("AiUsageEvents")
 
   @@index([role, createdAt])
@@ -526,7 +527,7 @@ model Notification {
 model UserSettings {
   id                 String   @id @default(cuid())
   userId             String   @unique @map("user_id")
-  emailNotifications Boolean  @default(true) @map("email_notifications")
+  emailNotifications Boolean  @default(false) @map("email_notifications")
   pushNotifications  Boolean  @default(true) @map("push_notifications")
   darkMode           Boolean  @default(false) @map("dark_mode")
   language           String   @default("en")
@@ -927,12 +928,28 @@ model EngagementLog {
   id       String   @id @default(cuid())
   userId   String   @map("user_id")
   campaign String   @map("campaign")
+  period   String   @map("period")
   sentAt   DateTime @default(now()) @map("sent_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, campaign])
+  @@unique([userId, campaign, period])
   @@index([campaign])
   @@index([campaign, sentAt])
   @@map("engagement_log")
+}
+
+model EmailSuppression {
+  id             String   @id @default(cuid())
+  email          String   @unique @map("email")
+  reason         String   @map("reason")
+  userId         String?  @map("user_id")
+  providerMessageId String? @map("provider_message_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([email])
+  @@map("email_suppression")
 }

@@ -1,8 +1,8 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP } from "better-auth/plugins";
-import { trustedOrigins } from "./env";
 import { inngest } from "@/lib/inngest/client";
+import { trustedOrigins } from "./env";
 import { trackEvent } from "./kpi";
 import { prisma } from "./prisma";
 import { limitOtpSend } from "./rate-limit";
@@ -83,20 +83,20 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
-          // Check if user signed up via Google (has Account record)
-          const account = await prisma.account.findFirst({
-            where: { userId: user.id },
-          });
-
-          // If Google sign-up, send welcome email (providerId will be "google")
-          if (account?.providerId === "google") {
-            await inngest
-              .send({
-                name: "email.send.welcome",
-                data: { email: user.email, name: user.name || "Student" },
-              })
-              .catch(console.error);
-          }
+          // Send the welcome email to every signup, not just Google accounts.
+          await inngest
+            .send({
+              name: "email.send.lifecycle",
+              data: {
+                template: "welcome-first-run",
+                to: user.email,
+                props: {
+                  firstName: user.name || "Student",
+                  onboardingUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/onboarding`,
+                },
+              },
+            })
+            .catch(console.error);
 
           trackEvent(user.id, "user_signed_up").catch(() => {});
         },
@@ -114,20 +114,50 @@ export const auth = betterAuth({
         const user = await prisma.user.findFirst({ where: { email } });
         const name = user?.name || "Student";
 
+        const appUrl =
+          process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org";
+
         if (type === "sign-in") {
           await inngest.send({
-            name: "email.send.sign-in",
-            data: { email, name, otp },
+            name: "email.send.transactional",
+            data: {
+              template: "sign-in-code",
+              to: email,
+              props: {
+                firstName: name,
+                code: otp,
+                expiresMinutes: 5,
+                appUrl,
+              },
+            },
           });
         } else if (type === "email-verification") {
           await inngest.send({
-            name: "email.send.verification",
-            data: { email, name, otp },
+            name: "email.send.transactional",
+            data: {
+              template: "verify-address",
+              to: email,
+              props: {
+                firstName: name,
+                code: otp,
+                expiresMinutes: 5,
+                verifyUrl: `${appUrl}/verify-email?otp=${otp}`,
+              },
+            },
           });
         } else if (type === "forget-password") {
           await inngest.send({
-            name: "email.send.password-reset",
-            data: { email, name, otp },
+            name: "email.send.transactional",
+            data: {
+              template: "password-reset",
+              to: email,
+              props: {
+                firstName: name,
+                code: otp,
+                expiresMinutes: 5,
+                resetUrl: `${appUrl}/reset-password?otp=${otp}`,
+              },
+            },
           });
         }
       },

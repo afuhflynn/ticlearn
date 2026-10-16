@@ -2,6 +2,13 @@ import { serve } from "inngest/next";
 import {} from "@/lib/inngest";
 import { pruneAppCache } from "@/lib/inngest/cache-cleanup-functions";
 import { inngest } from "@/lib/inngest/client";
+import {
+  sendEmailCampaign,
+  sendEmailLifecycle,
+  sendEmailPayment,
+  sendEmailTransactional,
+  sendWeeklyDigest,
+} from "@/lib/inngest/email-functions";
 import { dispatchEngagementCampaigns } from "@/lib/inngest/engagement-functions";
 import {
   deleteUnverifiedAccounts,
@@ -11,16 +18,6 @@ import {
   handleSubscriptionAction,
   monthlyCreditBonus,
   processNote,
-  sendAdminInviteEmail,
-  sendContactEmail,
-  sendMagicLinkEmail,
-  sendPasswordResetEmail,
-  sendPlatformUpdateEmail,
-  sendRoleUpdateEmail,
-  sendSignInEmail,
-  sendUnverifiedWarning,
-  sendVerificationEmail,
-  sendWelcomeEmail,
 } from "@/lib/inngest/functions";
 import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
 
@@ -29,20 +26,15 @@ export const { GET, POST, PUT } = serve({
   functions: [
     processNote,
     generateQuiz,
-    sendVerificationEmail,
-    sendWelcomeEmail,
-    sendPasswordResetEmail,
-    sendMagicLinkEmail,
-    sendUnverifiedWarning,
+    sendEmailTransactional,
+    sendEmailLifecycle,
+    sendEmailPayment,
+    sendEmailCampaign,
+    sendWeeklyDigest,
     deleteUnverifiedAccounts,
-    sendAdminInviteEmail,
-    sendRoleUpdateEmail,
-    sendPlatformUpdateEmail,
     handleSubscriptionAction,
     monthlyCreditBonus,
     computeDailyMetricsJob,
-    sendSignInEmail,
-    sendContactEmail,
     generateChatTitle,
     generateAdminReport,
     dispatchEngagementCampaigns,
