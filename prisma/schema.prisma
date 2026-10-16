@@ -745,10 +745,7 @@ model PlatformSettings {
   creditCostRevisionGuideView Int @default(0) @map("credit_cost_revision_guide_view")
   creditCostRevisionGuideGen  Int @default(0) @map("credit_cost_revision_guide_gen")
   creditCostAiTutorMessage    Int @default(5) @map("credit_cost_ai_tutor_message")
-  /// Paper 1 / Paper 2 student mock assembly (blueprint or custom generator).
-
-  /// When false, Paper 3 mock attempts skip credit checks (unless enforceCreditsAll).
-  /// Practice includes quiz generation + Paper 1/2 mock creation when costs are above zero.
+  /// Student mock assembly (blueprint or custom generator).
   enforceCreditsForPractice       Boolean @default(true) @map("enforce_credits_for_practice")
   enforceCreditsForRevisionGuides Boolean @default(false) @map("enforce_credits_for_revision_guides")
   enforceCreditsForAiTutor        Boolean @default(true) @map("enforce_credits_for_ai_tutor")
@@ -766,8 +763,6 @@ model PlatformSettings {
   creditCostMultiplierStandard Float @default(0.6) @map("credit_cost_multiplier_standard")
   creditCostMultiplierPremium  Float @default(0.4) @map("credit_cost_multiplier_premium")
   creditCostMultiplierPro      Float @default(0.4) @map("credit_cost_multiplier_pro")
-
-  /// Prefer ace-3 style AI short-answer marking for text-heavy Paper 3 items.
 
   /// USD to XAF rate used for AI cost math. Copied onto each usage row at write time.
   usdToXafRate  Int     @default(650) @map("usd_to_xaf_rate")

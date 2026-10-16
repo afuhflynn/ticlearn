@@ -85,6 +85,29 @@ function errorMessage(error: unknown): string {
     : String(error);
 }
 
+/**
+ * True when any message in the thread carries an image part. Used to decide
+ * whether to route to the multimodal chain first or the text-only chain.
+ */
+function hasImageParts(messages: Array<{ content: unknown }>): boolean {
+  for (const message of messages) {
+    const content = message.content;
+    if (Array.isArray(content)) {
+      for (const part of content) {
+        if (
+          part &&
+          typeof part === "object" &&
+          "type" in part &&
+          (part as { type?: unknown }).type === "image"
+        ) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function callParams(modelOptions?: Record<string, unknown>): {
   temperature?: number;
   maxOutputTokens: number;
@@ -301,7 +324,8 @@ function logPromptUse(task: string, ref?: PromptRef): void {
 export async function streamChat(opts: StreamChatOptions) {
   logPromptUse(opts.task, opts.promptRef);
   const cold = noteColdStart();
-  const chain = resolveChain(opts.task);
+  const multimodal = hasImageParts(opts.messages);
+  const chain = resolveChain(opts.task, { multimodal });
   const { runnable } = await splitChain(chain);
   const tried: Array<{ model: string; error: string }> = [];
   let lastError: unknown = null;
@@ -492,6 +516,191 @@ export async function generateTextWithFallback(opts: TextGenOptions) {
     promptRef: opts.promptRef,
     coldStart: cold,
   });
+  throw friendlyDown(opts.task, modelErrors);
+}
+
+/**
+ * Agentic loop. The model can call tools, observe results, and decide again,
+ * up to maxSteps (default 5, hard cap 10). Used for deep reasoning, research,
+ * and multi step tasks. Each step is logged per model. Transport failures fall
+ * through the chain; schema errors fail fast.
+ */
+export interface AgentOptions {
+  task: string;
+  system?: string;
+  messages: Array<{
+    role: "user" | "assistant" | "system" | "tool";
+    content: unknown;
+  }>;
+  tools: Record<string, unknown>;
+  maxSteps?: number;
+  modelOptions?: Record<string, unknown>;
+  userId?: string | null;
+  onStep?: (step: {
+    step: number;
+    modelId: string;
+    toolCalls: Array<{ name: string; args: unknown }>;
+  }) => void;
+}
+
+export interface AgentResult {
+  text: string;
+  steps: number;
+  modelId: string;
+}
+
+export async function agent(opts: AgentOptions): Promise<AgentResult> {
+  const multimodal = hasImageParts(opts.messages);
+  const chain = resolveChain(opts.task, { multimodal });
+  const maxSteps = Math.max(1, Math.min(opts.maxSteps ?? 5, 10));
+  const { runnable } = await splitChain(chain);
+  if (runnable.length === 0) {
+    throw friendlyDown(opts.task, [
+      { model: "all", error: "All models are in cooldown." },
+    ]);
+  }
+
+  const deadlineAt = Date.now() + CHAIN_DEADLINE_MS;
+  const modelErrors: Array<{ model: string; error: string }> = [];
+  const failHeadOnce = headFailArmed() && process.env.NODE_ENV !== "production";
+
+  const messages = [...opts.messages];
+
+  for (let index = 0; index < runnable.length; index += 1) {
+    const modelId = runnable[index];
+    const remainingMs = deadlineAt - Date.now();
+    if (remainingMs <= 500) break;
+    const budget = perAttemptBudget(remainingMs, runnable.length - index);
+    markProbeStart(modelId);
+    const started = Date.now();
+
+    try {
+      if (failHeadOnce && index === 0) {
+        const forced = new Error("Forced head failure for fallback proof");
+        forced.name = "TimeoutError";
+        throw forced;
+      }
+
+      for (let step = 0; step < maxSteps; step += 1) {
+        const params = callParams(opts.modelOptions);
+        const result = await withDeadline(budget, (signal) =>
+          generateText({
+            model: chainModel(modelId),
+            system: opts.system,
+            messages: messages as never,
+            tools: opts.tools as never,
+            toolChoice: step === 0 ? "required" : "auto",
+            timeout: budget,
+            maxRetries: 0,
+            abortSignal: signal,
+            temperature: params.temperature,
+            maxOutputTokens: params.maxOutputTokens,
+            ...params.rest,
+          }),
+        );
+
+        const toolCalls =
+          (
+            result as unknown as {
+              toolCalls?: Array<{ name: string; args: unknown; id: string }>;
+            }
+          )?.toolCalls ?? [];
+
+        if (toolCalls.length === 0) {
+          await recordSuccess(modelId);
+          await logUsage({
+            userId: opts.userId ?? null,
+            task: opts.task,
+            modelId,
+            promptTokens: 0,
+            completionTokens: 0,
+            costUsd: 0,
+            latencyMs: Date.now() - started,
+            promptRef: undefined,
+            coldStart: false,
+          }).catch(() => {});
+          return {
+            text: result.text,
+            steps: step + 1,
+            modelId,
+          };
+        }
+
+        // Assistant turn with tool calls
+        messages.push({
+          role: "assistant",
+          content: result.text ?? "",
+          toolCalls,
+        } as never);
+
+        // Execute each tool and append results
+        const toolFns = opts.tools as Record<
+          string,
+          (args: unknown) => Promise<unknown>
+        >;
+        for (const toolCall of toolCalls) {
+          let toolResult: unknown;
+          try {
+            const fn = toolFns[toolCall.name];
+            toolResult = fn
+              ? await fn(toolCall.args)
+              : { error: `Unknown tool: ${toolCall.name}` };
+          } catch (toolError) {
+            toolResult = {
+              error:
+                toolError instanceof Error
+                  ? toolError.message
+                  : String(toolError),
+            };
+          }
+          messages.push({
+            role: "tool",
+            toolCallId: toolCall.id,
+            content: JSON.stringify(toolResult),
+          } as never);
+        }
+
+        opts.onStep?.({
+          step: step + 1,
+          modelId,
+          toolCalls: toolCalls.map((tc) => ({ name: tc.name, args: tc.args })),
+        });
+      }
+
+      // Max steps reached without a final answer
+      throw new Error(
+        `Agent reached max ${maxSteps} steps without a final answer`,
+      );
+    } catch (error) {
+      if (isFailFastError(error)) {
+        throw error;
+      }
+      modelErrors.push({ model: modelId, error: errorMessage(error) });
+      if (isTransportError(error)) {
+        await recordTransportFailure(modelId);
+        continue;
+      }
+      console.error(
+        `[agent] unclassified error on ${modelId} for task ${opts.task}:`,
+        error,
+      );
+    } finally {
+      markProbeDone(modelId);
+    }
+  }
+
+  await logUsage({
+    userId: opts.userId ?? null,
+    task: opts.task,
+    modelId: runnable[0] ?? chain[0] ?? "none",
+    promptTokens: 0,
+    completionTokens: 0,
+    costUsd: 0,
+    latencyMs: CHAIN_DEADLINE_MS,
+    errorCode: runnable.length === 0 ? "all_open" : "all_failed",
+    promptRef: undefined,
+    coldStart: false,
+  }).catch(() => {});
   throw friendlyDown(opts.task, modelErrors);
 }
 

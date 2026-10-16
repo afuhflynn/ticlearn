@@ -1,7 +1,4 @@
-import { google } from "@ai-sdk/google";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
-
-export { google };
 
 /**
  * Fails loudly at first use rather than letting every student see a raw provider

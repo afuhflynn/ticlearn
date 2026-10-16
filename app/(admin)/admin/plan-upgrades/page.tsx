@@ -489,8 +489,7 @@ export default function AdminPlanUpgradesPage() {
                               quizzes
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              {user.attemptsCount} quiz attempts ·{" "}
-                              {user.paper3AttemptsCount} Paper 3
+                              {user.attemptsCount} quiz attempts
                             </div>
                           </TableCell>
                           <TableCell>{formatDate(user.createdAt)}</TableCell>

@@ -10,7 +10,6 @@ export const EVENTS = {
   QUIZ_GENERATED: "quiz_generated",
   EXAM_COMPLETED: "exam_completed",
   CHAT_MESSAGE: "chat_message_sent",
-  PAPER3_EXAM_COMPLETED: "paper3_exam_completed",
   PRACTICE_ANSWERED: "practice_question_answered",
   PAYMENT_INITIATED: "payment_initiated",
   SUBSCRIPTION_ACTIVATED: "subscription_activated",
@@ -108,19 +107,13 @@ export async function computeDailyMetrics(date: Date) {
     },
   });
 
-  const [
-    chatMessages,
-    quizzesTaken,
-    examsCompleted,
-    paper3Completed,
-    practiceAnswered,
-  ] = await Promise.all([
-    countEventsByType(start, end, EVENTS.CHAT_MESSAGE),
-    countEventsByType(start, end, EVENTS.QUIZ_TAKEN),
-    countEventsByType(start, end, EVENTS.EXAM_COMPLETED),
-    countEventsByType(start, end, EVENTS.PAPER3_EXAM_COMPLETED),
-    countEventsByType(start, end, EVENTS.PRACTICE_ANSWERED),
-  ]);
+  const [chatMessages, quizzesTaken, examsCompleted, practiceAnswered] =
+    await Promise.all([
+      countEventsByType(start, end, EVENTS.CHAT_MESSAGE),
+      countEventsByType(start, end, EVENTS.QUIZ_TAKEN),
+      countEventsByType(start, end, EVENTS.EXAM_COMPLETED),
+      countEventsByType(start, end, EVENTS.PRACTICE_ANSWERED),
+    ]);
 
   const sevenDaysAgo = new Date(start);
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -158,7 +151,6 @@ export async function computeDailyMetrics(date: Date) {
     { metric: "chat_messages", value: chatMessages },
     { metric: "quizzes_taken", value: quizzesTaken },
     { metric: "exams_completed", value: examsCompleted },
-    { metric: "paper3_completed", value: paper3Completed },
     { metric: "practice_answered", value: practiceAnswered },
     {
       metric: "conversion_rate",

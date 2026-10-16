@@ -6,9 +6,12 @@ import { openrouter } from "./instances";
  * these per task, and `MODEL_PRICES` prices every id here.
  */
 export const OPEN_WEIGHT_CHAIN: string[] = [
-  "openai/gpt-oss-120b",
-  "z-ai/glm-4.7-flash",
+  "nvidia/nemotron-3.5-super-vl:free",
+  "meituan/longcat-2.5-preview:free",
   "deepseek/deepseek-v4.1-flash",
+  "z-ai/glm-4.7-flash",
+  "xiaomi/mimo-v2.6-flash:free",
+  "openai/gpt-oss-120b",
   "meta-llama/llama-3.3-70b-instruct",
 ];
 

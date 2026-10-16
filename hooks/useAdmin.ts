@@ -124,7 +124,6 @@ export type AdminPlanUser = {
   notesCount: number;
   quizzesCount: number;
   attemptsCount: number;
-  paper3AttemptsCount: number;
 };
 
 export function useAdminPlanUsers(

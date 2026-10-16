@@ -1,7 +1,7 @@
 import { convertToModelMessages, stepCountIs, type UIMessage } from "ai";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { streamChat } from "@/lib/ai/orchestrator";
+import { agent, streamChat } from "@/lib/ai/orchestrator";
 import { createChatTools } from "@/lib/ai/tools";
 import { logUsage } from "@/lib/ai/usage";
 import { auth } from "@/lib/auth";
@@ -259,6 +259,7 @@ export async function POST(req: Request) {
 
     const body = (await req.json()) as {
       messages?: UIMessage[];
+      agentMode?: boolean;
     };
     const url = new URL(req.url);
     const conversationId = url.searchParams.get("conversationId");
@@ -475,6 +476,55 @@ Use this profile to personalize study recommendations, focus on weakest topics, 
     const modelMessages = await convertToModelMessages(trimForModel(messages));
 
     const tools = createChatTools({ userId: session.user.id });
+
+    const agentMode = body.agentMode === true;
+
+    if (agentMode) {
+      // Deep reasoning path: non-streaming agent loop with chain fallback,
+      // per-step logging, and tool-calling across up to maxSteps turns.
+      const agentResult = await agent({
+        task: "agent_reason",
+        system: systemPrompt,
+        tools,
+        messages: modelMessages,
+        maxSteps: 5,
+        userId: session.user.id,
+        modelOptions: {
+          temperature: promptSettings.heat,
+          maxOutputTokens: promptSettings.cap,
+        },
+      });
+
+      const assistantContent = agentResult.text;
+
+      await saveMessage(conversationId, userId, "assistant", assistantContent, [
+        { type: "text", text: assistantContent },
+      ]);
+
+      if (enforcement.aiTutor && tutorCost > 0) {
+        try {
+          const balance = await getUserCreditBalance(userId);
+          if (balance >= tutorCost) {
+            await spendCredits({
+              userId,
+              amount: tutorCost,
+              type: "AI_TUTOR_MESSAGE",
+              description: "TiC AI tutor message (agent)",
+              referenceId: userMsgRecord.id,
+            });
+          }
+        } catch (err) {
+          console.error("[CHAT] Tutor credit debit failed (agent):", err);
+        }
+      }
+
+      return NextResponse.json({
+        text: assistantContent,
+        steps: agentResult.steps,
+        modelId: agentResult.modelId,
+        task: "agent_reason",
+      });
+    }
 
     const result = await streamChat({
       task: "fast_chat",

@@ -36,7 +36,6 @@ function rel(file: string): string {
 function helperCalls(): HelperCall[] {
   const files = [
     ...listSourceFiles(path.join(ROOT, "lib", "ai")),
-    ...listSourceFiles(path.join(ROOT, "lib", "paper3")),
     path.join(ROOT, "lib", "mock-generator.ts"),
   ].filter(
     (file) => path.basename(file) !== "orchestrator.ts" && fs.existsSync(file),
