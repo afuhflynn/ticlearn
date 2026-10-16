@@ -66,7 +66,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (settings) {
-      setEmailNotifications(settings.emailNotifications ?? true);
+      setEmailNotifications(settings.emailNotifications ?? false);
       setPushNotifications(settings.pushNotifications ?? true);
     }
   }, [settings]);

@@ -62,7 +62,7 @@ export async function PUT(req: Request) {
       },
       create: {
         userId: session.user.id,
-        emailNotifications: emailNotifications ?? true,
+        emailNotifications: emailNotifications ?? false,
         pushNotifications: pushNotifications ?? true,
         darkMode: darkMode ?? false,
         language: language ?? "en",

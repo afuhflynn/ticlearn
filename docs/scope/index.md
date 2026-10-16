@@ -30,7 +30,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 10 | Database indexes and query rewrites | Foundation | in-progress |
 | 11 | Background work moved to Inngest | Foundation | planned |
 | 12 | Caching and cold start speed | Foundation | in-progress |
-| 13 | Email system rebuild | Foundation | planned |
+| 13 | Email system rebuild | Foundation | in-progress |
 | 41 | Data route caching with revalidation | Foundation | planned |
 | 34 | Rendering strategy and streaming boundaries | Foundation | planned |
 | 35 | Loading states and perceived speed | Foundation | planned |

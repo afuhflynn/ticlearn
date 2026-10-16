@@ -147,10 +147,22 @@ The chat route makes about ten serial round trips before it starts streaming. Th
 
 (basis: research/performance-and-database.md §4 and research/chat-experience.md §5 · the budgets are published and cheap to hit, but only if the serial round trips go)
 
-### 13. Email system rebuild · needs a decision · GA
+### 13. Email system rebuild · GA
 Fifteen templates are inline literals in one thousand lines, the sending domain's SPF allows Google only so nothing else can send, gradients render white on white in Outlook, only three templates escape user content, and the weekly digest is a one shot email because of a uniqueness constraint. Rebuild the whole set on a real template system with the logo inlined, not attached.
 **Done when:** SPF, DKIM and DMARC are correct for the new sender, every template escapes its inputs, the logo inlines as a content ID image, each email has a preheader and a plain text alternative, the weekly digest repeats, and no send blocks a request.
-- [ ] Design it (spec): `/solution-architect email system rebuild`
+- [x] Design it (spec): `/solution-architect email system rebuild`
+spec ../specs/0011-email-system-rebuild/index.md
+
+- [x] Build it: /feature-build email system rebuild · code in `lib/email/`, `lib/inngest/`, `prisma/schema.prisma`, `app/api/webhooks/`
+  - [x] DNS + transport + verification pipeline (covers AC-1, AC-5) · transport + Inngest enqueue done; DNS publish pending domain confirmation
+  - [x] Bug fixes + escaping + core templates (covers AC-2, AC-3, AC-6) · new template system escapes all inputs; logo asset pending
+  - [x] Payments + welcome + campaigns (covers AC-2, AC-3, AC-4, AC-6)
+  - [x] Inngest conversion + suppression (covers AC-5, AC-7)
+  - [ ] Warm up + monitoring (covers AC-1, AC-7) · Postmaster Tools + DMARC review pending
+- [ ] Verify it: /verify-release email system rebuild
+- [x] Test it: /test-engineer email system rebuild (12 tests across 3 files: webhook, templates, unsubscribe; all passing)
+- [x] Review it (fresh model): /peer-review email system rebuild (findings in docs/reviews/2026-10-17-email-system-rebuild.md; Changes requested: 4 majors)
+- [x] Document it: /tech-writer email system rebuild (PR #56 body updated)
 
 (basis: research/email-system.md · Cameroonian law requires prior consent for email prospecting, so the digest becomes opt in rather than a default)
 

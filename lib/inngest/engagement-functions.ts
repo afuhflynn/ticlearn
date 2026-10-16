@@ -1,5 +1,4 @@
 import type { CampaignType } from "@/lib/email/send";
-import { hydrateEngagementData, sendEngagementEmail } from "@/lib/email/send";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 
@@ -11,17 +10,25 @@ const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
-async function logEngagement(userId: string, campaign: string) {
+async function logEngagement(
+  userId: string,
+  campaign: string,
+  period: string = new Date().toISOString().slice(0, 10),
+) {
   await prisma.engagementLog.upsert({
-    where: { userId_campaign: { userId, campaign } },
-    create: { userId, campaign },
+    where: { userId_campaign_period: { userId, campaign, period } },
+    create: { userId, campaign, period },
     update: { sentAt: new Date() },
   });
 }
 
-async function hasBeenSent(userId: string, campaign: string): Promise<boolean> {
+async function hasBeenSent(
+  userId: string,
+  campaign: string,
+  period: string = new Date().toISOString().slice(0, 10),
+): Promise<boolean> {
   const existing = await prisma.engagementLog.findUnique({
-    where: { userId_campaign: { userId, campaign } },
+    where: { userId_campaign_period: { userId, campaign, period } },
   });
   return existing !== null;
 }
@@ -31,7 +38,7 @@ async function hasEmailOptedIn(userId: string): Promise<boolean> {
     where: { userId },
     select: { emailNotifications: true },
   });
-  return settings?.emailNotifications ?? true;
+  return settings?.emailNotifications ?? false;
 }
 
 export const dispatchEngagementCampaigns = inngest.createFunction(
@@ -42,6 +49,8 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
   },
   async () => {
     console.log("[Inngest] Starting engagement campaign dispatch...");
+
+    const period = new Date().toISOString().slice(0, 10);
 
     const campaignPipeline: Array<{
       campaign: CampaignType;
@@ -169,7 +178,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
 
         for (const userId of candidateIds) {
           const [alreadySent, optedIn] = await Promise.all([
-            hasBeenSent(userId, campaign),
+            hasBeenSent(userId, campaign, period),
             hasEmailOptedIn(userId),
           ]);
 
@@ -183,15 +192,35 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
             continue;
           }
 
-          const data = await hydrateEngagementData(userId);
-          if (!data) {
+          const user = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { id: true, email: true, name: true },
+          });
+          if (!user) {
             skipped.push(userId);
             continue;
           }
 
           try {
-            await sendEngagementEmail(data.email, campaign, data);
-            await logEngagement(userId, campaign);
+            await inngest.send({
+              name: "email.send.campaign",
+              data: {
+                template: campaign,
+                to: user.email,
+                props: {
+                  firstName: user.name || "Student",
+                  streak: 0,
+                  quizzes: 0,
+                  readinessPct: 0,
+                  weakestTopic: "your studies",
+                  deltaPct: 0,
+                  reportUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
+                  unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/settings`,
+                },
+                userId,
+              },
+            });
+            await logEngagement(userId, campaign, period);
             sent.push(userId);
           } catch (err) {
             console.error(

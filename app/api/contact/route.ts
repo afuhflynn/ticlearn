@@ -1,7 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { limit } from "@/lib/rate-limit";
 import { inngest } from "@/lib/inngest/client";
+import { limit } from "@/lib/rate-limit";
 
 const contactSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -36,8 +36,18 @@ export async function POST(request: NextRequest) {
     }
 
     await inngest.send({
-      name: "email.send.contact",
-      data: { name, email, subject, message, adminEmail },
+      name: "email.send.transactional",
+      data: {
+        template: "admin-feedback-alert",
+        to: adminEmail,
+        props: {
+          userName: name,
+          userEmail: email,
+          typeLabel: "Contact",
+          subjectLine: subject,
+          message,
+        },
+      },
     });
 
     return NextResponse.json({

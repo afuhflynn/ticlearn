@@ -8,6 +8,13 @@ import { grantCredits } from "@/lib/credits";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { attachTopicsToNote } from "@/lib/topics";
+import {
+  sendEmailTransactional,
+  sendEmailLifecycle,
+  sendEmailPayment,
+  sendEmailCampaign,
+  sendWeeklyDigest,
+} from "@/lib/inngest/email-functions";
 
 export const processNote = inngest.createFunction(
   {
@@ -291,361 +298,6 @@ export const generateQuiz = inngest.createFunction(
   },
 );
 
-export const sendVerificationEmail = inngest.createFunction(
-  {
-    name: "Send Verification Email",
-    id: "send-verification-email",
-    triggers: {
-      event: "email.send.verification",
-    },
-  },
-  async ({ event }) => {
-    const { email, name, otp } = event.data;
-    console.log(`Sending verification email to: ${email}`);
-
-    try {
-      const { sendVerificationEmail } = await import("@/lib/email/send");
-      await sendVerificationEmail({ email, name, otp });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Email send error:", error);
-      return { success: false, error: "Failed to send email" };
-    }
-  },
-);
-
-export const sendWelcomeEmail = inngest.createFunction(
-  {
-    name: "Send Welcome Email",
-    id: "send-welcome-email",
-    triggers: {
-      event: "email.send.welcome",
-    },
-  },
-  async ({ event }) => {
-    const { email, name } = event.data;
-    console.log(`Sending welcome email to: ${email}`);
-
-    try {
-      const { sendWelcomeEmail } = await import("@/lib/email/send");
-      await sendWelcomeEmail({ email, name });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Welcome email send error:", error);
-      return { success: false, error: "Failed to send welcome email" };
-    }
-  },
-);
-
-export const sendPasswordResetEmail = inngest.createFunction(
-  {
-    name: "Send Password Reset Email",
-    id: "send-password-reset-email",
-    triggers: {
-      event: "email.send.password-reset",
-    },
-  },
-  async ({ event }) => {
-    const { email, name, otp } = event.data;
-    console.log(`Sending password reset email to: ${email}`);
-
-    try {
-      const { sendPasswordResetEmail } = await import("@/lib/email/send");
-      await sendPasswordResetEmail({ email, name, otp });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Password reset email send error:", error);
-      return { success: false, error: "Failed to send password reset email" };
-    }
-  },
-);
-
-export const sendMagicLinkEmail = inngest.createFunction(
-  {
-    name: "Send Magic Link Email",
-    id: "send-magic-link-email",
-    triggers: {
-      event: "email.send.magic-link",
-    },
-  },
-  async ({ event }) => {
-    const { email, name, magicLink } = event.data;
-    console.log(`Sending magic link email to: ${email}`);
-
-    try {
-      const { sendEmail } = await import("@/lib/email/send");
-      const subject = "Your TiCLearn magic link";
-      const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Magic Link</title>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; margin: 0; padding: 0; background-color: #f9fafb; }
-    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-    .card { background: white; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06); overflow: hidden; }
-    .header { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); padding: 40px 30px; text-align: center; }
-    .header h1 { color: white; margin: 0; font-size: 28px; font-weight: 700; }
-    .content { padding: 32px; text-align: center; }
-    .button { display: inline-block; background: #7c3aed; color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 16px; }
-    .button:hover { background: #6d28d9; }
-    .footer { padding: 24px 32px; text-align: center; color: #6b7280; font-size: 14px; background: #f9fafb; }
-    .footer a { color: #7c3aed; text-decoration: none; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="card">
-      <div class="header">
-        <h1>TiCLearn</h1>
-      </div>
-      <div class="content">
-        <h2 style="color: #1f2937; margin-bottom: 16px;">Sign In to TiCLearn</h2>
-        <p>Hi ${name || "Student"},</p>
-        <p>Click the button below to sign in to your TiCLearn account:</p>
-        <a href="${magicLink}" class="button">Sign In →</a>
-        <p style="color: #6b7280; font-size: 14px; margin-top: 24px;">This link expires in 1 hour. If you didn't request this, please ignore this email.</p>
-      </div>
-      <div class="footer">
-        <p>© ${new Date().getFullYear()} TiCLearn. All rights reserved.</p>
-        <p><a href="https://ticlearn.com">ticlearn.com</a></p>
-      </div>
-    </div>
-  </div>
-</body>
-</html>
-`;
-      await sendEmail({ to: email, subject, html });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Magic link email send error:", error);
-      return { success: false, error: "Failed to send magic link email" };
-    }
-  },
-);
-
-export const sendAdminInviteEmail = inngest.createFunction(
-  {
-    name: "Send Admin Invite Email",
-    id: "send-admin-invite-email",
-    triggers: {
-      event: "email.send.admin-invite",
-    },
-  },
-  async ({ event }) => {
-    const { email, inviterName, inviteLink } = event.data;
-    console.log(`Sending admin invite email to: ${email}`);
-
-    try {
-      const { sendAdminInvitationEmail } = await import("@/lib/email/send");
-      await sendAdminInvitationEmail({ email, inviterName, inviteLink });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Admin invite email send error:", error);
-      return { success: false, error: "Failed to send admin invite email" };
-    }
-  },
-);
-
-export const sendRoleUpdateEmail = inngest.createFunction(
-  {
-    name: "Send Role Update Email",
-    id: "send-role-update-email",
-    triggers: {
-      event: "email.send.role-update",
-    },
-  },
-  async ({ event }) => {
-    const { email, name, newRole } = event.data;
-    console.log(`Sending role update email to: ${email}`);
-
-    try {
-      const { sendRoleUpdateEmail } = await import("@/lib/email/send");
-      await sendRoleUpdateEmail({ email, name, newRole });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Role update email send error:", error);
-      return { success: false, error: "Failed to send role update email" };
-    }
-  },
-);
-
-export const sendUnverifiedWarning = inngest.createFunction(
-  {
-    name: "Send Unverified Account Warnings",
-    id: "send-unverified-warnings",
-    triggers: {
-      cron: "0 8 * * 0",
-    },
-  },
-  async () => {
-    console.log("[Inngest] Running weekly unverified account warning job...");
-
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    const usersToWarn = await prisma.user.findMany({
-      where: {
-        emailVerified: false,
-        createdAt: { lt: sevenDaysAgo },
-        warningSentAt: null,
-        accounts: {
-          none: {},
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-    });
-
-    console.log(`[Inngest] Found ${usersToWarn.length} users to warn`);
-
-    const { sendUnverifiedWarningEmail } = await import("@/lib/email/send");
-    let sentCount = 0;
-
-    for (const user of usersToWarn) {
-      try {
-        await sendUnverifiedWarningEmail({
-          email: user.email,
-          name: user.name || "Student",
-          daysLeft: 7,
-        });
-
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { warningSentAt: new Date() },
-        });
-
-        sentCount++;
-        console.log(`[Inngest] Sent warning to: ${user.email}`);
-      } catch (error) {
-        console.error(
-          `[Inngest] Failed to send warning to ${user.email}:`,
-          error,
-        );
-      }
-    }
-
-    return { success: true, warned: sentCount, total: usersToWarn.length };
-  },
-);
-
-export const deleteUnverifiedAccounts = inngest.createFunction(
-  {
-    name: "Delete Unverified Accounts",
-    id: "delete-unverified-accounts",
-    triggers: {
-      cron: "0 9 * * 0",
-    },
-  },
-  async () => {
-    console.log("[Inngest] Running weekly unverified account deletion job...");
-
-    const fourteenDaysAgo = new Date();
-    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-
-    const usersToDelete = await prisma.user.findMany({
-      where: {
-        emailVerified: false,
-        createdAt: { lt: fourteenDaysAgo },
-        warningSentAt: { not: null },
-        accounts: {
-          none: {},
-        },
-      },
-      select: {
-        id: true,
-        email: true,
-      },
-    });
-
-    console.log(`[Inngest] Found ${usersToDelete.length} users to delete`);
-
-    let deletedCount = 0;
-
-    for (const user of usersToDelete) {
-      try {
-        await prisma.user.delete({
-          where: { id: user.id },
-        });
-
-        deletedCount++;
-        console.log(`[Inngest] Deleted unverified user: ${user.email}`);
-      } catch (error) {
-        console.error(`[Inngest] Failed to delete user ${user.email}:`, error);
-      }
-    }
-
-    return {
-      success: true,
-      deleted: deletedCount,
-      total: usersToDelete.length,
-    };
-  },
-);
-
-export const sendPlatformUpdateEmail = inngest.createFunction(
-  {
-    name: "Send Platform Update Email",
-    id: "send-platform-update-email",
-    triggers: [{ event: "email.platform-update" }, { cron: "0 5 * * 1" }],
-  },
-
-  async () => {
-    console.log("[Inngest] Running platform update email job (cron run)...");
-
-    const users = await prisma.user.findMany({
-      where: {
-        emailVerified: true,
-        role: { not: "ADMIN" },
-      },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-      },
-      take: 50,
-    });
-
-    console.log(`[Inngest] Found ${users.length} users to email`);
-
-    const { sendPlatformUpdateEmail } = await import("@/lib/email/send");
-    let sentCount = 0;
-
-    for (const user of users) {
-      try {
-        await sendPlatformUpdateEmail({
-          email: user.email,
-          name: user.name || "Student",
-        });
-
-        sentCount++;
-        console.log(`[Inngest] Sent platform update to: ${user.email}`);
-
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      } catch (error) {
-        console.error(
-          `[Inngest] Failed to send email to ${user.email}:`,
-          error,
-        );
-      }
-    }
-
-    return { success: true, sent: sentCount, total: users.length };
-  },
-);
-
 export const handleSubscriptionAction = inngest.createFunction(
   {
     name: "Handle Subscription Action",
@@ -681,16 +333,20 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "ACTIVATE") {
-      const { sendSubscriptionActivatedEmail } = await import(
-        "@/lib/email/send"
-      );
-
-      await sendSubscriptionActivatedEmail({
-        email: user.email,
-        name: user.name || "Student",
-        planLabel: planLabel || subscription.plan,
-        amount: amount || subscription.amount,
-        transactionId: transactionId || subscription.fapshiTransId || "N/A",
+      await inngest.send({
+        name: "email.send.payment",
+        data: {
+          template: "payment-received",
+          to: user.email,
+          props: {
+            firstName: user.name || "Student",
+            planLabel: planLabel || subscription.plan,
+            amountFcfa: amount || subscription.amount,
+            reference: transactionId || subscription.fapshiTransId || "N/A",
+            paidAt: new Date().toISOString(),
+            practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/practice`,
+          },
+        },
       });
 
       console.log(`[Inngest] Sent activation email to: ${user.email}`);
@@ -698,15 +354,17 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "REJECT") {
-      const { sendSubscriptionRejectedEmail } = await import(
-        "@/lib/email/send"
-      );
-
-      await sendSubscriptionRejectedEmail({
-        email: user.email,
-        name: user.name || "Student",
-        planLabel: planLabel || subscription.plan,
-        reason: reason || "Transaction could not be verified",
+      await inngest.send({
+        name: "email.send.payment",
+        data: {
+          template: "payment-failed",
+          to: user.email,
+          props: {
+            firstName: user.name || "Student",
+            planLabel: planLabel || subscription.plan,
+            subscriptionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/subscription`,
+          },
+        },
       });
 
       console.log(`[Inngest] Sent rejection email to: ${user.email}`);
@@ -785,77 +443,6 @@ export const monthlyCreditBonus = inngest.createFunction(
       `[Inngest] Monthly credit bonus complete: ${grantedCount} granted, ${errorCount} errors`,
     );
     return { success: true, granted: grantedCount, errors: errorCount };
-  },
-);
-
-export { inngest };
-
-export const sendSignInEmail = inngest.createFunction(
-  {
-    name: "Send Sign In Email",
-    id: "send-sign-in-email",
-    triggers: { event: "email.send.sign-in" },
-  },
-  async ({ event }) => {
-    const { email, name, otp } = event.data;
-    try {
-      const { sendSignInEmail } = await import("@/lib/email/send");
-      await sendSignInEmail({ email, name, otp });
-      return { success: true };
-    } catch (error) {
-      console.error("Sign in email send error:", error);
-      return { success: false, error: "Failed to send sign in email" };
-    }
-  },
-);
-
-export const sendContactEmail = inngest.createFunction(
-  {
-    name: "Send Contact Email",
-    id: "send-contact-email",
-    triggers: { event: "email.send.contact" },
-  },
-  async ({ event }) => {
-    const { name, email, subject, message, adminEmail } = event.data;
-    const escapeHtml = (text: string) => {
-      const map: Record<string, string> = {
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-      };
-      return text.replace(/[&<>"']/g, (char) => map[char] || char);
-    };
-    try {
-      const { sendEmail } = await import("@/lib/email/send");
-      const safeName = escapeHtml(name);
-      const safeEmail = escapeHtml(email);
-      const safeSubject = escapeHtml(subject);
-      const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
-      const html = `
-<!DOCTYPE html>
-<html><head><meta charset="utf-8"></head><body>
-<div style="max-width:600px;margin:0 auto;padding:20px;">
-  <div style="background:#7c3aed;padding:24px;color:#fff;"><h1>New Contact Form Submission</h1></div>
-  <div style="padding:24px;">
-    <p><strong>Name</strong><br>${safeName}</p>
-    <p><strong>Email</strong><br>${safeEmail}</p>
-    <p><strong>Subject</strong><br>${safeSubject}</p>
-    <div style="background:#f3e8ff;padding:16px;border-radius:8px;">${safeMessage}</div>
-  </div>
-</div>
-</body></html>`;
-      await sendEmail({
-        to: adminEmail,
-        subject: `[TiCLearn Contact] ${safeSubject}`,
-        html,
-      });
-      return { success: true };
-    } catch (error) {
-      console.error("Contact email send error:", error);
-      return { success: false, error: "Failed to send contact email" };
-    }
   },
 );
 
@@ -1050,3 +637,59 @@ export const generateAdminReport = inngest.createFunction(
     }
   },
 );
+
+export const deleteUnverifiedAccounts = inngest.createFunction(
+  {
+    name: "Delete Unverified Accounts",
+    id: "delete-unverified-accounts",
+    triggers: {
+      cron: "0 9 * * 0",
+    },
+  },
+  async () => {
+    console.log("[Inngest] Running weekly unverified account deletion job...");
+
+    const fourteenDaysAgo = new Date();
+    fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
+
+    const usersToDelete = await prisma.user.findMany({
+      where: {
+        emailVerified: false,
+        createdAt: { lt: fourteenDaysAgo },
+        warningSentAt: { not: null },
+        accounts: {
+          none: {},
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+      },
+    });
+
+    console.log(`[Inngest] Found ${usersToDelete.length} users to delete`);
+
+    let deletedCount = 0;
+
+    for (const user of usersToDelete) {
+      try {
+        await prisma.user.delete({
+          where: { id: user.id },
+        });
+
+        deletedCount++;
+        console.log(`[Inngest] Deleted unverified user: ${user.email}`);
+      } catch (error) {
+        console.error(`[Inngest] Failed to delete user ${user.email}:`, error);
+      }
+    }
+
+    return {
+      success: true,
+      deleted: deletedCount,
+      total: usersToDelete.length,
+    };
+  },
+);
+
+export { inngest };
