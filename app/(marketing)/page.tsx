@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Download, Mail, Phone } from "lucide-react";
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa6";
 import { LandingHero } from "@/components/marketing/landing-hero";
@@ -13,11 +13,11 @@ export default function HomePage() {
         <div className="container flex max-w-4xl flex-col items-start justify-between gap-8 px-4 md:flex-row md:items-center md:px-6">
           <div className="space-y-2">
             <h2 className="text-lg font-semibold tracking-tight">
-              Ready when you are
+              Buea and Bamenda universities
             </h2>
             <p className="text-muted-foreground max-w-md text-sm leading-relaxed">
-              Create an account to unlock the full mock library, leaderboard,
-              and study chat. Prefer to compare plans first—that works too.
+              Free AI-powered study tools for Cameroonian university students.
+              Join over 2,500 students already preparing with TiCLearn.
             </p>
           </div>
           <div className="flex w-full flex-wrap gap-3 sm:w-auto">
@@ -35,6 +35,45 @@ export default function HomePage() {
             >
               <Link href="/pricing">Compare plans</Link>
             </Button>
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t py-8">
+        <div className="container flex max-w-4xl items-center justify-between px-4 md:px-6">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Mail className="h-6 w-6 text-primary" />
+              <span className="text-sm text-muted-foreground">
+                2,500+ university students
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Phone className="h-6 w-6 text-primary" />
+              <span className="text-sm text-muted-foreground">
+                +237 222 12 34 56
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Download className="h-6 w-6 text-primary" />
+              <span className="text-sm text-muted-foreground">
+                150 MB download · ~400 CFA
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {/* biome-ignore lint/performance/noImgElement: the payment logos are local SVGs, which next/image refuses to optimise. */}
+            <img
+              src="/icons/mtn-mobile-money.svg"
+              alt="MTN Mobile Money"
+              className="h-6 w-6"
+            />
+            {/* biome-ignore lint/performance/noImgElement: the payment logos are local SVGs, which next/image refuses to optimise. */}
+            <img
+              src="/icons/orange-mobile-money.svg"
+              alt="Orange Money"
+              className="h-6 w-6"
+            />
           </div>
         </div>
       </section>

@@ -70,8 +70,12 @@
   --card-foreground: oklch(0.9551 0 0);
   --popover: oklch(0.2568 0.0076 274.6528);
   --popover-foreground: oklch(0.9551 0 0);
-  --primary: oklch(0.6132 0.2294 291.7437);
-  --primary-foreground: oklch(1 0 0);
+  /* The dark primary is a little lighter than the light theme's so it can be
+     read as text on the dark background (4.56 to 1), and its foreground is
+     dark so a primary button passes on it (5.14 to 1). White on the old
+     purple was 4.12 to 1, which is under the 4.5 that WCAG AA wants. */
+  --primary: oklch(0.64 0.2294 291.7437);
+  --primary-foreground: oklch(0.16 0 0);
   --secondary: oklch(0.294 0.013 272.9312);
   --secondary-foreground: oklch(0.9551 0 0);
   --muted: oklch(0.294 0.013 272.9312);
@@ -90,12 +94,12 @@
   --chart-5: oklch(0.7058 0 0);
   --sidebar: oklch(0.2011 0.0039 286.0396);
   --sidebar-foreground: oklch(0.9551 0 0);
-  --sidebar-primary: oklch(0.6132 0.2294 291.7437);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(0.64 0.2294 291.7437);
+  --sidebar-primary-foreground: oklch(0.16 0 0);
   --sidebar-accent: oklch(0.294 0.013 272.9312);
-  --sidebar-accent-foreground: oklch(0.6132 0.2294 291.7437);
+  --sidebar-accent-foreground: oklch(0.64 0.2294 291.7437);
   --sidebar-border: oklch(0.3289 0.0092 268.3843);
-  --sidebar-ring: oklch(0.6132 0.2294 291.7437);
+  --sidebar-ring: oklch(0.64 0.2294 291.7437);
   --font-sans: Plus Jakarta Sans, sans-serif;
   --font-serif: Lora, serif;
   --font-mono: IBM Plex Mono, monospace;

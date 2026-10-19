@@ -1,3 +1,10 @@
+import type { Metadata } from "next";
+import { noIndex } from "@/lib/metadata";
+
+export const metadata: Metadata = {
+  ...noIndex,
+};
+
 export default function AuthLayout({
   children,
 }: {

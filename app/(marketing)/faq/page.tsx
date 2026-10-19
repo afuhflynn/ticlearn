@@ -1,13 +1,13 @@
-"use client";
-
 import { ArrowRight } from "lucide-react";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import type { Metadata } from "next";
+import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { FAQ_ITEMS } from "@/constants";
+
+export const metadata: Metadata = {
+  title: "FAQ · Cost, Data Use and Offline Access",
+  description:
+    "Answers Cameroonian university students ask most: what TiCLearn costs, how much data it uses, and whether it works on a weak connection.",
+};
 
 export default function FAQPage() {
   return (
@@ -22,18 +22,7 @@ export default function FAQPage() {
           </p>
         </section>
 
-        <Accordion type="single" collapsible className="w-full">
-          {FAQ_ITEMS.map((faq, index) => (
-            <AccordionItem key={`faq-${index}`} value={`item-${index}`}>
-              <AccordionTrigger className="text-left font-medium">
-                {faq.question}
-              </AccordionTrigger>
-              <AccordionContent className="text-muted-foreground">
-                {faq.answer}
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+        <FaqAccordion items={FAQ_ITEMS} />
 
         <section className="rounded-xl border p-6 text-center">
           <h2 className="mb-2 text-xl font-semibold">Still have questions?</h2>

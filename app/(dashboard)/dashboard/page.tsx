@@ -4,7 +4,6 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 import { headers } from "next/headers";
-import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import {
   getDashboardNotes,
@@ -25,10 +24,13 @@ import { DashboardClient } from "./dashboard-client";
  * happen to agree today.
  */
 export default async function DashboardPage() {
+  // `proxy.ts` owns the redirect: an unauthenticated request never reaches
+  // this page. The session is still read here, because the prefetch needs the
+  // user id. What must not live outside the proxy is a redirect.
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session?.user) {
-    redirect("/sign-in");
+    return null;
   }
 
   const userId = session.user.id;
