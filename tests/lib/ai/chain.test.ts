@@ -11,7 +11,12 @@ import {
   withDeadline,
 } from "@/lib/ai/chain";
 import { MODEL_PRICES } from "@/lib/ai/pricing";
-import { MODEL_ALLOWLIST, resolveChain, taskRegistry } from "@/lib/ai/registry";
+import {
+  MODEL_ALLOWLIST,
+  resolveChain,
+  TEXT_CHAIN,
+  taskRegistry,
+} from "@/lib/ai/registry";
 
 function apiError(message: string, extra: Record<string, unknown> = {}) {
   const err = new Error(message);
@@ -76,24 +81,49 @@ describe("resolveChain (covers: AC-5)", () => {
   });
 
   it("uses the override order when AI_CHAIN_ORDER is set", () => {
-    process.env.AI_CHAIN_ORDER = "a/one, b/two ,c/three";
-    expect(resolveChain("fast_chat")).toEqual(["a/one", "b/two", "c/three"]);
+    // The ids have to be free ones, because the paid gate drops anything
+    // priced above zero, and anything it does not know the price of.
+    process.env.AI_CHAIN_ORDER =
+      "z-ai/glm-4.7-flash, deepseek/deepseek-v4.1-flash ,openai/gpt-oss-120b";
+    expect(resolveChain("fast_chat")).toEqual([
+      "z-ai/glm-4.7-flash",
+      "deepseek/deepseek-v4.1-flash",
+      "openai/gpt-oss-120b",
+    ]);
   });
 
   it("ignores blank entries in the override rather than calling an empty id", () => {
-    process.env.AI_CHAIN_ORDER = "a/one, , ,b/two";
-    expect(resolveChain("fast_chat")).toEqual(["a/one", "b/two"]);
+    process.env.AI_CHAIN_ORDER =
+      "z-ai/glm-4.7-flash, , ,deepseek/deepseek-v4.1-flash";
+    expect(resolveChain("fast_chat")).toEqual([
+      "z-ai/glm-4.7-flash",
+      "deepseek/deepseek-v4.1-flash",
+    ]);
   });
 
-  it("falls back to the task chain when the override is only commas", () => {
+  it("drops a paid model from the override unless the paid gate is open", () => {
+    process.env.AI_CHAIN_ORDER =
+      "anthropic/claude-haiku-5.5, z-ai/glm-4.7-flash";
+    expect(resolveChain("fast_chat")).toEqual(["z-ai/glm-4.7-flash"]);
+  });
+
+  it("falls back to the text chain when the override is only commas", () => {
     process.env.AI_CHAIN_ORDER = " , , ";
-    expect(resolveChain("fast_chat")).toEqual(taskRegistry.fast_chat.chain);
+    expect(resolveChain("fast_chat")).toEqual(TEXT_CHAIN);
+  });
+
+  it("falls back to the task chain for a multimodal task when the override is only commas", () => {
+    process.env.AI_CHAIN_ORDER = " , , ";
+    expect(resolveChain("fast_chat", { multimodal: true })).toEqual(
+      taskRegistry.fast_chat.chain,
+    );
   });
 
   it("returns a copy so a caller cannot mutate the registry", () => {
     const first = resolveChain("fast_chat");
+    const untouched = [...first];
     first.push("injected/model");
-    expect(resolveChain("fast_chat")).toEqual(taskRegistry.fast_chat.chain);
+    expect(resolveChain("fast_chat")).toEqual(untouched);
   });
 
   it("lists every task chain model on the allow list a prompt header is checked against", () => {
