@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TEMPLATES, isTemplate } from "@/lib/email/templates";
+import { isTemplate, TEMPLATES } from "@/lib/email/templates";
 
 describe("email templates", () => {
   it("verify-address renders code", () => {

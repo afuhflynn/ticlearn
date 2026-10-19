@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from "vitest";
+
 import { render, screen } from "@testing-library/react";
 import React from "react";
+import { describe, expect, it } from "vitest";
+import { Markdown } from "@/components/markdown";
+import { Attachment } from "@/components/ui/attachment";
 import { Button } from "@/components/ui/button";
 import { FileDrop } from "@/components/ui/file-drop";
-import { Attachment } from "@/components/ui/attachment";
-import { Markdown } from "@/components/markdown";
 
 describe("primitives", () => {
   it("renders Button", () => {

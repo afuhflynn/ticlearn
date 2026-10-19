@@ -63,11 +63,17 @@ describe("POST /api/contact (covers: AC-4)", () => {
     await expect(res.json()).resolves.toMatchObject({ success: true });
     expect(inngest.send).toHaveBeenCalledWith(
       expect.objectContaining({
-        name: "email.send.contact",
+        name: "email.send.transactional",
         data: expect.objectContaining({
-          email: valid.email,
-          subject: valid.subject,
-          adminEmail: "admin@ticlearn.test",
+          template: "admin-feedback-alert",
+          to: "admin@ticlearn.test",
+          props: expect.objectContaining({
+            userName: valid.name,
+            userEmail: valid.email,
+            subjectLine: valid.subject,
+            message: valid.message,
+            typeLabel: "Contact",
+          }),
         }),
       }),
     );

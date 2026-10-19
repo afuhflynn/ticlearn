@@ -32,7 +32,9 @@ describe("GET /api/unsubscribe/[token]", () => {
     // token decodes to garbage; findUnique returns null in this mock only if we set it
     db.user.findUnique.mockResolvedValueOnce(null as never);
     const r = await GET(new Request("http://localhost") as NextRequest, {
-      params: Promise.resolve({ token: Buffer.from("nope").toString("base64url") }),
+      params: Promise.resolve({
+        token: Buffer.from("nope").toString("base64url"),
+      }),
     });
     expect(r.status).toBe(404);
   });

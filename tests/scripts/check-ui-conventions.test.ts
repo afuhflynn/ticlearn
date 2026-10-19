@@ -1,6 +1,6 @@
-import { describe, it, expect } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
 
 describe("check ui conventions", () => {
   it("baseline file exists and is keyed by rule", () => {

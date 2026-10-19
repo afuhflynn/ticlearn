@@ -32,19 +32,19 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 12 | Caching and cold start speed | Foundation | in-progress |
 | 13 | Email system rebuild | Foundation | in-progress |
 | 41 | Data route caching with revalidation | Foundation | planned |
-| 34 | Rendering strategy and streaming boundaries | Foundation | planned |
+| 34 | Rendering strategy and streaming boundaries | Foundation | in-progress |
 | 35 | Loading states and perceived speed | Foundation | planned |
-| 14 | Landing page rebuild | Slice 1 | planned |
-| 15 | Public page set | Slice 1 | planned |
-| 16 | Onboarding | Slice 1 | planned |
-| 17 | Pricing page | Slice 1 | planned |
+| 14 | Landing page rebuild | Slice 1 | done |
+| 15 | Public page set | Slice 1 | done |
+| 16 | Onboarding | Slice 1 | done |
+| 17 | Pricing page | Slice 1 | done |
 | 36 | Technical SEO foundation | Slice 1 | planned |
 | 37 | Public course and faculty catalogue | Slice 1 | planned |
 | 38 | Public guides and study content | Slice 1 | planned |
 | 39 | GEO and AI answer readiness | Slice 1 | planned |
 | 40 | Metadata and sharing cards | Slice 1 | planned |
-| 18 | Chat interface rebuild | Slice 2 | planned |
-| 19 | Web search tooling | Slice 2 | planned |
+| 18 | Chat interface rebuild | Slice 2 | in-progress |
+| 19 | Web search tooling | Slice 2 | needs a decision |
 | 20 | Tool controls and course skills | Slice 2 | planned |
 | 21 | Note upload experience | Slice 3 | planned |
 | 22 | Storage move to Neon object storage | Slice 3 | planned |

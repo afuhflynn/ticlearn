@@ -302,8 +302,13 @@ describe("orchestrator cold start tracking", () => {
       },
     } as never);
     await streamChat({ task: "fast_chat", messages: [], promptRef: ref });
-    const onFinish = vi.mocked(streamText).mock.calls[0][0].onFinish;
-    onFinish({ text: "hi", usage: {} });
+    // The SDK types the handler as optional and gives it a wide event, so it
+    // is narrowed here to the two fields the orchestrator actually reads.
+    const onFinish = vi.mocked(streamText).mock.calls[0][0].onFinish as
+      | ((event: { text: string; usage: unknown }) => void)
+      | undefined;
+    expect(onFinish).toBeDefined();
+    onFinish?.({ text: "hi", usage: {} });
     const finishCalls = vi
       .mocked(logUsage)
       .mock.calls.map((call) => call[0])

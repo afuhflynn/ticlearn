@@ -93,6 +93,16 @@ export const FAQ_ITEMS: FAQItem[] = [
     answer:
       "If your payment fails, you'll be notified immediately. You can try again or contact our support team for assistance. Your account will remain active until the current subscription period ends.",
   },
+  {
+    question: "How much data does TiCLearn use?",
+    answer:
+      "TiCLearn is designed to be light on data. Note uploads are compressed, quiz generation uses minimal context, and the AI tutor streams responses rather than sending large payloads. You can study your notes offline once they're downloaded.",
+  },
+  {
+    question: "Can I use TiCLearn offline?",
+    answer:
+      "Yes. Once notes are uploaded and processed, you can access them and your quizzes offline. The AI tutor features require an internet connection, but your study materials are available anytime without data costs.",
+  },
 ];
 
 export const MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT = 999_999;

@@ -1,23 +1,19 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { AdminSidebar } from "@/components/layout/AdminSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "@/lib/auth";
+import { noIndex } from "@/lib/metadata";
 
-export default async function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+export const metadata: Metadata = {
+  ...noIndex,
+};
 
-  if (!session?.user || session.user.role !== "ADMIN") {
-    redirect("/dashboard");
-  }
-
+/**
+ * A shell, not a gate. The role check that duplicated `proxy.ts` is gone; the
+ * proxy is the single place that decides whether a session may reach /admin.
+ */
+export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-screen">

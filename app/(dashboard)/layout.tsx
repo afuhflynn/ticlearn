@@ -1,31 +1,21 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { DashboardHeader } from "@/components/layout/DashboardHeader";
 import { SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { noIndex } from "@/lib/metadata";
 
-export default async function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+export const metadata: Metadata = {
+  ...noIndex,
+};
 
-  if (session?.user) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { levelOfStudy: true },
-    });
-
-    if (!user?.levelOfStudy) {
-      redirect("/onboarding");
-    }
-  }
-
+/**
+ * A shell, not a gate. It reads no session, no cookie and no database, so the
+ * sidebar and header paint on the first flush and the page segment streams
+ * behind them. The onboarding redirect that used to live here is in
+ * `proxy.ts`, which is the only place that can answer before the first byte.
+ */
+export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider>
       <div className="flex min-h-screen w-full">

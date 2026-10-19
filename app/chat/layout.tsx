@@ -1,30 +1,19 @@
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { ChatHeader } from "@/components/chat/chat-header";
 import { ChatSidebar } from "@/components/chat/chat-sidebar";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { noIndex } from "@/lib/metadata";
 
-export default async function ChatLayout({
-  children,
-}: {
-  children: ReactNode;
-}) {
-  const session = await auth.api.getSession({ headers: await headers() });
+export const metadata: Metadata = {
+  ...noIndex,
+};
 
-  if (session?.user) {
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { levelOfStudy: true },
-    });
-
-    if (!user?.levelOfStudy) {
-      redirect("/onboarding");
-    }
-  }
-
+/**
+ * A shell, not a gate. Same rule as the dashboard layout: no session, no
+ * cookie, no database, no redirect. The gate is in `proxy.ts`.
+ */
+export default function ChatLayout({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen>
       <ChatSidebar />

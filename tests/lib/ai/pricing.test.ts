@@ -29,10 +29,12 @@ describe("priceFor (covers: AC-4)", () => {
     }
   });
 
-  it("holds only positive prices, since a negative would corrupt XAF", () => {
+  it("holds no negative price, since a negative would corrupt XAF", () => {
     for (const [id, price] of Object.entries(MODEL_PRICES)) {
-      expect(price.inputPerMillion, id).toBeGreaterThan(0);
-      expect(price.outputPerMillion, id).toBeGreaterThan(0);
+      // Zero is the price of a free model, which is correct. Only a negative
+      // is wrong, because it would make the cost estimate go backwards.
+      expect(price.inputPerMillion, id).toBeGreaterThanOrEqual(0);
+      expect(price.outputPerMillion, id).toBeGreaterThanOrEqual(0);
     }
   });
 });
