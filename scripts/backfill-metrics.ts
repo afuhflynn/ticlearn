@@ -1,5 +1,5 @@
-import { prisma } from "../lib/prisma";
 import { computeDailyMetrics } from "../lib/kpi";
+import { prisma } from "../lib/prisma";
 
 async function main() {
   const earliest = await prisma.kpiEvent.findFirst({

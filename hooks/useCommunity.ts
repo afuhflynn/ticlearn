@@ -1,11 +1,17 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
+import { readState } from "@/lib/read-state";
 
 export function useCommunityPosts(subject?: string) {
-  const { data, isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey: [...queryKeys.communityPosts, subject],
     queryFn: async () => {
       const result = await api.queries.community.getPosts({ subject });
@@ -14,14 +20,17 @@ export function useCommunityPosts(subject?: string) {
         total: result.total || 0,
       };
     },
+    // A filter change keeps the posts that are on screen while the new ones
+    // load, so the reader never loses their place.
+    placeholderData: keepPreviousData,
     ...family("community"),
   });
 
   return {
-    posts: data?.posts || [],
-    total: data?.total || 0,
-    isLoading,
-    error,
+    posts: query.data?.posts || [],
+    total: query.data?.total || 0,
+    ...readState(query),
+    refetch: query.refetch,
   };
 }
 

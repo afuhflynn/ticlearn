@@ -2,11 +2,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import {
-  getEffectiveCreditCost,
-  getUserCreditBalance,
-  spendCredits,
-} from "@/lib/credits";
+import { getEffectiveCreditCost, getUserCreditBalance } from "@/lib/credits";
+import { inngest } from "@/lib/inngest/client";
 import { EVENTS, trackEvent } from "@/lib/kpi";
 import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
 import {
@@ -14,7 +11,6 @@ import {
   quizCreditsRequired,
 } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
-import { inngest } from "@/lib/inngest/client";
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),

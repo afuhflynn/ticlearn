@@ -340,7 +340,9 @@ export const MessageResponse = memo(
         : children}
     </Streamdown>
   ),
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  (prevProps, nextProps) =>
+    prevProps.children === nextProps.children &&
+    prevProps.components === nextProps.components,
 );
 
 MessageResponse.displayName = "MessageResponse";

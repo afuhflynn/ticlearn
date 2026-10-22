@@ -2,11 +2,11 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { getDashboardNotes } from "@/lib/dashboard-data";
 import { inngest } from "@/lib/inngest/client";
 import { trackEvent } from "@/lib/kpi";
 import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
 import { prisma } from "@/lib/prisma";
-import { getDashboardNotes } from "@/lib/dashboard-data";
 import { utapi } from "@/lib/uploadthing-server";
 
 const createNoteSchema = z.object({

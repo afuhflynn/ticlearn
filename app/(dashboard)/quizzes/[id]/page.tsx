@@ -24,10 +24,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useLongWait } from "@/components/ui/pending-region";
+import { ProgressLine } from "@/components/ui/process-progress";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { useQuiz, useQuizAttempts, useSubmitQuizAttempt } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+import { QuizRunnerSkeleton } from "../../student-skeletons";
 
 type QuizQuestion = {
   id: string;
@@ -70,6 +73,22 @@ type AttemptResult = {
   pointsEarned: number;
   currentStreak: number;
 };
+
+/**
+ * A quiz is one model call, so the honest indicator is a plain line with a
+ * time estimate and not a stage list. The line only appears once the wait
+ * passes ten seconds, measured on the client's own clock.
+ */
+function QuizGeneratingLine() {
+  const isLongWait = useLongWait(true);
+  if (!isLongWait) return null;
+  return (
+    <ProgressLine
+      message="Your quiz is still being written."
+      estimate="It usually takes about a minute."
+    />
+  );
+}
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -210,11 +229,7 @@ export default function QuizPlayerPage() {
   };
 
   if (sessionPending || isLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center py-16">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <QuizRunnerSkeleton />;
   }
 
   if (error || !quiz) {
@@ -233,14 +248,12 @@ export default function QuizPlayerPage() {
   if (quiz.status === "GENERATING") {
     return (
       <Card className="w-full">
-        <CardContent className="flex items-center gap-3 pt-6">
-          <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <div className="min-w-0">
-            <p className="font-medium">Quiz generation is still running</p>
-            <p className="break-words text-sm text-muted-foreground">
-              This page refreshes automatically until the quiz is ready.
-            </p>
-          </div>
+        <CardContent className="space-y-2 pt-6">
+          <p className="font-medium">Quiz generation is still running</p>
+          <QuizGeneratingLine />
+          <p className="break-words text-sm text-muted-foreground">
+            This page refreshes automatically until the quiz is ready.
+          </p>
         </CardContent>
       </Card>
     );

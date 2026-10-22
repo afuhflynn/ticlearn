@@ -416,6 +416,17 @@ describe("streamChat (covers: AC-6)", () => {
     expect(streamText).toHaveBeenCalledTimes(2);
   });
 
+  it("falls through when a model ends without visible text", async () => {
+    vi.mocked(streamText)
+      .mockReturnValueOnce(lazyStream({ chunks: [] }))
+      .mockReturnValueOnce(lazyStream({ chunks: ["ok"] }));
+
+    const result = await streamChat({ task: "fast_chat", messages: [] });
+
+    expect(streamText).toHaveBeenCalledTimes(2);
+    expect(result).toBeDefined();
+  });
+
   it("returns the stream whose first token it already proved", async () => {
     const result = await streamChat({ task: "fast_chat", messages: [] });
     let text = "";
@@ -452,6 +463,19 @@ describe("streamChat (covers: AC-6)", () => {
     await expect(
       streamChat({ task: "fast_chat", messages: [] }),
     ).rejects.toThrow("briefly unavailable");
+  });
+
+  it("does not restart an entirely open chain", async () => {
+    chainOf([]);
+
+    await expect(
+      streamChat({ task: "fast_chat", messages: [] }),
+    ).rejects.toThrow("briefly unavailable");
+
+    expect(streamText).not.toHaveBeenCalled();
+    expect(vi.mocked(usage.logUsage).mock.calls.at(-1)?.[0]).toMatchObject({
+      errorCode: "all_open",
+    });
   });
 
   it("records a transport failure for the model whose stream died", async () => {

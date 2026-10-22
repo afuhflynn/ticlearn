@@ -1,8 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
-import { randomUUID } from "node:crypto";
 
 const REPORT_TYPES = {
   users: "users",

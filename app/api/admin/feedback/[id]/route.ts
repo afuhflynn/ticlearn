@@ -7,7 +7,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),
@@ -50,7 +50,7 @@ export async function GET(req: Request, { params }: RouteParams) {
   }
 }
 
-export async function DELETE(req: Request, { params }: RouteParams) {
+export async function DELETE(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),

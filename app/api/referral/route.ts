@@ -43,7 +43,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json({
       success: true,
-      redirectUrl: "/sign-up?ref__=" + code,
+      redirectUrl: `/sign-up?ref__=${code}`,
     });
   } catch (error) {
     console.error("Referral tracking error:", error);

@@ -17,6 +17,7 @@ import {
   useUpdatePaymentSettings,
 } from "@/hooks/usePayment";
 import { useSession } from "@/lib/auth-client";
+import { AdminSettingsSkeleton } from "../admin-skeleton";
 
 interface PaymentSettings {
   mtnNumber: string | null;
@@ -56,11 +57,7 @@ export default function PaymentSettingsPage() {
   };
 
   if (sessionLoading || isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      </div>
-    );
+    return <AdminSettingsSkeleton fields={6} />;
   }
 
   if (!session || (session.user as { role?: string })?.role !== "ADMIN") {

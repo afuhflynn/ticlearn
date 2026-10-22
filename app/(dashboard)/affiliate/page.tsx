@@ -28,6 +28,7 @@ import { Label } from "@/components/ui/label";
 import { useAffiliate, useRequestPayout, useUpdateAffiliate } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import type { AffiliateData } from "@/types";
+import { AffiliateSkeleton } from "../student-skeletons";
 
 export default function AffiliatePage() {
   const { data: session, isPending: sessionLoading } = useSession();
@@ -130,11 +131,7 @@ export default function AffiliatePage() {
   };
 
   if (sessionLoading || isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AffiliateSkeleton />;
   }
 
   const referralLink = `${typeof window !== "undefined" ? window.location.origin : ""}/sign-up?ref__=${affiliateData?.code}`;

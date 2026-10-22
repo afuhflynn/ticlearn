@@ -248,11 +248,25 @@
     "exception": null
   },
   {
+    "file": "components/ui/pending-region.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-19",
+    "exception": "Built for spec 0013, it has no registry element behind it. The shape of the wait belongs to the screen, so the region takes a fallback rather than drawing one."
+  },
+  {
     "file": "components/ui/popover.tsx",
     "base": "radix",
     "registryVersion": "unknown",
     "lastRebase": "2026-10-14",
     "exception": null
+  },
+  {
+    "file": "components/ui/process-progress.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-19",
+    "exception": "Built for spec 0013, it has no registry element behind it. A process is never a skeleton, so it needs a bar with a real number and the names of its stages."
   },
   {
     "file": "components/ui/progress.tsx",
@@ -281,6 +295,13 @@
     "registryVersion": "unknown",
     "lastRebase": "2026-10-14",
     "exception": null
+  },
+  {
+    "file": "components/ui/read-notice.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-19",
+    "exception": "Built for spec 0013, it has no registry element behind it. A failed read says so plainly and offers a retry, so a failure never reads as a lost answer."
   },
   {
     "file": "components/ui/select.tsx",
@@ -386,6 +407,41 @@
     "registryVersion": "unknown",
     "lastRebase": "2026-10-14",
     "exception": null
+  },
+  {
+    "file": "components/ui/attachment.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-22",
+    "exception": "Project-specific attachment display and remove control."
+  },
+  {
+    "file": "components/ui/data-table.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-22",
+    "exception": "Project-specific table composition built on the table primitive."
+  },
+  {
+    "file": "components/ui/date-picker.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-22",
+    "exception": "Project-specific date picker composition built on calendar and popover primitives."
+  },
+  {
+    "file": "components/ui/file-drop.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-22",
+    "exception": "Project-specific drag-and-drop file input."
+  },
+  {
+    "file": "components/ui/questionnaire.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-22",
+    "exception": "Project-specific questionnaire layout container."
   }
 ]
 ```

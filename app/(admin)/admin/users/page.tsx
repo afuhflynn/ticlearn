@@ -66,6 +66,7 @@ import {
   adminUsersViewDefaults,
   adminUsersViewParsers,
 } from "@/nuqs/admin-users";
+import { AdminTableSkeleton } from "../admin-skeleton";
 
 export default function AdminUsersPage() {
   // View state lives in the URL, so refresh, back, forward, and shared
@@ -360,9 +361,7 @@ export default function AdminUsersPage() {
               </div>
             </div>
             {isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <AdminTableSkeleton />
             ) : (
               <>
                 <Table>
@@ -495,9 +494,7 @@ export default function AdminUsersPage() {
           </CardHeader>
           <CardContent>
             {invitesLoading ? (
-              <div className="flex h-32 items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
+              <AdminTableSkeleton count={4} />
             ) : (
               <div className="space-y-4">
                 {invitesData?.invites?.length === 0 ? (

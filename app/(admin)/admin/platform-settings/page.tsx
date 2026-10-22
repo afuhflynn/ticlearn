@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useSession } from "@/lib/auth-client";
+import { AdminSettingsSkeleton } from "../admin-skeleton";
 
 type PlatformSettings = {
   creditCostQuizGeneration: number;
@@ -91,11 +92,7 @@ export default function AdminPlatformSettingsPage() {
   };
 
   if (sessionLoading || loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[40vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <AdminSettingsSkeleton fields={6} />;
   }
 
   if (!session || (session.user as { role?: string })?.role !== "ADMIN") {

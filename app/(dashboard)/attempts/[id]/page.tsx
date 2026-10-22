@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import rehypeKatex from "rehype-katex";
@@ -18,6 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { AttemptSkeleton } from "../../student-skeletons";
 
 type AttemptAnswer = {
   id: string;
@@ -49,11 +50,7 @@ export default function AttemptDetailPage() {
   const attempt = data?.attempt as Attempt | undefined;
 
   if (sessionPending || isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      </div>
-    );
+    return <AttemptSkeleton />;
   }
 
   if (!session) {

@@ -2,6 +2,8 @@
 // API Request Helper - Centralized API Client
 // ===========================================
 
+import { isAxiosError } from "axios";
+
 import { privateAxios, publicAxios } from "@/config/axios.config";
 import type {
   AdminStats,
@@ -35,6 +37,24 @@ import type {
 } from "@/types";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+/**
+ * The request never reached the server. The device is offline, the network is
+ * down, or the request timed out on its way out. A screen that shows this
+ * says the connection dropped, because the answer was never lost, it was
+ * never asked for.
+ */
+export class NetworkError extends Error {
+  constructor(message = "The connection dropped before the server answered.") {
+    super(message);
+    this.name = "NetworkError";
+  }
+}
+
+/** True when the failure was a request that never got an answer. */
+export function isNetworkError(error: unknown): boolean {
+  return error instanceof NetworkError;
+}
 
 async function apiRequest<T>(
   endpoint: string,
@@ -81,6 +101,12 @@ async function apiRequest<T>(
 
     return response.data;
   } catch (error: unknown) {
+    // A request that never got a response is a lost connection, and it is
+    // told apart from a server that said no. Without this the student is
+    // shown a generic error for a network that is simply not there.
+    if (isAxiosError(error) && error.response === undefined) {
+      throw new NetworkError();
+    }
     if (error && typeof error === "object" && "response" in error) {
       const axiosError = error as { response?: { data?: { error?: string } } };
       if (axiosError.response?.data?.error) {

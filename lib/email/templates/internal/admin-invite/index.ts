@@ -7,7 +7,6 @@ import {
   h1,
   header,
   layout,
-  link,
   section,
   text,
 } from "@/lib/email/layout";

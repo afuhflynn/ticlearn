@@ -68,6 +68,10 @@ import {
   adminAffiliatesViewDefaults,
   adminAffiliatesViewParsers,
 } from "@/nuqs/admin-affiliates";
+import {
+  AdminDetailPanelSkeleton,
+  AdminTableSkeleton,
+} from "../admin-skeleton";
 
 export default function AdminAffiliatesPage() {
   // Search text writes with replace history. Page and the four dialogs
@@ -276,9 +280,7 @@ export default function AdminAffiliatesPage() {
             </DialogDescription>
           </DialogHeader>
           {detailsLoading ? (
-            <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <AdminDetailPanelSkeleton />
           ) : selectedAffiliate ? (
             <div className="space-y-6">
               {/* Affiliate Info */}
@@ -701,9 +703,7 @@ export default function AdminAffiliatesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <AdminTableSkeleton />
           ) : (
             <>
               <Table>

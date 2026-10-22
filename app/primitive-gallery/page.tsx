@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { PrimitiveGallery } from "@/components/primitive-gallery";
 import { noIndex } from "@/lib/metadata";
 
@@ -11,5 +12,11 @@ export const metadata: Metadata = {
 };
 
 export default function PrimitiveGalleryPage() {
-  return <PrimitiveGallery />;
+  // The gallery reads the search params, and a read of the search params
+  // needs a boundary, or the page is rendered on the client only.
+  return (
+    <Suspense fallback={null}>
+      <PrimitiveGallery />
+    </Suspense>
+  );
 }

@@ -1,18 +1,27 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
+import { readState } from "@/lib/read-state";
 
 type QuizScope = "all" | "my" | "public";
 
 export function useQuizzes(scope: QuizScope = "all", noteId?: string) {
-  const { data, isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey: [...queryKeys.quizzes, scope, noteId ?? null],
     queryFn: async () => {
       const result = await api.queries.quizzes.getAll({ scope, noteId });
       return result;
     },
+    // A scope change keeps the quizzes that are on screen while the new ones
+    // load, so the reader never sees an empty page.
+    placeholderData: keepPreviousData,
     refetchInterval: (query) => {
       const quizzes = query.state.data?.quizzes ?? [];
       return quizzes.some(
@@ -24,15 +33,20 @@ export function useQuizzes(scope: QuizScope = "all", noteId?: string) {
     ...family("quizzes"),
   });
 
+  const quizzes = query.data?.quizzes || [];
+  const isGenerating = quizzes.some(
+    (quiz: { status: string }) => quiz.status === "GENERATING",
+  );
+
   return {
-    quizzes: data?.quizzes || [],
-    isLoading,
-    error,
+    quizzes,
+    ...readState(query, isGenerating),
+    refetch: query.refetch,
   };
 }
 
 export function useQuiz(id: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.quiz(id),
     queryFn: async () => {
       const result = await api.queries.quizzes.getById(id);
@@ -43,6 +57,11 @@ export function useQuiz(id: string) {
       query.state.data?.quiz?.status === "GENERATING" ? 3000 : false,
     ...family("quizzes"),
   });
+
+  return {
+    ...query,
+    ...readState(query, query.data?.quiz?.status === "GENERATING"),
+  };
 }
 
 export function useGenerateQuiz() {
@@ -120,7 +139,7 @@ export function useSubmitQuizAttempt() {
 }
 
 export function useQuizAttempt(attemptId: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["quizzes", "attempts", attemptId],
     queryFn: async () => {
       const result = await api.mutations.quizzes.getAttemptById(attemptId);
@@ -128,14 +147,18 @@ export function useQuizAttempt(attemptId: string) {
     },
     enabled: !!attemptId,
   });
+
+  return { ...query, ...readState(query) };
 }
 
 export function useRecentAttempts(limit: number = 5) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ["quizzes", "attempts", "recent", limit],
     queryFn: async () => {
       const result = await api.mutations.quizzes.getRecentAttempts(limit);
       return result;
     },
   });
+
+  return { ...query, ...readState(query) };
 }

@@ -5,7 +5,6 @@ import { inngest } from "@/lib/inngest/client";
 import { trustedOrigins } from "./env";
 import { trackEvent } from "./kpi";
 import { prisma } from "./prisma";
-import { limitOtpSend } from "./rate-limit";
 
 const otpRateLimitMap = new Map<string, { count: number; resetAt: number }>();
 

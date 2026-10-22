@@ -7,10 +7,10 @@ import { openrouter } from "./instances";
  */
 export const OPEN_WEIGHT_CHAIN: string[] = [
   "nvidia/nemotron-3.5-super-vl:free",
-  "meituan/longcat-2.5-preview:free",
+  "nvidia/nemotron-3.5-lightning:free",
   "deepseek/deepseek-v4.1-flash",
   "z-ai/glm-4.7-flash",
-  "xiaomi/mimo-v2.6-flash:free",
+  "minimax/minimax-m3.1-flash:free",
   "openai/gpt-oss-120b",
   "meta-llama/llama-3.3-70b-instruct",
 ];
@@ -54,6 +54,8 @@ const TRANSPORT_HINTS = [
   "service unavailable",
   "bad gateway",
   "gateway timeout",
+  "stream ended before first token",
+  "empty stream",
 ];
 
 const SCHEMA_HINTS = [

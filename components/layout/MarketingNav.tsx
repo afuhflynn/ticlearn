@@ -1,6 +1,6 @@
 "use client";
 
-import { GraduationCap, Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -14,7 +14,6 @@ import {
 } from "@/components/ui/sheet";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
-import { Skeleton } from "../ui/skeleton";
 import { UserButton } from "../user/user-button";
 
 const navLinks = [
@@ -26,7 +25,7 @@ const navLinks = [
 export function MarketingNav() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const { data: session, isPending } = useSession();
+  const { data: session } = useSession();
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -63,12 +62,7 @@ export function MarketingNav() {
         </nav>
 
         <div className="hidden md:flex items-center gap-4">
-          {isPending ? (
-            <>
-              <Skeleton className="h-9 w-20" />
-              <Skeleton className="h-9 w-28" />
-            </>
-          ) : session?.user ? (
+          {session?.user ? (
             <>
               <Button variant="ghost" asChild>
                 <Link href="/dashboard">Dashboard</Link>
@@ -126,12 +120,7 @@ export function MarketingNav() {
                 ))}
               </nav>
               <div className="flex flex-col gap-3 mt-2">
-                {isPending ? (
-                  <>
-                    <Skeleton className="w-full h-10 rounded-full" />
-                    <Skeleton className="w-full h-10 rounded-full" />
-                  </>
-                ) : session?.user ? (
+                {session?.user ? (
                   <UserButton user={session.user} />
                 ) : (
                   <>

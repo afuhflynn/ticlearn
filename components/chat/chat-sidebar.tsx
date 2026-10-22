@@ -5,7 +5,6 @@ import {
   Copy,
   Gauge,
   History,
-  Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -52,12 +51,14 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useChatConversations,
   useCreateConversation,
   useDeleteConversation,
   useUpdateConversation,
 } from "@/hooks/useChat";
+import { placeholderKeys } from "@/lib/placeholder-keys";
 import { ChatUsageCard } from "./chat-usage-card";
 
 function formatGroupLabel(date: Date): string {
@@ -90,7 +91,7 @@ const workspaceLinks = [
 export function ChatSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { conversations, isLoading } = useChatConversations();
+  const { conversations, isPending } = useChatConversations();
   const createConversation = useCreateConversation();
   const updateConversation = useUpdateConversation();
   const deleteConversation = useDeleteConversation();
@@ -233,10 +234,14 @@ export function ChatSidebar() {
             </div>
           </div>
 
-          {isLoading ? (
-            <div className="flex items-center gap-2 px-5 py-3 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>Loading chats...</span>
+          {isPending ? (
+            <div
+              className="space-y-2 px-2"
+              data-slot="conversation-list-skeleton"
+            >
+              {placeholderKeys(5).map((key) => (
+                <Skeleton key={key} className="h-8 w-full rounded-xl" />
+              ))}
             </div>
           ) : conversations.length === 0 ? (
             <p className="px-5 py-3 text-sm text-muted-foreground">

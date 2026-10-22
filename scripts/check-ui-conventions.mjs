@@ -5,6 +5,22 @@ import { fileURLToPath } from "node:url";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASELINE = path.join(ROOT, "scripts", "ui-conventions-baseline.json");
 const INVENTORY = path.join(ROOT, "docs", "design-system-inventory.md");
+const LOADER_ALLOWLIST = path.join(ROOT, "scripts", "loading-allowlist.json");
+
+/**
+ * The spinner rule. It reported first, so the whole list of spinners in the
+ * app was visible, and it fails now that the sweep is done. A file that keeps
+ * a spinner needs an entry in the allowlist with a one line reason.
+ */
+const SPINNER_RULE_MODE = "fail";
+
+/** The names a spinner comes in. A file that imports one of these is a file
+ * that is drawing a spinner. */
+const LOADER_NAMES = ["Loader", "Loader2", "LoaderIcon", "Loader2Icon"];
+
+/** The primitive folders. A spinner primitive lives here, and the rule does
+ * not look inside them. */
+const SPINNER_PRIMITIVE_FOLDERS = ["components/ui/", "components/ai-elements/"];
 
 const COLOR_NAMES =
   "white|black|(?:slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)";
@@ -54,9 +70,76 @@ function classify(rel) {
   return {
     palette: !uiExcluded,
     dark: true,
-    rawAria: !uiExcluded && !rel.startsWith("components/ai-elements/"),
+    // Email tables intentionally use role="presentation" for clients that
+    // do not reliably infer table layout from the markup alone.
+    rawAria:
+      !uiExcluded &&
+      !rel.startsWith("components/ai-elements/") &&
+      !rel.startsWith("lib/email/"),
     handRolled: !uiExcluded,
+    spinner: !SPINNER_PRIMITIVE_FOLDERS.some((p) => rel.startsWith(p)),
   };
+}
+
+/**
+ * The spinner a file draws, and where it draws it.
+ *
+ * A spinner inside a button is the button telling the student that their own
+ * action is still running. That is not a loading state and it is never
+ * reported. A spinner anywhere else is a student staring at a shape that
+ * says nothing about what is coming.
+ */
+function findSpinnerSites(src) {
+  const imports = new Set();
+  const importRe = /import\s*\{([^}]*)\}\s*from\s*["'][^"']+["']/g;
+  for (const match of src.matchAll(importRe)) {
+    for (const name of match[1].split(",")) {
+      const clean = name
+        .trim()
+        .split(/\s+as\s+/)[0]
+        .trim();
+      if (LOADER_NAMES.includes(clean)) imports.add(clean);
+    }
+  }
+  if (imports.size === 0) return [];
+
+  const tagRe =
+    /<(\/?)(Button|button|Loader2Icon|LoaderIcon|Loader2|Loader)\b([^>]*)>/g;
+  const sites = [];
+  let depth = 0;
+  let match;
+  while (true) {
+    match = tagRe.exec(src);
+    if (match === null) break;
+    const [, closing, name, rest] = match;
+    const selfClosing = /\/\s*$/.test(rest);
+    if (name === "Button" || name === "button") {
+      if (closing) depth = Math.max(0, depth - 1);
+      else if (!selfClosing) depth += 1;
+      continue;
+    }
+    if (!imports.has(name)) continue;
+    if (depth > 0) continue;
+    sites.push(src.slice(0, match.index).split("\n").length);
+  }
+  return sites;
+}
+
+/**
+ * A hand written spinner. An element that spins on its own, with no spinner
+ * primitive behind it, is the same problem wearing a different hat.
+ */
+function findRawSpinnerSites(src) {
+  const sites = [];
+  const tagRe = /<([a-zA-Z][a-zA-Z0-9]*)\b([^>]*\banimate-spin\b[^>]*)>/g;
+  let match;
+  while (true) {
+    match = tagRe.exec(src);
+    if (match === null) break;
+    if (LOADER_NAMES.includes(match[1])) continue;
+    sites.push(src.slice(0, match.index).split("\n").length);
+  }
+  return sites;
 }
 
 const violations = {
@@ -66,14 +149,15 @@ const violations = {
   "hand-rolled-control": new Set(),
 };
 
-let totalFiles = 0;
+/** Every spinner drawn outside a button, with the line it is drawn on. */
+const spinnerSites = new Map();
+
 for (const dir of SCAN_DIRS) {
   const root = path.join(ROOT, dir);
   if (!fs.existsSync(root)) continue;
   for (const file of walk(root)) {
     if (!isTargetFile(file)) continue;
     const rel = path.relative(ROOT, file);
-    totalFiles += 1;
     const src = fs.readFileSync(file, "utf8");
     const cls = classify(rel);
     if (cls.palette && (rePalette.test(src) || rePaletteBare.test(src))) {
@@ -94,6 +178,15 @@ for (const dir of SCAN_DIRS) {
       violations["hand-rolled-control"].add(rel);
     }
     reHandRolled.lastIndex = 0;
+    if (cls.spinner) {
+      const sites = [...findSpinnerSites(src), ...findRawSpinnerSites(src)];
+      if (sites.length > 0) {
+        spinnerSites.set(
+          rel,
+          sites.sort((a, b) => a - b),
+        );
+      }
+    }
   }
 }
 
@@ -118,7 +211,7 @@ if (process.env.WRITE_BASELINE === "1") {
   for (const rule of Object.keys(violations)) {
     out[rule] = [...violations[rule]].sort();
   }
-  fs.writeFileSync(BASELINE, JSON.stringify(out, null, 2) + "\n");
+  fs.writeFileSync(BASELINE, `${JSON.stringify(out, null, 2)}\n`);
   console.log("[ui:check] baseline written");
   process.exit(0);
 }
@@ -147,6 +240,48 @@ for (const rule of Object.keys(violations)) {
     `[ui:check] ${rule}: total ${files.length}, new ${newCount}, baselined ${files.length - newCount}`,
   );
 }
+
+// The spinner rule.
+//
+// It does not use the baseline. It uses the allowlist, because a spinner that
+// stays needs a reason, and a reason that says "later" is how the rule dies.
+const loaderAllowlist = fs.existsSync(LOADER_ALLOWLIST)
+  ? JSON.parse(fs.readFileSync(LOADER_ALLOWLIST, "utf8"))
+  : {};
+for (const key of Object.keys(loaderAllowlist)) {
+  if (key.startsWith("_")) delete loaderAllowlist[key];
+}
+
+const spinnerFiles = [...spinnerSites.keys()].sort();
+let spinnerNew = 0;
+for (const file of spinnerFiles) {
+  const reason = loaderAllowlist[file];
+  const lines = spinnerSites.get(file);
+  if (reason) {
+    console.log(
+      `[ui:check] spinner allowlisted: ${file} (${lines.join(", ")}), ${reason}`,
+    );
+    continue;
+  }
+  spinnerNew += 1;
+  const message = `[ui:check] spinner-loader: ${file} (${lines.join(", ")})`;
+  if (SPINNER_RULE_MODE === "fail") {
+    console.error(`[ui:check] FAIL ${message}`);
+    failures += 1;
+  } else {
+    console.warn(`[ui:check] ${message}`);
+  }
+}
+for (const file of Object.keys(loaderAllowlist)) {
+  if (!spinnerSites.has(file)) {
+    console.warn(
+      `[ui:check] WARN spinner-loader: allowlisted file no longer draws a spinner: ${file}`,
+    );
+  }
+}
+console.log(
+  `[ui:check] spinner-loader: ${spinnerFiles.length} files, ${spinnerNew} not allowlisted, mode ${SPINNER_RULE_MODE}`,
+);
 
 // inventory check
 const uiFiles = fs

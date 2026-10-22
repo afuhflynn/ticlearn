@@ -41,7 +41,7 @@ export function useUpdateAffiliate() {
 }
 
 export function useApplyReferralCode() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (code: string) => {

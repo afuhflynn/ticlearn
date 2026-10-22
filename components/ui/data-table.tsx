@@ -1,7 +1,5 @@
 "use client";
 
-import * as React from "react";
-import { cn } from "@/lib/utils";
 import {
   Table,
   TableBody,
@@ -11,7 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export interface DataTableColumn<T> {
+export interface DataTableColumn<_T> {
   key: string;
   header: string;
   sortable?: boolean;
@@ -50,9 +48,9 @@ export function DataTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {rows.map((r, i) => (
+          {rows.map((r) => (
             <TableRow
-              key={i}
+              key={String(r.id ?? JSON.stringify(r))}
               onClick={onRowClick ? () => onRowClick(r) : undefined}
             >
               {columns.map((c) => (

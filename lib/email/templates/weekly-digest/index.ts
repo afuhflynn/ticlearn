@@ -7,7 +7,6 @@ import {
   h1,
   header,
   layout,
-  link,
   section,
   statRow,
   text,
@@ -56,7 +55,7 @@ export function render(props: Props): {
     statRow([
       { value: streak, label: "Day streak" },
       { value: quizzes, label: "Quizzes" },
-      { value: readinessPct + "%", label: "Readiness" },
+      { value: `${readinessPct}%`, label: "Readiness" },
     ]) +
     divider() +
     section(keepWorking) +

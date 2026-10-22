@@ -7,19 +7,19 @@ import {
 import { api } from "@/lib/api-client";
 import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
+import { readState } from "@/lib/read-state";
 
 export function useChatConversations() {
-  const { data, isLoading, error, refetch } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.chatConversations,
     queryFn: api.queries.chat.getConversations,
     ...family("chat"),
   });
 
   return {
-    conversations: data?.conversations ?? [],
-    isLoading,
-    error,
-    refetch,
+    conversations: query.data?.conversations ?? [],
+    ...readState(query),
+    refetch: query.refetch,
   };
 }
 
@@ -31,6 +31,10 @@ export function useMessagesPaginated(conversationId: string) {
     initialPageParam: null as string | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: !!conversationId,
+    // The chat family policy, like every other hook. The chat list needs the
+    // previous messages on screen, and that is the one thing it cannot do
+    // without a policy.
+    ...family("chat"),
   });
 
   const messages = query.data?.pages.flatMap((page) => page.messages) ?? [];
@@ -39,11 +43,15 @@ export function useMessagesPaginated(conversationId: string) {
     ...query,
     messages,
     conversationInfo: query.data?.pages[0]?.conversation ?? null,
+    isPending: query.isPending,
+    isFetching: query.isFetching,
+    isError: query.isError,
+    error: query.error,
   };
 }
 
 export function useChatConversation(id: string) {
-  const { data, isLoading, error, refetch } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.chatConversation(id),
     queryFn: () => api.queries.chat.getConversation(id),
     enabled: !!id,
@@ -51,11 +59,10 @@ export function useChatConversation(id: string) {
   });
 
   return {
-    conversation: data?.conversation,
-    messages: data?.conversation?.messages ?? [],
-    isLoading,
-    error,
-    refetch,
+    conversation: query.data?.conversation,
+    messages: query.data?.conversation?.messages ?? [],
+    ...readState(query),
+    refetch: query.refetch,
   };
 }
 

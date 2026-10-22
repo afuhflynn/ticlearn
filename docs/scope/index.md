@@ -33,7 +33,8 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 13 | Email system rebuild | Foundation | in-progress |
 | 41 | Data route caching with revalidation | Foundation | planned |
 | 34 | Rendering strategy and streaming boundaries | Foundation | in-progress |
-| 35 | Loading states and perceived speed | Foundation | planned |
+| 35 | Loading states and perceived speed | Foundation | in-progress |
+| 42 | Slow screen telemetry | Foundation | planned |
 | 14 | Landing page rebuild | Slice 1 | done |
 | 15 | Public page set | Slice 1 | done |
 | 16 | Onboarding | Slice 1 | done |

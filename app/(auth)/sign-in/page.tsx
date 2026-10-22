@@ -6,7 +6,6 @@ import {
   ArrowRight,
   Eye,
   EyeOff,
-  GraduationCap,
   Loader2,
   Lock,
   Mail,
@@ -69,7 +68,7 @@ export default function SignInPage() {
     setIsLoading(true);
     setError("");
     setShowVerificationPrompt(false);
-    const result = await signIn.email({
+    const _result = await signIn.email({
       email,
       password,
       fetchOptions: {
@@ -140,16 +139,15 @@ export default function SignInPage() {
     }
   };
 
-  if (sessionLoading) {
-    return (
-      <div className="flex min-h-[80vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  // The form renders at once. The session is resolved in the background and
+  // the redirect happens when it lands, so a student on a slow connection can
+  // start typing while the app works out whether they are already signed in.
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center">
+    <div
+      className="flex min-h-[80vh] items-center justify-center"
+      aria-busy={sessionLoading}
+    >
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

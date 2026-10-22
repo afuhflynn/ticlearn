@@ -19,6 +19,7 @@ import { Switch } from "@/components/ui/switch";
 import { useSettings, useUpdateProfile, useUpdateSettings } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import { useUploadThing } from "@/lib/uploadthing";
+import { SettingsSkeleton } from "../student-skeletons";
 
 export default function SettingsPage() {
   const { data: session, isPending: sessionLoading } = useSession();
@@ -179,11 +180,7 @@ export default function SettingsPage() {
   };
 
   if (sessionLoading || settingsLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SettingsSkeleton />;
   }
 
   return (

@@ -57,13 +57,16 @@ There are no tests. Vitest is installed and three test scripts exist, but there 
 - Money is XAF in whole units, never minor units. Credits are a separate balance from money, tracked through `lib/credits.ts`.
 - Do not commit secrets from `.env`. Use `.env.example` for documentation, and keep real keys out of client code.
 - When you add a new abstraction, it must replace an existing one for a clear slice, not sit beside it. Two competing patterns for the same job is how the drift in this repo started.
-- Keep the three implementation summaries at the bottom of this file current as work lands.
+- A spinner is not a loading state. In the student app and the admin console, a region that is waiting for its first data shows a shape matched skeleton, content that is already on screen stays on screen and dims a little with a thin bar at the top, a process shows a bar with a real number, and a long answer streams in with a caret. The only spinner allowed is inside a button that is performing the student's own action. `pnpm ui:check` reports every `Loader2` or `Loader` outside `components/ui/` and `components/ai-elements/` that is not inside a `Button`; a file that keeps one needs an entry in `scripts/loading-allowlist.json` with a one line reason.
+- The nuqs adapter and the `Suspense` boundary live in the route group layout, never in the root layout. The adapter reads the search params, and a read of the search params makes the whole client tree above it render on the client, so a root level adapter takes the prerendered public pages down with it. A new route group that reads the URL needs `<Suspense fallback={...}><NuqsAdapter>...</NuqsAdapter></Suspense>` in its own layout, with the boundary outside the adapter. A group created fresh, and not as a child of another layout, needs its own. See [docs/nuqs-setup.md](docs/nuqs-setup.md).
+- Keep the implementation summaries at the bottom of this file current as work lands.
 
 ## Context files
 
 - [lib/ai/AGENTS.md](lib/ai/AGENTS.md): AI model calls, the task registry, chat tools, and the cache
 - [app/api/AGENTS.md](app/api/AGENTS.md): route handler conventions, auth checks, plan limits, webhooks
 - [prisma/AGENTS.md](prisma/AGENTS.md): schema layout, the two parallel mock families, migrations, seeding
+- [docs/nuqs-setup.md](docs/nuqs-setup.md): the nuqs adapter and the Suspense boundary, per route group
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
@@ -213,12 +216,13 @@ Redesign onboarding flow for multi-level/multi-program support, seed general sec
 # AI Orchestration - Implementation Summary
 
 ## Goal
-Keep AI calls fast and predictable on a single model: one Gemini model, a 10 second timeout everywhere, and an in-memory cache for the tasks whose output does not change.
+Keep AI calls fast and predictable through OpenRouter: one server-side gateway, an ordered multi-model fallback chain, model health cooldowns, bounded timeouts, and an in-memory cache for tasks whose output does not change.
 
 ## How it works now
-- One model: `google("gemini-2.5-flash")`, built in `lib/ai/instances.ts` and used by `lib/ai/orchestrator.ts`.
-- Every call sets `timeout: TIMEOUT_MS` (10000) and `maxRetries: 1`.
-- `lib/ai/registry.ts` maps eight task names (`reasoning`, `fast_chat`, `quiz_gen`, `exam_gen`, `paper3_gen`, `paper3_eval`, `summarize`, `grading`) to a per-task cache TTL. `paper3_eval` and `grading` are set to 0, so they never cache. `getTaskConfig` throws on an unknown task name, so every new task must be registered.
+- OpenRouter is created lazily in `lib/ai/instances.ts`; model IDs are selected by `lib/ai/chain.ts` and `lib/ai/registry.ts`.
+- Structured and text calls walk the runnable chain inside the shared deadline. Chat gets a longer 120 second stream budget because tool calls can take several steps.
+- `lib/ai/breaker.ts` skips models in cooldown and records transport failures. Streaming can fall back only before its first text token; an active stream stays on its selected model.
+- `lib/ai/registry.ts` maps the registered task names to chain policy and cache TTL. `getTaskConfig` throws on an unknown task name, so every new task must be registered.
 - `lib/ai/cache.ts` is an in-memory `Map` keyed by a sha256 of the task name plus the prompt or messages. It dies with the process and is not shared across instances.
 - `generate` and `streamChat` are the two entry points. `generateTextWithFallback` and `streamChat` callers use them from routes.
 
@@ -237,14 +241,17 @@ Keep AI calls fast and predictable on a single model: one Gemini model, a 10 sec
 
 ## Gotchas in this area
 - `generateCritical` is a byte identical copy of `generate`, and `generateTextCritical` is a byte identical copy of `generateTextWithFallback`. The `Critical` names are aliases for backward compatibility, not a different behaviour. Do not expect the critical path to skip the cache or the retry; it does neither.
-- `registry.ts` declares a `chain: LanguageModel[]` array on every task and every array holds exactly one model. There is no fallback chain, so a Gemini outage fails the request. If you add a real chain, the orchestrator does not iterate it today; you must write that loop.
+- The normal task chains contain multiple OpenRouter models. The gated Fusion path is intentionally a separate explicit model for admin research and is not a fallback path.
+- A live provider test needs `OPENROUTER_API_KEY` in the server process. Unit tests mock the AI SDK boundary and cover model fallback without sending prompts to a provider.
 - The old model cache (a working model with a 5 minute TTL and a dead model with a 30 second negative TTL) described in earlier notes does not exist in the code. Ignore any reference to it.
 - The `cacheTtlMs` values are long (7 to 30 days) and the cache key is the prompt, so two users asking the same question share a cached answer. That is intended for `summarize`, `quiz_gen`, and the other generation tasks, and is why the grading tasks are set to 0.
-- `instances.ts` re-exports only `google`. The `@ai-sdk/openai`, `@ai-sdk/openai-compatible`, `@polar-sh/*`, and `@inngest/realtime` packages are installed but never imported. Do not assume an OpenAI path exists.
+- `instances.ts` owns the only provider construction. Do not import a provider directly from routes, jobs or components.
 
 ## Relevant Files
-- `lib/ai/instances.ts`: the single `google` re-export
-- `lib/ai/orchestrator.ts`: model instance, timeout, generate, streamChat, the four exported wrappers
+- `lib/ai/instances.ts`: lazy OpenRouter-compatible provider
+- `lib/ai/chain.ts`: model IDs, deadlines, classification and model construction
+- `lib/ai/breaker.ts`: health and cooldown state
+- `lib/ai/orchestrator.ts`: generate, streamChat, text generation and fallback walks
 - `lib/ai/registry.ts`: task names and cache TTLs
 - `lib/ai/cache.ts`: in-memory sha256 cache
 - `lib/ai/index.ts`: extraction, summarization, quiz and exam generation, grading helpers
@@ -252,6 +259,54 @@ Keep AI calls fast and predictable on a single model: one Gemini model, a 10 sec
 - `lib/ai/validators.ts`: `normalizeGeneratedQuestions`
 - `lib/paper3/`: Paper 3 evaluation, short answer grading, prompts, subject tasks (separate from `lib/ai/`)
 <!-- END:ai-orchestration-rework -->
+
+<!-- BEGIN:loading-states-rework -->
+# Loading states and perceived speed - Implementation Summary
+
+## Goal
+One rule for what a student sees while the app waits, on every student and admin surface. A region with no data shows a shape matched skeleton, content that is on screen stays and dims a little, a process shows a bar with a real number, a long answer streams in with a caret, and no spinner is a loading state anywhere.
+
+## The rule in one paragraph
+A region that has no data shows the shape of what is coming, at once, as a skeleton. A region that has data keeps it, dims it a little, and shows a thin bar at its top. A process shows a bar with a real number and the names of its stages. A long answer streams in with a caret. A failed read shows a plain notice and a retry. A spinner is not a loading state anywhere in the student app or the admin console, and the only spinner left in the codebase is inside a button that is performing the student's own action.
+
+## The primitives
+- `components/ui/pending-region.tsx`: `PendingRegion`, `RefreshBar`, `useLongWait`, `LONG_WAIT_MS`. The shape is authored next to the screen that uses it. The cross fade is a short fade, and it is instant when the reader has asked for reduced motion.
+- `components/ui/process-progress.tsx`: `ProcessProgress` and `ProgressLine`. A process is never a skeleton.
+- `components/ui/read-notice.tsx`: `ConnectionNotice` and `ReadFailureNotice`. A lost connection and a server error read differently.
+- `components/ai-elements/streaming-caret.tsx`: `StreamingCaret`, hidden from assistive technology.
+- `lib/read-state.ts`: `readState`, which turns a query result into the words a region understands. `isPolling` says the app is refreshing the read on its own, and a poll dims nothing and shows no bar.
+- `lib/note-stages.ts`: `NOTE_STAGES`, the ordered list the `NoteProcessingStage` enum describes.
+- `components/layout/RootFallback.tsx`: the neutral shell, the brand mark and generic blocks, and nothing else.
+
+## The tokens
+- `--content-dim-opacity` under `:root`, exposed as `opacity-content-dim` in the `@theme inline` block. That is the dim a region takes while it refreshes.
+- The skeleton pulse is stopped by a media query in `app/globals.css`, because a continuous repaint costs data on the phone this project is built for.
+
+## The enforcement
+- `scripts/check-ui-conventions.mjs` has a spinner rule. It reports every `Loader2` or `Loader` outside `components/ui/` and `components/ai-elements/` that is not inside a `Button`, and it fails.
+- `scripts/loading-allowlist.json` holds the files allowed to keep one, each with a one line reason. It is empty today.
+- The rule is written into the root `AGENTS.md`.
+
+## The data model
+- `Note.processingStage`, a nullable `NoteProcessingStage` column, written only by the `processNote` job. The enum order is the stage order, so the step count is the index plus one. The migration is `20261019120000_add_note_processing_stage`.
+
+## Gotchas in this area
+- **A spinner inside a button is not a loading state.** The checker knows the difference, so a spinner in a submit button is never reported.
+- **A poll is not a refresh.** A hook that gets this wrong dims the page every three seconds, which is worse than the flash the feature removes. `readState` takes the poll condition for exactly this reason.
+- **The nuqs adapter and the `Suspense` boundary live in the route group layout, never in the root layout.** The adapter reads the search params, and a read of the search params makes the whole client tree above it render on the client, so a root level adapter took the prerendered public pages down with it. `docs/nuqs-setup.md` has the setup for a layout created fresh.
+- **`Skeleton` is decorative, so it carries `aria-hidden`.** A screen reader should read the content when it lands, not a row of grey boxes.
+- **The ten second clock is the client's own.** It is counted from the moment the wait began, because a phone with the wrong date would otherwise see the line at the wrong time.
+- **The quiz deliberately has no stage column.** A quiz is one model call, and the honest indicator for it is a plain line with a time estimate, not a stage list that would be theatre.
+
+## Relevant files
+- `components/ui/pending-region.tsx`, `components/ui/process-progress.tsx`, `components/ui/read-notice.tsx`
+- `components/ai-elements/streaming-caret.tsx`, `components/layout/RootFallback.tsx`
+- `lib/read-state.ts`, `lib/note-stages.ts`, `lib/api-client.ts`
+- `hooks/useNotes.ts`, `hooks/useQuizzes.ts`, `hooks/useCommunity.ts`, `hooks/useUserStats.ts`, `hooks/useChat.ts`
+- `lib/inngest/functions.ts`, `prisma/schema.prisma`
+- `scripts/check-ui-conventions.mjs`, `scripts/loading-allowlist.json`, `scripts/measure-perceived-speed.ts`
+- `docs/nuqs-setup.md`, `docs/performance/perceived-speed.md`
+<!-- END:loading-states-rework -->
 
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system

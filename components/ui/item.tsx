@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useSemanticElements: ItemGroup supports arbitrary interactive children and keeps a div API.
+
 import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import type * as React from "react";

@@ -1,13 +1,20 @@
 "use client";
 
-import { FileText, Loader2, Medal, Trophy } from "lucide-react";
+import { FileText, Medal, Trophy } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { useEffect } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { PendingRegion } from "@/components/ui/pending-region";
 import { useLeaderboard } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
@@ -15,6 +22,7 @@ import {
   leaderboardViewDefaults,
   leaderboardViewParsers,
 } from "@/nuqs/leaderboard";
+import { LeaderboardListSkeleton } from "./leaderboard-skeleton";
 
 export default function LeaderboardPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -85,19 +93,6 @@ export default function LeaderboardPage() {
     </div>
   );
 
-  const renderEmptyState = () => (
-    <div className="flex flex-col items-center gap-4 py-12 text-center">
-      <Trophy className="h-12 w-12 text-muted-foreground" />
-      <div>
-        <p className="font-medium text-lg">No rankings yet</p>
-        <p className="text-sm text-muted-foreground">
-          Complete quizzes to appear on the leaderboard
-        </p>
-      </div>
-      <Button onClick={() => router.push("/dashboard")}>Start Learning</Button>
-    </div>
-  );
-
   const renderPagination = (totalPages: number) =>
     totalPages > 1 && (
       <div className="flex justify-center gap-2 mt-4">
@@ -126,11 +121,7 @@ export default function LeaderboardPage() {
   if (sessionPending) {
     return (
       <div className="space-y-8">
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-20" />
-          ))}
-        </div>
+        <LeaderboardListSkeleton />
       </div>
     );
   }
@@ -152,13 +143,16 @@ export default function LeaderboardPage() {
         </p>
       </div>
 
-      {quizData.isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map((i) => (
-            <Skeleton key={i} className="h-20" />
-          ))}
-        </div>
-      ) : (
+      <PendingRegion
+        fallback={<LeaderboardListSkeleton />}
+        isError={quizData.isError}
+        isOffline={quizData.isOffline}
+        isPending={quizData.isPending}
+        isRefreshing={quizData.isRefreshing}
+        label="The leaderboard"
+        longWaitMessage="Still loading the rankings. This normally takes a moment."
+        onRetry={() => void quizData.refetch()}
+      >
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -189,7 +183,20 @@ export default function LeaderboardPage() {
             ) : null}
 
             {quizLeaderboard.length === 0 ? (
-              renderEmptyState()
+              <Empty className="border-0 p-0">
+                <EmptyHeader>
+                  <EmptyMedia variant="icon">
+                    <Trophy className="size-4 text-muted-foreground" />
+                  </EmptyMedia>
+                  <EmptyTitle>No rankings yet</EmptyTitle>
+                  <EmptyDescription>
+                    Complete quizzes to appear on the leaderboard.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <Button onClick={() => router.push("/dashboard")}>
+                  Start Learning
+                </Button>
+              </Empty>
             ) : (
               <>
                 <div className="space-y-3">
@@ -202,13 +209,7 @@ export default function LeaderboardPage() {
             )}
           </CardContent>
         </Card>
-      )}
-      {quizData.isLoading ? (
-        <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading rankings
-        </div>
-      ) : null}
+      </PendingRegion>
     </div>
   );
 }

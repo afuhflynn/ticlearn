@@ -26,7 +26,7 @@ export async function GET() {
       },
     });
 
-    let createdNew = false;
+    let _createdNew = false;
     if (!affiliate) {
       affiliate = await prisma.affiliate.create({
         data: {
@@ -42,7 +42,7 @@ export async function GET() {
           earnings: true,
         },
       });
-      createdNew = true;
+      _createdNew = true;
     }
 
     const referredUsers = await prisma.user.findMany({

@@ -17,7 +17,7 @@ import matter from "gray-matter";
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PROMPTS_DIR = path.join(ROOT, "prompts");
 const CODE_DIRS = ["lib", "app", "components", "hooks"];
-const SKIP_DIRS = ["lib/prompts", "tests"];
+const SKIP_DIRS = ["lib/prompts", "lib/generated", "tests"];
 const MODEL_ALLOWLIST = [
   "google/gemini-3.7-flash",
   "google/gemini-2.5-flash",
@@ -113,7 +113,9 @@ function eachLiteral(text, callback) {
   const re =
     /(?:^|[^\w$])(?:export\s+)?(?:const|let|var)\s+([A-Za-z_$][\w$]*)(?:\s*:\s*[^=;]+?)?\s*=\s*(`(?:[^`\\]|\\.)*`|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|([A-Za-z_$][\w$]*)\s*:\s*(`(?:[^`\\]|\\.)*`|"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')/g;
   let match;
-  while ((match = re.exec(text)) !== null) {
+  while (true) {
+    match = re.exec(text);
+    if (match === null) break;
     callback(match[1] ?? match[3], match[2] ?? match[4]);
   }
 }
@@ -125,7 +127,15 @@ for (const dir of CODE_DIRS) {
     if (!/\.(ts|tsx)$/.test(file)) continue;
     if (SKIP_DIRS.some((s) => rel === s || rel.startsWith(`${s}/`))) continue;
     const text = fs.readFileSync(file, "utf8");
-    if (patterns.some((re) => ((re.lastIndex = 0), re.test(text)))) {
+    let hasPatternMatch = false;
+    for (const pattern of patterns) {
+      pattern.lastIndex = 0;
+      if (pattern.test(text)) {
+        hasPatternMatch = true;
+        break;
+      }
+    }
+    if (hasPatternMatch) {
       offenders.push(rel);
       continue;
     }

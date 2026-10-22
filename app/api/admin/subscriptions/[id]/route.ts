@@ -37,7 +37,7 @@ async function sendSubscriptionNotification(
   }
 }
 
-export async function GET(req: Request, { params }: RouteParams) {
+export async function GET(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),

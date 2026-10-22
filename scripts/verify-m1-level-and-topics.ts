@@ -41,6 +41,11 @@ async function main() {
   const photosynthesis = await prisma.topic.findFirst({
     where: { nameSlug: "photosynthesis" },
   });
+  if (!photosynthesis || !idsA[0]) {
+    throw new Error(
+      "Expected seeded photosynthesis topic and attached topic IDs",
+    );
+  }
   console.log("topic joins:", joins, "(expect 4)");
   console.log(
     "one shared topic row:",
@@ -78,7 +83,7 @@ async function main() {
   await prisma.topicPerformance.create({
     data: {
       noteId: noteB.id,
-      topicId: photosynthesis!.id,
+      topicId: photosynthesis?.id,
       masteryScore: 90,
       totalAttempts: 4,
       correctAttempts: 4,
@@ -183,7 +188,7 @@ async function main() {
   console.log("note rooted topics with no note left:", orphansForUser);
 
   await prisma.user.delete({ where: { id: user.id } });
-  await pruneOrphanTopics([...idsA, photosynthesis!.id]);
+  await pruneOrphanTopics([...idsA, photosynthesis?.id]);
   console.log(
     "scratch rows removed, user exists:",
     await prisma.user.count({ where: { id: user.id } }),

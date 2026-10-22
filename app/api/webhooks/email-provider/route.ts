@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       const cleaned = signature.replace(/^sha256=/, "");
       verified = constantTimeCompare(cleaned, expected);
     } else if (authHeader) {
-      verified = constantTimeCompare(authHeader, "Bearer " + secret);
+      verified = constantTimeCompare(authHeader, `Bearer ${secret}`);
     }
     if (!verified) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

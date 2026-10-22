@@ -4,7 +4,6 @@ import {
   ArrowLeft,
   ExternalLink,
   FileText,
-  Loader2,
   MessageCircle,
   RefreshCw,
   Sparkles,
@@ -24,17 +23,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ProcessProgress } from "@/components/ui/process-progress";
+import { ConnectionNotice } from "@/components/ui/read-notice";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDeleteNote, useNote, useProcessNote } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+import { NOTE_STAGES } from "@/lib/note-stages";
 import { correctionsForKeys } from "@/nuqs";
 import {
   noteDetailViewDefaults,
   noteDetailViewParsers,
 } from "@/nuqs/note-detail";
 import type { NoteWithRelations } from "@/types";
+import { NoteDetailSkeleton } from "./note-detail-skeleton";
 
 type NoteDetails = NoteWithRelations & {
   latestQuiz?: {
@@ -68,7 +71,7 @@ export default function NoteDetailPage() {
     if (patch.tab !== undefined && patch.tab !== tab) setTab(patch.tab);
   }, [rawParams, tab, setTab]);
 
-  const { data, isLoading, error } = useNote(params.id);
+  const { data, isPending, isError, isOffline, refetch } = useNote(params.id);
   const processNoteMutation = useProcessNote();
   const deleteNoteMutation = useDeleteNote();
 
@@ -99,15 +102,11 @@ export default function NoteDetailPage() {
     } catch (_error) {}
   };
 
-  if (sessionLoading || isLoading) {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
-    );
+  if (sessionLoading || isPending) {
+    return <NoteDetailSkeleton />;
   }
 
-  if (error || !note) {
+  if (isError || !note) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" asChild>
@@ -118,10 +117,16 @@ export default function NoteDetailPage() {
         </Button>
         <Card>
           <CardContent className="pt-6">
-            <p className="font-medium">This note could not be loaded.</p>
-            <p className="text-sm text-muted-foreground">
-              It may have been removed or you may not have access to it.
-            </p>
+            {isOffline ? (
+              <ConnectionNotice onRetry={() => refetch()} />
+            ) : (
+              <>
+                <p className="font-medium">This note could not be loaded.</p>
+                <p className="text-sm text-muted-foreground">
+                  It may have been removed or you may not have access to it.
+                </p>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -129,7 +134,9 @@ export default function NoteDetailPage() {
   }
 
   const isProcessing =
-    note.status === "UPLOADING" || note.status === "PROCESSING";
+    note.status === "UPLOADING" ||
+    note.status === "PROCESSING" ||
+    note.status === "ERROR";
 
   return (
     <div className="space-y-6">
@@ -219,16 +226,12 @@ export default function NoteDetailPage() {
 
       {isProcessing ? (
         <Card className="border-primary/30 bg-primary/5">
-          <CardContent className="pt-6 flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <div>
-              <p className="font-medium">Processing in background</p>
-              <p className="text-sm text-muted-foreground">
-                TiCLearn is extracting the PDF text, building a summary, and
-                generating key points. This page refreshes automaTiClly while
-                the job is still running.
-              </p>
-            </div>
+          <CardContent className="pt-6">
+            <ProcessProgress
+              stage={note.processingStage ?? null}
+              steps={NOTE_STAGES}
+              failed={note.status === "ERROR"}
+            />
           </CardContent>
         </Card>
       ) : null}

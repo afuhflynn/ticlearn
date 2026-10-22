@@ -7,7 +7,7 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(req: Request, { params }: RouteParams) {
+export async function POST(_req: Request, { params }: RouteParams) {
   try {
     const session = await auth.api.getSession({
       headers: await headers(),

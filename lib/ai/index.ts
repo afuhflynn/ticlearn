@@ -395,11 +395,12 @@ async function getFileFetchCandidates(
   }
 
   if (uploadthingKey) {
-    const fileKey = uploadthingKey.includes("ufs.sh/f/")
-      ? uploadthingKey.split("ufs.sh/f/").pop()!.split("?")[0]
-      : uploadthingKey.includes("utfs.io/f/")
-        ? uploadthingKey.split("utfs.io/f/").pop()!.split("?")[0]
-        : uploadthingKey;
+    const fileKey =
+      (uploadthingKey.includes("ufs.sh/f/")
+        ? uploadthingKey.split("ufs.sh/f/").pop()?.split("?")[0]
+        : uploadthingKey.includes("utfs.io/f/")
+          ? uploadthingKey.split("utfs.io/f/").pop()?.split("?")[0]
+          : uploadthingKey) ?? uploadthingKey;
 
     try {
       const { ufsUrl } = await utapi.generateSignedURL(fileKey);

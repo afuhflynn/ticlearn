@@ -92,6 +92,7 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
 
   return (
     <style
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: Chart CSS is generated from the trusted local chart configuration.
       dangerouslySetInnerHTML={{
         __html: Object.entries(THEMES)
           .map(
@@ -206,7 +207,7 @@ function ChartTooltipContent({
 
             return (
               <div
-                key={index}
+                key={`${key}-${item.name ?? item.value ?? "item"}`}
                 className={cn(
                   "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-muted-foreground",
                   indicator === "dot" && "items-center",
@@ -304,7 +305,7 @@ function ChartLegendContent({
 
           return (
             <div
-              key={index}
+              key={`${key}-${item.dataKey ?? item.value ?? "item"}`}
               className={cn(
                 "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-muted-foreground",
               )}

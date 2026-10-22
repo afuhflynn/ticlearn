@@ -61,6 +61,9 @@
     0px 2px 3px 0px hsl(0 0% 0% / 0.16), 0px 8px 10px -1px hsl(0 0% 0% / 0.16);
   --shadow-2xl: 0px 2px 3px 0px hsl(0 0% 0% / 0.4);
   --tracking-normal: -0.025em;
+  /* How much a region dims while it refreshes. The content stays readable,
+     the student can tell the numbers are about to change. */
+  --content-dim-opacity: 0.62;
 }
 
 .dark {
@@ -183,6 +186,10 @@
   --tracking-wide: calc(var(--tracking-normal) + 0.025em);
   --tracking-wider: calc(var(--tracking-normal) + 0.05em);
   --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+
+  /* The dim a region takes while it refreshes. The value lives under :root
+     and .dark, this only exposes it. */
+  --opacity-content-dim: var(--content-dim-opacity);
 }
 
 @layer base {
@@ -252,4 +259,26 @@
       max-width: 1400px;
     }
   }
+}
+
+/* The skeleton pulse is a continuous repaint, and a repaint costs data on the
+   two gigabyte phone this project is built for. A reader who has asked for
+   reduced motion gets a static block instead, and the swap to the real
+   content is instant. */
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="skeleton"] {
+    animation: none;
+  }
+}
+
+/* The caret sits at the end of the last line of the answer, so a long answer
+   never reads as a stalled one. It is drawn inside every paragraph of the
+   answer and only the last one keeps it. These rules sit outside a cascade
+   layer on purpose, so they beat the utility class on the caret itself. */
+.chat-answer p > [data-slot="streaming-caret"] {
+  display: none;
+}
+
+.chat-answer p:last-child > [data-slot="streaming-caret"] {
+  display: inline-block;
 }

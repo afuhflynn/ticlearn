@@ -2,7 +2,6 @@
 
 import {
   AlertCircle,
-  ArrowRight,
   BarChart3,
   Check,
   Clock,
@@ -50,12 +49,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { usePlan, useUsage } from "@/hooks";
+import { useUsage } from "@/hooks";
 import { correctionsForKeys } from "@/nuqs";
 import {
   subscriptionViewDefaults,
   subscriptionViewParsers,
 } from "@/nuqs/subscription";
+import { SubscriptionSkeleton } from "../student-skeletons";
 
 const MONTHLY_CREDIT_BONUS: Record<string, number> = {
   STARTER: 400,
@@ -486,11 +486,7 @@ export default function SubscriptionPage() {
   };
 
   if (usageLoading || isLoadingSettings) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SubscriptionSkeleton />;
   }
 
   const getUsagePercentage = (used: number, limit: number) => {
@@ -618,7 +614,7 @@ export default function SubscriptionPage() {
                         ) : plan === p && status === "ACTIVE" ? (
                           "Current Plan"
                         ) : isPending && plan === p ? (
-                          <>Payment Pending</>
+                          "Payment Pending"
                         ) : (
                           "Upgrade Now"
                         )}

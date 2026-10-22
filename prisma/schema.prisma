@@ -205,6 +205,7 @@ model Note {
   keyPoints         String[]           @map("key_points")
   summary           String?            @db.Text
   status            NoteStatus         @default(UPLOADING)
+  processingStage   NoteProcessingStage? @map("processing_stage")
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -613,6 +614,14 @@ enum NoteStatus {
   PROCESSING
   READY
   ERROR
+}
+
+// The stage the note pipeline is in. The order of the values is the order of
+// the stages, so the step count out of the total is the index plus one.
+enum NoteProcessingStage {
+  EXTRACTING
+  SUMMARIZING
+  INDEXING
 }
 
 enum QuizStatus {

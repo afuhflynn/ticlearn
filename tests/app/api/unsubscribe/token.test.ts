@@ -26,7 +26,7 @@ beforeEach(() => {
 
 describe("GET /api/unsubscribe/[token]", () => {
   it("returns 404 for an invalid token", async () => {
-    const res = await GET(new Request("http://localhost") as NextRequest, {
+    const _res = await GET(new Request("http://localhost") as NextRequest, {
       params: Promise.resolve({ token: "!!!" }),
     });
     // token decodes to garbage; findUnique returns null in this mock only if we set it

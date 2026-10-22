@@ -1,6 +1,5 @@
 import { subject } from "@/lib/email/content/subjects";
 import {
-  button,
   card,
   divider,
   footer,
@@ -31,7 +30,7 @@ export function render(props: Props): {
     section(h1("New payment received")) +
     statRow([
       { value: planLabel, label: "Plan" },
-      { value: amountFcfa.toLocaleString("en-US") + " FCFA", label: "Amount" },
+      { value: `${amountFcfa.toLocaleString("en-US")} FCFA`, label: "Amount" },
       { value: reference, label: "Reference" },
     ]) +
     divider() +

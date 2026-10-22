@@ -1,8 +1,14 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
 import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
+import { readState } from "@/lib/read-state";
 import type { NoteSummary, NoteWithRelations } from "@/types";
 
 type NoteMutationPayload = {
@@ -13,34 +19,39 @@ type NoteMutationPayload = {
   fileType: "PDF" | "IMAGE" | "WORD";
 };
 
+/** True while a note is still being worked on, so the list is being polled. */
+function hasWorkInFlight(notes: NoteSummary[]) {
+  return notes.some(
+    (note) =>
+      note.status === "UPLOADING" ||
+      note.status === "PROCESSING" ||
+      note.latestQuiz?.status === "GENERATING",
+  );
+}
+
 export function useNotes() {
-  const { data, isLoading, error, refetch } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.notes,
     queryFn: api.queries.notes.getAll,
+    placeholderData: keepPreviousData,
     refetchInterval: (query) => {
       const notes = query.state.data?.notes ?? [];
-      const shouldPoll = notes.some(
-        (note: { status: string; latestQuiz?: { status: string } | null }) =>
-          note.status === "UPLOADING" ||
-          note.status === "PROCESSING" ||
-          note.latestQuiz?.status === "GENERATING",
-      );
-
-      return shouldPoll ? 3000 : false;
+      return hasWorkInFlight(notes) ? 3000 : false;
     },
     ...family("notes"),
   });
 
+  const notes = query.data?.notes ?? [];
+
   return {
-    notes: data?.notes ?? [],
-    isLoading,
-    error,
-    refetch,
+    notes,
+    ...readState(query, hasWorkInFlight(notes)),
+    refetch: query.refetch,
   };
 }
 
 export function useNote(id: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: queryKeys.note(id),
     queryFn: async () => api.queries.notes.getById(id),
     enabled: !!id,
@@ -63,6 +74,22 @@ export function useNote(id: string) {
     },
     ...family("notes"),
   });
+
+  const note = query.data?.note as
+    | (NoteWithRelations & { latestQuiz?: { status: string } | null })
+    | undefined;
+
+  return {
+    ...query,
+    note,
+    ...readState(
+      query,
+      note?.status === "UPLOADING" ||
+        note?.status === "PROCESSING" ||
+        note?.latestQuiz?.status === "GENERATING",
+    ),
+    refetch: query.refetch,
+  };
 }
 
 export function useUploadNote() {

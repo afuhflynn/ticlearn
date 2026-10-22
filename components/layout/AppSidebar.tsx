@@ -10,7 +10,6 @@ import {
   Coins,
   Crown,
   Flame,
-  GraduationCap,
   HeartHandshake,
   LayoutDashboard,
   Link2,
@@ -92,7 +91,7 @@ export function AppSidebar() {
   const { isLoading: planLoading, plan } = usePlan();
   const { data: creditsData, isPending: creditsPending } = useCredits();
   const { usage, chatDailyUsage } = useUsage();
-  const { stats, isLoading: statsLoading } = useUserStats();
+  const { stats, isPending: statsPending } = useUserStats();
 
   const [readiness, setReadiness] = useState<{ readiness: number } | null>(
     null,
@@ -150,7 +149,7 @@ export function AppSidebar() {
               <p className="truncate text-sm font-semibold leading-tight">
                 Hi, {userName.split(" ")[0]}
               </p>
-              {!statsLoading && streak > 0 && (
+              {!statsPending && streak > 0 && (
                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Flame className="h-3 w-3 text-orange-500" />
                   <span>{streak}-day streak</span>

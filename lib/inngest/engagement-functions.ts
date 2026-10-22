@@ -2,7 +2,7 @@ import type { CampaignType } from "@/lib/email/send";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 
-const BATCH_SIZE = 50;
+const _BATCH_SIZE = 50;
 const CAMPAIGN_BATCH_SIZE = 50;
 const BATCH_DELAY_MS = 2_000;
 

@@ -4,17 +4,9 @@ import {
   extractTextFromWord,
   summarizeText,
 } from "@/lib/ai";
-import { grantCredits } from "@/lib/credits";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { attachTopicsToNote } from "@/lib/topics";
-import {
-  sendEmailTransactional,
-  sendEmailLifecycle,
-  sendEmailPayment,
-  sendEmailCampaign,
-  sendWeeklyDigest,
-} from "@/lib/inngest/email-functions";
 
 export const processNote = inngest.createFunction(
   {
@@ -43,9 +35,12 @@ export const processNote = inngest.createFunction(
         return { success: false, error: "Note not found" };
       }
 
+      // Every run of the job overwrites the stage, so a note that is processed
+      // again starts from the first stage and not from where it stopped last
+      // time.
       await prisma.note.update({
         where: { id: noteId },
-        data: { status: "PROCESSING" },
+        data: { status: "PROCESSING", processingStage: "EXTRACTING" },
       });
 
       const userSettings = await prisma.userSettings.findUnique({
@@ -78,7 +73,7 @@ export const processNote = inngest.createFunction(
       };
 
       console.log(
-        `[Inngest] Starting extraction for fileType: ${note.fileType}, uploadthingKey: ${note.uploadthingKey ? note.uploadthingKey.substring(0, 30) + "..." : "MISSING"}`,
+        `[Inngest] Starting extraction for fileType: ${note.fileType}, uploadthingKey: ${note.uploadthingKey ? `${note.uploadthingKey.substring(0, 30)}...` : "MISSING"}`,
       );
 
       switch (note.fileType) {
@@ -126,9 +121,17 @@ export const processNote = inngest.createFunction(
       }
 
       console.log("[Inngest] Generating summary...");
+      await prisma.note.update({
+        where: { id: noteId },
+        data: { processingStage: "SUMMARIZING" },
+      });
       const summaryResult = await summarizeText(extractedText, note.userId);
 
       console.log("[Inngest] Attaching topics to the note...");
+      await prisma.note.update({
+        where: { id: noteId },
+        data: { processingStage: "INDEXING" },
+      });
       await attachTopicsToNote(noteId, summaryResult.topics);
 
       console.log("[Inngest] Updating note in database...");
@@ -139,6 +142,7 @@ export const processNote = inngest.createFunction(
           summary: summaryResult.summary,
           keyPoints: summaryResult.keyPoints,
           status: "READY",
+          processingStage: null,
         },
       });
 

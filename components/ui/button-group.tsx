@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useSemanticElements: Button groups preserve the Radix-compatible div API.
+
 import { cva, type VariantProps } from "class-variance-authority";
 import { Slot } from "radix-ui";
 import { Separator } from "@/components/ui/separator";
