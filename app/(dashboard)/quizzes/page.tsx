@@ -1,6 +1,6 @@
 "use client";
 
-import { ListTodo, Loader2, Play, Plus, Trash2 } from "lucide-react";
+import { ListTodo, Play, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
@@ -14,12 +14,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
+import { PendingRegion, useLongWait } from "@/components/ui/pending-region";
+import { ProgressLine } from "@/components/ui/process-progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UrlSearchInput } from "@/components/url-search-input";
 import { useDeleteQuiz, useQuizzes } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import { correctionsForKeys } from "@/nuqs";
 import { quizzesViewDefaults, quizzesViewParsers } from "@/nuqs/quizzes";
+import { QuizListSkeleton } from "./quizzes-skeleton";
 
 type QuizListItem = {
   id: string;
@@ -28,6 +38,23 @@ type QuizListItem = {
   questionCount: number;
   status: "GENERATING" | "READY" | "ERROR";
 };
+
+/**
+ * A quiz is one model call, so the honest indicator is a plain line with a
+ * time estimate and not a stage list. The line only appears once the wait
+ * passes ten seconds, measured on the client's own clock.
+ */
+function QuizGeneratingLine() {
+  const isLongWait = useLongWait(true);
+  if (!isLongWait) return null;
+  return (
+    <ProgressLine
+      className="mt-3"
+      message="Your quiz is still being written."
+      estimate="It usually takes about a minute."
+    />
+  );
+}
 
 export default function QuizzesPage() {
   const { data: session, isPending: sessionPending } = useSession();
@@ -47,7 +74,8 @@ export default function QuizzesPage() {
     if (patch.q !== undefined && patch.q !== q) setQ(patch.q);
   }, [rawParams, q, setQ]);
 
-  const { quizzes, isLoading } = useQuizzes("my");
+  const { quizzes, isPending, isRefreshing, isError, isOffline, refetch } =
+    useQuizzes("my");
   const deleteQuiz = useDeleteQuiz();
 
   const hasGeneratingQuiz = (quizzes as QuizListItem[])?.some(
@@ -73,8 +101,9 @@ export default function QuizzesPage() {
 
   if (sessionPending) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-8">
+        <Skeleton className="h-9 w-48" />
+        <QuizListSkeleton />
       </div>
     );
   }
@@ -103,10 +132,7 @@ export default function QuizzesPage() {
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight">My Quizzes</h1>
             {hasGeneratingQuiz && (
-              <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Loader2 className="h-3 w-3 animate-spin" />
-                Generating
-              </span>
+              <span className="text-xs text-muted-foreground">Generating</span>
             )}
           </div>
           <p className="text-muted-foreground">
@@ -128,82 +154,91 @@ export default function QuizzesPage() {
         ariaLabel="Search quizzes"
       />
 
-      {isLoading ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48" />
-          ))}
-        </div>
-      ) : filteredQuizzes.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {filteredQuizzes.map((quiz) => (
-            <Card key={quiz.id} className="transition-all hover:shadow-lg">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="line-clamp-1">{quiz.title}</CardTitle>
-                    <CardDescription className="line-clamp-1">
-                      {quiz.noteTitle}
-                    </CardDescription>
-                  </div>
-                  <Badge
-                    variant={quiz.status === "READY" ? "default" : "secondary"}
-                  >
-                    {quiz.status}
-                  </Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-muted-foreground">
-                    {quiz.questionCount} questions
-                  </span>
-                  <div className="flex gap-2">
-                    {quiz.status === "READY" ? (
-                      <Button size="sm" asChild>
-                        <Link href={`/quizzes/${quiz.id}`}>
-                          <Play className="mr-1 h-4 w-4" />
-                          Start
-                        </Link>
-                      </Button>
-                    ) : (
-                      <Button size="sm" disabled>
-                        <Loader2 className="mr-1 h-4 w-4 animate-spin" />
-                        Generating
-                      </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(quiz.id)}
+      <PendingRegion
+        fallback={<QuizListSkeleton />}
+        isError={isError}
+        isOffline={isOffline}
+        isPending={isPending}
+        isRefreshing={isRefreshing}
+        label="Your quizzes"
+        longWaitMessage="Still loading your quizzes. This normally takes a moment."
+        onRetry={() => void refetch()}
+      >
+        {filteredQuizzes.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {filteredQuizzes.map((quiz) => (
+              <Card key={quiz.id} className="transition-all hover:shadow-lg">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="line-clamp-1">
+                        {quiz.title}
+                      </CardTitle>
+                      <CardDescription className="line-clamp-1">
+                        {quiz.noteTitle}
+                      </CardDescription>
+                    </div>
+                    <Badge
+                      variant={
+                        quiz.status === "READY" ? "default" : "secondary"
+                      }
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
+                      {quiz.status}
+                    </Badge>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 py-12">
-            <ListTodo className="h-12 w-12 text-muted-foreground" />
-            <div className="text-center">
-              <p className="font-medium">No quizzes yet</p>
-              <p className="text-sm text-muted-foreground">
-                Generate your first quiz from uploaded notes
-              </p>
-            </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">
+                      {quiz.questionCount} questions
+                    </span>
+                    <div className="flex gap-2">
+                      {quiz.status === "READY" ? (
+                        <Button size="sm" asChild>
+                          <Link href={`/quizzes/${quiz.id}`}>
+                            <Play className="mr-1 h-4 w-4" />
+                            Start
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button size="sm" disabled>
+                          Generating
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(quiz.id)}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </div>
+                  {quiz.status === "GENERATING" ? <QuizGeneratingLine /> : null}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Empty className="border-0 p-0">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <ListTodo className="size-4 text-muted-foreground" />
+              </EmptyMedia>
+              <EmptyTitle>No quizzes yet</EmptyTitle>
+              <EmptyDescription>
+                Generate your first quiz from uploaded notes.
+              </EmptyDescription>
+            </EmptyHeader>
             <Button asChild>
               <Link href="/upload">
                 <Plus className="mr-2 h-4 w-4" />
                 Generate Quiz
               </Link>
             </Button>
-          </CardContent>
-        </Card>
-      )}
+          </Empty>
+        )}
+      </PendingRegion>
     </div>
   );
 }

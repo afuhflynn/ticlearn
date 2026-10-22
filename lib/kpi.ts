@@ -414,7 +414,7 @@ export async function computeMRR() {
 
 export async function computeActivationFunnel() {
   const signedUp = await prisma.user.count({ where: { role: "USER" } });
-  const onboardingSkipped = await prisma.user.count({
+  const _onboardingSkipped = await prisma.user.count({
     where: {
       role: "USER",
       onboardingSkipped: true,

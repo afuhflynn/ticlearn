@@ -2,7 +2,7 @@ import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { normalizeStoredParts } from "@/lib/chat-messages";
-import { deleteFile, getUploadThingFileKey, utapi } from "@/lib/file";
+import { getUploadThingFileKey, utapi } from "@/lib/file";
 import { prisma } from "@/lib/prisma";
 
 const MESSAGES_PER_PAGE = 30;

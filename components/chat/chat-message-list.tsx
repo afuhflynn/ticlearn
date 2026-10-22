@@ -7,15 +7,20 @@ import {
   type ToolUIPart,
   type UIMessage,
 } from "ai";
-import { CheckIcon, CopyIcon, FileIcon, FileTextIcon } from "lucide-react";
-import { useState } from "react";
+import {
+  CheckIcon,
+  CopyIcon,
+  FileIcon,
+  FileTextIcon,
+  RefreshCw,
+} from "lucide-react";
+import { type ComponentProps, useMemo, useState } from "react";
 import { toast } from "sonner";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Loader } from "@/components/ai-elements/loader";
 import {
   Message,
   MessageAction,
@@ -34,6 +39,7 @@ import {
   SourcesContent,
   SourcesTrigger,
 } from "@/components/ai-elements/sources";
+import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
 import {
   Tool,
   ToolContent,
@@ -42,6 +48,7 @@ import {
   ToolOutput,
 } from "@/components/ai-elements/tool";
 import { TIP_NAME } from "@/components/chat/constants";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 function normalizeMarkdownForDisplay(content: string) {
@@ -211,7 +218,13 @@ function FileParts({ parts }: { parts: UIMessage["parts"] }) {
   );
 }
 
-function MessageBody({ message }: { message: UIMessage }) {
+function MessageBody({
+  message,
+  isStreaming = false,
+}: {
+  message: UIMessage;
+  isStreaming?: boolean;
+}) {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const text = message.parts
     .filter(isTextUIPart)
@@ -232,6 +245,21 @@ function MessageBody({ message }: { message: UIMessage }) {
           .map((part) => summarizeToolPart(part))
           .join("\n")
       : "";
+
+  // The caret is drawn inside every paragraph of the answer and the stylesheet
+  // keeps it in the last one only, so it sits at the end of the text while
+  // the tokens are still arriving.
+  const components = useMemo(
+    () => ({
+      p: ({ children, ...props }: ComponentProps<"p">) => (
+        <p {...props}>
+          {children}
+          {isStreaming ? <StreamingCaret /> : null}
+        </p>
+      ),
+    }),
+    [isStreaming],
+  );
 
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -277,9 +305,11 @@ function MessageBody({ message }: { message: UIMessage }) {
 
       {text.trim() || toolSummary ? (
         <MessageContent>
-          <MessageResponse>
-            {normalizedText.trim() || toolSummary}
-          </MessageResponse>
+          <div className="chat-answer">
+            <MessageResponse components={components}>
+              {normalizedText.trim() || toolSummary}
+            </MessageResponse>
+          </div>
         </MessageContent>
       ) : null}
 
@@ -303,35 +333,89 @@ function MessageBody({ message }: { message: UIMessage }) {
   );
 }
 
+/**
+ * The thinking line. It sits inside the answer bubble and it is the only
+ * thing shown while the model has not answered. The first token replaces it.
+ */
+function ThinkingBubble() {
+  return (
+    <Message from="assistant">
+      <MessageContent>
+        <p className="text-sm text-muted-foreground">{TIP_NAME} is thinking…</p>
+      </MessageContent>
+    </Message>
+  );
+}
+
+/**
+ * The bubble for a failed answer. A plain line and a retry, never a lost
+ * answer that reads as broken.
+ */
+function FailedBubble({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <Message from="assistant">
+      <MessageContent>
+        <p className="text-sm text-muted-foreground">
+          That answer did not make it through. Nothing was lost, so you can ask
+          again.
+        </p>
+        {onRetry ? (
+          <Button size="sm" variant="outline" onClick={onRetry}>
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Try again
+          </Button>
+        ) : null}
+      </MessageContent>
+    </Message>
+  );
+}
+
 export function ChatMessageList({
   messages,
   status,
   emptyState,
+  onRetry,
   className,
 }: {
   messages: UIMessage[];
   status: "submitted" | "streaming" | "ready" | "error";
   emptyState?: React.ReactNode;
+  /** Sends the last question again through the same transport. */
+  onRetry?: () => void;
   className?: string;
 }) {
+  const lastMessage = messages[messages.length - 1];
+  const lastMessageHasText = lastMessage
+    ? lastMessage.parts.some(
+        (part) => isTextUIPart(part) && part.text.trim().length > 0,
+      )
+    : false;
+
+  // The thinking line is shown until the first token arrives, and the first
+  // token replaces it.
+  const isThinking =
+    (status === "submitted" || status === "streaming") &&
+    (!lastMessage || lastMessage.role !== "assistant" || !lastMessageHasText);
+
+  const isStreamingAnswer = status === "streaming" && lastMessageHasText;
+
   return (
     <Conversation className={cn("h-full", className)}>
       <ConversationContent>
         {messages.length === 0 && emptyState ? emptyState : null}
 
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <Message from={message.role} key={message.id}>
-            <MessageBody message={message} />
+            <MessageBody
+              message={message}
+              isStreaming={isStreamingAnswer && index === messages.length - 1}
+            />
           </Message>
         ))}
 
-        {(status === "submitted" || status === "streaming") &&
-        messages[messages.length - 1]?.role !== "assistant" ? (
-          <div className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground">
-            <Loader size={14} />
-            <span>{TIP_NAME} is thinking…</span>
-          </div>
-        ) : null}
+        {isThinking ? <ThinkingBubble /> : null}
+
+        {status === "error" ? <FailedBubble onRetry={onRetry} /> : null}
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>

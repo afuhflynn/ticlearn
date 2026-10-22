@@ -20,8 +20,8 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const status = searchParams.get("status");
-    const page = parseInt(searchParams.get("page") || "1");
-    const limit = parseInt(searchParams.get("limit") || "20");
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "20", 10);
     const skip = (page - 1) * limit;
 
     const where = status ? { status: status as any } : {};

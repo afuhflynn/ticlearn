@@ -1,9 +1,7 @@
 import { NextSSRPlugin } from "@uploadthing/react/next-ssr-plugin";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata } from "next";
-import { NuqsAdapter } from "nuqs/adapters/next/app";
 import "./globals.css";
-import { Suspense } from "react";
 import { extractRouterConfig } from "uploadthing/server";
 import { ReferralProcessor } from "@/components/referral-processor";
 import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
@@ -82,24 +80,20 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <OrganizationSchema />
-        <NuqsAdapter>
-          <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <Suspense>
-              <QueryProvider>
-                {children}
-                <Toaster position="top-right" richColors />
-                <Analytics />
-                <ReferralProcessor />
-              </QueryProvider>
-            </Suspense>
-          </ThemeProvider>
-        </NuqsAdapter>
+        <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <QueryProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+            <Analytics />
+            <ReferralProcessor />
+          </QueryProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

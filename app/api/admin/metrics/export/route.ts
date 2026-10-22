@@ -21,7 +21,7 @@ export async function GET(req: Request) {
     const metricsFilter = searchParams.get("metrics") || "";
 
     const fromDate = new Date(from);
-    const toDate = new Date(to + "T23:59:59.999Z");
+    const toDate = new Date(`${to}T23:59:59.999Z`);
 
     const where: Record<string, unknown> = {
       date: { gte: fromDate, lte: toDate },

@@ -1,4 +1,4 @@
-import { ExternalLink, Globe, GraduationCap, Mail } from "lucide-react";
+import { ExternalLink, Globe, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa6";

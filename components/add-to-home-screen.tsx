@@ -1,6 +1,6 @@
 "use client";
 
-import { Plus, Smartphone, X } from "lucide-react";
+import { Plus, Smartphone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,7 +42,7 @@ export function AddToHomeScreen({ children }: AddToHomeScreenProps) {
 
     // Show prompt after user has visited enough pages (simulated with localStorage)
     const visitedPages = localStorage.getItem("ticlearn_pages_visited");
-    const pageCount = parseInt(visitedPages || "0");
+    const pageCount = parseInt(visitedPages || "0", 10);
 
     if (pageCount >= 2 && !localStorage.getItem("ticlearn_pwa_dismissed")) {
       // Delay showing the prompt
@@ -68,7 +68,7 @@ export function AddToHomeScreen({ children }: AddToHomeScreenProps) {
     if (!isMounted) return;
 
     const visited = localStorage.getItem("ticlearn_pages_visited");
-    const count = (parseInt(visited || "0") + 1).toString();
+    const count = (parseInt(visited || "0", 10) + 1).toString();
     localStorage.setItem("ticlearn_pages_visited", count);
   }, [isMounted]);
 

@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
 import { resolveChain } from "@/lib/ai/registry";
+import { prisma } from "@/lib/prisma";
 
 async function main() {
   const stamp = Date.now();

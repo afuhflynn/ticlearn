@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useSemanticElements: Carousel containers and slides use the established ARIA pattern intentionally.
+
 "use client";
 
 import useEmblaCarousel, {

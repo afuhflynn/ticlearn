@@ -115,7 +115,7 @@ export function PricingPlans({ plans }: { plans: Plan[] }) {
               <ul className="space-y-3">
                 {plan.features.map((feature) => (
                   <li key={feature} className="flex items-start gap-3">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-chart-1" />
                     <span className="text-sm">{feature}</span>
                   </li>
                 ))}

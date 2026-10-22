@@ -14,7 +14,7 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get("limit") || "5");
+    const limit = parseInt(searchParams.get("limit") || "5", 10);
 
     const recentAttempts = await prisma.quizAttempt.findMany({
       where: { userId: session.user.id },

@@ -9,6 +9,7 @@ interface ErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
+
 export default function ErrorPage({ error, reset }: ErrorProps) {
   useEffect(() => {
     // Log the error to an error reporting service
@@ -16,23 +17,21 @@ export default function ErrorPage({ error, reset }: ErrorProps) {
   }, [error]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center w-full">
-      <div className="flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mb-6">
+    <div className="flex w-full min-h-[70vh] flex-col items-center justify-center px-4 text-center">
+      <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
         <AlertCircle className="h-8 w-8 text-destructive" />
       </div>
-      <h2 className="text-2xl font-semibold mb-4">Something went wrong!</h2>
-      <p className="text-muted-foreground mb-8 max-w-md">
-        We apologize for the inconvenience. Please try again or return to the
-        home page.
+      <h2 className="mb-4 text-2xl font-semibold">Something went wrong</h2>
+      <p className="mb-8 max-w-md text-muted-foreground">
+        This page could not be shown. Nothing you did is lost, so try again and
+        if it keeps happening go back to the dashboard.
       </p>
-      <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+      <div className="flex w-full flex-col gap-4 md:w-auto md:flex-row">
         <Button onClick={reset} variant="outline" className="w-full md:w-auto">
-          <span className="flex flex-row items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
-            Try again
-          </span>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try again
         </Button>
-        <Button asChild className="w-full md:w-auto font-sans">
+        <Button asChild className="w-full font-sans md:w-auto">
           <Link href="/" className="flex flex-row items-center justify-center">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Home

@@ -1,5 +1,5 @@
+import { isSuppressed, SuppressionError, sendEmail } from "../lib/email/send";
 import { prisma } from "../lib/prisma";
-import { isSuppressed, sendEmail, SuppressionError } from "../lib/email/send";
 
 const TEST_EMAIL = "verify-suppression-test@example.com";
 

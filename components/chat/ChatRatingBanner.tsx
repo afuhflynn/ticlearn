@@ -63,7 +63,7 @@ export function ChatRatingBanner({
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [isIdle, rated, messages.length]);
+  }, [isIdle, rated]);
 
   if (rated || !showBanner) return null;
 

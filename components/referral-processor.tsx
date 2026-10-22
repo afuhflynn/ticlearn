@@ -1,10 +1,10 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useSession } from "@/lib/auth-client";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ProgressLine } from "@/components/ui/process-progress";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useSession } from "@/lib/auth-client";
 
 export function ReferralProcessor() {
   const { data: session, isPending } = useSession();
@@ -48,8 +48,11 @@ export function ReferralProcessor() {
 
   if (isPending || !processed) {
     const content = (
-      <div className="flex items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex items-center justify-center py-4">
+        <ProgressLine
+          message="Setting up your account."
+          estimate="This only takes a moment."
+        />
       </div>
     );
     if (isMobile) {

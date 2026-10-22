@@ -14,9 +14,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { useFeedbacks, useSubmitFeedback } from "@/hooks/useFeedback";
 import { useSession } from "@/lib/auth-client";
+import { placeholderKeys } from "@/lib/placeholder-keys";
+import { FeedbackSkeleton } from "../student-skeletons";
 
 const feedbackTypes = [
   {
@@ -49,11 +52,7 @@ export default function FeedbackPage() {
   const submitFeedback = useSubmitFeedback();
 
   if (isPending) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <FeedbackSkeleton />;
   }
 
   if (!session) {
@@ -173,8 +172,10 @@ export default function FeedbackPage() {
         </CardHeader>
         <CardContent>
           {isLoadingFeedbacks ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <div className="space-y-3">
+              {placeholderKeys(3).map((key) => (
+                <Skeleton key={key} className="h-16 w-full" />
+              ))}
             </div>
           ) : feedbacks.length > 0 ? (
             <div className="space-y-4">

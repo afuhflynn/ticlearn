@@ -42,7 +42,7 @@ export async function GET(req: Request) {
     const search = searchParams.get("search") || "";
 
     const fromDate = new Date(from);
-    const toDate = new Date(to + "T23:59:59.999Z");
+    const toDate = new Date(`${to}T23:59:59.999Z`);
 
     // Summary cards - always returned
     const dayStart = new Date(new Date().setHours(0, 0, 0, 0));

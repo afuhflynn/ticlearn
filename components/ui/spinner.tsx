@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useSemanticElements: SVG status is the established spinner primitive API.
+
 import { Loader2Icon } from "lucide-react";
 import { cn } from "@/lib/utils";
 

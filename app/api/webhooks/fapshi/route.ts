@@ -1,4 +1,3 @@
-import crypto from "crypto";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
@@ -131,7 +130,7 @@ export async function POST(req: Request) {
         status,
       });
 
-      if (!result.ok && result.reason !== "status_" + status) {
+      if (!result.ok && result.reason !== `status_${status}`) {
         console.error(`Credit fulfillment issue ${orderId}: ${result.reason}`);
       }
 

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AlertCircle,
   BookOpen,
   Brain,
   Coins,
@@ -19,7 +18,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -40,8 +39,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Empty,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PendingRegion, useLongWait } from "@/components/ui/pending-region";
+import {
+  ProcessProgress,
+  ProgressLine,
+} from "@/components/ui/process-progress";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -49,6 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import {
   useCheckLimit,
@@ -63,10 +76,12 @@ import {
   useUsage,
 } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
+import { NOTE_STAGES } from "@/lib/note-stages";
 import { useUploadThing } from "@/lib/uploadthing";
 import { cn } from "@/lib/utils";
 import { correctionsForKeys } from "@/nuqs";
 import { uploadViewDefaults, uploadViewParsers } from "@/nuqs/upload";
+import { NoteListSkeleton } from "./upload-skeleton";
 
 type NoteItem = {
   id: string;
@@ -75,6 +90,7 @@ type NoteItem = {
   fileName: string;
   fileType: "PDF" | "IMAGE" | "WORD";
   status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
+  processingStage?: "EXTRACTING" | "SUMMARIZING" | "INDEXING" | null;
   summary?: string | null;
   topics?: string[];
   keyPoints?: string[];
@@ -86,6 +102,28 @@ type NoteItem = {
     createdAt: string;
   } | null;
 };
+
+/**
+ * A quiz is one model call, so the honest indicator is a plain line with a
+ * time estimate and not a stage list. The line only appears once the wait
+ * passes ten seconds, measured on the client's own clock.
+ */
+function QuizGeneratingLine() {
+  const isLongWait = useLongWait(true);
+  if (!isLongWait) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        AI is generating the configured quiz in the background.
+      </p>
+    );
+  }
+  return (
+    <ProgressLine
+      message="AI is still generating the configured quiz."
+      estimate="It usually takes about a minute."
+    />
+  );
+}
 
 type QuizConfig = {
   noteId: string;
@@ -106,7 +144,14 @@ const defaultQuizConfig = (noteId = ""): QuizConfig => ({
 });
 
 function UploadContent() {
-  const { notes, isLoading: notesLoading } = useNotes();
+  const {
+    notes,
+    isPending: notesPending,
+    isRefreshing: notesRefreshing,
+    isError: notesError,
+    isOffline: notesOffline,
+    refetch: refetchNotes,
+  } = useNotes();
   const uploadNoteMutation = useUploadNote();
   const updateNoteMutation = useUpdateNote();
   const deleteNoteMutation = useDeleteNote();
@@ -170,10 +215,10 @@ function UploadContent() {
   // longer exists) closes the dialog and corrects the URL, once the
   // list has loaded.
   useEffect(() => {
-    if (view.modal !== "" && !notesLoading && !dialogNote) {
+    if (view.modal !== "" && !notesPending && !dialogNote) {
       setView({ modal: "", selectedId: "" }, { history: "replace" });
     }
-  }, [view.modal, notesLoading, dialogNote, setView]);
+  }, [view.modal, notesPending, dialogNote, setView]);
 
   const closeDialog = () => {
     setView({ modal: "", selectedId: "" }, { history: "replace" });
@@ -185,7 +230,12 @@ function UploadContent() {
   const creditBalance = creditsData?.balance ?? 0;
   const QUIZ_CREDIT_COST = 50;
 
+  const [uploadPercent, setUploadPercent] = useState<number | null>(null);
+
   const { startUpload, isUploading } = useUploadThing("documentUploader", {
+    onUploadProgress: (progress) => {
+      setUploadPercent(progress);
+    },
     onClientUploadComplete: async (res) => {
       const uploadedFile = res?.[0];
       if (!uploadedFile) {
@@ -223,11 +273,14 @@ function UploadContent() {
 
         setFile(null);
         setTitle("");
+        setUploadPercent(null);
       } catch (error) {
         console.error("Upload error:", error);
+        setUploadPercent(null);
       }
     },
     onUploadError: (error) => {
+      setUploadPercent(null);
       toast.error(error.message);
     },
   });
@@ -375,7 +428,7 @@ function UploadContent() {
         {processingMessage ? (
           <Card className="border-primary/30 bg-primary/5">
             <CardContent className="pt-6 flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <Brain className="h-5 w-5 shrink-0 text-primary" />
               <div>
                 <p className="font-medium">Background jobs are running</p>
                 <p className="text-sm text-muted-foreground">
@@ -495,6 +548,18 @@ function UploadContent() {
               </div>
             )}
 
+            {uploadPercent !== null ? (
+              <div className="space-y-2" data-slot="upload-progress">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Uploading</span>
+                  <span className="font-medium tabular-nums">
+                    {uploadPercent}%
+                  </span>
+                </div>
+                <Progress value={uploadPercent} className="h-1.5" />
+              </div>
+            ) : null}
+
             <Button
               className="w-full"
               disabled={
@@ -529,197 +594,211 @@ function UploadContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {notesLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : notesList.length === 0 ? (
-              <div className="flex flex-col items-center gap-4 py-8 text-center">
-                <FileText className="h-12 w-12 text-muted-foreground" />
-                <div>
-                  <p className="font-medium">No notes yet</p>
-                  <p className="text-sm text-muted-foreground">
-                    Upload your first note to start the AI processing flow.
-                  </p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {notesList.map((note) => {
-                  const isBusy =
-                    note.status === "UPLOADING" || note.status === "PROCESSING";
-                  const isGeneratingQuiz =
-                    note.latestQuiz?.status === "GENERATING";
+            <PendingRegion
+              fallback={<NoteListSkeleton />}
+              isError={notesError}
+              isOffline={notesOffline}
+              isPending={notesPending}
+              isRefreshing={notesRefreshing}
+              label="Your notes"
+              longWaitMessage="Still loading your notes. This normally takes a moment."
+              onRetry={() => void refetchNotes()}
+            >
+              {notesList.length === 0 ? (
+                <Empty className="border-0 p-0">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <FileText className="size-4 text-muted-foreground" />
+                    </EmptyMedia>
+                    <EmptyTitle>No notes yet</EmptyTitle>
+                    <EmptyDescription>
+                      Upload your first note to start the AI processing flow.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
+              ) : (
+                <div className="space-y-4">
+                  {notesList.map((note) => {
+                    const isBusy =
+                      note.status === "UPLOADING" ||
+                      note.status === "PROCESSING";
+                    const isGeneratingQuiz =
+                      note.latestQuiz?.status === "GENERATING";
 
-                  return (
-                    <div
-                      key={note.id}
-                      className="rounded-xl border p-4 space-y-4"
-                    >
-                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-3">
-                          <div className="flex items-center gap-3">
-                            {note.fileType === "PDF" ? (
-                              <FileText className="h-8 w-8 text-red-500" />
-                            ) : note.fileType === "WORD" ? (
-                              <FileType className="h-8 w-8 text-blue-600" />
-                            ) : (
-                              <Image className="h-8 w-8 text-blue-500" />
-                            )}
-                            <div>
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="text-base font-semibold">
-                                  {note.title}
-                                </p>
-                                <Badge
-                                  variant={
-                                    note.status === "READY"
-                                      ? "default"
-                                      : note.status === "ERROR"
-                                        ? "destructive"
-                                        : "secondary"
-                                  }
-                                >
-                                  {note.status}
-                                </Badge>
-                                {isGeneratingQuiz ? (
-                                  <Badge variant="secondary">
-                                    Quiz generating
+                    return (
+                      <div
+                        key={note.id}
+                        className="rounded-xl border p-4 space-y-4"
+                      >
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3">
+                              {note.fileType === "PDF" ? (
+                                <FileText className="h-8 w-8 text-red-500" />
+                              ) : note.fileType === "WORD" ? (
+                                <FileType className="h-8 w-8 text-blue-600" />
+                              ) : (
+                                <Image className="h-8 w-8 text-blue-500" />
+                              )}
+                              <div>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <p className="text-base font-semibold">
+                                    {note.title}
+                                  </p>
+                                  <Badge
+                                    variant={
+                                      note.status === "READY"
+                                        ? "default"
+                                        : note.status === "ERROR"
+                                          ? "destructive"
+                                          : "secondary"
+                                    }
+                                  >
+                                    {note.status}
                                   </Badge>
-                                ) : null}
+                                  {isGeneratingQuiz ? (
+                                    <Badge variant="secondary">
+                                      Quiz generating
+                                    </Badge>
+                                  ) : null}
+                                </div>
+                                <p className="text-sm text-muted-foreground">
+                                  {note.quizCount ?? 0} quiz
+                                  {note.quizCount === 1 ? "" : "zes"}
+                                </p>
                               </div>
-                              <p className="text-sm text-muted-foreground">
-                                {note.quizCount ?? 0} quiz
-                                {note.quizCount === 1 ? "" : "zes"}
-                              </p>
                             </div>
+
+                            {note.summary ? (
+                              <p className="text-sm text-muted-foreground max-w-3xl">
+                                {note.summary}
+                              </p>
+                            ) : null}
+
+                            {note.keyPoints?.length ? (
+                              <ul className="space-y-1 text-sm text-muted-foreground max-w-3xl list-disc pl-5">
+                                {note.keyPoints.slice(0, 3).map((point) => (
+                                  <li key={`${note.id}-${point}`}>{point}</li>
+                                ))}
+                              </ul>
+                            ) : null}
+
+                            {note.topics?.length ? (
+                              <div className="flex flex-wrap gap-2">
+                                {note.topics.map((topic) => (
+                                  <Badge
+                                    key={`${note.id}-${topic}`}
+                                    variant="outline"
+                                  >
+                                    {topic}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : null}
+
+                            {note.latestQuiz ? (
+                              <p className="text-sm text-muted-foreground">
+                                Latest quiz: {note.latestQuiz.title} (
+                                {note.latestQuiz.status})
+                              </p>
+                            ) : null}
                           </div>
 
-                          {note.summary ? (
-                            <p className="text-sm text-muted-foreground max-w-3xl">
-                              {note.summary}
-                            </p>
-                          ) : null}
+                          <div className="flex flex-wrap gap-2 lg:justify-end">
+                            <Button variant="outline" size="sm" asChild>
+                              <Link href={`/notes/${note.id}`}>
+                                <BookOpen className="mr-2 h-4 w-4" />
+                                Open Note
+                              </Link>
+                            </Button>
 
-                          {note.keyPoints?.length ? (
-                            <ul className="space-y-1 text-sm text-muted-foreground max-w-3xl list-disc pl-5">
-                              {note.keyPoints.slice(0, 3).map((point) => (
-                                <li key={`${note.id}-${point}`}>{point}</li>
-                              ))}
-                            </ul>
-                          ) : null}
-
-                          {note.topics?.length ? (
-                            <div className="flex flex-wrap gap-2">
-                              {note.topics.map((topic) => (
-                                <Badge
-                                  key={`${note.id}-${topic}`}
-                                  variant="outline"
-                                >
-                                  {topic}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : null}
-
-                          {note.latestQuiz ? (
-                            <p className="text-sm text-muted-foreground">
-                              Latest quiz: {note.latestQuiz.title} (
-                              {note.latestQuiz.status})
-                            </p>
-                          ) : null}
-                        </div>
-
-                        <div className="flex flex-wrap gap-2 lg:justify-end">
-                          <Button variant="outline" size="sm" asChild>
-                            <Link href={`/notes/${note.id}`}>
-                              <BookOpen className="mr-2 h-4 w-4" />
-                              Open Note
-                            </Link>
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(note)}
-                            disabled={updateNoteMutation.isPending}
-                          >
-                            <Pencil className="mr-2 h-4 w-4" />
-                            Edit
-                          </Button>
-
-                          {note.status === "ERROR" ? (
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() =>
-                                processNoteMutation.mutate(note.id)
-                              }
-                              disabled={processNoteMutation.isPending}
+                              onClick={() => openEditDialog(note)}
+                              disabled={updateNoteMutation.isPending}
                             >
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              Retry Processing
+                              <Pencil className="mr-2 h-4 w-4" />
+                              Edit
                             </Button>
-                          ) : null}
 
-                          {note.status === "READY" ? (
+                            {note.status === "ERROR" ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() =>
+                                  processNoteMutation.mutate(note.id)
+                                }
+                                disabled={processNoteMutation.isPending}
+                              >
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                                Retry Processing
+                              </Button>
+                            ) : null}
+
+                            {note.status === "READY" ? (
+                              <Button
+                                size="sm"
+                                onClick={() => openQuizDialog(note)}
+                                disabled={
+                                  generateQuizMutation.isPending ||
+                                  isGeneratingQuiz
+                                }
+                              >
+                                {isGeneratingQuiz ? (
+                                  "Generating..."
+                                ) : (
+                                  <>
+                                    <Sparkles className="mr-2 h-4 w-4" />
+                                    Generate Quiz
+                                  </>
+                                )}
+                              </Button>
+                            ) : null}
+
+                            {note.latestQuiz?.status === "READY" ? (
+                              <Button variant="secondary" size="sm" asChild>
+                                <Link href={`/quizzes/${note.latestQuiz.id}`}>
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  Open Latest Quiz
+                                </Link>
+                              </Button>
+                            ) : null}
+
                             <Button
+                              variant="ghost"
                               size="sm"
-                              onClick={() => openQuizDialog(note)}
-                              disabled={
-                                generateQuizMutation.isPending ||
-                                isGeneratingQuiz
-                              }
+                              className="text-destructive"
+                              onClick={() => handleDelete(note.id)}
+                              disabled={deleteNoteMutation.isPending}
                             >
-                              {isGeneratingQuiz ? (
-                                <>
-                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                  Generating...
-                                </>
-                              ) : (
-                                <>
-                                  <Sparkles className="mr-2 h-4 w-4" />
-                                  Generate Quiz
-                                </>
-                              )}
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
                             </Button>
-                          ) : null}
-
-                          {note.latestQuiz?.status === "READY" ? (
-                            <Button variant="secondary" size="sm" asChild>
-                              <Link href={`/quizzes/${note.latestQuiz.id}`}>
-                                <ExternalLink className="mr-2 h-4 w-4" />
-                                Open Latest Quiz
-                              </Link>
-                            </Button>
-                          ) : null}
-
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-destructive"
-                            onClick={() => handleDelete(note.id)}
-                            disabled={deleteNoteMutation.isPending}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </Button>
+                          </div>
                         </div>
+
+                        {isBusy || note.status === "ERROR" ? (
+                          <div className="rounded-lg bg-muted/60 px-3 py-3">
+                            <ProcessProgress
+                              stage={note.processingStage ?? null}
+                              steps={NOTE_STAGES}
+                              failed={note.status === "ERROR"}
+                            />
+                          </div>
+                        ) : null}
+
+                        {isGeneratingQuiz ? (
+                          <div className="rounded-lg bg-muted/60 px-3 py-2">
+                            <QuizGeneratingLine />
+                          </div>
+                        ) : null}
                       </div>
-
-                      {(isBusy || isGeneratingQuiz) && (
-                        <div className="rounded-lg bg-muted/60 px-3 py-2 text-sm text-muted-foreground flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          {isBusy
-                            ? "AI is extracting text, summarizing the note, and identifying topics."
-                            : "AI is generating the configured quiz in the background."}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              )}
+            </PendingRegion>
           </CardContent>
         </Card>
       </div>
@@ -1021,8 +1100,10 @@ export default function UploadPage() {
       <div className="space-y-8">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Upload Notes</h1>
-          <p className="text-muted-foreground">Loading...</p>
+          <Skeleton className="mt-2 h-5 w-96" />
         </div>
+        <Skeleton className="h-72 w-full rounded-xl" />
+        <NoteListSkeleton />
       </div>
     );
   }

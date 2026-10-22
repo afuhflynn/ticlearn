@@ -1,6 +1,6 @@
 "use client";
 
-import { Loader2, User } from "lucide-react";
+import { User } from "lucide-react";
 import * as React from "react";
 import {
   Command,
@@ -10,7 +10,9 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useUserSearch } from "@/hooks/useUserSearch";
+import { placeholderKeys } from "@/lib/placeholder-keys";
 
 interface UserCommandSelectorProps {
   value: string;
@@ -45,7 +47,7 @@ export function UserCommandSelector({
     clearSearch();
   };
 
-  const triggerContent = React.useMemo(() => {
+  const _triggerContent = React.useMemo(() => {
     if (!value || results.length === 0) {
       return <span className="text-muted-foreground">Select a user...</span>;
     }
@@ -75,8 +77,10 @@ export function UserCommandSelector({
           {!selectedUser && (
             <CommandList className="absolute top-full left-0 right-0 z-50 mt-1 max-h-72 overflow-auto rounded-md border bg-background shadow-md">
               {isLoading || isFetching ? (
-                <div className="flex h-20 items-center justify-center">
-                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                <div className="space-y-2 p-2" data-slot="user-search-skeleton">
+                  {placeholderKeys(3).map((key) => (
+                    <Skeleton key={key} className="h-9 w-full" />
+                  ))}
                 </div>
               ) : results.length === 0 && inputValue.length > 0 ? (
                 <CommandEmpty>No users found.</CommandEmpty>

@@ -1,6 +1,5 @@
 import { subject } from "@/lib/email/content/subjects";
 import {
-  button,
   card,
   divider,
   footer,

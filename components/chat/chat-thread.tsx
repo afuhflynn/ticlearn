@@ -3,15 +3,18 @@
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
 import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
-import { Loader2 } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
 import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
 import { TIP_NAME } from "@/components/chat/constants";
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCheckLimit, useUsage } from "@/hooks";
 import { useMessagesPaginated } from "@/hooks/useChat";
 import { normalizeStoredParts } from "@/lib/chat-messages";
 import { queryKeys } from "@/lib/query-keys";
+import { cn } from "@/lib/utils";
 import { ChatRatingBanner } from "./ChatRatingBanner";
 import { ChatComposer } from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
@@ -36,67 +39,70 @@ function ConversationSession({
   const queryClient = useQueryClient();
   const { allowed: canChat } = useCheckLimit("chat");
   const { chatDailyUsage } = useUsage();
-  const { messages, sendMessage, status, error } = useChat<UIMessage>({
-    id: conversationId,
-    messages: initialMessages,
-    transport: new DefaultChatTransport({
-      api: `/api/ai/chat?conversationId=${conversationId}`,
-      credentials: "include",
-    }),
-    experimental_throttle: 50,
-    onFinish: ({ messages: updatedMessages, isError }) => {
-      if (isError) {
-        toast.error(`${TIP_NAME} could not finish that response.`);
+  const { messages, sendMessage, regenerate, status, error } =
+    useChat<UIMessage>({
+      id: conversationId,
+      messages: initialMessages,
+      transport: new DefaultChatTransport({
+        api: `/api/ai/chat?conversationId=${conversationId}`,
+        credentials: "include",
+      }),
+      experimental_throttle: 50,
+      onFinish: ({ messages: updatedMessages, isError }) => {
+        if (isError) {
+          toast.error(`${TIP_NAME} could not finish that response.`);
+          queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+          return;
+        }
+
+        queryClient.setQueryData(
+          queryKeys.chatConversation(conversationId),
+          (
+            current:
+              | {
+                  conversation: {
+                    id: string;
+                    title: string;
+                    createdAt: string;
+                    updatedAt: string;
+                    messages: ChatMessageRecord[];
+                  };
+                }
+              | undefined,
+          ) => {
+            if (!current?.conversation) {
+              return current;
+            }
+
+            return {
+              conversation: {
+                ...current.conversation,
+                messages: updatedMessages.map((message) => ({
+                  id: message.id,
+                  role: message.role,
+                  content: message.parts
+                    .filter((part) => part.type === "text")
+                    .map((part) => part.text)
+                    .join("\n"),
+                  parts: message.parts,
+                  createdAt: new Date().toISOString(),
+                })),
+                updatedAt: new Date().toISOString(),
+              },
+            };
+          },
+        );
+
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.chatConversations,
+        });
         queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-        return;
-      }
-
-      queryClient.setQueryData(
-        queryKeys.chatConversation(conversationId),
-        (
-          current:
-            | {
-                conversation: {
-                  id: string;
-                  title: string;
-                  createdAt: string;
-                  updatedAt: string;
-                  messages: ChatMessageRecord[];
-                };
-              }
-            | undefined,
-        ) => {
-          if (!current?.conversation) {
-            return current;
-          }
-
-          return {
-            conversation: {
-              ...current.conversation,
-              messages: updatedMessages.map((message) => ({
-                id: message.id,
-                role: message.role,
-                content: message.parts
-                  .filter((part) => part.type === "text")
-                  .map((part) => part.text)
-                  .join("\n"),
-                parts: message.parts,
-                createdAt: new Date().toISOString(),
-              })),
-              updatedAt: new Date().toISOString(),
-            },
-          };
-        },
-      );
-
-      queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
-      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-    },
-    onError: (chatError) => {
-      toast.error(chatError.message || "Failed to send message");
-      queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-    },
-  });
+      },
+      onError: (chatError) => {
+        toast.error(chatError.message || "Failed to send message");
+        queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+      },
+    });
 
   useEffect(() => {
     const pending = consumePendingChatMessage(conversationId);
@@ -137,6 +143,7 @@ function ConversationSession({
           }
           messages={messages}
           className="mx-auto max-w-3xl"
+          onRetry={() => void regenerate()}
           status={status}
         />
         <ChatRatingBanner
@@ -181,8 +188,9 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
   const {
     messages: paginatedMessages,
     conversationInfo,
-    isLoading,
-    error,
+    isPending,
+    isError,
+    refetch,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
@@ -216,15 +224,27 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
     [paginatedMessages],
   );
 
-  if (isLoading) {
+  if (isPending) {
     return (
-      <div className="flex h-full items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div
+        className="mx-auto flex h-full w-full max-w-3xl flex-col gap-6 px-4 py-6"
+        data-slot="chat-thread-skeleton"
+      >
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className={cn("space-y-2", i % 2 === 0 ? "ml-auto w-2/3" : "w-3/4")}
+          >
+            <Skeleton className="h-4 w-3/4" />
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-1/2" />
+          </div>
+        ))}
       </div>
     );
   }
 
-  if (error || !conversationInfo) {
+  if (isError || !conversationInfo) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
         <h2 className="text-xl font-semibold">Conversation unavailable</h2>
@@ -232,6 +252,10 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
           This chat could not be loaded. It may have been deleted or you may no
           longer have access to it.
         </p>
+        <Button variant="outline" onClick={() => void refetch()}>
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Try again
+        </Button>
       </div>
     );
   }

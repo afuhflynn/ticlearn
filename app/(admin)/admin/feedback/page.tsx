@@ -1,6 +1,6 @@
 "use client";
 
-import { Download, Loader2, MessageCircle, Star, Trash2 } from "lucide-react";
+import { Download, MessageCircle, Star, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryStates } from "nuqs";
@@ -36,6 +36,7 @@ import {
   adminFeedbackViewDefaults,
   adminFeedbackViewParsers,
 } from "@/nuqs/admin-feedback";
+import { AdminTableSkeleton } from "../admin-skeleton";
 
 function StarRating({ rating }: { rating: number | null }) {
   if (!rating || rating === 0) {
@@ -115,12 +116,7 @@ export default function AdminFeedbackPage() {
   const deleteFeedback = useDeleteAdminFeedback();
   const generateReport = useGenerateAdminReport();
 
-  if (sessionLoading)
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+  if (sessionLoading) return <AdminTableSkeleton count={10} />;
   if (!session || (session.user as { role?: string })?.role !== "ADMIN") {
     router.push("/dashboard");
     return null;
@@ -227,9 +223,7 @@ export default function AdminFeedbackPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin" />
-            </div>
+            <AdminTableSkeleton />
           ) : (
             <>
               <Table>

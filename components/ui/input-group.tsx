@@ -1,3 +1,6 @@
+// biome-ignore-all lint/a11y/useSemanticElements: Input groups and addons are layout primitives with a div API.
+// biome-ignore-all lint/a11y/useKeyWithClickEvents: The addon click handler only forwards focus to its child input.
+
 "use client";
 
 import { cva, type VariantProps } from "class-variance-authority";

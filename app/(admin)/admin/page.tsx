@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  CreditCard,
-  Link2,
-  Loader2,
-  MessageCircle,
-  Shield,
-  Users,
-} from "lucide-react";
+import { CreditCard, Link2, MessageCircle, Shield, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { useAdminStats } from "@/hooks/useAdmin";
 import { useSession } from "@/lib/auth-client";
+import { AdminDashboardSkeleton } from "./admin-skeleton";
 
 const navItems = [
   {
@@ -87,11 +81,7 @@ export default function AdminPage() {
   ];
 
   if (isPending || statsLoading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <AdminDashboardSkeleton />;
   }
 
   const userRole = (session?.user as { role?: string })?.role;

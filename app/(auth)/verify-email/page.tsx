@@ -1,13 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import {
-  ArrowLeft,
-  CheckCircle,
-  GraduationCap,
-  Loader2,
-  Mail,
-} from "lucide-react";
+import { ArrowLeft, CheckCircle, Loader2, Mail } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -32,6 +26,7 @@ import {
 } from "@/lib/auth-client";
 import { triggerWelcomeEmail } from "@/lib/inngest/trigger";
 import { searchParamsSchema } from "@/nuqs";
+import { AuthFormSkeleton } from "../auth-form-skeleton";
 
 function VerifyEmailForm() {
   const router = useRouter();
@@ -82,7 +77,7 @@ function VerifyEmailForm() {
           router.push("/sign-in");
         }, 2000);
       }
-    } catch (err) {
+    } catch (_err) {
       setError("Failed to send verification code");
       toast.error("Failed to send verification code");
     } finally {
@@ -114,7 +109,7 @@ function VerifyEmailForm() {
           router.push("/sign-in");
         }, 2000);
       }
-    } catch (err) {
+    } catch (_err) {
       setError("Invalid verification code");
       toast.error("Invalid verification code");
     } finally {
@@ -328,13 +323,7 @@ function VerifyEmailForm() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[80vh] items-center justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      }
-    >
+    <Suspense fallback={<AuthFormSkeleton />}>
       <VerifyEmailForm />
     </Suspense>
   );

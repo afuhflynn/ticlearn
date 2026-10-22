@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import { family } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
+import { readState } from "@/lib/read-state";
 
 export interface ReadinessTopic {
   topic: string;
@@ -23,7 +24,7 @@ export interface ReadinessData {
  * hydrates it, so a first paint shows real content with no waiting round trip.
  */
 export function useReadiness() {
-  const { data, isLoading, error } = useQuery({
+  const query = useQuery({
     queryKey: queryKeys.readiness,
     queryFn: async () => {
       const result = await api.queries.readiness();
@@ -35,8 +36,7 @@ export function useReadiness() {
   });
 
   return {
-    readiness: data ?? null,
-    isLoading,
-    error,
+    readiness: query.data ?? null,
+    ...readState(query),
   };
 }

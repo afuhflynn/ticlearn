@@ -32,11 +32,11 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
     inputPerMillion: 0.0,
     outputPerMillion: 0.0,
   },
-  "meituan/longcat-2.5-preview:free": {
+  "nvidia/nemotron-3.5-lightning:free": {
     inputPerMillion: 0.0,
     outputPerMillion: 0.0,
   },
-  "xiaomi/mimo-v2.6-flash:free": {
+  "minimax/minimax-m3.1-flash:free": {
     inputPerMillion: 0.0,
     outputPerMillion: 0.0,
   },

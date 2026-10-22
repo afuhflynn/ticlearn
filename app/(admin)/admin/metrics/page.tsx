@@ -4,10 +4,8 @@ import {
   ArrowUpDown,
   CreditCard,
   Download,
-  Loader2,
   MessageSquare,
   RefreshCw,
-  TrendingDown,
   TrendingUp,
   Users,
 } from "lucide-react";
@@ -66,6 +64,15 @@ import {
   adminMetricsViewDefaults,
   adminMetricsViewParsers,
 } from "@/nuqs/admin-metrics";
+import {
+  DataTableSkeleton,
+  EngagementPanelSkeleton,
+  GrowthPanelSkeleton,
+  LearningPanelSkeleton,
+  MonetizationPanelSkeleton,
+  OverviewPanelSkeleton,
+  RetentionPanelSkeleton,
+} from "./metrics-skeleton";
 
 const METRIC_LABELS: Record<string, string> = {
   active_users: "Active Users",
@@ -540,9 +547,7 @@ export default function AnalyticsPage() {
         <TabsContent value="overview" className="space-y-6">
           {view.tab === "overview" &&
             (isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <OverviewPanelSkeleton />
             ) : (
               <>
                 <Card>
@@ -632,9 +637,7 @@ export default function AnalyticsPage() {
         <TabsContent value="engagement" className="space-y-6">
           {view.tab === "engagement" &&
             (isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <EngagementPanelSkeleton />
             ) : (
               <>
                 <div className="grid gap-4 md:grid-cols-2">
@@ -716,9 +719,9 @@ export default function AnalyticsPage() {
                                   `${(payload as { subject: string }).subject} ${((percent ?? 0) * 100).toFixed(0)}%`
                                 }
                               >
-                                {subjectDistribution.map((_, idx) => (
+                                {subjectDistribution.map((subject, idx) => (
                                   <Cell
-                                    key={idx}
+                                    key={subject.subject}
                                     fill={COLORS[idx % COLORS.length]}
                                   />
                                 ))}
@@ -743,9 +746,7 @@ export default function AnalyticsPage() {
         <TabsContent value="learning" className="space-y-6">
           {view.tab === "learning" &&
             (isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <LearningPanelSkeleton />
             ) : (
               <>
                 <div className="grid gap-4 md:grid-cols-4">
@@ -814,9 +815,7 @@ export default function AnalyticsPage() {
         <TabsContent value="growth" className="space-y-6">
           {view.tab === "growth" &&
             (isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <GrowthPanelSkeleton />
             ) : (
               <>
                 <div className="grid gap-4 md:grid-cols-3">
@@ -915,9 +914,7 @@ export default function AnalyticsPage() {
         <TabsContent value="monetization" className="space-y-6">
           {view.tab === "monetization" &&
             (isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <MonetizationPanelSkeleton />
             ) : (
               <>
                 <div className="grid gap-4 md:grid-cols-4">
@@ -1000,9 +997,9 @@ export default function AnalyticsPage() {
                                   `${(payload as { plan: string }).plan} ${((percent ?? 0) * 100).toFixed(0)}%`
                                 }
                               >
-                                {Object.keys(mrrByPlan).map((_, idx) => (
+                                {Object.keys(mrrByPlan).map((plan, idx) => (
                                   <Cell
-                                    key={idx}
+                                    key={plan}
                                     fill={COLORS[idx % COLORS.length]}
                                   />
                                 ))}
@@ -1075,9 +1072,7 @@ export default function AnalyticsPage() {
         <TabsContent value="retention" className="space-y-6">
           {view.tab === "retention" &&
             (isLoading ? (
-              <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
+              <RetentionPanelSkeleton />
             ) : (
               <>
                 <Card>
@@ -1327,9 +1322,7 @@ export default function AnalyticsPage() {
               </CardHeader>
               <CardContent>
                 {isLoading ? (
-                  <div className="flex h-64 items-center justify-center">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
+                  <DataTableSkeleton />
                 ) : (
                   <>
                     <Table>

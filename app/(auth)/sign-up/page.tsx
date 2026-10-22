@@ -5,7 +5,6 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
-  GraduationCap,
   Loader2,
   Lock,
   Mail,
@@ -30,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn, signUp } from "@/lib/auth-client";
 import { searchParamsSchema } from "@/nuqs";
+import { AuthFormSkeleton } from "../auth-form-skeleton";
 
 function SignUpForm() {
   const router = useRouter();
@@ -303,13 +303,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[80vh] items-center justify-center">
-          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" />
-        </div>
-      }
-    >
+    <Suspense fallback={<AuthFormSkeleton />}>
       <SignUpForm />
     </Suspense>
   );

@@ -69,7 +69,7 @@ export async function limit(
     capacity: config.capacity,
   });
 
-  let decision;
+  let decision: { isDenied(): boolean };
   try {
     decision = await aj
       .withRule(rule)
@@ -127,7 +127,7 @@ export async function limitOtpSend(
     ],
   });
 
-  let decision;
+  let decision: { isDenied(): boolean };
   try {
     decision = await ajOtp.protect(request as any, {
       requested: 1,
@@ -161,12 +161,12 @@ export async function limitOtpSend(
 }
 
 function hashFingerprint(value: string): string {
-  const crypto = require("crypto");
+  const crypto = require("node:crypto");
   return crypto.createHash("sha256").update(value).digest("hex").slice(0, 12);
 }
 
 function hashEmail(email: string): string {
-  const crypto = require("crypto");
+  const crypto = require("node:crypto");
   return crypto
     .createHash("sha256")
     .update(email.toLowerCase().trim())

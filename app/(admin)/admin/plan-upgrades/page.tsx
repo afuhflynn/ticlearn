@@ -59,6 +59,7 @@ import {
   adminPlanUpgradesViewDefaults,
   adminPlanUpgradesViewParsers,
 } from "@/nuqs/admin-plan-upgrades";
+import { AdminTableSkeleton } from "../admin-skeleton";
 
 const PLAN_OPTIONS = ["FREE", "STARTER", "STANDARD", "PREMIUM", "PRO"];
 const PLAN_LABELS: Record<string, string> = {
@@ -264,7 +265,7 @@ export default function AdminPlanUpgradesPage() {
         </div>
         {isFetching && !isLoading ? (
           <Badge variant="outline" className="gap-2 self-start md:self-auto">
-            <Loader2 className="h-3 w-3 animate-spin" /> Refreshing
+            Refreshing
           </Badge>
         ) : null}
       </div>
@@ -413,9 +414,7 @@ export default function AdminPlanUpgradesPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex h-64 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <AdminTableSkeleton />
           ) : (
             <div className="space-y-4">
               <div className="overflow-x-auto rounded-md border">

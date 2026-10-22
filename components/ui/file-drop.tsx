@@ -1,3 +1,5 @@
+// biome-ignore-all lint/a11y/useSemanticElements: File drop is a layout region and keeps a div API for drag events.
+
 "use client";
 
 import * as React from "react";
@@ -25,6 +27,8 @@ export function FileDrop({
 
   return (
     <div
+      role="group"
+      aria-label="File upload"
       className={cn(
         "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-input p-6 text-center",
         className,

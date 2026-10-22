@@ -1,0 +1,3 @@
+{
+  "_readme": "Files that are allowed to draw a spinner outside a button, with the reason it stays. A spinner inside a button that is performing the student's own action is not a loading state and never needs an entry. A reason that says 'later' is how this rule dies."
+}

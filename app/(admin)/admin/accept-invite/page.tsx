@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/card";
 import { useAcceptInvite } from "@/hooks/useInvite";
 import { useSession } from "@/lib/auth-client";
+import { AdminSettingsSkeleton } from "../admin-skeleton";
 
 function AcceptInviteContent() {
   const router = useRouter();
@@ -69,11 +70,7 @@ function AcceptInviteContent() {
   };
 
   if (status === "loading" || sessionLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <AdminSettingsSkeleton fields={2} />;
   }
 
   return (
@@ -174,13 +171,7 @@ function AcceptInviteContent() {
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      }
-    >
+    <Suspense fallback={<AdminSettingsSkeleton fields={2} />}>
       <AcceptInviteContent />
     </Suspense>
   );

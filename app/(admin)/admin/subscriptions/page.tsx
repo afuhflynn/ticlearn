@@ -5,9 +5,7 @@ import {
   CreditCard,
   Download,
   Edit,
-  Loader2,
   MoreHorizontal,
-  Trash2,
   X,
 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -22,7 +20,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -30,7 +27,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -58,6 +54,7 @@ import {
   adminSubscriptionsViewDefaults,
   adminSubscriptionsViewParsers,
 } from "@/nuqs/admin-subscriptions";
+import { AdminTableSkeleton } from "../admin-skeleton";
 
 const PLAN_OPTIONS = [
   { value: "STARTER", label: "Starter", price: 3000 },
@@ -193,11 +190,7 @@ export default function AdminSubscriptionsPage() {
   };
 
   if (sessionLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-      </div>
-    );
+    return <AdminTableSkeleton count={10} />;
   }
 
   if (!session?.user || (session.user as { role?: string })?.role !== "ADMIN") {
@@ -268,9 +261,7 @@ export default function AdminSubscriptionsPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="flex justify-center py-8">
-              <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
-            </div>
+            <AdminTableSkeleton />
           ) : (
             <>
               <Table>

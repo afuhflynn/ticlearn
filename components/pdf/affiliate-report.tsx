@@ -1,7 +1,6 @@
 import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type React from "react";
 import {
-  formatCurrency,
   formatDate,
   PDFFooter,
   PDFHeader,

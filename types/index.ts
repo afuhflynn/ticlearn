@@ -9,6 +9,7 @@ import type {
   FeedbackStatus,
   FeedbackType,
   FileType,
+  NoteProcessingStage,
   NoteStatus,
   Plan,
   QuestionType,
@@ -281,9 +282,18 @@ export interface NoteSummary {
   fileName: string;
   fileType: "PDF" | "IMAGE" | "WORD";
   status: "UPLOADING" | "PROCESSING" | "READY" | "ERROR";
+  /**
+   * The stage the note pipeline is in, written by the background job. Null
+   * before the job starts and after it finishes. The interface shows this
+   * stage, so the screen and the database can never disagree about where the
+   * work is.
+   */
+  processingStage?: NoteProcessingStage | null;
   summary?: string | null;
   topics?: string[];
   quizCount?: number;
+  /** The most recent quiz made from this note, if there is one. */
+  latestQuiz?: { id: string; status: string; title: string } | null;
   createdAt: string;
 }
 

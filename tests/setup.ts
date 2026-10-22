@@ -7,7 +7,7 @@ process.env.OPENROUTER_API_KEY ??= "test-openrouter-key";
 
 Object.defineProperty(globalThis, "crypto", {
   value: {
-    randomUUID: () => "test-uuid-" + Math.random().toString(36).slice(2),
+    randomUUID: () => `test-uuid-${Math.random().toString(36).slice(2)}`,
     getRandomValues: (arr: Uint8Array) => {
       for (let i = 0; i < arr.length; i++) {
         arr[i] = Math.floor(Math.random() * 256);

@@ -1,0 +1,30 @@
+{
+  "label": "after",
+  "stamp": "2026-10-19T19:39:07.906Z",
+  "results": [
+    {
+      "page": "/",
+      "largestContentfulPaintMs": 668,
+      "firstContentfulPaintMs": 668,
+      "timeToInteractiveMs": 736,
+      "interactionToNextPaintMs": 488,
+      "cumulativeLayoutShift": 0
+    },
+    {
+      "page": "/pricing",
+      "largestContentfulPaintMs": 340,
+      "firstContentfulPaintMs": 340,
+      "timeToInteractiveMs": 441,
+      "interactionToNextPaintMs": null,
+      "cumulativeLayoutShift": 0
+    },
+    {
+      "page": "/faq",
+      "largestContentfulPaintMs": 316,
+      "firstContentfulPaintMs": 316,
+      "timeToInteractiveMs": 339,
+      "interactionToNextPaintMs": null,
+      "cumulativeLayoutShift": 0
+    }
+  ]
+}

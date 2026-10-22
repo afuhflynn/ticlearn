@@ -1,7 +1,7 @@
 "use client";
 
-import { Streamdown } from "streamdown";
 import { math } from "@streamdown/math";
+import { Streamdown } from "streamdown";
 import { normalizeMathNotation } from "@/lib/math-format";
 
 export interface MarkdownProps {

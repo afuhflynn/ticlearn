@@ -330,7 +330,25 @@ export async function streamChat(opts: StreamChatOptions) {
   const tried: Array<{ model: string; error: string }> = [];
   let lastError: unknown = null;
 
-  for (const modelId of runnable.length > 0 ? runnable : chain) {
+  if (runnable.length === 0) {
+    await logUsage({
+      userId: opts.userId ?? null,
+      task: opts.task,
+      modelId: chain[0] ?? "none",
+      promptTokens: 0,
+      completionTokens: 0,
+      costUsd: 0,
+      latencyMs: CHAIN_STREAM_DEADLINE_MS,
+      errorCode: "all_open",
+      promptRef: opts.promptRef,
+      coldStart: cold,
+    }).catch(() => {});
+    throw friendlyDown(opts.task, [
+      { model: "all", error: "All models are in cooldown." },
+    ]);
+  }
+
+  for (const modelId of runnable) {
     markProbeStart(modelId);
     try {
       const started = Date.now();
@@ -385,9 +403,22 @@ export async function streamChat(opts: StreamChatOptions) {
       // streamText returns before the provider is called, so a fault can only
       // surface while the stream is read. Peek the first text delta: a model
       // that cannot produce one fails here, before we commit to it.
-      await probeFirstToken(result);
+      const firstTextStream = await probeFirstToken(result);
       if (streamError) throw streamError;
-      return result;
+      if (!firstTextStream) {
+        throw new Error("stream ended before first token");
+      }
+
+      // The probe consumes the first text delta. Some AI SDK result objects
+      // expose textStream through a getter, so assigning to the result is not
+      // reliable. Return a proxy that puts the consumed first delta back while
+      // preserving every other SDK method and property.
+      return new Proxy(result, {
+        get(target, property, receiver) {
+          if (property === "textStream") return firstTextStream;
+          return Reflect.get(target, property, receiver);
+        },
+      });
     } catch (error) {
       lastError = error;
       if (isFailFastError(error)) throw error;
@@ -413,14 +444,14 @@ export async function streamChat(opts: StreamChatOptions) {
 /** Reads one text delta to prove the model is actually answering. */
 async function probeFirstToken(result: {
   textStream: AsyncIterable<string>;
-}): Promise<void> {
+}): Promise<AsyncIterable<string> | null> {
   const iterator = result.textStream[Symbol.asyncIterator]();
   const first = await iterator.next();
   if (first.done) {
     const abort = (result as unknown as { consumeStream?: () => Promise<void> })
       .consumeStream;
     if (typeof abort === "function") await abort.call(result);
-    return;
+    return null;
   }
   const preserved = (async function* () {
     yield first.value;
@@ -430,7 +461,7 @@ async function probeFirstToken(result: {
       yield next.value;
     }
   })();
-  Object.assign(result, { textStream: preserved });
+  return preserved;
 }
 
 export async function generateTextWithFallback(opts: TextGenOptions) {
