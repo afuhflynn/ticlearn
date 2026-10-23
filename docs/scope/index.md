@@ -31,7 +31,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 11 | Background work moved to Inngest | Foundation | planned |
 | 12 | Caching and cold start speed | Foundation | in-progress |
 | 13 | Email system rebuild | Foundation | in-progress |
-| 41 | Data route caching with revalidation | Foundation | planned |
+| 41 | Data route caching with revalidation | Foundation | done |
 | 34 | Rendering strategy and streaming boundaries | Foundation | in-progress |
 | 35 | Loading states and perceived speed | Foundation | in-progress |
 | 42 | Slow screen telemetry | Foundation | planned |

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { invalidateRead } from "@/lib/cache/reads";
 import { prisma } from "@/lib/prisma";
 
 const recordSchema = z.object({
@@ -17,6 +18,8 @@ export async function POST(req: Request) {
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+    const userId = session.user.id;
+
     const { noteId, topicId, result, weight } = recordSchema.parse(
       await req.json(),
     );
@@ -26,7 +29,7 @@ export async function POST(req: Request) {
       select: { note: { select: { userId: true } } },
     });
 
-    if (!topicNote || topicNote.note.userId !== session.user.id) {
+    if (!topicNote || topicNote.note.userId !== userId) {
       return NextResponse.json({ error: "Topic not found" }, { status: 404 });
     }
 
@@ -64,6 +67,10 @@ export async function POST(req: Request) {
         data: { masteryScore: clamped },
       });
     }
+
+    // This student's readiness inputs just changed, so their entry goes and
+    // nobody else's does.
+    await invalidateRead("read:readiness", { kind: "user", userId });
 
     return NextResponse.json({
       masteryScore: clamped,

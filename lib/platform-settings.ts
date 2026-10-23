@@ -1,55 +1,17 @@
-import type { PlatformSettings } from "@/lib/generated/prisma/client";
+import { withReadCache } from "@/lib/cache/reads";
+import type { PlatformSettingsSnapshot } from "@/lib/platform-settings-direct";
+import {
+  DEFAULT_PLATFORM_SETTINGS,
+  PLATFORM_SETTINGS_KEY,
+  readPlatformSettings,
+} from "@/lib/platform-settings-direct";
 import { prisma } from "@/lib/prisma";
 
-export const PLATFORM_SETTINGS_KEY = "global";
+export { DEFAULT_PLATFORM_SETTINGS, PLATFORM_SETTINGS_KEY };
+export type { PlatformSettingsSnapshot };
 
 /** Fapshi `externalId` prefix for credit top-up orders (avoids collision with subscription ids). */
 export const CREDIT_PURCHASE_EXTERNAL_ID_PREFIX = "cpo_";
-
-export type PlatformSettingsSnapshot = Pick<
-  PlatformSettings,
-  | "creditCostQuizGeneration"
-  | "creditCostPracticeQuestion"
-  | "creditCostRevisionGuideView"
-  | "creditCostRevisionGuideGen"
-  | "creditCostAiTutorMessage"
-  | "enforceCreditsForPractice"
-  | "enforceCreditsForRevisionGuides"
-  | "enforceCreditsForAiTutor"
-  | "enforceCreditsAll"
-  | "creditsPer1000Xaf"
-  | "minCreditPurchaseXaf"
-  | "maxCreditPurchaseXaf"
-  | "creditCostMultiplierStarter"
-  | "creditCostMultiplierStandard"
-  | "creditCostMultiplierPremium"
-  | "creditCostMultiplierPro"
-  | "usdToXafRate"
-  | "aiFusionAllow"
-  | "sharedCacheEnabled"
->;
-
-export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
-  creditCostQuizGeneration: 50,
-  creditCostPracticeQuestion: 5,
-  creditCostRevisionGuideView: 0,
-  creditCostRevisionGuideGen: 0,
-  creditCostAiTutorMessage: 5,
-  enforceCreditsForPractice: true,
-  enforceCreditsForRevisionGuides: false,
-  enforceCreditsForAiTutor: true,
-  enforceCreditsAll: false,
-  creditsPer1000Xaf: 50,
-  minCreditPurchaseXaf: 100,
-  maxCreditPurchaseXaf: 500_000,
-  creditCostMultiplierStarter: 0.8,
-  creditCostMultiplierStandard: 0.6,
-  creditCostMultiplierPremium: 0.4,
-  creditCostMultiplierPro: 0.4,
-  usdToXafRate: 650,
-  aiFusionAllow: false,
-  sharedCacheEnabled: true,
-};
 
 export type CreditEnforcementEffective = {
   practice: boolean;
@@ -85,36 +47,17 @@ export function creditsFromXaf(
   return Math.floor((amountXaf * creditsPer1000Xaf) / 1000);
 }
 
+/**
+ * The settings every reader shares, served from the shared read cache at spec
+ * 0010's 60 second life. The direct read it wraps is `readPlatformSettings`,
+ * which the cache switch itself uses, so this accessor can never recurse.
+ */
 export async function getPlatformSettings(): Promise<PlatformSettingsSnapshot> {
-  const settings = await prisma.platformSettings.findUnique({
-    where: { key: PLATFORM_SETTINGS_KEY },
-  });
-
-  if (!settings) {
-    return DEFAULT_PLATFORM_SETTINGS;
-  }
-
-  return {
-    creditCostQuizGeneration: settings.creditCostQuizGeneration,
-    creditCostPracticeQuestion: settings.creditCostPracticeQuestion,
-    creditCostRevisionGuideView: settings.creditCostRevisionGuideView,
-    creditCostRevisionGuideGen: settings.creditCostRevisionGuideGen,
-    creditCostAiTutorMessage: settings.creditCostAiTutorMessage,
-    enforceCreditsForPractice: settings.enforceCreditsForPractice,
-    enforceCreditsForRevisionGuides: settings.enforceCreditsForRevisionGuides,
-    enforceCreditsForAiTutor: settings.enforceCreditsForAiTutor,
-    enforceCreditsAll: settings.enforceCreditsAll,
-    creditsPer1000Xaf: settings.creditsPer1000Xaf,
-    minCreditPurchaseXaf: settings.minCreditPurchaseXaf,
-    maxCreditPurchaseXaf: settings.maxCreditPurchaseXaf,
-    creditCostMultiplierStarter: settings.creditCostMultiplierStarter,
-    creditCostMultiplierStandard: settings.creditCostMultiplierStandard,
-    creditCostMultiplierPremium: settings.creditCostMultiplierPremium,
-    creditCostMultiplierPro: settings.creditCostMultiplierPro,
-    usdToXafRate: settings.usdToXafRate,
-    aiFusionAllow: settings.aiFusionAllow,
-    sharedCacheEnabled: settings.sharedCacheEnabled,
-  };
+  return withReadCache(
+    "read:platform-settings",
+    { kind: "global" },
+    readPlatformSettings,
+  );
 }
 
 export async function ensurePlatformSettings() {

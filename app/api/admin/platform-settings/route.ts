@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { invalidateReadNamespace } from "@/lib/cache/reads";
 import {
   DEFAULT_PLATFORM_SETTINGS,
   ensurePlatformSettings,
@@ -84,6 +85,10 @@ export async function PUT(req: Request) {
       },
       update: body,
     });
+
+    // Students must never see the old credit rule after this save. The cached
+    // accessor is global, so the whole namespace goes.
+    await invalidateReadNamespace("read:platform-settings");
 
     return NextResponse.json({ settings, success: true });
   } catch (error) {
