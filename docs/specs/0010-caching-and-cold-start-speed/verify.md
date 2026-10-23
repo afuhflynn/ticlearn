@@ -1,4 +1,4 @@
-# Verify: caching and cold start speed · spec 0010 · updated 2026-10-16
+# Verify: caching and cold start speed · spec 0010 · updated 2026-10-23
 
 _Steps derived from spec 0010 acceptance criteria. `/verify-release` runs these; `/test-engineer` locks the durable ones._
 
@@ -165,3 +165,61 @@ Everything behind the `ai` rate limit bucket, which returned 429 for every attem
 Needs an Arcjet `ai` bucket that will admit a call, or a development bypass for the limiter. The limiter is remote, so a process restart does not clear it.
 
 All browser driven steps (the network panel on the dashboard, back navigation painting, the admin paging keeping rows on screen, notes polling, profile update without a refresh, credits refetch) are blocked too: no browser automation tool is available in this environment, only HTTP.
+
+## Slice five: data route caching with revalidation (added 2026-10-23)
+
+### UI / manual
+
+- [x] Call `GET /api/payment-settings` twice in a row and confirm both bodies are byte identical, and that `app_cache` holds exactly one row with namespace `read:payment-settings` and a 64 character hex key → AC-23, AC-25
+- [ ] Sign in as admin, change a credit cost on the admin platform settings screen, save, then load a student screen that reads settings before 60 seconds pass, and confirm the new cost is already there → AC-25, AC-27
+- [ ] As admin, change the MTN number on the admin payment settings screen, save, then open the public page that shows payment details at once and confirm the new number, not the old one → AC-27
+- [ ] Open the dashboard as student A and note the readiness number, then open it as student B and confirm B sees B's own number, never A's → AC-24, AC-30
+- [ ] As student A, answer one practice question (`POST /api/performance`), reload the dashboard, and confirm A's readiness is recomputed while B's entry is untouched → AC-27, AC-28
+- [x] As student A, delete one of A's notes, reload the dashboard, and confirm the readiness number no longer counts that note, while B's dashboard is unchanged → AC-27, AC-28
+- [x] Inspect `app_cache` rows for `read:%` and confirm every key is a 64 character hash that contains no user id, and the row's `expires_at` is about 60 seconds after `created_at` → AC-24
+- [x] Serve a cached readiness read, wait past 60 seconds, read again, and confirm `computeReadiness` runs again rather than the old value being served → AC-29
+- [x] Stop Postgres (or force `app_cache` reads to fail) and confirm `/api/payment-settings`, the dashboard, and a performance write still succeed, with a `[cache]` namespace log in the server output → AC-29
+
+### Commands
+
+- [x] `pnpm typecheck` → exits 0 → AC-23
+- [x] `pnpm vitest run tests/lib/cache` → 25 tests pass across 2 files → AC-30
+- [x] `pnpm vitest run` → the full suite passes → AC-30
+- [x] `pnpm build` → the build completes and prints the route table → AC-23
+- [x] `pnpm exec biome check` → zero errors (warnings are pre existing) → AC-23
+- [x] `psql "$DATABASE_URL" -c "select namespace, count(*) from app_cache where namespace like 'read:%' group by namespace"` → at most one row per global namespace, one row per student for `read:readiness` → AC-23, AC-24
+
+### Acceptance-criteria coverage
+
+- AC-23 covered by the two payment detail reads, the `app_cache` row check, and the typecheck and build commands
+- AC-24 covered by the two student isolation step, the key inspection step, and the readiness row count per student
+- AC-25 covered by the identical JSON step and the admin settings step, which reads through the same route shape as before
+- AC-26 covered by the platform settings save step and by `pnpm typecheck` with `lib/platform-settings-direct.ts` imported by `lib/cache/index.ts` only
+- AC-27 covered by the settings, payment, performance and note delete steps
+- AC-28 covered by the performance step, where only one student's entry is cleared
+- AC-29 covered by the expired entry step and the failing store step, both of which still serve the read or complete the mutation
+- AC-30 covered by the cache test commands and by the isolation and expiry steps
+
+### Verification run 2026-10-23
+
+Ran against the real dev server on `http://localhost:3000` with Postgres on 5435, two signed in students, one admin, and a note plus a practice row seeded for student A so the two students' readiness values differed (77 against 50).
+
+All eight criteria (AC-23 to AC-30) were exercised and met. The four steps left unticked above name a screen the run could not click: there is no browser automation tool in this environment, so the admin saves ran through `PUT /api/admin/platform-settings` and `PUT /api/admin/payment-settings` and the student reads through `GET /api/credits/purchase/config` and `GET /api/readiness`, which is the same behaviour the screens call.
+
+- Cold instance (server restarted, memory layer empty, read rows cleared): two `GET /api/payment-settings` returned byte identical JSON, one `read:payment-settings` row, a 64 character hex key, a life of 59.985 s → AC-23, AC-25
+- Admin saved `creditsPer1000Xaf` 50 → 60 and the public config read showed 60 one second later, inside the 60 second life → AC-25, AC-27
+- Admin saved an MTN number and the public payment details showed it one second later → AC-27
+- Student A readiness 77 (`needsAssessment` false), student B 50 (`needsAssessment` true), two `read:readiness` rows, both keys 64 hex characters, neither key containing either user id → AC-24, AC-30
+- `POST /api/performance` for A left exactly one readiness row, and that row's hash matched B's key, so only A was cleared → AC-27, AC-28
+- `DELETE /api/notes/verify-note-a` cleared A's entry and A's next readiness read dropped to 50, so the deleted note no longer counted → AC-27, AC-28
+- B's entry `created_at` moved from 05:55:06 to 05:56:09 after a 62 second wait, so an expired entry is computed again → AC-29
+- With `app_cache` renamed, `GET /api/payment-settings` 200, `GET /dashboard` 200 and `POST /api/performance` 200, with `[cache] store read for read:payment-settings failed`, `store write`, `store read for read:readiness`, `store write` and `store delete` all logging the namespace → AC-29
+- With `platform_settings` renamed, the switch read logged `[cache] settings read for the cache switch failed`, the request still answered 200, and a cache row was still written, so a failed switch read keeps the last answer rather than disabling the cache → AC-26
+- The cold `GET /api/payment-settings` query order was `platform_settings` (the direct switch read), then `app_cache` (miss), then `payment_settings` (source), then the `app_cache` insert, with no second cache read from the accessor, which is the recursion the split prevents → AC-26
+- Signed out `GET /api/readiness` 401 and wrote no readiness row, signed out `GET /api/payment-settings` 200 as a public route, and a student `PUT /api/admin/platform-settings` 403 that changed nothing → AC-25
+- No `unstable_cache` or `use cache` anywhere in `app`, `lib`, `components` or `hooks`, and `withReadCache` appears at exactly three read sites with four invalidation call sites → AC-23, AC-27
+- `pnpm typecheck` exit 0, `pnpm vitest run tests/lib/cache` 25 passed across 2 files, `pnpm vitest run` 639 passed across 78 files, `pnpm build` exit 0 with the route table, `pnpm exec biome check` exit 0 with 71 pre existing warnings → AC-23, AC-30
+
+### Not applied / missing
+
+None. All three namespaces exist live, and every route the contract names answers with its old status codes and payload shape.

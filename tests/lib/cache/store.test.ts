@@ -19,8 +19,8 @@ const table = new Map<
   }
 >();
 
-vi.mock("@/lib/platform-settings", () => ({
-  getPlatformSettings: vi.fn(() =>
+vi.mock("@/lib/platform-settings-direct", () => ({
+  readPlatformSettings: vi.fn(() =>
     Promise.resolve({ sharedCacheEnabled: true } as never),
   ),
 }));

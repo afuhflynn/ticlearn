@@ -12,7 +12,7 @@
  */
 
 import crypto from "node:crypto";
-import { getPlatformSettings } from "@/lib/platform-settings";
+import { readPlatformSettings } from "@/lib/platform-settings-direct";
 import { prisma } from "@/lib/prisma";
 import { LruCache } from "./lru";
 
@@ -125,7 +125,10 @@ async function cacheEnabled(): Promise<boolean> {
   const now = Date.now();
   if (now - switchReadAt < SWITCH_HOLD_MS) return switchValue;
   switchReadAt = now;
-  const settings = await failOpen(getPlatformSettings(), "settings read");
+  const settings = await failOpen(
+    readPlatformSettings(),
+    "settings read for the cache switch",
+  );
   // Only an explicit false turns it off. A row that predates the field, or a
   // partial one, must not silently disable the cache.
   if (settings && typeof settings.sharedCacheEnabled === "boolean") {
@@ -135,16 +138,19 @@ async function cacheEnabled(): Promise<boolean> {
 }
 
 /**
- * Read one entry. The memory layer answers first, then the store. Any failure
- * returns null, which the caller reads as a miss.
+ * Read one entry by an already built key. The memory layer answers first, then
+ * the store. Any failure returns null, which the caller reads as a miss.
+ *
+ * The key form exists because a read cache's key is built by its own registry,
+ * not from a prompt and a model chain, and the store must still behave the same
+ * way for both.
  */
-export async function get<T>(
+export async function getByKey<T>(
   namespace: string,
-  key: CacheKeyInput,
+  fullKey: string,
 ): Promise<T | null> {
   if (!(await cacheEnabled())) return null;
   try {
-    const fullKey = cacheKey(namespace, key);
     const local = memory.get(fullKey);
     if (local !== undefined) return local as T;
 
@@ -153,7 +159,7 @@ export async function get<T>(
         prisma.appCache.findUnique({ where: { key: fullKey } }),
         READ_TIMEOUT_MS,
       ),
-      "store read",
+      `store read for ${namespace}`,
     );
     if (!row) return null;
     if (row.expiresAt.getTime() <= Date.now()) return null;
@@ -167,18 +173,30 @@ export async function get<T>(
     if (memoryTtl > 0) memory.set(fullKey, row.value, memoryTtl, namespace);
     return row.value as T;
   } catch (error) {
-    console.warn("[cache] get failed, continuing without it:", error);
+    console.warn(
+      `[cache] get for ${namespace} failed, continuing without it:`,
+      error,
+    );
     return null;
   }
 }
 
-/**
- * Write one entry. A value over the size ceiling, or a store failure, is
- * dropped rather than raised, because a cache write must never fail a request.
- */
-export async function set(
+/** Read one entry, building its key from a prompt and a model chain. */
+export async function get<T>(
   namespace: string,
   key: CacheKeyInput,
+): Promise<T | null> {
+  return getByKey<T>(namespace, cacheKey(namespace, key));
+}
+
+/**
+ * Write one entry by an already built key. A value over the size ceiling, or a
+ * store failure, is dropped rather than raised, because a cache write must
+ * never fail a request.
+ */
+export async function setByKey(
+  namespace: string,
+  fullKey: string,
   value: unknown,
   ttlMs: number,
 ): Promise<void> {
@@ -193,7 +211,6 @@ export async function set(
       return;
     }
 
-    const fullKey = cacheKey(namespace, key);
     const expiresAt = new Date(Date.now() + ttlMs);
     const memoryTtl = Math.min(MEMORY_TTL_MS, ttlMs);
     memory.set(fullKey, value, memoryTtl, namespace);
@@ -204,13 +221,43 @@ export async function set(
         create: { key: fullKey, namespace, value: value as never, expiresAt },
         update: { value: value as never, expiresAt, createdAt: new Date() },
       }),
-      "store write",
+      `store write for ${namespace}`,
     );
 
     maybeTrim();
   } catch (error) {
-    console.warn("[cache] set failed, continuing without it:", error);
+    console.warn(
+      `[cache] set for ${namespace} failed, continuing without it:`,
+      error,
+    );
   }
+}
+
+/** Write one entry, building its key from a prompt and a model chain. */
+export async function set(
+  namespace: string,
+  key: CacheKeyInput,
+  value: unknown,
+  ttlMs: number,
+): Promise<void> {
+  await setByKey(namespace, cacheKey(namespace, key), value, ttlMs);
+}
+
+/**
+ * Remove one entry, on the store and on this instance. Failures are logged and
+ * ignored, because an invalidation must never fail the mutation that asked for
+ * it; the entry's own life is the safety bound.
+ */
+export async function deleteByKey(
+  namespace: string,
+  fullKey: string,
+): Promise<number> {
+  memory.delete(fullKey);
+  const result = await failOpen(
+    prisma.appCache.deleteMany({ where: { key: fullKey } }),
+    `store delete for ${namespace}`,
+  );
+  return result?.count ?? 0;
 }
 
 /**
@@ -239,27 +286,27 @@ function maybeTrim(): void {
 }
 
 /**
- * Read, or produce once and hold the answer. Concurrent callers inside this
- * instance share the one in flight call, so a burst of identical misses costs
- * one model call rather than one each. Across instances the guard cannot reach,
- * which is a known limit the spec records rather than solves.
+ * Read, or produce once and hold the answer, by an already built key.
+ * Concurrent callers inside this instance share the one in flight call, so a
+ * burst of identical misses costs one source call rather than one each. Across
+ * instances the guard cannot reach, which is a known limit the spec records
+ * rather than solves.
  */
-export async function withCache<T>(
+export async function withKey<T>(
   namespace: string,
-  key: CacheKeyInput,
+  fullKey: string,
   ttlMs: number,
   produce: () => Promise<T>,
 ): Promise<CacheHit<T>> {
-  const existing = await get<T>(namespace, key);
+  const existing = await getByKey<T>(namespace, fullKey);
   if (existing !== null) return { value: existing, fromCache: true };
 
-  const fullKey = cacheKey(namespace, key);
   const pending = inFlight.get(fullKey) as Promise<T> | undefined;
   if (pending) return { value: await pending, fromCache: false };
 
   const work = produce()
     .then(async (value) => {
-      await set(namespace, key, value, ttlMs);
+      await setByKey(namespace, fullKey, value, ttlMs);
       return value;
     })
     .finally(() => {
@@ -268,6 +315,16 @@ export async function withCache<T>(
 
   inFlight.set(fullKey, work);
   return { value: await work, fromCache: false };
+}
+
+/** Read or produce, building the key from a prompt and a model chain. */
+export async function withCache<T>(
+  namespace: string,
+  key: CacheKeyInput,
+  ttlMs: number,
+  produce: () => Promise<T>,
+): Promise<CacheHit<T>> {
+  return withKey<T>(namespace, cacheKey(namespace, key), ttlMs, produce);
 }
 
 /** Drop every entry in one namespace, on the store and on this instance. */

@@ -1,3 +1,4 @@
+import { withReadCache } from "@/lib/cache/reads";
 import { prisma } from "@/lib/prisma";
 import { computeReadiness } from "@/lib/readiness";
 
@@ -129,7 +130,21 @@ export async function getDashboardQuizzes(
   });
 }
 
+/**
+ * The readiness payload, served from the shared read cache for this student at
+ * spec 0010's 60 second life. `/api/readiness` and the dashboard prefetch both
+ * call this, so they share one entry rather than computing the same number
+ * twice. The key is personal, so one student's entry can never answer another's.
+ */
 export async function getDashboardReadiness(
+  userId: string,
+): Promise<DashboardReadiness> {
+  return withReadCache("read:readiness", { kind: "user", userId }, () =>
+    loadDashboardReadiness(userId),
+  );
+}
+
+async function loadDashboardReadiness(
   userId: string,
 ): Promise<DashboardReadiness> {
   const readiness = await computeReadiness(userId);

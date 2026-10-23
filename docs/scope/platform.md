@@ -221,12 +221,20 @@ NOTE: Forget about the instructions above. After thourough review with my team, 
 
 (basis: spec 0013 follow-up · the measurement the spec does add is one throttled run, which bounds the improvement rather than measuring it)
 
-### 41. Data route caching with revalidation · from spec 0010
-Catalog, platform settings, readiness, and leaderboards are read on nearly every request and change rarely, so each one costs a query that arrives with the same answer it gave a minute ago. Spec 0010 deferred this deliberately so its own hit rate could be measured first.
-**Done when:** catalog, platform settings, readiness, and leaderboard reads come from cache with a written tag, every mutation that writes them invalidates that tag from inside the mutation, and a student never sees stale settings after an admin saves.
-- [ ] Design it (spec): `/solution-architect data route caching with revalidation`
+### 41. Data route caching with revalidation · done
+Platform settings, the public payment details, and a student's readiness are read on nearly every request and change rarely, so each one costs a query that arrives with the same answer it gave a minute ago. Spec 0010 deferred this deliberately so its own hit rate could be measured first. Catalog is out because there is no database catalog any more, and leaderboard is out pending the pivot review.
+**Done when:** platform settings, the public payment details, and readiness come from the shared cache with a written scope and life, the four writes that can change them invalidate after their own write, and a student never sees stale settings after an admin saves, nor another student's readiness at any point.
+- [x] Design it (spec): [0010](../specs/0010-caching-and-cold-start-speed/index.md)
+- [x] Build it: /feature-build data route caching with revalidation · code in `lib/cache/reads.ts`, `lib/cache/index.ts`, `lib/platform-settings-direct.ts`, `lib/platform-settings.ts`, `lib/dashboard-data.ts`, `app/api/payment-settings/route.ts`, `app/api/readiness/route.ts`, `app/api/performance/route.ts`, `app/api/admin/platform-settings/route.ts`, `app/api/admin/payment-settings/route.ts`, `app/api/notes/[id]/route.ts`, `tests/lib/cache/reads.test.ts`
+  - [x] Read wrapper, registry, exact key builder, and targeted per student invalidation (covers AC-23, AC-24, AC-28, AC-29) · code in `lib/cache/reads.ts`, `lib/cache/index.ts`
+  - [x] Payment details through the wrapper, direct settings reader split out, settings accessor cached (covers AC-25, AC-26) · code in `app/api/payment-settings/route.ts`, `lib/platform-settings-direct.ts`, `lib/platform-settings.ts`
+  - [x] Readiness cached by student and shared by the sidebar route and the dashboard prefetch (covers AC-24, AC-25) · code in `lib/dashboard-data.ts`, `app/api/readiness/route.ts`
+  - [x] Four invalidation points, fail open logs, and source responses unchanged (covers AC-27, AC-28, AC-29) · code in `app/api/admin/platform-settings/route.ts`, `app/api/admin/payment-settings/route.ts`, `app/api/performance/route.ts`, `app/api/notes/[id]/route.ts`
+  - [x] Read cache tests for reuse, freshness, isolation, expiry, and store failure (covers AC-30) · code in `tests/lib/cache/reads.test.ts`, `tests/lib/cache/store.test.ts`
+- [x] Verify it: /verify-release data route caching with revalidation
+- [x] Test it: /test-engineer data route caching with revalidation (34 passed 2026-10-23: two new files covering read reuse across a cleared memory layer, per student isolation, expiry and store failure, and the route wiring for the payment settings read, both admin saves, performance writes, and note delete, including the write then invalidate order and the unauthorised caller who never reaches the cache)
 
-(basis: research/performance-and-database.md §3.1 and §3.2 · the tags and lifetimes are already tabulated there, this feature executes the table)
+(basis: spec 0010 slice five · the read paths, scopes, and lives are in that spec's read cache contract, and the two dropped surfaces are recorded in its rationale)
 
 ## Cross cutting
 

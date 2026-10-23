@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { invalidateReadNamespace } from "@/lib/cache/reads";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -72,6 +73,9 @@ export async function PUT(req: Request) {
         orangeHolderName: orangeHolderName?.trim() || null,
       },
     });
+
+    // The public payment details are global, so the whole namespace goes.
+    await invalidateReadNamespace("read:payment-settings");
 
     return NextResponse.json({ settings, success: true });
   } catch (error) {
