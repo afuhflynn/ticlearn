@@ -2,6 +2,7 @@
 
 Slice 2, the chat. The interface is already close to what we want and is being underused: only nine of thirty two installed AI Elements are imported, and the thinking and tool blocks are wired but rendering badly. This slice fixes the experience and puts web search behind a control the student owns.
 
+NOTE: We actually are suggesting to use  vercel blob db for handling image uploads in the chat to make things faster. and I don't know if this has been documented along the way
 (basis: research/chat-experience.md · research/web-search-tooling.md)
 
 ## Slice 2: The tutor

@@ -1,30 +1,26 @@
-import {
-  FaqAccordion,
-  type FaqItem,
-} from "@/components/marketing/faq-accordion";
+import { FaWhatsapp } from "react-icons/fa6";
+import { FaqAccordion } from "@/components/marketing/faq-accordion";
+import { FAQ_ITEMS } from "@/constants";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
-const LANDING_FAQ: FaqItem[] = [
-  {
-    question: "Can I use my own notes?",
-    answer:
-      "Yes. Upload the supported digital materials you have, and Tip works from what you upload.",
-  },
-  {
-    question: "Is TiCLearn for university and HND students?",
-    answer:
-      "Yes, the platform is designed for tertiary students in Cameroon, across universities and HND programmes.",
-  },
-  {
-    question: "Can AI get something wrong?",
-    answer:
-      "AI can make mistakes, so verify important details against your course materials.",
-  },
-  {
-    question: "Do I need a laptop?",
-    answer:
-      "The experience should be mobile-friendly; access still depends on your device and connection.",
-  },
+/**
+ * The curated landing questions, a named subset of `FAQ_ITEMS` picked by
+ * question string (spec 0016 AC-4). The full set of 18 stays on `/faq`; the
+ * landing answers only the questions students ask while deciding to sign up.
+ */
+const LANDING_FAQ_QUESTIONS = [
+  "What is TiCLearn?",
+  "Is TiCLearn free to use?",
+  "What payment methods do you accept?",
+  "How much data does TiCLearn use?",
+  "Can I use TiCLearn offline?",
+  "Is my data secure?",
 ];
+
+const LANDING_FAQ = LANDING_FAQ_QUESTIONS.flatMap((question) => {
+  const found = FAQ_ITEMS.find((item) => item.question === question);
+  return found ? [found] : [];
+});
 
 export function LandingFaq() {
   return (
@@ -32,7 +28,7 @@ export function LandingFaq() {
       id="faq"
       className="scroll-mt-20 border-b border-border px-5 py-14 md:px-8 md:py-20"
     >
-      <div className="mx-auto w-full max-w-[1120px] space-y-8">
+      <div className="mx-auto w-full max-w-3xl space-y-8">
         <div className="space-y-3">
           <p className="text-xs font-semibold tracking-[0.18em] text-primary uppercase">
             Questions
@@ -43,10 +39,20 @@ export function LandingFaq() {
           </h2>
         </div>
 
-        <div className="grid gap-x-10 md:grid-cols-2">
-          <FaqAccordion items={LANDING_FAQ.slice(0, 2)} />
-          <FaqAccordion items={LANDING_FAQ.slice(2)} />
-        </div>
+        <FaqAccordion items={LANDING_FAQ} />
+
+        <p className="border-t border-border pt-4 text-sm text-muted-foreground">
+          More questions?{" "}
+          <a
+            href={WHATSAPP_GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-1.5 font-medium text-primary underline-offset-4 hover:underline"
+          >
+            <FaWhatsapp className="size-4" />
+            {WHATSAPP_GROUP_LABEL}
+          </a>
+        </p>
       </div>
     </section>
   );

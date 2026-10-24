@@ -1,31 +1,21 @@
-import {
-  ArrowRight,
-  GraduationCap,
-  Sparkles,
-  Target,
-  Users,
-} from "lucide-react";
+import { ArrowRight, BookOpen, GraduationCap, Sparkles } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 export const metadata: Metadata = {
-  title: "About TiCLearn - AI Study Platform by Tic Foundation",
+  title: "About TiCLearn · Tic Foundation",
   description:
-    "Learn about TiCLearn, developed by Tic Foundation to help Cameroonian university students study their own lecture notes with AI-powered tools.",
-  keywords: [
-    "TiCLearn about",
-    "Tic Foundation",
-    "University study Cameroon",
-    "AI study platform Cameroon",
-  ],
-  openGraph: {
-    title: "About TiCLearn - Study Help for University Students",
-    description:
-      "Discover how TiCLearn helps university students in Cameroon learn from their own lecture notes.",
-  },
+    "Who builds TiCLearn, and why university students in Buea and Bamenda study their own lecture notes with Tip.",
 };
 
+/**
+ * The about page, from spec 0016 AC-9. It carries a true mission and story
+ * under the landing honesty rules: no invented student numbers, no community
+ * or ranking surfaces, no territory claims beyond the cities the product
+ * actually speaks to. The closing actions are sign up and WhatsApp.
+ */
 export default function AboutPage() {
   return (
     <div className="container py-12 md:py-20">
@@ -36,8 +26,9 @@ export default function AboutPage() {
             About <span className="text-primary">TiCLearn</span>
           </h1>
           <p className="text-lg text-muted-foreground md:text-xl">
-            Empowering Cameroonian university students with AI tools that teach
-            from their own lecture notes.
+            A study tool for Cameroonian university students, built by Tic
+            Foundation. You bring your own lecture notes, and Tip teaches from
+            them.
           </p>
         </section>
 
@@ -45,25 +36,25 @@ export default function AboutPage() {
         <section className="grid gap-8 md:grid-cols-2">
           <div className="space-y-4">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Target className="h-6 w-6 text-primary" />
+              <GraduationCap className="h-6 w-6 text-primary" />
             </div>
             <h2 className="text-2xl font-bold">Our Mission</h2>
             <p className="text-muted-foreground">
-              We believe every Cameroonian student deserves access to
-              high-quality educational resources. TiCLearn bridges the gap
-              between traditional learning and modern AI technology, helping
-              students understand their own courses instead of memorising.
+              We believe every student learns best from their own course
+              material. TiCLearn is built so a student can turn the notes they
+              already sit on into summaries, practice, and a tutor that asks the
+              right checking questions.
             </p>
           </div>
           <div className="space-y-4">
             <div className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-              <Sparkles className="h-6 w-6 text-primary" />
+              <BookOpen className="h-6 w-6 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold">Our Vision</h2>
+            <h2 className="text-2xl font-bold">What TiCLearn is today</h2>
             <p className="text-muted-foreground">
-              To become the leading educational platform in Central Africa,
-              transforming how students prepare for exams through innovative
-              technology and personalized learning experiences.
+              Three things, done well: upload a note and get a clear summary,
+              turn a topic into a focused quiz, and study with Tip, an AI tutor
+              that teaches instead of handing you answers.
             </p>
           </div>
         </section>
@@ -79,18 +70,11 @@ export default function AboutPage() {
               nothing about their courses.
             </p>
             <p className="text-muted-foreground">
-              Founded by TIC Foundation, a nonprofit organization dedicated to
-              advancing technology and education in Cameroon, TiCLearn combines
-              the power of artificial intelligence with deep understanding of
-              the local educational context. Our team includes experienced
-              educators, software engineers, and passionate students who
-              remember the challenges of keeping up with university courses.
-            </p>
-            <p className="text-muted-foreground">
-              Today, we serve thousands of students across Cameroon and beyond,
-              helping them study smarter, not harder. Our platform continues to
-              evolve based on feedback from students and teachers, ensuring we
-              always meet the needs of our community.
+              TiCLearn is built by Tic Foundation, a nonprofit dedicated to
+              advancing technology and education in Cameroon. The team includes
+              educators, software engineers, and former students who remember
+              how hard it is to keep up with university coursework on a tight
+              budget and a phone.
             </p>
           </div>
         </section>
@@ -100,24 +84,27 @@ export default function AboutPage() {
           <h2 className="text-2xl font-bold text-center">Our Values</h2>
           <div className="grid gap-6 md:grid-cols-3">
             <div className="rounded-lg border p-6 text-center">
-              <Users className="mx-auto mb-4 h-8 w-8 text-primary" />
+              <GraduationCap className="mx-auto mb-4 h-8 w-8 text-primary" />
               <h3 className="mb-2 font-semibold">Student-Centered</h3>
               <p className="text-sm text-muted-foreground">
-                Every feature we build is designed with students in mind.
-              </p>
-            </div>
-            <div className="rounded-lg border p-6 text-center">
-              <GraduationCap className="mx-auto mb-4 h-8 w-8 text-primary" />
-              <h3 className="mb-2 font-semibold">Quality First</h3>
-              <p className="text-sm text-muted-foreground">
-                Accurate, relevant content that truly helps students succeed.
+                Every feature we build is designed for the student on a phone,
+                with data and connections in mind.
               </p>
             </div>
             <div className="rounded-lg border p-6 text-center">
               <Sparkles className="mx-auto mb-4 h-8 w-8 text-primary" />
-              <h3 className="mb-2 font-semibold">Innovation</h3>
+              <h3 className="mb-2 font-semibold">Tutor, not answer machine</h3>
               <p className="text-sm text-muted-foreground">
-                Continuously improving with the latest AI technology.
+                Tip quotes your own note, asks before it explains, and makes the
+                material stick rather than just answering.
+              </p>
+            </div>
+            <div className="rounded-lg border p-6 text-center">
+              <BookOpen className="mx-auto mb-4 h-8 w-8 text-primary" />
+              <h3 className="mb-2 font-semibold">Honest about limits</h3>
+              <p className="text-sm text-muted-foreground">
+                We publish the free limits and every claim on our pages has to
+                be something we can back.
               </p>
             </div>
           </div>
@@ -125,19 +112,26 @@ export default function AboutPage() {
 
         {/* CTA */}
         <section className="rounded-xl bg-primary/5 p-8 text-center md:p-12">
-          <h2 className="mb-4 text-2xl font-bold">Join Our Community</h2>
+          <h2 className="mb-4 text-2xl font-bold">Start with one note today</h2>
           <p className="mb-6 text-muted-foreground">
-            Start your journey to exam success today.
+            Upload a lecture note, get a summary, and let Tip take it from
+            there. Questions first? We answer on WhatsApp.
           </p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <Button size="lg" asChild>
               <Link href="/sign-up">
-                Get Started Free
+                Create a free account
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
             </Button>
             <Button variant="outline" size="lg" asChild>
-              <Link href="/contact">Contact Us</Link>
+              <a
+                href={WHATSAPP_GROUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {WHATSAPP_GROUP_LABEL}
+              </a>
             </Button>
           </div>
         </section>

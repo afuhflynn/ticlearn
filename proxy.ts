@@ -45,7 +45,6 @@ const publicPaths = [
   "/api/auth",
   "/api/webhooks",
   "/api/inngest",
-  "/api/contact",
   "/api/uploadthing",
 ];
 

@@ -54,24 +54,24 @@ export const FAQ_ITEMS: FAQItem[] = [
       "PDF files, Word documents and images (PNG, JPG, JPEG) of your handwritten or typed notes. Clear, well-organised documents give the best extraction results.",
   },
   {
-    question: "How do leaderboards work?",
+    question: "Is there a public ranking?",
     answer:
-      "TiCLearn does not have a leaderboard. Your quiz scores are private to your account, and the review page shows what you missed so you know what to revisit.",
+      "No. What you study and how you do stays in your own account, visible only to you. The review page shows what you missed so you know what to revisit.",
   },
   {
     question: "How do I reset my password?",
     answer:
-      "Go to the sign-in page and click 'Forgot Password'. Enter your email address and we'll send you a reset link.",
+      "There is no self-serve reset in the app yet. Reach the team on the TiCLearn WhatsApp group and a person will help you get back into your account.",
   },
   {
     question: "How do I contact support?",
     answer:
-      "You can reach our support team through the Contact page, by email, or through our app. We're here to help Monday through Friday during business hours.",
+      "The TiCLearn WhatsApp group is the one channel we answer from. Say hello and tell us what you are stuck on; a person reads the messages and replies there.",
   },
   {
     question: "Is my data secure?",
     answer:
-      "Yes, we take data security seriously. Your personal information and study materials are encrypted and stored securely. We never share your data with third parties without your consent.",
+      "Your account is protected with standard sign-in security. Uploaded notes and chats are stored on a hosted database, and when you ask Tip something the relevant text is sent to an AI provider to produce the answer. We do not sell your data, and the Privacy policy names every provider and what it receives.",
   },
   {
     question: "What payment methods do you accept?",
@@ -86,12 +86,12 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Can I get a refund?",
     answer:
-      "We offer a 7-day money-back guarantee for paid subscriptions. If you're not satisfied with the service, contact our support team within 7 days of purchase for a full refund.",
+      "Payments are final once a plan is active, and the Terms set out how billing works. If you were charged twice, or what you paid for does not work, reach the team on the WhatsApp group and we will make it right.",
   },
   {
     question: "What happens if payment fails?",
     answer:
-      "If your payment fails, you'll be notified immediately. You can try again or contact our support team for assistance. Your account will remain active until the current subscription period ends.",
+      "If a payment fails, no plan starts and no money moves. You can try again, or reach the team on the WhatsApp group if it keeps failing.",
   },
   {
     question: "How much data does TiCLearn use?",
@@ -106,3 +106,10 @@ export const FAQ_ITEMS: FAQItem[] = [
 ];
 
 export const MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT = 999_999;
+
+/**
+ * The one authored date both legal pages render, from spec 0016 AC-12. A
+ * shared authored string rather than a rendered clock, so the two pages can
+ * never drift and the value is set deliberately when the policies change.
+ */
+export const LEGAL_LAST_UPDATED = "Last updated: 24 October 2026";

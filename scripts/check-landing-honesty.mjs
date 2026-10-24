@@ -2,24 +2,41 @@
 import process from "node:process";
 
 /**
- * The honesty rule for the public landing page, from spec 0015 (which
- * supersedes the page rules in spec 0014).
+ * The honesty rule set for the whole public set, from spec 0016 AC-10. The
+ * landing page (spec 0015) plus the five public pages: About, FAQ, contact,
+ * Terms and Privacy.
  *
- * The page is fetched as a reader receives it, the scripts are removed, and
+ * Each page is fetched as a reader receives it, the scripts are removed, and
  * what is left is checked for the things a page about this product must never
- * say: an amount of money, a bare percentage, a phone number, or a surface that
- * was cut. "Progress" and "feedback" are allowed now: Tip reports study
- * progress in chat, and a quiz shows what was missed.
+ * say: an amount of money, a bare percentage, a phone number, an email
+ * address, or a surface that was cut. "Progress" and "feedback" are allowed
+ * now: Tip reports study progress in chat, and a quiz shows what was missed.
  *
- * The page must be running. `pnpm build && pnpm start` is the honest target;
- * `pnpm dev` works too. Pass a URL as the first argument or set LANDING_URL.
+ * The landing page keeps its canonical rule; the five public pages do not,
+ * because canonicals and the rest of technical SEO belong to feature 36.
+ *
+ * The app must be running. `pnpm build && pnpm start` is the honest target;
+ * `pnpm dev` works too. Pass a base URL as the first argument or set
+ * LANDING_URL.
  *
  *   node scripts/check-landing-honesty.mjs
- *   node scripts/check-landing-honesty.mjs http://localhost:3000/
+ *   node scripts/check-landing-honesty.mjs http://localhost:3000
  */
 
-const url =
-  process.argv[2] ?? process.env.LANDING_URL ?? "http://localhost:3000/";
+const baseUrl = (
+  process.argv[2] ??
+  process.env.LANDING_URL ??
+  "http://localhost:3000/"
+).replace(/\/$/, "");
+
+const PAGES = [
+  { path: "/", name: "landing", requireCanonical: true },
+  { path: "/about", name: "about", requireCanonical: false },
+  { path: "/faq", name: "faq", requireCanonical: false },
+  { path: "/contact", name: "contact", requireCanonical: false },
+  { path: "/terms", name: "terms", requireCanonical: false },
+  { path: "/privacy", name: "privacy", requireCanonical: false },
+];
 
 const BANNED_WORDS = [
   { word: "community", why: "community was cut" },
@@ -47,6 +64,12 @@ const CURRENCY =
   /(?:\b(?:FCFA|XAF|CFA|USD|EUR)\b|[₣$€£¥]|\b\d[\d\s.,]*\s*(?:FCFA|XAF|CFA)\b)/i;
 const PERCENTAGE = /\b\d+(?:[.,]\d+)?\s*%/;
 const PHONE = /(?:\+?\d[\d\s().-]{7,}\d)/;
+
+// No email address survives anywhere in the public set, and no mailto: link.
+// This is a shape check, not one exact string, because the footer used to
+// publish a second address.
+const EMAIL =
+  /(?:[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}|mailto:[A-Za-z0-9._%+-])/;
 
 function decodeEntities(value) {
   return value
@@ -112,7 +135,8 @@ function findMatches(text, pattern) {
   return found;
 }
 
-async function main() {
+async function checkPage(page) {
+  const url = page.path === "/" ? baseUrl : `${baseUrl}${page.path}`;
   let html;
   try {
     const response = await fetch(url, {
@@ -160,18 +184,40 @@ async function main() {
   for (const match of findMatches(text, PHONE)) {
     failures.push(`phone number “${match.value}” (${context(text, match.at)})`);
   }
+  for (const match of findMatches(text, EMAIL)) {
+    failures.push(
+      `email address “${match.value}” (${context(text, match.at)})`,
+    );
+  }
+  for (const match of findMatches(
+    `${meta.title}\n${meta.description}`,
+    EMAIL,
+  )) {
+    failures.push(`email address “${match.value}” (metadata)`);
+  }
 
   if (!meta.title) failures.push("metadata is missing a title");
   if (!meta.description) failures.push("metadata is missing a description");
-  if (!meta.canonical) failures.push("metadata is missing a canonical URL");
-
-  if (failures.length > 0) {
-    console.error(`Landing honesty check failed for ${url}:`);
-    for (const failure of failures) console.error(`  - ${failure}`);
-    process.exit(1);
+  if (page.requireCanonical && !meta.canonical) {
+    failures.push("metadata is missing a canonical URL");
   }
 
-  console.log(`Landing honesty check passed for ${url}.`);
+  return { page, url, failures };
+}
+
+async function main() {
+  let failed = false;
+  for (const page of PAGES) {
+    const { url, failures } = await checkPage(page);
+    if (failures.length > 0) {
+      failed = true;
+      console.error(`Landing honesty check failed for ${url}:`);
+      for (const failure of failures) console.error(`  - ${failure}`);
+      continue;
+    }
+    console.log(`Landing honesty check passed for ${url}.`);
+  }
+  if (failed) process.exit(1);
 }
 
 main();
