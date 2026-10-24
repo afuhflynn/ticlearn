@@ -14,7 +14,6 @@ const SUBJECTS: Record<string, string> = {
   "admin-role-update":
     "Your TiCLearn account role has been updated to {{role}} 🛡️",
   "admin-payment-alert": "💰 New Sale: {{planLabel}} — {{userName}}",
-  "admin-feedback-alert": "📬 New Feedback: {{typeLabel}} — {{userName}}",
 };
 
 export function subject(

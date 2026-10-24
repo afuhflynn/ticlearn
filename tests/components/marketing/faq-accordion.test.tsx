@@ -58,4 +58,45 @@ describe("the FAQ accordion (spec 0012 AC-8)", () => {
 
     expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
+
+  it("shows only the tapped answer while every answer stays mounted (spec 0016 AC-5)", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<FaqAccordion items={FAQ_ITEMS} />);
+
+    // Every answer is in the served HTML:
+    for (const item of FAQ_ITEMS) {
+      expect(container.textContent).toContain(item.answer);
+    }
+
+    // The content itself is state controlled: everything starts hidden.
+    const contents = () =>
+      [
+        ...container.querySelectorAll<HTMLDivElement>(
+          '[data-slot="accordion-content"] > div',
+        ),
+      ].map((element) => element as HTMLElement);
+    for (const content of contents()) {
+      expect(content).toHaveClass("hidden");
+    }
+
+    // Open the first: only it shows.
+    const trigger = screen.getByRole("button", { name: FAQ_ITEMS[0].question });
+    await user.click(trigger);
+
+    expect(contents()[0]).not.toHaveClass("hidden");
+    for (const content of contents().slice(1)) {
+      expect(content).toHaveClass("hidden");
+    }
+
+    // There is still exactly one trigger expanded, not two.
+    expect(container.querySelectorAll('[aria-expanded="true"]')).toHaveLength(
+      1,
+    );
+
+    // And a second tap closes it again.
+    await user.click(trigger);
+    for (const content of contents()) {
+      expect(content).toHaveClass("hidden");
+    }
+  });
 });

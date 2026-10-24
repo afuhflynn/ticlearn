@@ -219,6 +219,23 @@ function SignUpForm() {
                 )}
               </Button>
             </form>
+
+            <p className="mt-4 text-center text-xs text-muted-foreground">
+              By creating an account you agree to our{" "}
+              <Link
+                href="/terms"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Terms
+              </Link>{" "}
+              and our{" "}
+              <Link
+                href="/privacy"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                Privacy policy
+              </Link>
+            </p>
             <div className="mt-6">
               <div className="relative">
                 <div className="absolute inset-0 flex items-center">

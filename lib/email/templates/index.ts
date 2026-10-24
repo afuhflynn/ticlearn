@@ -1,6 +1,5 @@
 import { render as comeBack } from "./come-back";
 import { render as examCountdown } from "./exam-countdown";
-import { render as adminFeedbackAlert } from "./internal/admin-feedback-alert";
 import { render as adminInvite } from "./internal/admin-invite";
 import { render as adminPaymentAlert } from "./internal/admin-payment-alert";
 import { render as adminRoleUpdate } from "./internal/admin-role-update";
@@ -45,7 +44,6 @@ export const TEMPLATES: Record<string, TemplateDef> = {
   "admin-invite": asTemplateDef(adminInvite, "lifecycle"),
   "admin-role-update": asTemplateDef(adminRoleUpdate, "lifecycle"),
   "admin-payment-alert": asTemplateDef(adminPaymentAlert, "transactional"),
-  "admin-feedback-alert": asTemplateDef(adminFeedbackAlert, "transactional"),
 };
 
 export function isTemplate(name: string): name is keyof typeof TEMPLATES {

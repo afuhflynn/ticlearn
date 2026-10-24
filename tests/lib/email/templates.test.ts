@@ -25,20 +25,6 @@ describe("email templates", () => {
     expect(html).toContain("&lt;img");
   });
 
-  it("admin-feedback-alert renders", () => {
-    const { subject, html, text } = TEMPLATES["admin-feedback-alert"].render({
-      userName: "Student",
-      userEmail: "s@x.com",
-      typeLabel: "BUG",
-      subjectLine: "Broken thing",
-      message: "It broke",
-      rating: 1,
-    });
-    expect(subject).toBeTruthy();
-    expect(html).toContain("Student");
-    expect(text).toContain("Broken thing");
-  });
-
   it("isTemplate returns false for unknown", () => {
     expect(isTemplate("nope")).toBe(false);
   });

@@ -236,6 +236,13 @@ Platform settings, the public payment details, and a student's readiness are rea
 
 (basis: spec 0010 slice five · the read paths, scopes, and lives are in that spec's read cache contract, and the two dropped surfaces are recorded in its rationale)
 
+### 44. Sign in password reset flow · from spec 0016
+The sign-up page commits a student an account, but a forgotten password has no recovery path in the code: no forgot or reset handler exists anywhere in the auth setup, and the FAQ had to be written honestly around the gap. Spec 0016 notes this as the one real blocker left in the public set before launch.
+**Done when:** a signed out user can request a password reset from the sign-in page, the email carries a single use link that expires correctly, a completed reset signs the user in cleanly, and the rate limit and abuse protections of the security feature cover the new endpoints.
+- [ ] Design it (spec): `/solution-architect sign in password reset flow`
+
+(basis: research/design-reference.md §3 · recovery questions on sign-in are a support cost centre; the honest FAQ wording from spec 0016 holds only until the flow exists)
+
 ## Cross cutting
 
 ### 33. Mobile responsiveness and device quality

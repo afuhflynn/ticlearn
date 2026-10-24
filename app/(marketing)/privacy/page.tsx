@@ -1,3 +1,20 @@
+import type { Metadata } from "next";
+import { LEGAL_LAST_UPDATED } from "@/constants";
+import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy · TiCLearn",
+  description:
+    "How TiCLearn handles your account, your notes and your chats, and who processes them.",
+};
+
+/**
+ * The privacy page, from spec 0016 AC-8. It says only what the system really
+ * does: what is collected, that note text and chat text reach AI providers,
+ * the honest third party list, and how deletion happens. No encryption at
+ * rest claim, no promise to notify about changes, and no contact channel
+ * except the WhatsApp group.
+ */
 export default function PrivacyPage() {
   return (
     <div className="container py-12 md:py-20">
@@ -10,152 +27,169 @@ export default function PrivacyPage() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">1. Introduction</h2>
             <p className="text-muted-foreground">
-              At TiCLearn, we take your privacy seriously. This Privacy Policy
-              explains how we collect, use, disclose, and safeguard your
-              information when you use our platform.
+              This policy explains what TiCLearn collects, what happens to it,
+              and who else touches it. It is deliberately plain. If a sentence
+              here stops matching what the product does, treat the date at the
+              bottom as the mark of when it was true.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">
-              2. Information We Collect
-            </h2>
+            <h2 className="text-2xl font-semibold">2. What We Collect</h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
-                <strong>Account Information:</strong> Name, email, profile
-                picture when you sign up
+                <strong>Account:</strong> your name, email and profile picture
+                when you sign up
               </li>
               <li>
-                <strong>Study Content:</strong> Notes, quizzes, and other
-                materials you upload
+                <strong>Uploaded notes:</strong> the files you upload and the
+                text and summaries extracted from them
               </li>
               <li>
-                <strong>Usage Data:</strong> How you interact with the platform,
-                quiz scores, progress
+                <strong>Chats with Tip:</strong> the questions you ask and the
+                answers you get
               </li>
               <li>
-                <strong>Device Information:</strong> Browser type, device type,
-                IP address
+                <strong>Usage:</strong> what you take, what you open, and the
+                counts that apply your free limits
+              </li>
+              <li>
+                <strong>Device:</strong> browser, device type and IP address
               </li>
             </ul>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">
-              3. How We Use Your Information
+              3. AI Processing of Your Notes and Chats
+            </h2>
+            <p className="text-muted-foreground">
+              When you ask Tip a question or generate a quiz, the text of the
+              note in question (and your message) is sent to an AI service
+              provider so it can produce the study answer. Those providers
+              process it for that request and under their own terms. We cannot
+              train on what is not yours, but assume anything you upload or type
+              leaves our own systems in that way. Do not upload or paste
+              material you are not comfortable sending through an AI provider.
+            </p>
+          </section>
+
+          <section className="space-y-4">
+            <h2 className="text-2xl font-semibold">
+              4. Who Else Processes Your Data
             </h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>To provide and improve our educational services</li>
-              <li>To personalize your learning experience</li>
-              <li>To communicate with you about your account</li>
-              <li>To process subscription payments</li>
-              <li>To send important updates and notifications</li>
+              <li>
+                <strong>Content storage:</strong> uploaded files are stored
+                through UploadThing
+              </li>
+              <li>
+                <strong>Database:</strong> your account, notes, chats and usage
+                live in a managed Postgres database (Neon)
+              </li>
+              <li>
+                <strong>Payment processor:</strong> paid plans are billed
+                through Fapshi, which handles the MTN MoMo and Orange Money
+                charge and tells us the result
+              </li>
+              <li>
+                <strong>Email sender:</strong> verification codes and account
+                emails are sent through our email service
+              </li>
+              <li>
+                <strong>Error reporting:</strong> technical errors are reported
+                to Sentry so we can fix them
+              </li>
+              <li>
+                <strong>AI providers:</strong> the models behind Tip, reached
+                through our AI gateway (currently Google Gemini models)
+              </li>
             </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">4. Data Protection</h2>
             <p className="text-muted-foreground">
-              We implement appropriate technical and organizational measures to
-              protect your personal data against unauthorized access,
-              alteration, disclosure, or destruction. All data is encrypted in
-              transit and at rest.
+              We do not sell your personal information. These providers may use
+              your data to deliver their own services under their own policies.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">5. Data Sharing</h2>
-            <p className="text-muted-foreground">
-              We do not sell your personal information. We may share data with:
-            </p>
+            <h2 className="text-2xl font-semibold">5. How We Use It</h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>Service providers who help operate our platform</li>
-              <li>Payment processors for subscription handling</li>
-              <li>Legal authorities when required by law</li>
+              <li>To run the study features: notes, quizzes and Tip</li>
+              <li>To apply your plan limits and process payments</li>
+              <li>To send account emails you need, like verification</li>
+              <li>To fix problems and keep the service safe</li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">6. Email Verification</h2>
+            <h2 className="text-2xl font-semibold">6. Cookies</h2>
             <p className="text-muted-foreground">
-              For manual sign-ups, we require email verification to ensure
-              account security. You will receive a verification link to activate
-              your account. We store your email securely and only use it for
-              account-related communications.
+              We use cookies to keep you signed in. You can control cookies in
+              your browser settings; essential ones are required for the
+              platform to work.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">7. Cookies and Tracking</h2>
+            <h2 className="text-2xl font-semibold">
+              7. Retention and Deletion
+            </h2>
             <p className="text-muted-foreground">
-              We use cookies to enhance your experience. You can control cookies
-              through your browser settings. Essential cookies are required for
-              the platform to function properly.
+              We keep your data while your account is active. You can request
+              deletion of your account and everything in it through the WhatsApp
+              group, and we will remove your data except where the law requires
+              us to keep it.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">8. Your Rights</h2>
+            <h2 className="text-2xl font-semibold">8. Your Choices</h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>Access your personal data</li>
-              <li>Correct inaccurate data</li>
-              <li>Request deletion of your data</li>
-              <li>Object to processing</li>
-              <li>Export your data</li>
+              <li>Ask what we hold about you</li>
+              <li>Ask for a copy of your data</li>
+              <li>Ask us to delete your account</li>
             </ul>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">9. Data Retention</h2>
             <p className="text-muted-foreground">
-              We retain your data while your account is active. You can request
-              account deletion at any time, and we will remove your data within
-              30 days, except where required by law to retain certain
-              information.
+              Every request starts through the WhatsApp group, the one channel
+              we answer from.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">10. Third-Party Services</h2>
-            <p className="text-muted-foreground">
-              Our platform uses third-party services including payment
-              processors (Fapshi), file storage (UploadThing), and analytics.
-              These services have their own privacy policies.
-            </p>
-          </section>
-
-          <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">11. Children's Privacy</h2>
+            <h2 className="text-2xl font-semibold">9. Children</h2>
             <p className="text-muted-foreground">
               TiCLearn is not intended for children under 13. We do not
-              knowingly collect personal information from children under 13.
+              knowingly collect personal information from them.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">
-              12. Changes to This Policy
-            </h2>
+            <h2 className="text-2xl font-semibold">10. Changes</h2>
             <p className="text-muted-foreground">
-              We may update this policy periodically. We will notify you of
-              significant changes via email or platform notification.
+              This policy can change as the product changes. The "last updated"
+              date below is the current one; check back before trusting an old
+              reading of it.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">13. Contact Us</h2>
+            <h2 className="text-2xl font-semibold">11. Contact Us</h2>
             <p className="text-muted-foreground">
-              For privacy-related questions, contact us at hello@ticlearn.com.
+              Privacy questions? Reach the team on the{" "}
+              <a
+                href={WHATSAPP_GROUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                TiCLearn WhatsApp group
+              </a>
+              .
             </p>
           </section>
 
           <p className="text-sm text-muted-foreground pt-8">
-            Last updated:{" "}
-            {new Date().toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {LEGAL_LAST_UPDATED}
           </p>
         </div>
       </div>

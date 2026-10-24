@@ -1,4 +1,4 @@
-import { ExternalLink, Globe, Mail } from "lucide-react";
+import { ExternalLink, Globe } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa6";
@@ -25,7 +25,6 @@ const footerLinks = {
 
 const socialLinks = [
   { icon: Globe, href: "https://ticlearn.ticsummit.org", label: "Website" },
-  { icon: Mail, href: "mailto:ticlearn@ticsummit.org", label: "Email" },
   { icon: ExternalLink, href: "https://ticsummit.org", label: "Organization" },
   {
     icon: FaWhatsapp,

@@ -1,3 +1,19 @@
+import type { Metadata } from "next";
+import { LEGAL_LAST_UPDATED } from "@/constants";
+import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+
+export const metadata: Metadata = {
+  title: "Terms of Service · TiCLearn",
+  description:
+    "The rules for using TiCLearn: accounts, uploads, chats and paying with MTN MoMo and Orange Money.",
+};
+
+/**
+ * The terms page, from spec 0016 AC-7. The money stance is deliberately
+ * minimal: features bill in advance at the prices shown at checkout, there is
+ * no billing period promise, no refund policy and no affiliate section. Every
+ * contact line points at the WhatsApp group and no page names an amount.
+ */
 export default function TermsPage() {
   return (
     <div className="container py-12 md:py-20">
@@ -21,9 +37,9 @@ export default function TermsPage() {
               2. Description of Service
             </h2>
             <p className="text-muted-foreground">
-              TiCLearn is an AI-powered educational platform that provides study
-              tools, quizzes, and study resources, and Tip tutoring for
-              university students in Cameroon.
+              TiCLearn is a study platform for university students in Cameroon.
+              You upload your own study material, turn it into quizzes, and
+              learn with Tip, an AI tutor that teaches from what you uploaded.
             </p>
           </section>
 
@@ -34,78 +50,78 @@ export default function TermsPage() {
                 You must provide accurate and complete registration information
               </li>
               <li>
-                You are responsible for maintaining the security of your account
+                You are responsible for keeping your account credentials safe
               </li>
               <li>You must be at least 13 years old to create an account</li>
               <li>
-                You agree to notify us immediately of any unauthorized access
-              </li>
-              <li>
-                We reserve the right to suspend or terminate accounts that
-                violate these terms
+                We may suspend or close accounts that violate these terms or
+                misuse the service
               </li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">4. User Content</h2>
+            <h2 className="text-2xl font-semibold">4. Your Material</h2>
             <p className="text-muted-foreground">
-              You retain ownership of content you upload to TiCLearn. By
-              uploading content, you grant us permission to use it for providing
-              and improving our services.
+              You keep ownership of the notes and files you upload. By uploading
+              them, you allow TiCLearn to process them to produce the summaries,
+              quizzes and tutoring answers you ask for. Only use material you
+              are permitted to study from.
             </p>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">5. Prohibited Conduct</h2>
+            <h2 className="text-2xl font-semibold">5. Acceptable Use</h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
-              <li>Violating any applicable laws or regulations</li>
-              <li>Impersonating any person or entity</li>
-              <li>Posting harmful, abusive, or discriminatory content</li>
-              <li>Attempting to gain unauthorized access to our systems</li>
-              <li>Interfering with the proper functioning of the platform</li>
+              <li>Obey all applicable laws and regulations</li>
+              <li>Do not impersonate any person or entity</li>
+              <li>Do not post harmful, abusive, or discriminatory content</li>
+              <li>Do not attempt to gain unauthorized access to our systems</li>
+              <li>
+                Do not interfere with the proper functioning of the service
+              </li>
             </ul>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">
-              6. Subscription and Payments
+              6. Payments and Paid Features
             </h2>
             <ul className="list-disc pl-6 space-y-2 text-muted-foreground">
               <li>
-                Subscription fees are billed in advance on a monthly basis
+                Paid features bill in advance, at the prices shown at checkout
               </li>
-              <li>You can cancel your subscription at any time</li>
               <li>
-                Refunds are available within 7 days of payment if unsatisfactory
+                You pay with MTN MoMo or Orange Money, processed through our
+                payment provider, Fapshi
               </li>
-              <li>Prices are subject to change with 30 days notice</li>
+              <li>
+                You can stop paying at any time. Paid features end when a paid
+                period ends; free limits apply again
+              </li>
+              <li>
+                We do not promise refunds under these terms. If you were charged
+                twice or what you paid for does not work, reach the team on
+                WhatsApp (section 8) and we will look into it
+              </li>
             </ul>
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">7. Affiliate Program</h2>
-            <p className="text-muted-foreground">
-              Our affiliate program allows users to earn commissions by
-              referring new subscribers. Affiliates must comply with our
-              marketing guidelines and cannot make false claims about TiCLearn.
-            </p>
-          </section>
-
-          <section className="space-y-4">
             <h2 className="text-2xl font-semibold">
-              8. Disclaimer of Warranties
+              7. Disclaimer of Warranties
             </h2>
             <p className="text-muted-foreground">
               TiCLearn is provided "as is" without warranties of any kind. We do
               not guarantee that the service will be error-free or
-              uninterrupted.
+              uninterrupted. Study answers from Tip can be wrong, so always
+              check important facts against your course material.
             </p>
           </section>
 
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">
-              9. Limitation of Liability
+              8. Limitation of Liability
             </h2>
             <p className="text-muted-foreground">
               TiCLearn shall not be liable for any indirect, incidental, or
@@ -114,20 +130,23 @@ export default function TermsPage() {
           </section>
 
           <section className="space-y-4">
-            <h2 className="text-2xl font-semibold">10. Contact Information</h2>
+            <h2 className="text-2xl font-semibold">9. Contact Us</h2>
             <p className="text-muted-foreground">
-              For questions about these terms, please contact us at
-              hello@ticlearn.com.
+              Questions about these terms? Reach the team on the{" "}
+              <a
+                href={WHATSAPP_GROUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-primary underline-offset-4 hover:underline"
+              >
+                TiCLearn WhatsApp group
+              </a>
+              , the one channel we answer from.
             </p>
           </section>
 
           <p className="text-sm text-muted-foreground pt-8">
-            Last updated:{" "}
-            {new Date().toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
+            {LEGAL_LAST_UPDATED}
           </p>
         </div>
       </div>

@@ -1,7 +1,8 @@
-import { ArrowRight } from "lucide-react";
 import type { Metadata } from "next";
+import { FaWhatsapp } from "react-icons/fa6";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { FAQ_ITEMS } from "@/constants";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 export const metadata: Metadata = {
   title: "FAQ · Cost, Data Use and Offline Access",
@@ -27,14 +28,17 @@ export default function FAQPage() {
         <section className="rounded-xl border p-6 text-center">
           <h2 className="mb-2 text-xl font-semibold">Still have questions?</h2>
           <p className="mb-4 text-muted-foreground">
-            Can&apos;t find the answer you&apos;re looking for? Contact our
-            support team.
+            Can&apos;t find the answer you&apos;re looking for? Reach the team
+            on WhatsApp; a person reads it, not a bot.
           </p>
           <a
-            href="/contact"
-            className="text-primary font-medium hover:underline"
+            href={WHATSAPP_GROUP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex min-h-11 items-center gap-2 text-primary font-medium underline-offset-4 hover:underline"
           >
-            Contact Support <ArrowRight className="inline-block size-sm ml-1" />
+            <FaWhatsapp className="size-4" />
+            {WHATSAPP_GROUP_LABEL}
           </a>
         </section>
       </div>

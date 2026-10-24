@@ -4,10 +4,11 @@ import { MarketingFooter } from "@/components/layout/MarketingFooter";
 import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 /**
- * The marketing footer (spec 0014, AC-9; spec 0015, AC-5).
+ * The marketing footer (spec 0014, AC-9; spec 0015, AC-5; spec 0016, AC-2).
  *
  * The footer is one of the pages that must read the single WhatsApp constant,
  * and every link it prints must target a route that ships after the cut.
+ * Since spec 0016 no monitored inbox exists, so no email row is published.
  */
 describe("the marketing footer (spec 0014 AC-9)", () => {
   it("points the WhatsApp link at the one contact constant", () => {
@@ -27,6 +28,17 @@ describe("the marketing footer (spec 0014 AC-9)", () => {
     const { container } = render(<MarketingFooter />);
 
     expect(container.textContent).toContain(WHATSAPP_GROUP_LABEL);
+  });
+
+  it("publishes no email address (spec 0016 AC-2 and AC-10)", () => {
+    const { container } = render(<MarketingFooter />);
+
+    expect(container.textContent).not.toMatch(/@/);
+    expect(
+      Array.from(container.querySelectorAll("a")).some((link) =>
+        (link.getAttribute("href") ?? "").startsWith("mailto:"),
+      ),
+    ).toBe(false);
   });
 });
 

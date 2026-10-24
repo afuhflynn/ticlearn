@@ -7,8 +7,8 @@ import { waitForHydration } from "./helpers/hydration";
  * AC-1, AC-9 and AC-10 for the 404 page).
  *
  * These pages are server rendered, so what the browser reads is the first
- * HTML. The contact form is exercised against a stubbed endpoint, so the flow
- * is proved without a database.
+ * HTML. The contact page offers the WhatsApp group; the form that used to post
+ * to `/api/contact` is gone (spec 0016, AC-6).
  */
 test("the pricing page shows the plans and its own title", async ({ page }) => {
   await page.goto("/pricing");
@@ -42,54 +42,6 @@ test("the FAQ answers open for a student", async ({ page }) => {
   await expect(
     page.getByText("TiCLearn is designed to be light on data."),
   ).toBeVisible();
-});
-
-test("the contact form sends a message and tells the student", async ({
-  page,
-}) => {
-  await page.route("**/api/contact", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ success: true }),
-    });
-  });
-
-  await page.goto("/contact");
-  const send = page.getByRole("button", { name: "Send Message" });
-  await waitForHydration(send);
-  await page.getByRole("textbox", { name: "Name" }).fill("Ada Tester");
-  await page.getByRole("textbox", { name: "Email" }).fill("ada@example.com");
-  await page.getByRole("textbox", { name: "Subject" }).fill("A question");
-  await page.getByRole("textbox", { name: "Message" }).fill("How do I pay?");
-  await send.click();
-
-  await expect(
-    page.getByText("Message sent! We'll get back to you soon."),
-  ).toBeVisible();
-});
-
-test("the contact form tells the student when the message was refused", async ({
-  page,
-}) => {
-  await page.route("**/api/contact", async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ success: false, error: "Message rejected" }),
-    });
-  });
-
-  await page.goto("/contact");
-  const send = page.getByRole("button", { name: "Send Message" });
-  await waitForHydration(send);
-  await page.getByRole("textbox", { name: "Name" }).fill("Ada Tester");
-  await page.getByRole("textbox", { name: "Email" }).fill("ada@example.com");
-  await page.getByRole("textbox", { name: "Subject" }).fill("A question");
-  await page.getByRole("textbox", { name: "Message" }).fill("How do I pay?");
-  await send.click();
-
-  await expect(page.getByText("Message rejected")).toBeVisible();
 });
 
 test("a lost student gets a way back and a way to reach a human on the 404 page", async ({

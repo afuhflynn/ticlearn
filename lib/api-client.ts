@@ -13,8 +13,6 @@ import type {
   ChatConversation,
   ChatConversationWithMessages,
   ChatMessage,
-  ContactFormData,
-  ContactResponse,
   CreateAffiliateParams,
   NotePreview,
   NoteSummary,
@@ -327,14 +325,6 @@ export const api = {
           `/quizzes/attempts/recent${limit ? `?limit=${limit}` : ""}`,
           { method: "GET" },
         ),
-    },
-
-    contact: {
-      send: (data: ContactFormData) =>
-        apiRequest<ContactResponse>("/contact", {
-          method: "POST",
-          body: data,
-        }),
     },
 
     profile: {

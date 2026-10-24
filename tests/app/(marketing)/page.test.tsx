@@ -122,22 +122,32 @@ describe("the landing page (spec 0015)", () => {
     );
   });
 
-  it("answers the mockup's four questions", () => {
+  it("answers exactly the six curated questions from FAQ_ITEMS (spec 0016 AC-4)", () => {
     render(<HomePage />);
 
+    for (const question of [
+      "What is TiCLearn?",
+      "Is TiCLearn free to use?",
+      "What payment methods do you accept?",
+      "How much data does TiCLearn use?",
+      "Can I use TiCLearn offline?",
+      "Is my data secure?",
+    ]) {
+      expect(
+        screen.getByRole("button", { name: question }),
+      ).toBeInTheDocument();
+    }
+
+    // The landing shows only the curated six, not the full set of 18.
+    expect(screen.getAllByRole("button", { name: /\?$/ })).toHaveLength(6);
+  });
+
+  it("closes with a WhatsApp row beside the CTA band (spec 0016 AC-4)", () => {
+    render(<HomePage />);
+
+    expect(screen.getByText("More questions?")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Can I use my own notes?" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: "Is TiCLearn for university and HND students?",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Can AI get something wrong?" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Do I need a laptop?" }),
+      screen.getByRole("link", { name: /Join the WhatsApp group/ }),
     ).toBeInTheDocument();
   });
 

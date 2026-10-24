@@ -32,10 +32,18 @@ The audit this note asks for ran on 2026-10-23 and its result is recorded in spe
 - [x] Document it: `/tech-writer landing page rebuild`
   - PR title and body delivered in chat. The work is still uncommitted, so no PR carries it yet; open the PR with the text once it lands on a branch.
 
-### 15. Public page set · needs a decision
+### 15. Public page set
 About, FAQ, contact, terms and privacy. Today the FAQ data lives in a constants file, the contact form injects raw user text into an admin email with no rate limit, and every page carries GCE metadata. Research found that every credible competitor publishes a real phone number and a working WhatsApp link, and that the ones with dead links lose trust immediately.
-**Done when:** every public page carries working contact details and correct university metadata, the FAQ answers the questions research says students actually ask about cost, data use and offline access, and the contact form is escaped and rate limited.
-- [ ] Design it (spec): `/solution-architect public page set`
+**Done when (spec 0016 amends the contact stance):** every public page carries working contact details and correct university metadata, the FAQ answers the questions research says students actually ask about cost, data use and offline access, and no unauthenticated contact endpoint remains (spec 0016 chose deleting the form over hardening it, the WhatsApp group being the one staffed channel).
+- [x] Design it (spec): `/solution-architect public page set` · spec [0016](../specs/0016-public-page-set/index.md)
+- [x] Build it: `/feature-build public page set` · code in `app/(marketing)/` and `components/marketing/`, with `scripts/check-landing-honesty.mjs` extended and the sign-up line in `app/(auth)/sign-up/page.tsx`
+  - [x] Accordion pattern and FAQ truth: the single column treatment, the permanently open bug fixed, all 18 answers corrected (covers AC-3, AC-5, AC-12)
+  - [x] Landing FAQ as a single column of six curated questions beside the CTA band (covers AC-4)
+  - [x] Contact truth: the form path deleted end to end, the WhatsApp card, the footer email row gone (covers AC-2, AC-6)
+  - [x] Terms, Privacy and About rewrites with per page metadata and the authored strings (covers AC-1, AC-7, AC-8, AC-9)
+  - [x] The sign-up agreement line and the honesty gate extended over all five pages (covers AC-10, AC-11)
+- [x] Verify it: `/verify-release public page set`
+- [x] Test it: `/test-engineer public page set`
 
 ### 16. Onboarding · needs a decision · GA
 Today the wizard asks school level and subject, which is meaningless now. A first pass shipped: one question, year of study, then straight to uploading a note. Institution, faculty and course are deliberately not collected, because the schema holds one academic fact and a four question form loses signups before it starts. Research says ask institution, then faculty, then year, then courses, so treat that as the shape only if a later slice earns it.
