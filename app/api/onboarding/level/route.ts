@@ -6,7 +6,13 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const setLevelSchema = z.object({
-  level: levelOfStudySchema,
+  level: levelOfStudySchema.optional(),
+  institution: z.string().optional(),
+  faculty: z.string().optional(),
+  program: z.string().optional(),
+  targetGoal: z.string().optional(),
+  gender: z.enum(["MALE", "FEMALE"]).optional(),
+  age: z.number().int().positive().optional(),
 });
 
 export async function POST(req: Request) {
@@ -15,16 +21,31 @@ export async function POST(req: Request) {
     if (!session?.user)
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const { level } = setLevelSchema.parse(await req.json());
+    const body = setLevelSchema.parse(await req.json());
 
     const user = await prisma.user.update({
       where: { id: session.user.id },
       data: {
-        levelOfStudy: level,
+        ...(body.level && { levelOfStudy: body.level }),
+        ...(body.institution && { institution: body.institution }),
+        ...(body.faculty && { faculty: body.faculty }),
+        ...(body.program && { program: body.program }),
+        ...(body.targetGoal && { targetGoal: body.targetGoal }),
+        ...(body.gender && { gender: body.gender }),
+        ...(body.age && { age: body.age }),
         onboardingCompleted: true,
         onboardingSkipped: false,
       },
-      select: { levelOfStudy: true, onboardingCompleted: true },
+      select: {
+        levelOfStudy: true,
+        institution: true,
+        faculty: true,
+        program: true,
+        targetGoal: true,
+        gender: true,
+        age: true,
+        onboardingCompleted: true,
+      },
     });
 
     return NextResponse.json({ ok: true, user });

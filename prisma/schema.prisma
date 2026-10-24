@@ -37,6 +37,14 @@ model User {
   // Nullable: sign-up creates the user before the level is known, the guards enforce it.
   levelOfStudy String? @map("level_of_study")
 
+  // Extended student profile info for Cameroonian universities
+  institution String? @map("institution")
+  faculty     String? @map("faculty")
+  program     String? @map("program")
+  targetGoal  String? @map("target_goal")
+  gender      Gender? @map("gender")
+  age         Int?    @map("age")
+
   // Onboarding flags, moved here from ExamProfile which is being dropped.
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
   onboardingSkipped   Boolean @default(false) @map("onboarding_skipped")
@@ -443,6 +451,11 @@ enum InviteStatus {
 // ===========================================
 // Enums
 // ===========================================
+
+enum Gender {
+  MALE
+  FEMALE
+}
 
 enum UserRole {
   USER
