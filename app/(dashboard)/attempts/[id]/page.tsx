@@ -68,7 +68,7 @@ export default function AttemptDetailPage() {
             </p>
             <div className="flex justify-center mt-4">
               <Button asChild>
-                <Link href="/progress">Go to Progress</Link>
+                <Link href="/quizzes">Go to quizzes</Link>
               </Button>
             </div>
           </CardContent>
@@ -81,7 +81,7 @@ export default function AttemptDetailPage() {
     <div className="container mx-auto py-8 space-y-6">
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" asChild>
-          <Link href="/progress">
+          <Link href="/quizzes">
             <ArrowLeft className="h-5 w-5" />
           </Link>
         </Button>

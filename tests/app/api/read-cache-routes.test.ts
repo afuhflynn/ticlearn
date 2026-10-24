@@ -9,10 +9,8 @@ import {
 } from "@/app/api/admin/platform-settings/route";
 import { DELETE as deleteNote } from "@/app/api/notes/[id]/route";
 import { GET as getPaymentSettings } from "@/app/api/payment-settings/route";
-import { POST as recordPerformance } from "@/app/api/performance/route";
 import { auth } from "@/lib/auth";
 import { clearMemory } from "@/lib/cache";
-import { readKey, withReadCache } from "@/lib/cache/reads";
 import { deleteFile } from "@/lib/file";
 import { getPlatformSettings } from "@/lib/platform-settings";
 import { DEFAULT_PLATFORM_SETTINGS } from "@/lib/platform-settings-direct";
@@ -120,13 +118,6 @@ vi.mock("@/lib/prisma", () => ({
       create: vi.fn(),
       upsert: vi.fn(),
     },
-    topicNote: { findUnique: vi.fn() },
-    topicPerformance: {
-      upsert: vi.fn(),
-      update: vi.fn(),
-      count: vi.fn(),
-      findMany: vi.fn(),
-    },
     note: { findFirst: vi.fn(), delete: vi.fn() },
   },
 }));
@@ -154,8 +145,6 @@ const db = prisma as unknown as {
   appCache: { findUnique: Fn; deleteMany: Fn };
   platformSettings: { findUnique: Fn; upsert: Fn };
   paymentSettings: { findUnique: Fn; create: Fn; upsert: Fn };
-  topicNote: { findUnique: Fn };
-  topicPerformance: { upsert: Fn; update: Fn };
   note: { findFirst: Fn; delete: Fn };
 };
 
@@ -170,7 +159,6 @@ const PAYMENT_DEFAULTS = {
 const paymentRow = { ...PAYMENT_DEFAULTS };
 
 const STUDENT = "student-a";
-const OTHER = "student-b";
 
 let warnSpy: ReturnType<typeof vi.spyOn>;
 let errorSpy: ReturnType<typeof vi.spyOn>;
@@ -189,8 +177,6 @@ function writeOrder() {
     (event) =>
       event === "platformSettings.upsert" ||
       event === "paymentSettings.upsert" ||
-      event === "topicPerformance.upsert" ||
-      event === "topicPerformance.update" ||
       event === "note.delete" ||
       event.startsWith("appCache.deleteMany"),
   );
@@ -245,21 +231,6 @@ beforeEach(() => {
       return paymentRow;
     },
   );
-
-  db.topicNote.findUnique.mockResolvedValue({ note: { userId: STUDENT } });
-  db.topicPerformance.upsert.mockImplementation(async () => {
-    harness.events.push("topicPerformance.upsert");
-    return {
-      id: "tp-1",
-      masteryScore: 55,
-      totalAttempts: 1,
-      correctAttempts: 1,
-    };
-  });
-  db.topicPerformance.update.mockImplementation(async () => {
-    harness.events.push("topicPerformance.update");
-    return {};
-  });
 
   db.note.findFirst.mockResolvedValue({
     id: "note-1",
@@ -514,144 +485,6 @@ describe("PUT /api/admin/platform-settings (covers: AC-27, AC-28)", () => {
   });
 });
 
-describe("POST /api/performance (covers: AC-25, AC-27, AC-28, AC-29)", () => {
-  function performanceRequest(body: unknown) {
-    return jsonRequest("http://localhost:3000/api/performance", "POST", body);
-  }
-
-  it("refuses a caller with no session without reading or writing", async () => {
-    signIn(null);
-
-    const res = await recordPerformance(
-      performanceRequest({
-        noteId: "note-1",
-        topicId: "topic-1",
-        result: "CORRECT",
-      }),
-    );
-
-    expect(res.status).toBe(401);
-    expect(db.topicNote.findUnique).not.toHaveBeenCalled();
-    expect(db.topicPerformance.upsert).not.toHaveBeenCalled();
-    expect(writeOrder()).toEqual([]);
-  });
-
-  it("refuses a topic on another student's note without clearing anything", async () => {
-    signIn({ id: STUDENT, role: "USER" });
-    db.topicNote.findUnique.mockResolvedValue({ note: { userId: OTHER } });
-
-    const res = await recordPerformance(
-      performanceRequest({
-        noteId: "note-1",
-        topicId: "topic-1",
-        result: "CORRECT",
-      }),
-    );
-
-    expect(res.status).toBe(404);
-    expect(db.topicPerformance.upsert).not.toHaveBeenCalled();
-    expect(writeOrder()).toEqual([]);
-  });
-
-  it("clears only the one student's readiness entry after the write", async () => {
-    signIn({ id: STUDENT, role: "USER" });
-    const scopeA = { kind: "user" as const, userId: STUDENT };
-    const scopeB = { kind: "user" as const, userId: OTHER };
-    await withReadCache("read:readiness", scopeA, async () => ({
-      readiness: 10,
-    }));
-    await withReadCache("read:readiness", scopeB, async () => ({
-      readiness: 90,
-    }));
-
-    const res = await recordPerformance(
-      performanceRequest({
-        noteId: "note-1",
-        topicId: "topic-1",
-        result: "CORRECT",
-      }),
-    );
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual({
-      masteryScore: 55,
-      totalAttempts: 1,
-      correctAttempts: 1,
-    });
-
-    expect(harness.table.has(readKey("read:readiness", scopeA))).toBe(false);
-    expect(harness.table.has(readKey("read:readiness", scopeB))).toBe(true);
-  });
-
-  it("invalidates after the clamp update, before it answers", async () => {
-    signIn({ id: STUDENT, role: "USER" });
-    await withReadCache(
-      "read:readiness",
-      { kind: "user", userId: STUDENT },
-      async () => ({ readiness: 10 }),
-    );
-    harness.events.length = 0;
-    db.topicPerformance.upsert.mockImplementationOnce(async () => {
-      harness.events.push("topicPerformance.upsert");
-      return {
-        id: "tp-1",
-        masteryScore: 120,
-        totalAttempts: 9,
-        correctAttempts: 8,
-      };
-    });
-
-    const res = await recordPerformance(
-      performanceRequest({
-        noteId: "note-1",
-        topicId: "topic-1",
-        result: "CORRECT",
-        weight: "mock",
-      }),
-    );
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({ masteryScore: 100 });
-    expect(writeOrder()).toEqual([
-      "topicPerformance.upsert",
-      "topicPerformance.update",
-      "appCache.deleteMany:key",
-    ]);
-  });
-
-  it("still answers when the invalidation fails", async () => {
-    signIn({ id: STUDENT, role: "USER" });
-    db.appCache.deleteMany.mockRejectedValueOnce(new Error("connection reset"));
-
-    const res = await recordPerformance(
-      performanceRequest({
-        noteId: "note-1",
-        topicId: "topic-1",
-        result: "NEEDED_HELP",
-      }),
-    );
-
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toMatchObject({ masteryScore: 55 });
-  });
-
-  it("rejects an unknown result without writing", async () => {
-    signIn({ id: STUDENT, role: "USER" });
-
-    const res = await recordPerformance(
-      performanceRequest({
-        noteId: "note-1",
-        topicId: "topic-1",
-        result: "MAYBE",
-      }),
-    );
-
-    expect(res.status).toBe(400);
-    expect(db.topicPerformance.upsert).not.toHaveBeenCalled();
-    expect(writeOrder()).toEqual([]);
-  });
-});
-
 describe("DELETE /api/notes/[id] (covers: AC-27, AC-28)", () => {
   function removeNote(id = "note-1") {
     return deleteNote(new Request(`http://localhost:3000/api/notes/${id}`), {
@@ -680,29 +513,19 @@ describe("DELETE /api/notes/[id] (covers: AC-27, AC-28)", () => {
     expect(writeOrder()).toEqual([]);
   });
 
-  it("clears that student's readiness after the note row goes", async () => {
+  it("deletes the row and prunes the topics it leaves behind", async () => {
     signIn({ id: STUDENT, role: "USER" });
-    await withReadCache(
-      "read:readiness",
-      { kind: "user", userId: STUDENT },
-      async () => ({ readiness: 10 }),
-    );
     harness.events.length = 0;
 
     const res = await removeNote();
 
     expect(res.status).toBe(200);
     await expect(res.json()).resolves.toEqual({ success: true });
-    expect(writeOrder()).toEqual(["note.delete", "appCache.deleteMany:key"]);
+    expect(writeOrder()).toEqual(["note.delete"]);
     expect(pruneOrphanTopics).toHaveBeenCalledWith(["topic-1"]);
-    expect(
-      harness.table.has(
-        readKey("read:readiness", { kind: "user", userId: STUDENT }),
-      ),
-    ).toBe(false);
   });
 
-  it("keeps the note and skips the invalidation when the file cannot be deleted", async () => {
+  it("keeps the note and skips the delete when the file cannot be deleted", async () => {
     signIn({ id: STUDENT, role: "USER" });
     vi.mocked(deleteFile).mockRejectedValueOnce(new Error("uploadthing down"));
 

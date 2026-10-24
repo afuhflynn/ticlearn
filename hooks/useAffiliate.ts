@@ -1,80 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api-client";
-import { family } from "@/lib/query-families";
-import { queryKeys } from "@/lib/query-keys";
 import type { CreateAffiliateParams } from "@/types";
 
-export function useAffiliate() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.affiliate,
-    queryFn: async () => {
-      const result = await api.queries.affiliates.affiliate();
-      return result;
-    },
-    ...family("affiliate"),
-  });
-
-  return {
-    affiliate: data?.affiliate,
-    isLoading,
-    error,
-  };
-}
-
-export function useUpdateAffiliate() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (data: { momoNumber?: string; momoName?: string }) => {
-      const result = await api.mutations.affiliate.update(data);
-      return result;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.affiliate });
-      toast.success("Affiliate updated successfully");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-}
-
-export function useApplyReferralCode() {
-  const _queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (code: string) => {
-      const result = await api.mutations.affiliate.applyReferral(code);
-      return result;
-    },
-    onSuccess: () => {
-      toast.success("Referral code applied!");
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-}
-
-export function useRequestPayout() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async () => {
-      const result = await api.mutations.affiliate.requestPayout();
-      return result;
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.affiliate });
-      toast.success(data.message);
-    },
-    onError: (error: Error) => {
-      toast.error(error.message);
-    },
-  });
-}
-
+/**
+ * Admin only, from spec 0014. A student never creates or edits an affiliate;
+ * an admin invites a named partner. The student facing page is gone.
+ */
 export function useCreateAffiliate() {
   const queryClient = useQueryClient();
   return useMutation({

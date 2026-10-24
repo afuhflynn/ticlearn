@@ -156,13 +156,13 @@ describe("the onboarding gate in proxy.ts (spec 0012)", () => {
     expect(pathOf(response)).toBe("/onboarding");
   });
 
-  it("AC-4 sends a student with a level from / to /chat", async () => {
+  it("AC-17 sends a student with a level from / to /dashboard", async () => {
     signIn();
     hasLevel("Year 2");
 
     const response = await run("/");
 
-    expect(pathOf(response)).toBe("/chat");
+    expect(pathOf(response)).toBe("/dashboard");
   });
 
   it("AC-4 leaves /onboarding alone for a student with no level", async () => {
@@ -175,22 +175,22 @@ describe("the onboarding gate in proxy.ts (spec 0012)", () => {
     expect(response.status).toBe(200);
   });
 
-  it("AC-4 sends an onboarded student away from /onboarding to /chat", async () => {
+  it("AC-17 sends an onboarded student away from /onboarding to /dashboard", async () => {
     signIn();
     hasLevel("Year 2");
 
     const response = await run("/onboarding");
 
-    expect(pathOf(response)).toBe("/chat");
+    expect(pathOf(response)).toBe("/dashboard");
   });
 
-  it("AC-4 sends a student who skipped onboarding away from /onboarding to /chat", async () => {
+  it("AC-17 sends a student who skipped onboarding away from /onboarding to /dashboard", async () => {
     signIn();
     skippedOnboarding();
 
     const response = await run("/onboarding");
 
-    expect(pathOf(response)).toBe("/chat");
+    expect(pathOf(response)).toBe("/dashboard");
   });
 
   it("AC-4 never redirects the exempt paths", async () => {
@@ -210,7 +210,6 @@ describe("the onboarding gate in proxy.ts (spec 0012)", () => {
       "/robots.txt",
       "/sitemap.xml",
       "/manifest.webmanifest",
-      "/primitive-gallery",
     ]) {
       const response = await run(pathname);
       expect(pathOf(response), `${pathname} must not be redirected`).not.toBe(
@@ -340,6 +339,42 @@ describe("the signed out path through proxy.ts (spec 0012)", () => {
     expect(pathOf(response)).toBeNull();
     expect(response.status).toBe(200);
     expect(findUniqueMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("the protected prefixes in proxy.ts (spec 0014, AC-17)", () => {
+  it("sends a signed out visitor from a note page to sign in", async () => {
+    signOut();
+
+    const response = await run("/notes/note-1");
+
+    const url = new URL(locationOf(response) as string);
+    expect(url.pathname).toBe("/sign-in");
+    expect(decodeURIComponent(url.searchParams.get("callbackUrl") ?? "")).toBe(
+      "/notes/note-1",
+    );
+  });
+
+  it("sends a signed out visitor from an attempt review to sign in", async () => {
+    signOut();
+
+    const response = await run("/attempts/attempt-9");
+
+    const url = new URL(locationOf(response) as string);
+    expect(url.pathname).toBe("/sign-in");
+    expect(decodeURIComponent(url.searchParams.get("callbackUrl") ?? "")).toBe(
+      "/attempts/attempt-9",
+    );
+  });
+
+  it("lets a signed in student straight through to their note and attempt", async () => {
+    signIn();
+    hasLevel("Year 2");
+
+    for (const pathname of ["/notes/note-1", "/attempts/attempt-9"]) {
+      const response = await run(pathname);
+      expect(pathOf(response), `${pathname} must not be redirected`).toBeNull();
+    }
   });
 });
 

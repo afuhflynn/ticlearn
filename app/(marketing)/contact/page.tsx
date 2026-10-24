@@ -1,11 +1,12 @@
 import { Mail, MapPin } from "lucide-react";
 import type { Metadata } from "next";
+import { FaWhatsapp } from "react-icons/fa6";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 export const metadata: Metadata = {
   title: "Contact TiCLearn",
-  description:
-    "Reach TiCLearn on WhatsApp or by phone, or send the team a message from this form.",
+  description: "Reach the TiCLearn team on WhatsApp, or send a message here.",
 };
 
 export default function ContactPage() {
@@ -43,6 +44,23 @@ export default function ContactPage() {
                   </p>
                 </div>
               </div>
+
+              <a
+                href={WHATSAPP_GROUP_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3"
+              >
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                  <FaWhatsapp className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="font-medium">WhatsApp</p>
+                  <p className="text-sm text-muted-foreground">
+                    {WHATSAPP_GROUP_LABEL}
+                  </p>
+                </div>
+              </a>
 
               <div className="flex items-center gap-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">

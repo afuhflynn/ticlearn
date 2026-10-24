@@ -28,7 +28,7 @@ export function useUserSearch(debounceMs: number = 300) {
     queryKey: ["admin", "users", "search", debouncedQuery],
     queryFn: () => api.mutations.admin.users.search(debouncedQuery),
     enabled: debouncedQuery.length > 0,
-    ...family("search"),
+    ...family("admin"),
   });
 
   const search = useCallback((query: string) => {

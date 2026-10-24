@@ -14,7 +14,6 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import "katex/dist/katex.min.css";
 import ReactMarkdown from "react-markdown";
-import { QuizFeedbackPrompt } from "@/components/feedback/QuizFeedbackPrompt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -433,13 +432,11 @@ export default function QuizPlayerPage() {
                   Retake Quiz
                 </Button>
                 <Button variant="outline" asChild className="w-full">
-                  <Link href="/leaderboard">View leaderboard</Link>
+                  <Link href="/quizzes">Back to quizzes</Link>
                 </Button>
               </div>
             </CardContent>
           </Card>
-
-          <QuizFeedbackPrompt quizId={quiz.id} />
 
           <div className="space-y-4">
             {questions.map((question, index) => {

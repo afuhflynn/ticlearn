@@ -1,29 +1,101 @@
-import { withReadCache } from "@/lib/cache/reads";
 import { prisma } from "@/lib/prisma";
-import { computeReadiness } from "@/lib/readiness";
 
 /**
- * The reads the dashboard paints, in one place. The API routes call these and so
- * does the server render of the dashboard page, so a prefetched value and a
- * fetched value are the same shape by construction rather than by two copies
- * that happen to agree.
+ * The one read the dashboard paints, from spec 0014. It answers a single
+ * question: where did this student leave off? Three pieces of evidence and one
+ * action, no numbers, no score.
  *
- * Every function returns the JSON ready shape, with dates as strings, exactly as
- * the route serialises it. A prefetched row that still held a `Date` would not
- * match what the client hook receives, and the paint would flip.
+ * The API route calls this and so does the server render of the dashboard page,
+ * so a prefetched value and a fetched value are the same shape by construction
+ * rather than by two copies that happen to agree.
+ *
+ * The payload is the JSON ready shape, with dates as strings, exactly as the
+ * route serialises it. A prefetched row that still held a `Date` would not match
+ * what the client hook receives, and the paint would flip.
  */
 
-export interface DashboardReadiness {
-  readiness: number;
-  weakestTopic: { name: string; score: number } | null;
-  strongestTopic: { name: string; score: number } | null;
-  topicReadiness: Array<{ topic: string; score: number; notes: number }>;
-  needsAssessment: boolean;
-  recommendations: string[];
+export interface DashboardContinue {
+  recentNotes: Array<{
+    id: string;
+    title: string;
+    fileName: string;
+    status: string;
+    createdAt: string;
+  }>;
+  lastAttempt: {
+    attemptId: string;
+    quizId: string | null;
+    title: string;
+    answeredAt: string;
+  } | null;
+  lastConversation: {
+    id: string;
+    title: string;
+    updatedAt: string;
+  } | null;
 }
 
 function jsonReady<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export async function getDashboardContinue(
+  userId: string,
+): Promise<DashboardContinue> {
+  const [notes, attempt, conversation] = await Promise.all([
+    prisma.note.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: {
+        id: true,
+        title: true,
+        fileName: true,
+        status: true,
+        createdAt: true,
+      },
+    }),
+    prisma.quizAttempt.findFirst({
+      where: { userId },
+      orderBy: { completedAt: "desc" },
+      select: {
+        id: true,
+        quizId: true,
+        quizTitle: true,
+        completedAt: true,
+      },
+    }),
+    prisma.chatConversation.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true, title: true, updatedAt: true },
+    }),
+  ]);
+
+  return {
+    recentNotes: notes.map((note) => ({
+      id: note.id,
+      title: note.title,
+      fileName: note.fileName,
+      status: note.status,
+      createdAt: note.createdAt.toISOString(),
+    })),
+    lastAttempt: attempt
+      ? {
+          attemptId: attempt.id,
+          quizId: attempt.quizId,
+          title: attempt.quizTitle,
+          answeredAt: attempt.completedAt.toISOString(),
+        }
+      : null,
+    lastConversation: conversation
+      ? {
+          id: conversation.id,
+          title: conversation.title,
+          updatedAt: conversation.updatedAt.toISOString(),
+        }
+      : null,
+  };
 }
 
 export async function getDashboardStats(userId: string) {
@@ -128,55 +200,4 @@ export async function getDashboardQuizzes(
       isOwner: quiz.userId === userId,
     })),
   });
-}
-
-/**
- * The readiness payload, served from the shared read cache for this student at
- * spec 0010's 60 second life. `/api/readiness` and the dashboard prefetch both
- * call this, so they share one entry rather than computing the same number
- * twice. The key is personal, so one student's entry can never answer another's.
- */
-export async function getDashboardReadiness(
-  userId: string,
-): Promise<DashboardReadiness> {
-  return withReadCache("read:readiness", { kind: "user", userId }, () =>
-    loadDashboardReadiness(userId),
-  );
-}
-
-async function loadDashboardReadiness(
-  userId: string,
-): Promise<DashboardReadiness> {
-  const readiness = await computeReadiness(userId);
-
-  const recommendations: string[] = [];
-
-  if (readiness.weakestTopic && readiness.weakestTopic.score < 40) {
-    recommendations.push(
-      `Practice ${readiness.weakestTopic.name} - currently at ${readiness.weakestTopic.score}%`,
-    );
-  }
-
-  if (readiness.needsAssessment) {
-    recommendations.push(
-      "Upload a note and generate a quiz from it to see your readiness",
-    );
-  }
-
-  const recentlyPractised = await prisma.topicPerformance.count({
-    where: {
-      note: { userId },
-      lastPracticedAt: {
-        gte: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      },
-    },
-  });
-
-  if (recentlyPractised === 0 && readiness.weakestTopic) {
-    recommendations.push(
-      `You haven't practised ${readiness.weakestTopic.name} recently`,
-    );
-  }
-
-  return jsonReady({ ...readiness, recommendations });
 }

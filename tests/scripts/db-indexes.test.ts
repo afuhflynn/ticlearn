@@ -46,8 +46,6 @@ describe("database index scripts (covers: AC-10, AC-11)", () => {
       "usage-quiz-after.txt",
       "admin-before.txt",
       "admin-after.txt",
-      "community-search-before.txt",
-      "community-search-after.txt",
       "final-audit.txt",
     ];
     for (const file of expected) {
@@ -67,10 +65,6 @@ describe("database index scripts (covers: AC-10, AC-11)", () => {
       "@@index([userId, role, createdAt])",
       "@@index([status, createdAt])",
       "@@index([affiliateCode, converted])",
-      "@@index([isPinned, createdAt])",
-      "@@index([subject, createdAt])",
-      "@@index([postId, createdAt])",
-      "@@index([parentId, createdAt])",
       "@@index([campaign, sentAt])",
       "@@index([metric, date])",
       "@@index([event, createdAt])",

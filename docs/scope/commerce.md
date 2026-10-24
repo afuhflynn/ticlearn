@@ -40,3 +40,10 @@ A student who refers enough people earns a free semester pass. Costs nothing, pa
 Nothing today tells us whether the free tier converts, which tier converts, or which provider actually served each answer. Without this we are pricing on inference, and the research found no published Cameroonian student willingness to pay study at all.
 **Done when:** sign up, first note, first AI answer, first quiz, first limit hit, first upgrade and first completed purchase are all tracked, the fallback rate between the two search providers is measurable, per student AI cost in XAF is visible, and the admin can answer what converts without running a query by hand.
 - [ ] Design it (spec): `/solution-architect conversion analytics`
+
+### 43. Affiliate invites for partners · needs a decision · from spec 0014
+Today any signed in student becomes a paying affiliate by loading `/affiliate`, and 500 credits are paid at signup before email verification. The owner wants the opposite: no student can create a link or see the page, an admin invites a chosen person, and only that person sees their partner stats.
+**Done when:** only an admin can create an affiliate, the invite is a `PENDING` row the invited person accepts, an uninvited student gets no page and no navigation entry, attribution requires a verified email, the 500 credit award is safe against a double submit, payout is a ledger with pending, requested and paid amounts that never disagree with the earnings rows, and the referee emails are no longer returned to the partner.
+- [ ] Design it (spec): `/solution-architect affiliate invites`
+
+(basis: spec 0014 surface audit · the current GET creates a payable active affiliate on page load, the apply route updates outside its transaction so a parallel double submit pays twice, and admin payout decrements the lifetime total)

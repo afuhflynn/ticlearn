@@ -12,13 +12,11 @@ import { describe, expect, it, vi } from "vitest";
 const getSessionMock = vi.hoisted(() => vi.fn());
 const redirectMock = vi.hoisted(() => vi.fn());
 const dashboardData = vi.hoisted(() => ({
-  getDashboardNotes: vi.fn(async () => []),
-  getDashboardQuizzes: vi.fn(async () => []),
-  getDashboardReadiness: vi.fn(async () => ({
-    readiness: 0,
-    topicReadiness: [],
+  getDashboardContinue: vi.fn(async () => ({
+    recentNotes: [],
+    lastAttempt: null,
+    lastConversation: null,
   })),
-  getDashboardStats: vi.fn(async () => ({ totalNotes: 0 })),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -66,13 +64,7 @@ describe("the dashboard page (spec 0012 AC-13)", () => {
 
     await renderPage();
 
-    expect(dashboardData.getDashboardStats).toHaveBeenCalledWith("user-42");
-    expect(dashboardData.getDashboardNotes).toHaveBeenCalledWith("user-42");
-    expect(dashboardData.getDashboardQuizzes).toHaveBeenCalledWith(
-      "user-42",
-      "my",
-    );
-    expect(dashboardData.getDashboardReadiness).toHaveBeenCalledWith("user-42");
+    expect(dashboardData.getDashboardContinue).toHaveBeenCalledWith("user-42");
   });
 
   it("hands the signed in name to the client as the server already knows it", async () => {

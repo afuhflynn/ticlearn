@@ -4,18 +4,18 @@ export const PENDING_CHAT_MESSAGE_PREFIX = "ticlearn-pending-chat";
 export const TIP_NAME = "Tip";
 
 export const CHAT_SUGGESTIONS = [
-  "Explain my weakest topic like I am revising tonight",
   "Walk me through this note step by step",
-  "Build a 7-day study sprint from my progress",
   "Quiz me from my notes with real questions",
+  "Explain the hardest part of my latest note",
+  "What should I study from this course today?",
 ];
 
 export const QUICK_ACTIONS = [
   {
-    title: "Study cockpit",
-    description: "Plan today from readiness, streaks, and weak topics.",
+    title: "Study today",
+    description: "Pick one thing from your notes and start there.",
     prompt:
-      "Look at my current study progress and build a focused plan for today. Prioritize my weakest topics and include one quick win.",
+      "Look at the notes I have uploaded and pick the one thing I should study today. Tell me why, then teach the first step.",
     icon: "progress" as const,
   },
   {

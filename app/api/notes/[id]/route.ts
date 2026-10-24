@@ -2,7 +2,6 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { invalidateRead } from "@/lib/cache/reads";
 import { deleteFile, getUploadThingFileKey } from "@/lib/file";
 import { prisma } from "@/lib/prisma";
 import { pruneOrphanTopics } from "@/lib/topics";
@@ -106,13 +105,6 @@ export async function DELETE(
     });
 
     await pruneOrphanTopics(note.topicNotes.map((link) => link.topicId));
-
-    // The note carried this student's performance rows, so their readiness
-    // entry is now stale. One student, one entry.
-    await invalidateRead("read:readiness", {
-      kind: "user",
-      userId: session.user.id,
-    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

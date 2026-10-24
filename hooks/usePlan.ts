@@ -18,8 +18,6 @@ interface UsePlanResult {
   isPending: boolean;
   canUpload: boolean;
   uploadLimit: number;
-  canAccessCommunity: boolean;
-  canAccessLeaderboard: boolean;
   aiTutorLimit: number;
   quizLimit: number;
   chatReached: (used: number) => boolean;
@@ -58,8 +56,6 @@ export function usePlan(): UsePlanResult {
     isPending,
     canUpload: limits.pdfUploads !== 0,
     uploadLimit: limits.pdfUploads,
-    canAccessCommunity: limits.canAccessCommunity,
-    canAccessLeaderboard: limits.canAccessLeaderboard,
     aiTutorLimit: limits.aiTutorMessages,
     quizLimit: limits.quizGenerations,
     chatReached: (used: number) => limitReached(limits.aiTutorMessages, used),

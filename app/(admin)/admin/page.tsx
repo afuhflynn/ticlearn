@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, Link2, MessageCircle, Shield, Users } from "lucide-react";
+import { CreditCard, Link2, Shield, Users } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -20,12 +20,6 @@ const navItems = [
     icon: Users,
     href: "/admin/users",
     description: "Manage user accounts and roles",
-  },
-  {
-    title: "Feedback",
-    icon: MessageCircle,
-    href: "/admin/feedback",
-    description: "Review and respond to user feedback",
   },
   {
     title: "Subscriptions",
@@ -65,12 +59,6 @@ export default function AdminPage() {
       value: stats?.activeSubscriptions?.toString() ?? "0",
       icon: CreditCard,
       href: "/admin/subscriptions",
-    },
-    {
-      title: "Pending Feedback",
-      value: stats?.recentFeedback?.toString() ?? "0",
-      icon: MessageCircle,
-      href: "/admin/feedback",
     },
     {
       title: "Pending Affiliates",

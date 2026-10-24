@@ -3,21 +3,23 @@ import Image from "next/image";
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 const footerLinks = {
   product: [
+    { href: "/#how", label: "How it works" },
+    { href: "/#tools", label: "Study tools" },
+    { href: "/#free", label: "What is free" },
     { href: "/pricing", label: "Pricing" },
-    { href: "/about", label: "About" },
-    { href: "/faq", label: "FAQ" },
-  ],
-  legal: [
-    { href: "/terms", label: "Terms of Service" },
-    { href: "/privacy", label: "Privacy Policy" },
   ],
   support: [
     { href: "/faq", label: "FAQ" },
-    { href: "/feedback", label: "Send Feedback" },
-    { href: "/contact", label: "Contact Us" },
+    { href: "/contact", label: "Contact" },
+    { href: "/about", label: "About" },
+  ],
+  legal: [
+    { href: "/terms", label: "Terms" },
+    { href: "/privacy", label: "Privacy" },
   ],
 };
 
@@ -27,8 +29,8 @@ const socialLinks = [
   { icon: ExternalLink, href: "https://ticsummit.org", label: "Organization" },
   {
     icon: FaWhatsapp,
-    href: "https://chat.whatsapp.com/Jr5TCAeDA821gee19AkB8H?mode=gi_t",
-    label: "Join Our WhatsApp community",
+    href: WHATSAPP_GROUP_URL,
+    label: WHATSAPP_GROUP_LABEL,
   },
 ];
 
@@ -39,7 +41,7 @@ export function MarketingFooter() {
         <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href="/" className="flex min-h-12 items-center gap-2">
               <Image
                 src="/icons/favicon-32x32.png"
                 alt="TiCLearn Logo"
@@ -50,12 +52,26 @@ export function MarketingFooter() {
               <span className="text-xl font-bold">TiCLearn</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              Study your own lecture notes with quizzes and Tip, the tutor that
-              teaches from your material.
+              A clearer way to work with your course materials.
             </p>
+            <a
+              href={WHATSAPP_GROUP_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-12 items-center gap-2 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              <FaWhatsapp className="h-4 w-4" aria-hidden="true" />
+              {WHATSAPP_GROUP_LABEL}
+            </a>
             <div className="flex gap-2">
               {socialLinks.map((social) => (
-                <Button key={social.label} variant="ghost" size="icon" asChild>
+                <Button
+                  key={social.label}
+                  variant="ghost"
+                  size="icon"
+                  className="h-12 w-12"
+                  asChild
+                >
                   <a
                     href={social.href}
                     target="_blank"
@@ -77,24 +93,7 @@ export function MarketingFooter() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h3 className="mb-4 text-sm font-semibold">Legal</h3>
-            <ul className="space-y-2">
-              {footerLinks.legal.map((link) => (
-                <li key={link.href}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="inline-flex min-h-12 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {link.label}
                   </Link>
@@ -111,7 +110,24 @@ export function MarketingFooter() {
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                    className="inline-flex min-h-12 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Legal */}
+          <div>
+            <h3 className="mb-4 text-sm font-semibold">Legal</h3>
+            <ul className="space-y-2">
+              {footerLinks.legal.map((link) => (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    className="inline-flex min-h-12 items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
                   >
                     {link.label}
                   </Link>
@@ -126,7 +142,7 @@ export function MarketingFooter() {
             &copy; {new Date().getFullYear()} TiCLearn. All rights reserved.
           </p>
           <p className="text-sm text-muted-foreground">
-            Made with love for Cameroonian students
+            Built for university and HND students in Cameroon.
           </p>
         </div>
       </div>

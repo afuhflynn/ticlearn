@@ -181,18 +181,6 @@ vi.mock("@/lib/chat-usage", () => ({
   })),
 }));
 
-vi.mock("@/lib/readiness", () => ({
-  computeReadiness: vi.fn(() =>
-    Promise.resolve({
-      readiness: 75,
-      topicReadiness: [],
-      weakestTopic: null,
-      strongestTopic: null,
-      needsAssessment: false,
-    }),
-  ),
-}));
-
 vi.mock("@/lib/kpi", () => ({
   trackEvent: vi.fn(() => Promise.resolve()),
   EVENTS: {},

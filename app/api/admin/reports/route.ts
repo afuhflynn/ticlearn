@@ -6,7 +6,6 @@ import { inngest } from "@/lib/inngest/client";
 
 const REPORT_TYPES = {
   users: "users",
-  feedback: "feedback",
   subscriptions: "subscriptions",
   affiliates: "affiliates",
 } as const;

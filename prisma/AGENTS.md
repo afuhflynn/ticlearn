@@ -2,7 +2,7 @@
 
 ## Overview
 
-The schema holds 39 models and 15 enums for a Postgres database, reached through a driver adapter rather than a connection string in the schema. The client is generated into source and is gitignored, so it must be regenerated after a fresh clone.
+The schema holds 33 models and 13 enums for a Postgres database, reached through a driver adapter rather than a connection string in the schema. The client is generated into source and is gitignored, so it must be regenerated after a fresh clone.
 
 ## Key files
 
@@ -10,7 +10,7 @@ The schema holds 39 models and 15 enums for a Postgres database, reached through
 |---|---|
 | `prisma/schema.prisma` | Every model, enum and index |
 | `prisma.config.ts` | Schema path, migrations path, and the `DATABASE_URL` datasource |
-| `prisma/seed.ts` | Ensures the platform settings row and creates no content rows; level of study is a string on the user, not a table |
+| `prisma/seed.ts` | Ensures the platform settings row and creates the demo content rows for `demo@tic.local`: a note, its quiz, an attempt and a Tip conversation, plus the demo handout under `public/demo/`; level of study is a string on the user, not a table |
 | `prisma/migrations/` | Dated folders, ending with the pivot wipe that deleted every account and all secondary school tables |
 | `lib/prisma.ts` | The client singleton, wrapped with the `@prisma/adapter-pg` adapter |
 | `lib/generated/prisma/` | Generated client output, gitignored, do not commit |

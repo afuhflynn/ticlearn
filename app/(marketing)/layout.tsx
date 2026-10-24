@@ -5,19 +5,11 @@ import { MarketingNav } from "@/components/layout/MarketingNav";
 export const metadata: Metadata = {
   title: "TiCLearn - Study Your Lecture Notes with Tip",
   description:
-    "Upload your lecture notes, turn them into quizzes, and learn with Tip. Built for university students in Cameroon.",
-  keywords: [
-    "Cameroon",
-    "university",
-    "study platform",
-    "AI quiz",
-    "AI tutor",
-    "lecture notes",
-  ],
+    "Upload your lecture notes, turn them into quizzes, and learn with Tip, the tutor that teaches from your own material.",
   openGraph: {
-    title: "TiCLearn - Study Smarter, Score Higher",
+    title: "TiCLearn - Study Your Lecture Notes with Tip",
     description:
-      "Study your own lecture notes with quizzes and Tip, the AI tutor",
+      "Upload your lecture notes, turn them into quizzes, and learn with Tip, the tutor that teaches from your own material.",
     type: "website",
     locale: "en_CM",
     siteName: "TiCLearn",

@@ -4,7 +4,6 @@ import {
   BarChart3,
   CreditCard,
   Link2,
-  MessageCircle,
   Shield,
   Sparkles,
   TrendingUp,
@@ -31,7 +30,6 @@ const adminNavItems = [
   { href: "/admin", icon: BarChart3, label: "Dashboard" },
   { href: "/admin/metrics", icon: TrendingUp, label: "Analytics" },
   { href: "/admin/users", icon: Users, label: "Users" },
-  { href: "/admin/feedback", icon: MessageCircle, label: "Feedback" },
   { href: "/admin/subscriptions", icon: CreditCard, label: "Subscriptions" },
   { href: "/admin/plan-upgrades", icon: Sparkles, label: "Plan Upgrades" },
   {

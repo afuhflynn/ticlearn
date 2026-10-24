@@ -3,7 +3,6 @@ import { prisma } from "./prisma";
 export const EVENTS = {
   SIGNED_UP: "user_signed_up",
   SIGNED_IN: "user_signed_in",
-  FEEDBACK_SUBMITTED: "feedback_submitted",
   REFERRAL_CLICK: "referral_click",
   NOTE_UPLOADED: "note_uploaded",
   QUIZ_TAKEN: "quiz_taken",
@@ -73,13 +72,10 @@ function getDateRange(date: Date) {
 export async function computeDailyMetrics(date: Date) {
   const { start, end } = getDateRange(date);
 
-  const [activeUsers, feedbacks, paidUsers, totalUsers, newUsers, newPaid] =
+  const [activeUsers, paidUsers, totalUsers, newUsers, newPaid] =
     await Promise.all([
       prisma.kpiEvent.groupBy({
         by: ["userId"],
-        where: { createdAt: { gte: start, lte: end }, user: { role: "USER" } },
-      }),
-      prisma.feedback.count({
         where: { createdAt: { gte: start, lte: end }, user: { role: "USER" } },
       }),
       prisma.subscription.count({
@@ -143,7 +139,6 @@ export async function computeDailyMetrics(date: Date) {
 
   const metrics: Array<{ metric: string; value: number }> = [
     { metric: "active_users", value: activeUsers.length },
-    { metric: "feedbacks", value: feedbacks },
     { metric: "paid_users", value: paidUsers },
     { metric: "new_users", value: newUsers },
     { metric: "new_paid_users", value: newPaid },
@@ -306,51 +301,6 @@ export async function snapshotCohortMetrics(snapshotDay: Date) {
       });
     }
   }
-}
-
-export async function computeMasteryMetrics() {
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const performances = await prisma.topicPerformance.findMany({
-    where: { lastUpdated: { gte: thirtyDaysAgo } },
-    select: { masteryScore: true, lastUpdated: true, id: true },
-    orderBy: { lastUpdated: "desc" },
-    take: 5000,
-  });
-
-  const scores = performances.map((p) => p.masteryScore);
-  const avgMastery =
-    scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-
-  const previousPeriod = await prisma.topicPerformance.findMany({
-    where: { lastUpdated: { lt: thirtyDaysAgo } },
-    select: { masteryScore: true },
-    orderBy: { lastUpdated: "desc" },
-    take: 5000,
-  });
-  const prevScores = previousPeriod.map((p) => p.masteryScore);
-  const prevAvg =
-    prevScores.length > 0
-      ? prevScores.reduce((a, b) => a + b, 0) / prevScores.length
-      : 50;
-
-  const improvement =
-    prevAvg > 0 ? ((avgMastery - prevAvg) / prevAvg) * 100 : 0;
-
-  const recoveryDrills = await prisma.kpiEvent.count({
-    where: {
-      event: EVENTS.RECOVERY_DRILL,
-      createdAt: { gte: thirtyDaysAgo },
-    },
-  });
-
-  return {
-    avgMastery: Math.round(avgMastery * 100) / 100,
-    previousAvgMastery: Math.round(prevAvg * 100) / 100,
-    improvementRate: Math.round(improvement * 100) / 100,
-    recoveryDrillsCompleted: recoveryDrills,
-  };
 }
 
 export interface SubjectDistribution {

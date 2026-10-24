@@ -50,12 +50,7 @@ model User {
   userStats            UserStats[]
   subscriptions        Subscription[]
   ratings              Rating[]
-  feedbacks            Feedback[]
   affiliate            Affiliate?
-  posts                Post[]
-  comments             Comment[]
-  postLikes            PostLike[]
-  notifications        Notification[]
   userSettings         UserSettings?
   chatConversations    ChatConversation[]
   chatMessages         ChatMessage[]
@@ -63,7 +58,6 @@ model User {
   creditTransactions   CreditTransaction[]   @relation("UserCredits")
   creditPurchaseOrders CreditPurchaseOrder[]
   referralBonuses      ReferralBonus[]       @relation("ReferrerCredits")
-  revisionGuides       RevisionGuide[]       @relation("RevisionGuideAuthor")
   kpiEvents            KpiEvent[]
   engagementLogs       EngagementLog[]
   emailSuppression     EmailSuppression[]
@@ -131,8 +125,6 @@ model Topic {
   nameSlug String @unique @map("name_slug")
   order    Int    @default(0)
 
-  knowledgeChunks KnowledgeChunk[]
-  performances    TopicPerformance[]
   notes           TopicNote[]
 
   @@map("topics")
@@ -151,43 +143,6 @@ model TopicNote {
   @@index([noteId])
   @@map("topic_notes")
 }
-
-model TopicPerformance {
-  id              String    @id @default(cuid())
-  noteId          String    @map("note_id")
-  topicId         String    @map("topic_id")
-  masteryScore    Float     @default(50) @map("mastery_score")
-  totalAttempts   Int       @default(0) @map("total_attempts")
-  correctAttempts Int       @default(0) @map("correct_attempts")
-  lastPracticedAt DateTime? @map("last_practiced_at")
-  lastUpdated     DateTime  @default(now()) @updatedAt @map("last_updated")
-
-  note  Note  @relation(fields: [noteId], references: [id], onDelete: Cascade)
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
-  @@unique([noteId, topicId])
-  @@index([noteId])
-  @@map("topic_performances")
-}
-
-model KnowledgeChunk {
-  id          String   @id @default(cuid())
-  topicId     String   @map("topic_id")
-  sourceType  String   @map("source_type")
-  sourceId    String   @map("source_id")
-  title       String
-  content     String   @db.Text
-  contentType String   @map("content_type")
-  createdAt   DateTime @default(now())
-
-  topic Topic @relation(fields: [topicId], references: [id], onDelete: Cascade)
-
-  @@index([topicId])
-  @@index([sourceType])
-  @@map("knowledge_chunks")
-}
-
-/// Admin-defined bundle of Paper 1 & 2 blueprint mocks (e.g. "Term 1 set").
 
 // ===========================================
 // App Models
@@ -211,7 +166,6 @@ model Note {
   user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   quizzes           Quiz[]
   topicNotes        TopicNote[]
-  topicPerformances TopicPerformance[]
   chatConversations ChatConversation[]
 
   @@index([userId])
@@ -356,34 +310,6 @@ model Rating {
   @@map("ratings")
 }
 
-model Feedback {
-  id             String         @id @default(cuid())
-  userId         String         @map("user_id")
-  userEmail      String         @map("user_email")
-  userName       String         @map("user_name")
-  type           FeedbackType
-  subject        String
-  message        String         @db.Text
-  status         FeedbackStatus @default(OPEN)
-  isFlagged      Boolean        @default(false) @map("is_flagged")
-  isUrgent       Boolean        @default(false) @map("is_urgent")
-  adminNote      String?        @map("admin_note") @db.Text
-  attemptId      String?        @map("attempt_id")
-  mockId         String?        @map("mock_id")
-  conversationId String?        @map("conversation_id")
-  rating         Int?           @default(0) @map("rating")
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([status])
-  @@index([type])
-  @@index([attemptId])
-  @@index([conversationId])
-  @@map("feedbacks")
-}
-
 model Affiliate {
   id               String             @id @default(cuid())
   userId           String             @unique @map("user_id")
@@ -442,86 +368,6 @@ model AffiliateEarning {
   @@map("affiliate_earnings")
 }
 
-// ===========================================
-// Community / Social
-// ===========================================
-
-model Post {
-  id             String     @id @default(cuid())
-  userId         String     @map("user_id")
-  content        String     @db.Text
-  subject        String?
-  isPinned       Boolean    @default(false) @map("is_pinned")
-  isAnnouncement Boolean    @default(false) @map("is_announcement")
-  likeCount      Int        @default(0) @map("like_count")
-  commentCount   Int        @default(0) @map("comment_count")
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-  user           User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  comments       Comment[]
-  likes          PostLike[]
-
-  @@index([userId])
-  @@index([createdAt])
-  @@index([isPinned, createdAt])
-  @@index([subject, createdAt])
-  @@map("posts")
-}
-
-model Comment {
-  id        String    @id @default(cuid())
-  postId    String    @map("post_id")
-  userId    String    @map("user_id")
-  content   String    @db.Text
-  parentId  String?   @map("parent_id")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  post      Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  parent    Comment?  @relation("CommentReplies", fields: [parentId], references: [id])
-  replies   Comment[] @relation("CommentReplies")
-
-  @@index([postId])
-  @@index([postId, createdAt])
-  @@index([userId])
-  @@index([parentId, createdAt])
-  @@map("comments")
-}
-
-model PostLike {
-  id        String   @id @default(cuid())
-  postId    String   @map("post_id")
-  userId    String   @map("user_id")
-  createdAt DateTime @default(now())
-  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@map("post_likes")
-}
-
-// ===========================================
-// Notifications
-// ===========================================
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String           @map("user_id")
-  type      NotificationType
-  title     String
-  message   String           @db.Text
-  link      String?
-  isRead    Boolean          @default(false) @map("is_read")
-  createdAt DateTime         @default(now())
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([userId, createdAt])
-  @@index([isRead])
-  @@map("notifications")
-}
-
-// ===========================================
 // User Settings
 // ===========================================
 
@@ -638,8 +484,6 @@ enum QuestionType {
   ESSAY
 }
 
-/// Distinguishes student practice sessions vs admin-only preview sessions on Mock exams (Paper 1 & 2).
-
 enum Plan {
   STARTER
   STANDARD
@@ -653,20 +497,6 @@ enum SubscriptionStatus {
   FAILED
 }
 
-enum FeedbackType {
-  BUG
-  FEATURE
-  GENERAL
-  EXAM
-  CHAT
-}
-
-enum FeedbackStatus {
-  OPEN
-  IN_REVIEW
-  RESOLVED
-}
-
 enum AffiliateStatus {
   PENDING
   ACTIVE
@@ -677,17 +507,6 @@ enum EarningStatus {
   PENDING
   REQUESTED
   PAID
-}
-
-enum NotificationType {
-  SYSTEM
-  QUIZ_COMPLETED
-  ACHIEVEMENT
-  STREAK
-  REFERRAL
-  PAYMENT
-  COMMENT
-  LIKE
 }
 
 // ===========================================
@@ -752,15 +571,12 @@ model PlatformSettings {
 
   creditCostQuizGeneration    Int @default(50) @map("credit_cost_quiz_generation")
   creditCostPracticeQuestion  Int @default(5) @map("credit_cost_practice_question")
-  creditCostRevisionGuideView Int @default(0) @map("credit_cost_revision_guide_view")
-  creditCostRevisionGuideGen  Int @default(0) @map("credit_cost_revision_guide_gen")
   creditCostAiTutorMessage    Int @default(5) @map("credit_cost_ai_tutor_message")
-  /// Student mock assembly (blueprint or custom generator).
-  enforceCreditsForPractice       Boolean @default(true) @map("enforce_credits_for_practice")
-  enforceCreditsForRevisionGuides Boolean @default(false) @map("enforce_credits_for_revision_guides")
-  enforceCreditsForAiTutor        Boolean @default(true) @map("enforce_credits_for_ai_tutor")
+  /// Credit gating for quiz generation from practice.
+  enforceCreditsForPractice Boolean @default(true) @map("enforce_credits_for_practice")
+  enforceCreditsForAiTutor  Boolean @default(true) @map("enforce_credits_for_ai_tutor")
 
-  /// When true, all four per-area enforce flags below behave as if they were on (OR).
+  /// When true, each per-area enforce flag below behaves as if it was on (OR).
   enforceCreditsAll Boolean @default(false) @map("enforce_credits_all")
 
   /// Pay-as-you-go: credits granted per 1,000 XAF paid (floor).
@@ -848,24 +664,6 @@ model AppCache {
   @@map("app_cache")
 }
 
-model RevisionGuide {
-  id          String   @id @default(cuid())
-  title       String
-  markdown    String   @db.Text
-  published   Boolean  @default(false)
-  pdfUrl      String?  @map("pdf_url")
-  pdfFileName String?  @map("pdf_file_name")
-  createdById String   @map("created_by_id")
-  createdBy   User     @relation("RevisionGuideAuthor", fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  @@index([published])
-  @@index([createdById])
-  @@map("revision_guides")
-}
-
-// ===========================================
 // Credits System
 // ===========================================
 

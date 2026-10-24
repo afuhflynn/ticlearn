@@ -130,7 +130,9 @@ export function useSubmitQuizAttempt() {
       return result;
     },
     onSuccess: (_, variables) => {
-      void invalidateGroups(queryClient, "stats", "leaderboard", "quizzes");
+      // A submission writes the last attempt the dashboard's Last quiz card
+      // shows, so that card must not survive on the stale sixty second list.
+      void invalidateGroups(queryClient, "stats", "quizzes", "dashboard");
       queryClient.invalidateQueries({
         queryKey: queryKeys.quiz(variables.quizId),
       });
@@ -146,18 +148,6 @@ export function useQuizAttempt(attemptId: string) {
       return result;
     },
     enabled: !!attemptId,
-  });
-
-  return { ...query, ...readState(query) };
-}
-
-export function useRecentAttempts(limit: number = 5) {
-  const query = useQuery({
-    queryKey: ["quizzes", "attempts", "recent", limit],
-    queryFn: async () => {
-      const result = await api.mutations.quizzes.getRecentAttempts(limit);
-      return result;
-    },
   });
 
   return { ...query, ...readState(query) };

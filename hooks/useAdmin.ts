@@ -176,63 +176,6 @@ export function useUpdateAdminUserPlan() {
   });
 }
 
-export function useAdminFeedback(
-  params: { page?: number; limit?: number; status?: string } = {},
-) {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["admin", "feedback", params],
-    // Keep the page a reader is looking at while the next one loads.
-    placeholderData: keepPreviousData,
-    queryFn: () => api.mutations.admin.feedback.getAll(params),
-    refetchInterval: 30000,
-    ...family("feedback"),
-  });
-  return {
-    feedbacks: (data?.feedbacks ?? []) as unknown as {
-      id: string;
-      user: { id: string; name: string | null; email: string };
-      type: string;
-      status: string;
-      message: string;
-      createdAt: string;
-      attemptId: string | null;
-      mockId: string | null;
-      conversationId: string | null;
-      rating: number | null;
-    }[],
-    total: data?.total ?? 0,
-    page: data?.page ?? 1,
-    totalPages: data?.totalPages ?? 1,
-    isLoading,
-    error,
-    refetch,
-  };
-}
-
-export function useUpdateAdminFeedback() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: { status?: string; adminNote?: string };
-    }) => api.mutations.admin.feedback.update(id, data),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] }),
-  });
-}
-
-export function useDeleteAdminFeedback() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => api.mutations.admin.feedback.delete(id),
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["admin", "feedback"] }),
-  });
-}
-
 export function useAdminSubscriptions(
   params: { page?: number; limit?: number; status?: string } = {},
 ) {

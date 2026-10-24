@@ -20,8 +20,6 @@ import { AdminSettingsSkeleton } from "../admin-skeleton";
 type PlatformSettings = {
   creditCostQuizGeneration: number;
   creditCostPracticeQuestion: number;
-  creditCostRevisionGuideView: number;
-  creditCostRevisionGuideGen: number;
   creditCostAiTutorMessage: number;
   creditCostMultiplierStarter: number;
   creditCostMultiplierStandard: number;
@@ -29,7 +27,6 @@ type PlatformSettings = {
   creditCostMultiplierPro: number;
   enforceCreditsAll: boolean;
   enforceCreditsForPractice: boolean;
-  enforceCreditsForRevisionGuides: boolean;
   enforceCreditsForAiTutor: boolean;
   creditsPer1000Xaf: number;
   minCreditPurchaseXaf: number;
@@ -115,8 +112,7 @@ export default function AdminPlatformSettingsPage() {
         <p className="text-muted-foreground mt-2">
           Configure pay-as-you-go credit pricing, per-feature costs, and when
           users must spend credits. Enforcement defaults are on for quizzes and
-          AI tutor messages; revision guides stay optional until you enable
-          them.
+          AI tutor messages.
         </p>
       </div>
 
@@ -184,8 +180,8 @@ export default function AdminPlatformSettingsPage() {
             <div>
               <p className="font-medium">Enforce all credit gates</p>
               <p className="text-sm text-muted-foreground">
-                Same as enabling mocks, practice (quizzes + Paper 1/2 mock
-                builds), revision guides, and AI tutor enforcement at once.
+                Same as enabling practice (quiz generation) and AI tutor
+                enforcement at once.
               </p>
             </div>
             <Switch
@@ -198,15 +194,6 @@ export default function AdminPlatformSettingsPage() {
             <Switch
               checked={settings.enforceCreditsForPractice}
               onCheckedChange={(v) => update({ enforceCreditsForPractice: v })}
-            />
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <span className="font-medium">Revision guides</span>
-            <Switch
-              checked={settings.enforceCreditsForRevisionGuides}
-              onCheckedChange={(v) =>
-                update({ enforceCreditsForRevisionGuides: v })
-              }
             />
           </div>
           <div className="flex items-center justify-between gap-4">
@@ -232,8 +219,6 @@ export default function AdminPlatformSettingsPage() {
             [
               ["creditCostQuizGeneration", "Quiz generation"],
               ["creditCostPracticeQuestion", "Practice — per question"],
-              ["creditCostRevisionGuideView", "Revision guide — view"],
-              ["creditCostRevisionGuideGen", "Revision guide — generate"],
               ["creditCostAiTutorMessage", "AI tutor — per message"],
             ] as const
           ).map(([key, label]) => (

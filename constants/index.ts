@@ -46,7 +46,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "Can I track my progress over time?",
     answer:
-      "Yes. TiCLearn tracks your mastery per topic from your quiz attempts, averages it when a topic appears in more than one note, and shows a readiness score with your weakest topics first.",
+      "Your quiz attempts are kept, so you can open a past quiz and see the answers you missed. Tip can also report your study progress in chat. There is no separate progress dashboard.",
   },
   {
     question: "What file formats can I upload?",
@@ -56,7 +56,7 @@ export const FAQ_ITEMS: FAQItem[] = [
   {
     question: "How do leaderboards work?",
     answer:
-      "Leaderboards rank students on quiz points, quizzes taken and study streaks. You can see how you compare with other students across the country.",
+      "TiCLearn does not have a leaderboard. Your quiz scores are private to your account, and the review page shows what you missed so you know what to revisit.",
   },
   {
     question: "How do I reset my password?",

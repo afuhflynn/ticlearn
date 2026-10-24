@@ -101,7 +101,7 @@ export function useUploadNote() {
       return result;
     },
     onSuccess: () => {
-      void invalidateGroups(queryClient, "notes", "usage");
+      void invalidateGroups(queryClient, "notes", "usage", "dashboard");
       toast.success("Note uploaded successfully! It's being processed.");
     },
     onError: (error: Error) => {
@@ -139,7 +139,7 @@ export function useDeleteNote() {
   return useMutation({
     mutationFn: async (id: string) => api.mutations.notes.delete(id),
     onSuccess: () => {
-      void invalidateGroups(queryClient, "notes", "usage");
+      void invalidateGroups(queryClient, "notes", "usage", "dashboard");
       toast.success("Note deleted");
     },
     onError: (error: Error) => {

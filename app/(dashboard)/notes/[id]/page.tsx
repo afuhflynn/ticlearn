@@ -191,7 +191,7 @@ export default function NoteDetailPage() {
 
           {note.status === "READY" && note.latestQuiz?.status === "READY" ? (
             <Button asChild>
-              <Link href={`/quiz/${note.latestQuiz.id}`}>
+              <Link href={`/quizzes/${note.latestQuiz.id}`}>
                 <Sparkles className="mr-2 h-4 w-4" />
                 Open Latest Quiz
               </Link>

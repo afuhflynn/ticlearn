@@ -33,7 +33,7 @@ import { searchParamsSchema } from "@/nuqs";
 export default function SignInPage() {
   const router = useRouter();
   const [params] = useQueryStates(searchParamsSchema);
-  const { callbackUrl, error: searchError, ref__: refCode } = params;
+  const { callbackUrl, error: searchError } = params;
   const { data: session, isPending: sessionLoading } = useSession();
 
   const [email, setEmail] = useState("");
@@ -42,13 +42,7 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [showVerificationPrompt, setShowVerificationPrompt] = useState(false);
-  const redirect = decodeURIComponent(callbackUrl || "/chat");
-
-  useEffect(() => {
-    if (refCode) {
-      localStorage.setItem("pendingReferralCode", refCode);
-    }
-  }, [refCode]);
+  const redirect = callbackUrl || "/dashboard";
 
   useEffect(() => {
     if (searchError === "google_sign_in_failed") {
@@ -83,16 +77,7 @@ export default function SignInPage() {
           }
         },
         onSuccess() {
-          console.log({ callbackUrl });
-          const pendingRef = localStorage.getItem("pendingReferralCode");
-          if (pendingRef) {
-            fetch("/api/referral/apply", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code: pendingRef }),
-            }).then(() => localStorage.removeItem("pendingReferralCode"));
-          }
-          router.push(callbackUrl ?? "/chat");
+          router.push(redirect);
         },
       },
     });
@@ -100,9 +85,6 @@ export default function SignInPage() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (refCode) {
-      localStorage.setItem("pendingReferralCode", refCode);
-    }
     setIsLoading(true);
     try {
       await signIn.social({
@@ -247,10 +229,10 @@ export default function SignInPage() {
 
                   <div className="flex items-center justify-end text-sm">
                     <Link
-                      href="/forgot-password"
+                      href="/contact"
                       className="text-primary hover:underline"
                     >
-                      Forgot password?
+                      Need help signing in?
                     </Link>
                   </div>
                 </>

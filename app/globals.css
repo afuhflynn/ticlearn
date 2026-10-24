@@ -37,9 +37,9 @@
   --sidebar-accent-foreground: oklch(0 0 0);
   --sidebar-border: oklch(0.9401 0 0);
   --sidebar-ring: oklch(0 0 0);
-  --font-sans: Plus Jakarta Sans, sans-serif;
-  --font-serif: Lora, serif;
-  --font-mono: IBM Plex Mono, monospace;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --radius: 1.4rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -74,10 +74,11 @@
   --popover: oklch(0.2568 0.0076 274.6528);
   --popover-foreground: oklch(0.9551 0 0);
   /* The dark primary is a little lighter than the light theme's so it can be
-     read as text on the dark background (4.56 to 1), and its foreground is
-     dark so a primary button passes on it (5.14 to 1). White on the old
-     purple was 4.12 to 1, which is under the 4.5 that WCAG AA wants. */
-  --primary: oklch(0.64 0.2294 291.7437);
+     read as small text on the dark surfaces the app paints. It passes on the
+     bare background (5.04 to 1) and on the muted section surfaces and the
+     primary tinted ones, the worst of which is 4.75 to 1 (WCAG AA wants 4.5).
+     Its foreground is dark so a primary button passes on it (5.68 to 1). */
+  --primary: oklch(0.67 0.2294 291.7437);
   --primary-foreground: oklch(0.16 0 0);
   --secondary: oklch(0.294 0.013 272.9312);
   --secondary-foreground: oklch(0.9551 0 0);
@@ -97,15 +98,15 @@
   --chart-5: oklch(0.7058 0 0);
   --sidebar: oklch(0.2011 0.0039 286.0396);
   --sidebar-foreground: oklch(0.9551 0 0);
-  --sidebar-primary: oklch(0.64 0.2294 291.7437);
+  --sidebar-primary: oklch(0.67 0.2294 291.7437);
   --sidebar-primary-foreground: oklch(0.16 0 0);
   --sidebar-accent: oklch(0.294 0.013 272.9312);
   --sidebar-accent-foreground: oklch(0.64 0.2294 291.7437);
   --sidebar-border: oklch(0.3289 0.0092 268.3843);
   --sidebar-ring: oklch(0.64 0.2294 291.7437);
-  --font-sans: Plus Jakarta Sans, sans-serif;
-  --font-serif: Lora, serif;
-  --font-mono: IBM Plex Mono, monospace;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-instrument-serif), Georgia, serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
   --radius: 1.4rem;
   --shadow-x: 0px;
   --shadow-y: 2px;
@@ -268,6 +269,23 @@
 @media (prefers-reduced-motion: reduce) {
   [data-slot="skeleton"] {
     animation: none;
+  }
+
+  /* The landing page, and everything else, settles instantly for a reader who
+     has asked for less motion. Hover colours still change, but nothing moves. */
+  *,
+  *::before,
+  *::after {
+    /* biome-ignore lint/complexity/noImportantStyles: reduced motion is the
+       one place the cascade has to be overridden, because the utilities that
+       set these properties sit outside this media query. */
+    animation-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: see above. */
+    animation-iteration-count: 1 !important;
+    /* biome-ignore lint/complexity/noImportantStyles: see above. */
+    transition-duration: 0.01ms !important;
+    /* biome-ignore lint/complexity/noImportantStyles: see above. */
+    scroll-behavior: auto !important;
   }
 }
 

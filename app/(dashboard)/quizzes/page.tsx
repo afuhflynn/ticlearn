@@ -91,7 +91,7 @@ export default function QuizzesPage() {
     });
 
     if (newlyReadyQuiz) {
-      router.push(`/quiz/${newlyReadyQuiz.id}`);
+      router.push(`/quizzes/${newlyReadyQuiz.id}`);
     }
 
     (quizzes as QuizListItem[])?.forEach((q) => {

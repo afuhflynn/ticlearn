@@ -1,0 +1,115 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [4 0 R 6 0 R 8 0 R 10 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 12 0 R >> >> /Contents 5 0 R >>
+endobj
+5 0 obj
+<< /Length 2032 >>
+stream
+BT /F2 22 Tf 1 0 0 1 56.70 765.19 Tm (Operating Systems) Tj ET
+BT /F1 10 Tf 1 0 0 1 56.70 741.19 Tm (Chapter 4: Process Scheduling  |  Year 2 lecture handout) Tj ET
+0.75 w 0.7 0.7 0.7 RG 56.70 733.19 m 538.58 733.19 l S
+BT /F2 13 Tf 1 0 0 1 56.70 692.19 Tm (4.1 The scheduling problem) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 668.19 Tm (A computer with one processor can run only one process at a time. Every other ready) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 652.69 Tm (process waits in a queue. The scheduler is the part of the operating system that) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 637.19 Tm (decides which process runs next and for how long. Good scheduling keeps the processor) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 621.69 Tm (busy, keeps response time short, and treats every process fairly.) Tj ET
+BT /F2 13 Tf 1 0 0 1 56.70 584.19 Tm (4.2 When the scheduler runs) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 560.19 Tm (The scheduler is called when a process moves from running to waiting, when a process) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 544.69 Tm (moves from running to ready, when a process moves from waiting to ready, and when a) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 529.19 Tm (process terminates. The first and the last of these are non preemptive: the running) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 513.69 Tm (process gives up the processor on its own. The other two are preemptive: the operating) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 498.19 Tm (system takes the processor away.) Tj ET
+BT /F2 13 Tf 1 0 0 1 56.70 460.69 Tm (4.3 Scheduling criteria) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 436.69 Tm (Throughput is the number of processes completed per unit of time. Turnaround time is) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 421.19 Tm (the time from submission to completion. Waiting time is the total time spent in the) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 405.69 Tm (ready queue. Response time is the time from submission to the first response. No) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 390.19 Tm (algorithm optimises all four at once, so every scheduler is a compromise.) Tj ET
+endstream
+endobj
+6 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 12 0 R >> >> /Contents 7 0 R >>
+endobj
+7 0 obj
+<< /Length 871 >>
+stream
+BT /F2 13 Tf 1 0 0 1 56.70 760.19 Tm (4.4 First come first served) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 736.19 Tm (First come first served runs processes in the order they arrive. It is simple and it) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 720.69 Tm (never starves a process, but a long job at the front of the queue makes every short job) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 705.19 Tm (behind it wait. This is the convoy effect.) Tj ET
+BT /F2 13 Tf 1 0 0 1 56.70 667.69 Tm (4.5 Shortest job first) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 643.69 Tm (Shortest job first runs the process with the smallest next CPU burst. It gives the) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 628.19 Tm (smallest average waiting time when every burst is known in advance. In practice the) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 612.69 Tm (next burst is only an estimate, taken from the length of the previous bursts.) Tj ET
+endstream
+endobj
+8 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 12 0 R >> >> /Contents 9 0 R >>
+endobj
+9 0 obj
+<< /Length 1519 >>
+stream
+BT /F2 13 Tf 1 0 0 1 56.70 760.19 Tm (4.6 Round robin) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 736.19 Tm (Round robin gives every ready process a turn in a fixed time slice, called a quantum.) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 720.69 Tm (When the slice ends the process goes to the back of the ready queue and the next) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 705.19 Tm (process runs. The size of the slice decides how the system feels.) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 681.69 Tm (A time slice that is too short turns the processor into a switchboard: too much time) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 666.19 Tm (goes to saving and restoring context, and too little to useful work. A time slice that) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 650.69 Tm (is too long makes round robin behave like first come first served, and a student) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 635.19 Tm (clicking a button waits behind a batch job. A slice of about ten to one hundred) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 619.69 Tm (milliseconds is the usual compromise.) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 596.19 Tm (Worked example. Five processes arrive at the same time with bursts of 8, 4, 2, 1 and 1) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 580.69 Tm (milliseconds. With a quantum of 2 milliseconds the first process finishes in its fourth) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 565.19 Tm (turn, so response time stays short for the four short jobs. With a quantum of 8) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 549.69 Tm (milliseconds the short jobs wait for the whole first burst.) Tj ET
+endstream
+endobj
+10 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 12 0 R >> >> /Contents 11 0 R >>
+endobj
+11 0 obj
+<< /Length 992 >>
+stream
+BT /F2 13 Tf 1 0 0 1 56.70 760.19 Tm (4.7 Priority scheduling) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 736.19 Tm (Priority scheduling always runs the ready process with the highest priority. It can) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 720.69 Tm (starve a low priority process forever. Ageing fixes this by raising the priority of a) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 705.19 Tm (waiting process a little on every pass, so no process waits without end.) Tj ET
+BT /F2 13 Tf 1 0 0 1 56.70 667.69 Tm (4.8 Summary) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 643.69 Tm (The scheduler chooses the next process. Preemption lets the system take the processor) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 628.19 Tm (back. Throughput, turnaround, waiting and response time pull in different directions.) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 612.69 Tm (Round robin protects response time, shortest job first protects average waiting time,) Tj ET
+BT /F1 11 Tf 1 0 0 1 56.70 597.19 Tm (and priority scheduling needs ageing to stay fair.) Tj ET
+endstream
+endobj
+12 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000140 00000 n 
+0000000210 00000 n 
+0000000353 00000 n 
+0000002437 00000 n 
+0000002580 00000 n 
+0000003502 00000 n 
+0000003645 00000 n 
+0000005216 00000 n 
+0000005361 00000 n 
+0000006405 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R >>
+startxref
+6481
+%%EOF

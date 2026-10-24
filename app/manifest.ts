@@ -35,14 +35,8 @@ export default function manifest(): MetadataRoute.Manifest {
         icons: [{ src: "/icons/android-chrome-192x192.png", sizes: "192x192" }],
       },
       {
-        name: "Leaderboard",
-        description: "See top performers",
-        url: "/leaderboard",
-        icons: [{ src: "/icons/android-chrome-192x192.png", sizes: "192x192" }],
-      },
-      {
         name: "Chat with Tip",
-        description: "Ask AI for help",
+        description: "Ask Tip about your notes",
         url: "/chat",
         icons: [{ src: "/icons/android-chrome-192x192.png", sizes: "192x192" }],
       },

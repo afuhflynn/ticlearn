@@ -77,8 +77,6 @@ export async function GET() {
         quizGenerations: limits.quizGenerations,
         aiTutorMessages: limits.aiTutorMessages,
         maxConversationMessages: limits.maxConversationMessages,
-        canAccessCommunity: limits.canAccessCommunity,
-        canAccessLeaderboard: limits.canAccessLeaderboard,
       },
       usage: {
         pdfUploads: noteCount,

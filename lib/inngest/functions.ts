@@ -348,7 +348,7 @@ export const handleSubscriptionAction = inngest.createFunction(
             amountFcfa: amount || subscription.amount,
             reference: transactionId || subscription.fapshiTransId || "N/A",
             paidAt: new Date().toISOString(),
-            practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/practice`,
+            practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
           },
         },
       });
@@ -512,12 +512,9 @@ export const generateAdminReport = inngest.createFunction(
     setReport(reportId, { status: "PROCESSING" });
     try {
       const { renderToBuffer } = await import("@react-pdf/renderer");
-      const {
-        AffiliateReport,
-        FeedbackReport,
-        SubscriptionReport,
-        UserReport,
-      } = await import("@/components/pdf");
+      const { AffiliateReport, SubscriptionReport, UserReport } = await import(
+        "@/components/pdf"
+      );
       const { prisma } = await import("@/lib/prisma");
       const formatDate = (date: Date | string | null | undefined) => {
         if (!date) return "-";
@@ -558,27 +555,6 @@ export const generateAdminReport = inngest.createFunction(
               attemptsCount: u._count.quizAttempts,
             })),
             title: "User Report",
-            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-          }),
-        );
-      } else if (type === "feedback") {
-        const feedbacks = await prisma.feedback.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 100,
-          include: { user: { select: { name: true, email: true } } },
-        });
-        pdfBuffer = await renderReportPdf(
-          renderToBuffer,
-          FeedbackReport({
-            feedbacks: feedbacks.map((f) => ({
-              id: f.id,
-              type: f.type || "OTHER",
-              content: f.subject || "",
-              status: f.status || "OPEN",
-              createdAt: formatDate(f.createdAt),
-              user: { name: f.user?.name || "", email: f.user?.email || "" },
-            })),
-            title: "Feedback Report",
             subtitle: `Generated on ${new Date().toLocaleDateString()}`,
           }),
         );

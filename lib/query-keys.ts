@@ -16,8 +16,9 @@ export const queryKeys = {
 
   // User Stats
   userStats: ["user-stats"] as const,
-  readiness: ["readiness"] as const,
-  leaderboard: ["leaderboard"] as const,
+
+  // Dashboard continue surface
+  dashboardContinue: ["dashboard", "continue"] as const,
 
   // Subscriptions & Plans
   subscription: ["subscription"] as const,
@@ -26,15 +27,6 @@ export const queryKeys = {
 
   // Credits
   credits: ["credits"] as const,
-
-  // Feedback
-  feedbacks: ["feedbacks"] as const,
-  feedback: (id: string) => ["feedbacks", id] as const,
-
-  // Affiliate
-  affiliate: ["affiliate"] as const,
-  affiliateStats: ["affiliate", "stats"] as const,
-  affiliateEarnings: ["affiliate", "earnings"] as const,
 
   // Rating
   rating: ["rating"] as const,
@@ -53,21 +45,9 @@ export const queryKeys = {
   chatMessagesPaginated: (conversationId: string) =>
     ["chat", conversationId, "paginated"] as const,
 
-  // Community
-  communityPosts: ["community", "posts"] as const,
-  communityPost: (id: string) => ["community", "posts", id] as const,
-  communityComments: (postId: string) =>
-    ["community", "posts", postId, "comments"] as const,
-
-  // Notifications
-  notifications: ["notifications"] as const,
-
   // Profile & Settings
   profile: ["profile"] as const,
   settings: ["settings"] as const,
-
-  // Search
-  search: (query: string) => ["search", query] as const,
 
   // payment
   paymentSettings: ["payment", "settings"],

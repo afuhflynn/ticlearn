@@ -26,7 +26,6 @@ export async function GET() {
       activeSubscriptions,
       totalRevenue,
       avgRating,
-      recentFeedback,
       pendingAffiliates,
       paidUsers,
       freeUsers,
@@ -40,7 +39,6 @@ export async function GET() {
       prisma.subscription.count({ where: { status: "ACTIVE" } }),
       prisma.subscription.aggregate({ _sum: { amount: true } }),
       prisma.rating.aggregate({ _avg: { score: true } }),
-      prisma.feedback.count({ where: { status: "OPEN" } }),
       prisma.affiliate.count({ where: { status: "PENDING" } }),
       prisma.subscription.count({ where: { status: "ACTIVE", plan: "PRO" } }),
       prisma.user.count({
@@ -66,7 +64,6 @@ export async function GET() {
         activeSubscriptions,
         totalRevenue: totalRevenue._sum.amount || 0,
         avgRating: avgRating._avg.score || 0,
-        recentFeedback,
         pendingAffiliates,
         // Monetization metrics
         paidUsers,

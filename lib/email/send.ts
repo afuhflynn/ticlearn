@@ -126,38 +126,4 @@ export type CampaignType =
   | "re-engagement"
   | "streak-risk"
   | "onboarding-incomplete"
-  | "weak-topic-drill"
   | "weekly-digest";
-
-export async function notifyAdminsOfFeedback(params: {
-  userName: string;
-  userEmail: string;
-  type: string;
-  subject: string;
-  message: string;
-  rating?: number | null;
-}) {
-  const admins = await prisma.user.findMany({
-    where: { role: "ADMIN" },
-    select: { email: true },
-  });
-  const adminEmails = new Set(admins.map((a) => a.email));
-  if (process.env.ADMIN_EMAIL) adminEmails.add(process.env.ADMIN_EMAIL);
-
-  const promises = Array.from(adminEmails).map(async (email) => {
-    if (await isSuppressed(email)) return;
-    return renderAndSend({
-      template: "admin-feedback-alert",
-      to: email,
-      props: {
-        userName: params.userName,
-        userEmail: params.userEmail,
-        typeLabel: params.type,
-        subjectLine: params.subject,
-        message: params.message,
-        rating: params.rating ?? null,
-      },
-    });
-  });
-  await Promise.allSettled(promises);
-}

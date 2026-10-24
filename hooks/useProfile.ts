@@ -4,25 +4,6 @@ import { api } from "@/lib/api-client";
 import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 
-export function useProfile() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.profile,
-    queryFn: async () => {
-      const result = await api.queries.profile();
-      return result;
-    },
-    ...family("profile"),
-  });
-
-  return {
-    user: data?.user,
-    stats: data?.stats,
-    affiliate: data?.affiliate,
-    isLoading,
-    error,
-  };
-}
-
 export function useUpdateProfile() {
   const queryClient = useQueryClient();
 
@@ -71,16 +52,5 @@ export function useUpdateSettings() {
       queryClient.invalidateQueries({ queryKey: queryKeys.settings });
       toast.success("Settings saved");
     },
-  });
-}
-
-export function useSearch(query: string, type = "all") {
-  return useQuery({
-    queryKey: queryKeys.search(query),
-    queryFn: async () => {
-      const result = await api.queries.search(query, type);
-      return result;
-    },
-    enabled: query.length >= 2,
   });
 }

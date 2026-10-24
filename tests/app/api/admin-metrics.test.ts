@@ -4,7 +4,6 @@ import { auth } from "@/lib/auth";
 import {
   computeActivationFunnel,
   computeCohortRetention,
-  computeMasteryMetrics,
   computeMRR,
   computeSubjectDistribution,
   countDistinctActiveUsers,
@@ -17,7 +16,6 @@ vi.mock("@/lib/prisma", () => ({
     subscription: { count: vi.fn(), groupBy: vi.fn() },
     kpiEvent: { count: vi.fn(), groupBy: vi.fn() },
     dailyMetric: { findMany: vi.fn(), count: vi.fn() },
-    topicPerformance: { findMany: vi.fn() },
     quiz: { groupBy: vi.fn() },
   },
 }));
@@ -28,7 +26,6 @@ vi.mock("@/lib/kpi", () => ({
   computeMRR: vi.fn(),
   computeCohortRetention: vi.fn(),
   computeSubjectDistribution: vi.fn(),
-  computeMasteryMetrics: vi.fn(),
   computeActivationFunnel: vi.fn(),
   computeDailyMetrics: vi.fn(),
 }));
@@ -47,7 +44,6 @@ const db = prisma as unknown as {
     findMany: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
   };
-  topicPerformance: { findMany: ReturnType<typeof vi.fn> };
   quiz: { groupBy: ReturnType<typeof vi.fn> };
 };
 
@@ -69,7 +65,6 @@ beforeEach(() => {
   db.kpiEvent.groupBy.mockResolvedValue([]);
   db.dailyMetric.findMany.mockResolvedValue([]);
   db.dailyMetric.count.mockResolvedValue(0);
-  db.topicPerformance.findMany.mockResolvedValue([]);
   db.quiz.groupBy.mockResolvedValue([]);
   vi.mocked(countDistinctActiveUsers).mockResolvedValue(0);
   vi.mocked(computeMRR).mockResolvedValue({
@@ -79,12 +74,6 @@ beforeEach(() => {
   });
   vi.mocked(computeCohortRetention).mockResolvedValue([]);
   vi.mocked(computeSubjectDistribution).mockResolvedValue([]);
-  vi.mocked(computeMasteryMetrics).mockResolvedValue({
-    avgMastery: 0,
-    previousAvgMastery: 0,
-    improvementRate: 0,
-    recoveryDrillsCompleted: 0,
-  });
   vi.mocked(computeActivationFunnel).mockResolvedValue({
     signedUp: 0,
     onboardingStarted: 0,
