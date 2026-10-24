@@ -48,7 +48,14 @@ About, FAQ, contact, terms and privacy. Today the FAQ data lives in a constants 
 ### 16. Onboarding · needs a decision · GA
 Today the wizard asks school level and subject, which is meaningless now. A first pass shipped: one question, year of study, then straight to uploading a note. Institution, faculty and course are deliberately not collected, because the schema holds one academic fact and a four question form loses signups before it starts. Research says ask institution, then faculty, then year, then courses, so treat that as the shape only if a later slice earns it.
 **Done when:** the level only flow is the shipped default and takes under a minute, the level reaches the tutor and the readiness engine, it is skippable and correctable from settings, and any return to institution, faculty or course is a separate decision with its own spec.
-- [ ] Design it (spec): `/solution-architect onboarding`
+- [x] Design it (spec): `/solution-architect onboarding` · spec [0017](../specs/0017-onboarding.md)
+- [x] Build it: `/feature-build onboarding`
+  - [x] Level only fast wizard taking under sixty seconds (covers AC-1, AC-2)
+  - [x] Database record update for completion and skip flags (covers AC-3)
+  - [x] AI prompt system and readiness engine integration (covers AC-4)
+  - [x] Settings page support for viewing and updating study level (covers AC-5)
+- [x] Verify it: `/verify-release onboarding`
+- [x] Test it: `/test-engineer onboarding`
 
 (basis: research/design-reference.md §1 · both local competitors identify students by WhatsApp number and not by email, and forty eight percent of signups were lost at one role question)
 
