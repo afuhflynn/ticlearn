@@ -58,17 +58,6 @@ export function useAdminMetrics(params: MetricsParams = {}) {
       subject: string;
       activeUsers: number;
     }>,
-    mastery: (result?.mastery ?? {
-      avgMastery: 0,
-      previousAvgMastery: 0,
-      improvementRate: 0,
-      recoveryDrillsCompleted: 0,
-    }) as {
-      avgMastery: number;
-      previousAvgMastery: number;
-      improvementRate: number;
-      recoveryDrillsCompleted: number;
-    },
     retention: (result?.retention ?? []) as Array<{
       cohort: string;
       cohortSize: number;
@@ -97,31 +86,6 @@ export function useAdminMetrics(params: MetricsParams = {}) {
     isLoading,
     error,
     refetch,
-  };
-}
-
-export function useRetentionData(granularity = "weekly") {
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin", "metrics", "retention", granularity],
-    queryFn: () => api.mutations.admin.metrics.retention(granularity),
-    ...family("admin"),
-  });
-
-  const result = data as
-    | { retention: unknown[]; granularity: string }
-    | undefined;
-
-  return {
-    retention: (result?.retention ?? []) as Array<{
-      cohort: string;
-      cohortSize: number;
-      week0: number;
-      week1: number;
-      week2: number;
-      week4: number;
-      week8: number;
-    }>,
-    isLoading,
   };
 }
 

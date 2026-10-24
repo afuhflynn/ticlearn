@@ -18,7 +18,6 @@ export {
 export {
   type CampaignType,
   isSuppressed,
-  notifyAdminsOfFeedback,
   SuppressionError,
   sendEmail,
   sendRenderedEmail,

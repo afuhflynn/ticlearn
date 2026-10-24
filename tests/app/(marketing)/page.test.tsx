@@ -1,51 +1,171 @@
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
-import HomePage from "@/app/(marketing)/page";
+import { describe, expect, it } from "vitest";
+import HomePage, { metadata } from "@/app/(marketing)/page";
+import { FREE_LIMITS } from "@/lib/plan-limits";
 
 /**
- * The landing page (spec 0012, AC-10).
+ * The landing page (spec 0015).
  *
- * The page is a server component. The hero stays a client island for now,
- * which the spec records as a follow up rather than a defect.
+ * The layout follows the approved mockup section for section. The page is made
+ * of server components, the tutor is Tip, the frames hold real screenshots, and
+ * the free limits come from `lib/plan-limits.ts`.
  */
-vi.mock("@/lib/auth-client", () => ({
-  useSession: () => ({ data: null }),
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn() }),
-}));
-
-describe("the landing page (spec 0012 AC-10)", () => {
+describe("the landing page (spec 0015)", () => {
   it("shows the headline in the first HTML", () => {
     render(<HomePage />);
 
-    expect(
-      screen.getByRole("heading", { level: 1, name: /Your lecture notes/ }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Make your course notes make sense.",
+    );
   });
 
-  it("names the universities the product is built for", () => {
+  it("has no question box", () => {
+    render(<HomePage />);
+
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("renders the mockup's sections in order", () => {
+    render(<HomePage />);
+
+    const headings = screen
+      .getAllByRole("heading", { level: 2 })
+      .map((heading) => heading.textContent ?? "");
+
+    expect(headings).toEqual([
+      "Your course materials first",
+      "Understand, don't just memorize",
+      "Feedback you can act on",
+      "One place to move from confusion to practice.",
+      "A simple cycle for better learning.",
+      "Made for real coursework.",
+      "Your lecturer's notes are the starting point.",
+      "Frequently asked questions",
+      "Study with more direction.",
+    ]);
+  });
+
+  it("names the three jobs", () => {
     render(<HomePage />);
 
     expect(
-      screen.getByRole("heading", { name: "Buea and Bamenda universities" }),
+      screen.getByRole("heading", {
+        name: "1. Ask Tip about what you're studying",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "2. Turn a topic into focused practice",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "3. See what to revisit next" }),
     ).toBeInTheDocument();
   });
 
-  it("shows the size of the community, the phone number and the data cost", () => {
+  it("says what is free with the real limits, paid over Mobile Money", () => {
     render(<HomePage />);
 
-    expect(screen.getByText("2,500+ university students")).toBeInTheDocument();
-    expect(screen.getByText("+237 222 12 34 56")).toBeInTheDocument();
-    expect(screen.getByText("150 MB download · ~400 CFA")).toBeInTheDocument();
+    // The reset scope must match enforcement: notes and quizzes are lifetime
+    // counts in `app/api/notes/route.ts` and `app/api/quizzes/generate/route.ts`,
+    // so "a day" must attach to Tip alone.
+    expect(
+      screen.getByText(
+        `Free to start: ${FREE_LIMITS.pdfUploads} notes and ${FREE_LIMITS.quizGenerations} quizzes to try, plus ${FREE_LIMITS.aiTutorMessages} messages to Tip a day.`,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Pay with MTN Mobile Money or Orange Money when you are ready. No card needed.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /See the plans/ })).toHaveAttribute(
+      "href",
+      "/pricing",
+    );
   });
 
-  it("names the mobile money logos for a student who cannot see them", () => {
+  it("shows the real screenshots with descriptive alt text", () => {
     render(<HomePage />);
 
-    expect(screen.getByAltText("MTN Mobile Money")).toBeInTheDocument();
-    expect(screen.getByAltText("Orange Money")).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/A note in TiCLearn for a second year/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/Tip quoting a paragraph from a second year/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/A quiz question generated from the Operating/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByAltText(/A finished quiz attempt in TiCLearn/),
+    ).toBeInTheDocument();
+  });
+
+  it("links every in-page anchor and both calls to action", () => {
+    render(<HomePage />);
+
+    const startLinks = screen.getAllByRole("link", {
+      name: /Start studying/,
+    });
+    expect(startLinks).toHaveLength(2);
+    for (const link of startLinks) {
+      expect(link).toHaveAttribute("href", "/sign-up");
+    }
+    expect(
+      screen.getByRole("link", { name: "Explore how it works" }),
+    ).toHaveAttribute("href", "/#how");
+    expect(screen.getByRole("link", { name: "Upload file" })).toHaveAttribute(
+      "href",
+      "/sign-up",
+    );
+  });
+
+  it("answers the mockup's four questions", () => {
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole("button", { name: "Can I use my own notes?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Is TiCLearn for university and HND students?",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Can AI get something wrong?" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Do I need a laptop?" }),
+    ).toBeInTheDocument();
+  });
+
+  it("makes no claim the app cannot keep", () => {
+    render(<HomePage />);
+
+    expect(screen.queryByText(/CFA/)).toBeNull();
+    expect(screen.queryByText(/\+237/)).toBeNull();
+    expect(screen.queryByText(/\d+\s*%/)).toBeNull();
+    expect(screen.queryByText(/readiness/i)).toBeNull();
+    expect(screen.queryByText(/leaderboard/i)).toBeNull();
+  });
+
+  it("carries its own metadata", () => {
+    expect(metadata.title).toBe("TiCLearn · Make your course notes make sense");
+    expect(metadata.alternates?.canonical).toBe("/");
+  });
+
+  it("resolves every in-page anchor the nav and footer rely on (spec 0015 AC-5)", () => {
+    const { container } = render(<HomePage />);
+
+    // These are the four anchors the nav links to, plus `#free`, which the
+    // footer's What is free link and the CTA band anchor depend on.
+    for (const id of ["how", "tools", "students", "faq", "free"]) {
+      expect(
+        container.querySelector(`#${id}`),
+        `the page must carry a section with id ${id}`,
+      ).not.toBeNull();
+    }
   });
 });

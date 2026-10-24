@@ -233,7 +233,7 @@ export async function POST(req: Request) {
             amountFcfa: amount || sub.amount,
             reference: transId,
             paidAt: new Date().toISOString(),
-            practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/practice`,
+            practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
           },
         },
       });

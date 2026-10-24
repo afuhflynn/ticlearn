@@ -5,7 +5,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
-import { family } from "@/lib/query-families";
+import { family, invalidateGroups } from "@/lib/query-families";
 import { queryKeys } from "@/lib/query-keys";
 import { readState } from "@/lib/read-state";
 
@@ -50,22 +50,6 @@ export function useMessagesPaginated(conversationId: string) {
   };
 }
 
-export function useChatConversation(id: string) {
-  const query = useQuery({
-    queryKey: queryKeys.chatConversation(id),
-    queryFn: () => api.queries.chat.getConversation(id),
-    enabled: !!id,
-    ...family("chat"),
-  });
-
-  return {
-    conversation: query.data?.conversation,
-    messages: query.data?.conversation?.messages ?? [],
-    ...readState(query),
-    refetch: query.refetch,
-  };
-}
-
 export function useCreateConversation() {
   const queryClient = useQueryClient();
 
@@ -73,7 +57,7 @@ export function useCreateConversation() {
     mutationFn: (variables?: { noteId?: string }) =>
       api.mutations.chat.createConversation(variables?.noteId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
+      void invalidateGroups(queryClient, "chat", "dashboard");
     },
   });
 }
@@ -85,7 +69,7 @@ export function useUpdateConversation() {
     mutationFn: ({ id, title }: { id: string; title: string }) =>
       api.mutations.chat.updateConversation(id, { title }),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
+      void invalidateGroups(queryClient, "chat", "dashboard");
       queryClient.invalidateQueries({
         queryKey: queryKeys.chatConversation(id),
       });
@@ -99,24 +83,7 @@ export function useDeleteConversation() {
   return useMutation({
     mutationFn: api.mutations.chat.deleteConversation,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
-    },
-  });
-}
-
-export function useAddChatMessage() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: api.mutations.chat.addMessage,
-    onSuccess: (_, { conversationId }) => {
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chatConversation(conversationId),
-      });
-      queryClient.invalidateQueries({
-        queryKey: queryKeys.chatMessagesPaginated(conversationId),
-      });
-      queryClient.invalidateQueries({ queryKey: queryKeys.chatConversations });
+      void invalidateGroups(queryClient, "chat", "dashboard");
     },
   });
 }

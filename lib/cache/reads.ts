@@ -1,11 +1,11 @@
 /**
  * Read caching with revalidation, from spec 0010 slice five.
  *
- * Three values are read on nearly every request and change rarely: the platform
- * settings, the public payment details, and a student's readiness. This module
- * is the one place they are cached. It sits on the same store, memory layer,
- * single flight, size ceiling, and read timeout as the AI path, so nothing about
- * how a cache behaves is implemented twice.
+ * Two values are read on nearly every request and change rarely: the platform
+ * settings and the public payment details. This module is the one place they are
+ * cached. It sits on the same store, memory layer, single flight, size ceiling,
+ * and read timeout as the AI path, so nothing about how a cache behaves is
+ * implemented twice.
  *
  * A caller never names a time to live and never writes a key. It names a
  * registered namespace, which owns the value's scope and life, and a scope,
@@ -16,7 +16,7 @@
  */
 
 import crypto from "node:crypto";
-import { deleteByKey, purgeNamespace, withKey } from "./index";
+import { purgeNamespace, withKey } from "./index";
 
 /** Bumped whenever any part of the read key composition changes. */
 const READ_KEY_VERSION = "v1";
@@ -36,7 +36,6 @@ interface ReadNamespaceConfig {
 export const READ_NAMESPACES = {
   "read:platform-settings": { scope: "global", ttlMs: 60_000 },
   "read:payment-settings": { scope: "global", ttlMs: 60_000 },
-  "read:readiness": { scope: "user", ttlMs: 60_000 },
 } as const satisfies Record<string, ReadNamespaceConfig>;
 
 export type ReadNamespace = keyof typeof READ_NAMESPACES;
@@ -57,14 +56,17 @@ export function readKey(namespace: ReadNamespace, scope: ReadScope): string {
  * value or miss forever. Fail loudly rather than cache the wrong thing.
  */
 function assertScope(namespace: ReadNamespace, scope: ReadScope): void {
-  const expected = READ_NAMESPACES[namespace].scope;
-  if (scope.kind !== expected) {
-    throw new Error(
-      `[cache] ${namespace} needs a ${expected} scope, received ${scope.kind}`,
-    );
-  }
+  // The user shape is checked before the kind match, because a kind comparison
+  // against the registry narrows the scope once every registered namespace is
+  // global, and then this guard would die at compile time as unreachable.
   if (scope.kind === "user" && !scope.userId) {
     throw new Error(`[cache] ${namespace} needs a user id`);
+  }
+  const registered = READ_NAMESPACES[namespace].scope;
+  if (registered !== scope.kind) {
+    throw new Error(
+      `[cache] ${namespace} needs a ${registered} scope, received ${scope.kind}`,
+    );
   }
 }
 
@@ -89,26 +91,6 @@ export async function withReadCache<T>(
     produce,
   );
   return value;
-}
-
-/**
- * Drop one entry, on the store and on this instance. Used by readiness, where a
- * value belongs to one student, so one student practising never clears
- * everybody else's entry.
- */
-export async function invalidateRead(
-  namespace: ReadNamespace,
-  scope: ReadScope,
-): Promise<void> {
-  assertScope(namespace, scope);
-  try {
-    await deleteByKey(namespace, readKey(namespace, scope));
-  } catch (error) {
-    console.warn(
-      `[cache] invalidate ${namespace} failed, continuing without it:`,
-      error,
-    );
-  }
 }
 
 /**

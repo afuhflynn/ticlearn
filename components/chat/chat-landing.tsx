@@ -20,7 +20,13 @@ const actionIcons = {
   image: ImageIcon,
 };
 
-export function ChatLanding({ noteId }: { noteId?: string | null }) {
+export function ChatLanding({
+  noteId,
+  initialQuestion,
+}: {
+  noteId?: string | null;
+  initialQuestion?: string | null;
+}) {
   const router = useRouter();
   const createConversation = useCreateConversation();
   const { canUseAIChat } = useUsage();
@@ -60,7 +66,7 @@ export function ChatLanding({ noteId }: { noteId?: string | null }) {
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-8 md:py-12">
         <div className="space-y-4 text-center">
           <div className="mx-auto inline-flex items-center rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-            {TIP_NAME} · your notes, your quizzes, your progress
+            {TIP_NAME} · your notes, your quizzes, your questions
           </div>
           <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-5xl">
             Hello {session?.user.name.split(" ")[0]}, let's turn confusion into
@@ -80,6 +86,7 @@ export function ChatLanding({ noteId }: { noteId?: string | null }) {
         <div className="mx-auto w-full max-w-2xl space-y-4">
           <ChatComposer
             disabled={!canUseAIChat}
+            initialText={initialQuestion ?? ""}
             disabledReason={
               canUseAIChat
                 ? undefined

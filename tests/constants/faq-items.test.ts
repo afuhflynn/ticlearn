@@ -35,4 +35,13 @@ describe("the FAQ list (spec 0012 AC-9)", () => {
   it("answers what the page description promises about offline access", () => {
     expect(FAQ_ITEMS.some((item) => /offline/i.test(item.question))).toBe(true);
   });
+
+  it("does not sell leaderboards the rebuild cut (spec 0014 AC-1)", () => {
+    for (const item of FAQ_ITEMS) {
+      // The leaderboard answer was rewritten to say what is true. Nothing in
+      // the list may claim students can rank or compare themselves.
+      expect(item.answer).not.toMatch(/compare( yourself)? with other/i);
+      expect(item.answer).not.toMatch(/^Leaderboards rank/i);
+    }
+  });
 });

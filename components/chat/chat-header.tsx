@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, LayoutDashboard, Plus } from "lucide-react";
+import { ClipboardCheck, LayoutDashboard, Plus } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -22,9 +22,9 @@ export function ChatHeader() {
             </Link>
           </Button>
           <Button asChild size="sm" variant="ghost">
-            <Link href="/practice">
-              <BookOpen className="mr-2 h-4 w-4" />
-              Practice
+            <Link href="/quizzes">
+              <ClipboardCheck className="mr-2 h-4 w-4" />
+              Quizzes
             </Link>
           </Button>
         </div>

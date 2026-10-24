@@ -20,7 +20,6 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts/loader";
 import { limit } from "@/lib/rate-limit";
-import { computeReadiness } from "@/lib/readiness";
 
 export const runtime = "nodejs";
 
@@ -428,33 +427,10 @@ export async function POST(req: Request) {
         });
     }
 
-    let profileContext = "";
-
-    try {
-      const readiness = await computeReadiness(userId);
-
-      const weakestThree = readiness.topicReadiness
-        .sort((a, b) => a.score - b.score)
-        .slice(0, 3)
-        .map((t) => `${t.topic} (${t.score}%)`)
-        .join(", ");
-
-      const recommendations = readiness.weakestTopic
-        ? `Focus area: ${readiness.weakestTopic.name} (${readiness.weakestTopic.score}%)`
-        : "";
-
-      profileContext = `
-STUDENT PROFILE:
-- Overall Readiness: ${readiness.readiness}%
-${readiness.weakestTopic ? `- Weakest Topics: ${weakestThree}` : ""}
-${readiness.strongestTopic ? `- Strongest Topic: ${readiness.strongestTopic.name} (${readiness.strongestTopic.score}%)` : ""}
-${recommendations ? `- ${recommendations}` : ""}
-
-Use this profile to personalize study recommendations, focus on weakest topics, and align advice with the student's current readiness level.
-`;
-    } catch (e) {
-      console.error("Failed to compute readiness for chat context:", e);
-    }
+    // The readiness score was cut with spec 0014. The prompt keeps the slot so
+    // the template shape does not change, and the slot stays empty because the
+    // app no longer holds a number to put in it.
+    const profileContext = "";
 
     const studentLevel = levelRow?.levelOfStudy?.trim();
 

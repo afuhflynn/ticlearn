@@ -6,8 +6,6 @@ import type {
   AffiliateEarning,
   AffiliateStatus,
   EarningStatus,
-  FeedbackStatus,
-  FeedbackType,
   FileType,
   NoteProcessingStage,
   NoteStatus,
@@ -24,7 +22,6 @@ import type {
 
 export type { UserRole, Plan, SubscriptionStatus };
 export type { FileType, NoteStatus, QuizStatus, QuestionType };
-export type { FeedbackType, FeedbackStatus };
 export type { AffiliateStatus, EarningStatus };
 
 // ===========================================
@@ -540,7 +537,6 @@ export interface AdminStats {
   activeSubscriptions: number;
   totalRevenue: number;
   avgRating: number;
-  recentFeedback: number;
   pendingAffiliates: number;
 }
 

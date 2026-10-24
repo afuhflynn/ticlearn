@@ -38,12 +38,10 @@ const apiRateLimit = arcjet({
 const publicPaths = [
   "/about",
   "/contact",
-  "/cookies",
   "/faq",
   "/privacy",
   "/terms",
   "/pricing",
-  "/primitive-gallery",
   "/api/auth",
   "/api/webhooks",
   "/api/inngest",
@@ -57,12 +55,9 @@ const protectedRoutes = [
   "/dashboard",
   "/upload",
   "/quizzes",
-  "/progress",
+  "/notes",
+  "/attempts",
   "/chat",
-  "/community",
-  "/leaderboard",
-  "/feedback",
-  "/affiliate",
   "/settings",
   "/admin",
   "/subscription",
@@ -162,14 +157,14 @@ export async function proxy(request: NextRequest) {
       }
 
       if (onboarded && isOnboardingPath) {
-        return NextResponse.redirect(new URL("/chat", request.url));
+        return NextResponse.redirect(new URL("/dashboard", request.url));
       }
     }
   }
 
   if (pathname === "/") {
     if (sessionCookie && session) {
-      return NextResponse.redirect(new URL("/chat", request.url));
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
     return NextResponse.next();
   }
@@ -186,15 +181,13 @@ export async function proxy(request: NextRequest) {
     const loginUrl = new URL("/sign-in", request.url);
     loginUrl.searchParams.set(
       "callbackUrl",
-      encodeURIComponent(
-        `${pathname}${searchParams.toString() ? `?${searchParams}` : ""}`,
-      ),
+      `${pathname}${searchParams.toString() ? `?${searchParams}` : ""}`,
     );
     return NextResponse.redirect(loginUrl);
   }
 
   if (sessionCookie && session && isAuthRoute) {
-    return NextResponse.redirect(new URL("/chat", request.url));
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   // `/admin/accept-invite` is exempt: the person using it is signed in but is

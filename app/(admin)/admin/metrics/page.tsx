@@ -80,7 +80,6 @@ const METRIC_LABELS: Record<string, string> = {
   new_users: "New Users",
   new_paid_users: "New Paid Users",
   conversion_rate: "Conversion Rate",
-  feedbacks: "Feedbacks",
   revenue: "Revenue (FCFA)",
   chat_messages: "Chat Messages",
   quizzes_taken: "Quizzes Taken",
@@ -313,7 +312,6 @@ export default function AnalyticsPage() {
     total,
     totalPages,
     subjectDistribution,
-    mastery,
     retention,
     activationFunnel,
     newUsersLast30Days,
@@ -748,66 +746,21 @@ export default function AnalyticsPage() {
             (isLoading ? (
               <LearningPanelSkeleton />
             ) : (
-              <>
-                <div className="grid gap-4 md:grid-cols-4">
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Avg Mastery
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {mastery.avgMastery.toFixed(1)}%
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Previous Avg
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {mastery.previousAvgMastery.toFixed(1)}%
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Improvement Rate
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {mastery.improvementRate > 0 ? "+" : ""}
-                        {mastery.improvementRate.toFixed(1)}%
-                      </p>
-                    </CardContent>
-                  </Card>
-                  <Card>
-                    <CardContent className="p-4 text-center">
-                      <p className="text-sm text-muted-foreground">
-                        Recovery Drills
-                      </p>
-                      <p className="text-2xl font-bold">
-                        {mastery.recoveryDrillsCompleted}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Practice Questions Answered</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <MetricChart
-                        data={chartData}
-                        dataKey="practice_answered"
-                        name="Practice"
-                        color="#14b8a6"
-                      />
-                    </CardContent>
-                  </Card>
-                </div>
-              </>
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Practice Questions Answered</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <MetricChart
+                      data={chartData}
+                      dataKey="practice_answered"
+                      name="Practice"
+                      color="#14b8a6"
+                    />
+                  </CardContent>
+                </Card>
+              </div>
             ))}
         </TabsContent>
 

@@ -15,7 +15,6 @@ import { useMessagesPaginated } from "@/hooks/useChat";
 import { normalizeStoredParts } from "@/lib/chat-messages";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
-import { ChatRatingBanner } from "./ChatRatingBanner";
 import { ChatComposer } from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
 import { CHAT_SUGGESTIONS } from "./constants";
@@ -144,11 +143,6 @@ function ConversationSession({
           messages={messages}
           className="mx-auto max-w-3xl"
           onRetry={() => void regenerate()}
-          status={status}
-        />
-        <ChatRatingBanner
-          conversationId={conversationId}
-          messages={messages}
           status={status}
         />
       </div>

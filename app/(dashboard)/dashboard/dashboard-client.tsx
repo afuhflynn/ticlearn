@@ -1,15 +1,11 @@
 "use client";
 
 import {
+  ArrowRight,
   BotMessageSquare,
-  Brain,
+  ClipboardCheck,
   FileText,
-  ListTodo,
   Plus,
-  Target,
-  TrendingUp,
-  Trophy,
-  Zap,
 } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -29,66 +25,31 @@ import {
   EmptyTitle,
 } from "@/components/ui/empty";
 import { PendingRegion } from "@/components/ui/pending-region";
-import { Progress } from "@/components/ui/progress";
-import { useNotes, useQuizzes, useReadiness, useUserStats } from "@/hooks";
-import {
-  NotesCardSkeleton,
-  QuizzesCardSkeleton,
-  ReadinessCardSkeleton,
-  StatCardsSkeleton,
-} from "./dashboard-skeletons";
+import { useDashboardContinue } from "@/hooks";
+import { formatDay } from "@/lib/utils";
+import { DashboardContinueSkeleton } from "./dashboard-skeletons";
 
 const DASHBOARD_LONG_WAIT =
   "Still loading your dashboard. This normally takes a moment.";
 
+/**
+ * The dashboard from spec 0014: where you left off, and one way to add more.
+ *
+ * Three pieces of evidence and one action. No stat cards, no chart, no score.
+ * The last quiz card opens the attempt review page, which is the one address
+ * that reopens a past attempt.
+ */
 export function DashboardClient({ userName }: { userName: string }) {
   const {
-    stats,
-    isPending: statsPending,
-    isRefreshing: statsRefreshing,
-  } = useUserStats();
-  const {
-    notes,
-    isPending: notesPending,
-    isRefreshing: notesRefreshing,
-  } = useNotes();
-  const {
-    quizzes,
-    isPending: quizzesPending,
-    isRefreshing: quizzesRefreshing,
-  } = useQuizzes("my");
-  const { readiness, isPending: readinessPending } = useReadiness();
-
-  const statsData = [
-    {
-      title: "Total Notes",
-      value: stats?.totalNotes || 0,
-      icon: FileText,
-      color: "text-chart-4",
-      bg: "bg-chart-4/10",
-    },
-    {
-      title: "Quizzes Taken",
-      value: stats?.quizzesTaken || 0,
-      icon: ListTodo,
-      color: "text-chart-2",
-      bg: "bg-chart-2/10",
-    },
-    {
-      title: "Avg Score",
-      value: stats?.avgScore ? `${Math.round(stats.avgScore)}%` : "0%",
-      icon: TrendingUp,
-      color: "text-chart-1",
-      bg: "bg-chart-1/10",
-    },
-    {
-      title: "Current Streak",
-      value: stats ? `${stats.currentStreak || 0}d` : "0d",
-      icon: Zap,
-      color: "text-chart-3",
-      bg: "bg-chart-3/10",
-    },
-  ];
+    recentNotes,
+    lastAttempt,
+    lastConversation,
+    isPending,
+    isRefreshing,
+    isError,
+    isOffline,
+    refetch,
+  } = useDashboardContinue();
 
   return (
     <div className="space-y-6">
@@ -104,170 +65,47 @@ export function DashboardClient({ userName }: { userName: string }) {
       </div>
 
       <PendingRegion
-        fallback={<ReadinessCardSkeleton />}
-        isPending={readinessPending}
-        label="Your readiness"
+        fallback={<DashboardContinueSkeleton />}
+        isPending={isPending}
+        isRefreshing={isRefreshing}
+        isError={isError}
+        isOffline={isOffline}
+        label="Where you left off"
         longWaitMessage={DASHBOARD_LONG_WAIT}
+        onRetry={() => void refetch()}
       >
-        {readiness && !readiness.needsAssessment ? (
+        <div className="grid gap-6 lg:grid-cols-3">
           <Card>
-            <CardContent className="p-6">
-              <div className="flex flex-wrap items-start gap-6">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`flex h-20 w-20 items-center justify-center rounded-full border-4 text-2xl font-bold
-                    ${readiness.readiness >= 70 ? "border-chart-1 text-chart-1" : readiness.readiness >= 40 ? "border-chart-3 text-chart-3" : "border-destructive text-destructive"}`}
-                  >
-                    {readiness.readiness}%
-                  </div>
-                  <span className="mt-1 text-xs text-muted-foreground">
-                    Readiness
-                  </span>
-                </div>
-
-                <div className="min-w-[200px] flex-1 space-y-3">
-                  {readiness.topicReadiness.slice(0, 5).map((t) => (
-                    <div key={t.topic} className="space-y-1">
-                      <div className="flex justify-between text-sm">
-                        <span>{t.topic}</span>
-                        <span className="font-mono">{t.score}%</span>
-                      </div>
-                      <Progress value={t.score} className="h-2" />
-                    </div>
-                  ))}
-
-                  {readiness.weakestTopic && (
-                    <div className="flex items-center gap-2 text-sm">
-                      <Brain className="h-4 w-4 text-chart-3" />
-                      <span>
-                        Weakest: <strong>{readiness.weakestTopic.name}</strong>{" "}
-                        ({readiness.weakestTopic.score}%)
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {readiness.recommendations.length > 0 && (
-                <div className="mt-4 space-y-1 border-t pt-3">
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Recommendations
-                  </p>
-                  {readiness.recommendations.map((r) => (
-                    <div key={r} className="flex items-start gap-2 text-sm">
-                      <Target className="mt-0.5 h-3 w-3 shrink-0 text-primary" />
-                      <span>{r}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
-      </PendingRegion>
-
-      <Card className="border-muted">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg">Quick actions</CardTitle>
-          <CardDescription>
-            Chat with Tip, upload notes, practise with quizzes, leaderboard.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Button
-            variant="outline"
-            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
-            asChild
-          >
-            <Link href="/chat">
-              <BotMessageSquare className="h-5 w-5 text-primary" />
-              <span className="font-semibold leading-tight">Ask Tip</span>
-              <span className="text-muted-foreground text-xs font-normal">
-                Get explanations anytime.
-              </span>
-            </Link>
-          </Button>
-          <Button
-            variant="outline"
-            className="h-auto flex-col items-start gap-2 py-4 text-left whitespace-normal shadow-none"
-            asChild
-          >
-            <Link href="/leaderboard">
-              <Trophy className="h-5 w-5 text-primary" />
-              <span className="font-semibold leading-tight">Leaderboard</span>
-              <span className="text-muted-foreground text-xs font-normal">
-                Compare quiz scores with peers.
-              </span>
-            </Link>
-          </Button>
-        </CardContent>
-      </Card>
-
-      <PendingRegion
-        fallback={<StatCardsSkeleton />}
-        isPending={statsPending}
-        isRefreshing={statsRefreshing}
-        label="Your statistics"
-        longWaitMessage={DASHBOARD_LONG_WAIT}
-      >
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {statsData.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.title}>
-                <CardContent className="flex items-center gap-4 p-6">
-                  <div className={`rounded-lg p-3 ${stat.bg}`}>
-                    <Icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {stat.title}
-                    </p>
-                    <p className="text-2xl font-bold">{stat.value}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      </PendingRegion>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Notes</CardTitle>
-            <CardDescription>Latest study materials</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PendingRegion
-              fallback={<NotesCardSkeleton />}
-              isPending={notesPending}
-              isRefreshing={notesRefreshing}
-              label="Your recent notes"
-              longWaitMessage={DASHBOARD_LONG_WAIT}
-            >
-              {notes.length > 0 ? (
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Recent notes</CardTitle>
+              <CardDescription>Your last study materials</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {recentNotes.length > 0 ? (
                 <div className="space-y-3">
-                  {notes.slice(0, 4).map((n) => (
-                    <div
-                      key={n.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
+                  {recentNotes.map((note) => (
+                    <Link
+                      key={note.id}
+                      href={`/notes/${note.id}`}
+                      className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40"
                     >
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <p className="font-medium">{n.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {n.subject}
+                      <div className="flex min-w-0 items-center gap-3">
+                        <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">{note.title}</p>
+                          <p className="truncate text-sm text-muted-foreground">
+                            {note.fileName}
                           </p>
                         </div>
                       </div>
                       <Badge
-                        variant={n.status === "READY" ? "default" : "secondary"}
+                        variant={
+                          note.status === "READY" ? "default" : "secondary"
+                        }
                       >
-                        {n.status}
+                        {note.status}
                       </Badge>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (
@@ -278,7 +116,7 @@ export function DashboardClient({ userName }: { userName: string }) {
                     </EmptyMedia>
                     <EmptyTitle>No notes yet</EmptyTitle>
                     <EmptyDescription>
-                      Upload a lecture note and it will show up here.
+                      Upload a handout, a slide photo or a typed course.
                     </EmptyDescription>
                   </EmptyHeader>
                   <Button asChild size="sm" variant="outline">
@@ -286,59 +124,98 @@ export function DashboardClient({ userName }: { userName: string }) {
                   </Button>
                 </Empty>
               )}
-            </PendingRegion>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent Quizzes</CardTitle>
-            <CardDescription>Latest attempts</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <PendingRegion
-              fallback={<QuizzesCardSkeleton />}
-              isPending={quizzesPending}
-              isRefreshing={quizzesRefreshing}
-              label="Your recent quizzes"
-              longWaitMessage={DASHBOARD_LONG_WAIT}
-            >
-              {quizzes.length > 0 ? (
-                <div className="space-y-3">
-                  {quizzes.slice(0, 4).map((q) => (
-                    <div
-                      key={q.id}
-                      className="flex items-center justify-between rounded-lg border p-3"
-                    >
-                      <div>
-                        <p className="font-medium">{q.title}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {q.questionCount} questions
-                        </p>
-                      </div>
-                      <Button size="sm" variant="outline" asChild>
-                        <Link href={`/quiz/${q.id}`}>Start</Link>
-                      </Button>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Last quiz</CardTitle>
+              <CardDescription>The last one you answered</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {lastAttempt ? (
+                <Link
+                  href={`/attempts/${lastAttempt.attemptId}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ClipboardCheck className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {lastAttempt.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Answered {formatDay(lastAttempt.answeredAt)}
+                      </p>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Link>
               ) : (
                 <Empty className="border-0 p-0">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
-                      <ListTodo className="size-4 text-muted-foreground" />
+                      <ClipboardCheck className="size-4 text-muted-foreground" />
                     </EmptyMedia>
-                    <EmptyTitle>No quizzes yet</EmptyTitle>
+                    <EmptyTitle>No quiz answered yet</EmptyTitle>
                     <EmptyDescription>
                       Make a quiz from one of your notes to start practising.
                     </EmptyDescription>
                   </EmptyHeader>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/quizzes">Go to my quizzes</Link>
+                  </Button>
                 </Empty>
               )}
-            </PendingRegion>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg">Last conversation</CardTitle>
+              <CardDescription>
+                Pick up with Tip where you stopped
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {lastConversation ? (
+                <Link
+                  href={`/chat/${lastConversation.id}`}
+                  className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40"
+                >
+                  <div className="flex min-w-0 items-center gap-3">
+                    <BotMessageSquare className="h-5 w-5 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0">
+                      <p className="truncate font-medium">
+                        {lastConversation.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Opened {formatDay(lastConversation.updatedAt)}
+                      </p>
+                    </div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+                </Link>
+              ) : (
+                <Empty className="border-0 p-0">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <BotMessageSquare className="size-4 text-muted-foreground" />
+                    </EmptyMedia>
+                    <EmptyTitle>No conversation yet</EmptyTitle>
+                    <EmptyDescription>
+                      Tip reads your note and teaches it back to you.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                  <Button asChild size="sm" variant="outline">
+                    <Link href="/chat">Ask Tip</Link>
+                  </Button>
+                </Empty>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </PendingRegion>
     </div>
   );
 }

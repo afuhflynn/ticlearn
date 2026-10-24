@@ -71,7 +71,6 @@ export function clampLimit(value: number): number {
 // and never cast a parser value.
 export const searchParamsSchema = {
   callbackUrl: parseAsString,
-  ref__: parseAsString,
   page: parseAsInteger.withDefault(1),
   limit: parseAsInteger.withDefault(10),
   archived: parseAsBoolean.withDefault(false),

@@ -118,28 +118,6 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
         },
       },
       {
-        campaign: "weak-topic-drill",
-        label: "Weak topic drill",
-        findUsers: async () => {
-          const users = await prisma.user.findMany({
-            where: {
-              role: "USER",
-              notes: {
-                some: {
-                  topicPerformances: {
-                    some: { masteryScore: { lt: 70 } },
-                  },
-                },
-              },
-              onboardingCompleted: true,
-            },
-            select: { id: true },
-            take: CAMPAIGN_BATCH_SIZE,
-          });
-          return users.map((u) => u.id);
-        },
-      },
-      {
         campaign: "weekly-digest",
         label: "Weekly digest",
         findUsers: async () => {
@@ -211,11 +189,9 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
                   firstName: user.name || "Student",
                   streak: 0,
                   quizzes: 0,
-                  readinessPct: 0,
-                  weakestTopic: "your studies",
-                  deltaPct: 0,
                   reportUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
                   unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/settings`,
+                  weekOf: new Date().toISOString().slice(0, 10),
                 },
                 userId,
               },

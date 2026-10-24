@@ -60,17 +60,19 @@ function AttachmentItem({
 export function ChatComposer({
   disabled,
   disabledReason,
+  initialText,
   onSubmit,
   status,
   className,
 }: {
   disabled?: boolean;
   disabledReason?: string;
+  initialText?: string;
   onSubmit: (message: PromptInputMessage) => void | Promise<void>;
   status: "submitted" | "streaming" | "ready" | "error";
   className?: string;
 }) {
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialText ?? "");
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 

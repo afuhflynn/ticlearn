@@ -27,8 +27,6 @@ interface UseUsageResult {
   canUpload: boolean;
   canGenerateQuiz: boolean;
   canUseAIChat: boolean;
-  canAccessCommunity: boolean;
-  canAccessLeaderboard: boolean;
   chatDailyUsage: ChatDailyUsage | null;
   isLoading: boolean;
   isPaid: boolean;
@@ -66,53 +64,12 @@ export function useUsage(): UseUsageResult {
     canUpload: data?.canUpload ?? true,
     canGenerateQuiz: data?.canGenerateQuiz ?? true,
     canUseAIChat: data?.canUseAIChat ?? true,
-    canAccessCommunity: data?.limits?.canAccessCommunity ?? false,
-    canAccessLeaderboard: data?.limits?.canAccessLeaderboard ?? false,
     chatDailyUsage: data?.chatDailyUsage ?? null,
     isLoading,
     isPaid,
     isPending,
     refetch,
   };
-}
-
-export function useCanAccess(
-  feature:
-    | "community"
-    | "leaderboard"
-    | "affiliate"
-    | "chat"
-    | "quiz"
-    | "upload",
-): boolean {
-  const {
-    canAccessCommunity,
-    canAccessLeaderboard,
-    isPaid,
-    isPending,
-    canUpload,
-    canGenerateQuiz,
-    canUseAIChat,
-  } = useUsage();
-
-  const effectivePaid = isPaid || isPending;
-
-  switch (feature) {
-    case "community":
-      return canAccessCommunity || isPending;
-    case "leaderboard":
-      return canAccessLeaderboard || isPending;
-    case "affiliate":
-      return effectivePaid;
-    case "chat":
-      return canUseAIChat || isPending;
-    case "quiz":
-      return canGenerateQuiz || isPending;
-    case "upload":
-      return canUpload || isPending;
-    default:
-      return false;
-  }
 }
 
 export function useCheckLimit(feature: "upload" | "quiz" | "chat"): {

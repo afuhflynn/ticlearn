@@ -85,13 +85,6 @@ describe("the crawl rule (spec 0012 AC-7)", () => {
       expect(source).not.toContain("robots:");
     },
   );
-
-  it("the gallery page takes the directive from the helper too", () => {
-    const source = read("app/primitive-gallery/page.tsx");
-
-    expect(source).toContain("noIndex");
-    expect(source).not.toContain("robots:");
-  });
 });
 
 describe("the public pages stay server rendered (spec 0012 AC-10)", () => {

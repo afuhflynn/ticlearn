@@ -34,7 +34,7 @@ import { AuthFormSkeleton } from "../auth-form-skeleton";
 function SignUpForm() {
   const router = useRouter();
   const [params] = useQueryStates(searchParamsSchema);
-  const { callbackUrl, error: searchError, ref__: refCode } = params;
+  const { callbackUrl, error: searchError } = params;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -42,13 +42,7 @@ function SignUpForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  const redirect = decodeURIComponent(callbackUrl || "/chat");
-
-  useEffect(() => {
-    if (refCode) {
-      localStorage.setItem("pendingReferralCode", refCode);
-    }
-  }, [refCode]);
+  const redirect = callbackUrl || "/dashboard";
 
   useEffect(() => {
     if (searchError === "google_sign_in_failed") {
@@ -83,18 +77,6 @@ function SignUpForm() {
       if (result.error) {
         setError(result.error.message || "Sign up failed");
       } else {
-        const pendingRef = localStorage.getItem("pendingReferralCode");
-        if (pendingRef) {
-          try {
-            await fetch("/api/referral/apply", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ code: pendingRef }),
-            });
-          } catch (e) {
-            console.error("Failed to apply referral:", e);
-          }
-        }
         toast.success(
           "Account created! Please check your email for verification code.",
         );
@@ -108,9 +90,6 @@ function SignUpForm() {
   };
 
   const handleGoogleSignIn = async () => {
-    if (refCode) {
-      localStorage.setItem("pendingReferralCode", refCode);
-    }
     setIsLoading(true);
     try {
       await signIn.social({

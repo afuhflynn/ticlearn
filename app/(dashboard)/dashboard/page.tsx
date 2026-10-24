@@ -5,23 +5,18 @@ import {
 } from "@tanstack/react-query";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import {
-  getDashboardNotes,
-  getDashboardQuizzes,
-  getDashboardReadiness,
-  getDashboardStats,
-} from "@/lib/dashboard-data";
+import { getDashboardContinue } from "@/lib/dashboard-data";
 import { queryKeys } from "@/lib/query-keys";
 import { DashboardClient } from "./dashboard-client";
 
 /**
  * The dashboard paints on the server and hands the data to the client cache, so
- * a student sees real numbers on the first paint instead of a round trip. This
- * is the pattern the other student surfaces copy, from spec 0010 slice two.
+ * a student sees where they left off on the first paint instead of a round
+ * trip. This is the pattern the other student surfaces copy, from spec 0010
+ * slice two.
  *
- * Each read here calls the same function its API route calls, so a prefetched
- * value and a fetched value are the same shape rather than two copies that
- * happen to agree today.
+ * One read, from spec 0014: recent notes, the last quiz touched, the last open
+ * Tip conversation. No score, no chart, no readiness.
  */
 export default async function DashboardPage() {
   // `proxy.ts` owns the redirect: an unauthenticated request never reaches
@@ -37,24 +32,10 @@ export default async function DashboardPage() {
   const userName = session.user.name ?? "Student";
   const queryClient = new QueryClient();
 
-  await Promise.all([
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.userStats,
-      queryFn: () => getDashboardStats(userId),
-    }),
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.notes,
-      queryFn: () => getDashboardNotes(userId),
-    }),
-    queryClient.prefetchQuery({
-      queryKey: [...queryKeys.quizzes, "my", null],
-      queryFn: () => getDashboardQuizzes(userId, "my"),
-    }),
-    queryClient.prefetchQuery({
-      queryKey: queryKeys.readiness,
-      queryFn: () => getDashboardReadiness(userId),
-    }),
-  ]);
+  await queryClient.prefetchQuery({
+    queryKey: queryKeys.dashboardContinue,
+    queryFn: () => getDashboardContinue(userId),
+  });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>

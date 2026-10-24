@@ -15,7 +15,6 @@ export const CREDIT_PURCHASE_EXTERNAL_ID_PREFIX = "cpo_";
 
 export type CreditEnforcementEffective = {
   practice: boolean;
-  revisionGuides: boolean;
   aiTutor: boolean;
 };
 
@@ -25,7 +24,6 @@ export function creditEnforcementEffective(
   const all = settings.enforceCreditsAll;
   return {
     practice: all || settings.enforceCreditsForPractice,
-    revisionGuides: all || settings.enforceCreditsForRevisionGuides,
     aiTutor: all || settings.enforceCreditsForAiTutor,
   };
 }

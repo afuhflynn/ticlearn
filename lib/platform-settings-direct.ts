@@ -17,11 +17,8 @@ export type PlatformSettingsSnapshot = Pick<
   PlatformSettings,
   | "creditCostQuizGeneration"
   | "creditCostPracticeQuestion"
-  | "creditCostRevisionGuideView"
-  | "creditCostRevisionGuideGen"
   | "creditCostAiTutorMessage"
   | "enforceCreditsForPractice"
-  | "enforceCreditsForRevisionGuides"
   | "enforceCreditsForAiTutor"
   | "enforceCreditsAll"
   | "creditsPer1000Xaf"
@@ -39,11 +36,8 @@ export type PlatformSettingsSnapshot = Pick<
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostQuizGeneration: 50,
   creditCostPracticeQuestion: 5,
-  creditCostRevisionGuideView: 0,
-  creditCostRevisionGuideGen: 0,
   creditCostAiTutorMessage: 5,
   enforceCreditsForPractice: true,
-  enforceCreditsForRevisionGuides: false,
   enforceCreditsForAiTutor: true,
   enforceCreditsAll: false,
   creditsPer1000Xaf: 50,
@@ -71,11 +65,8 @@ export async function readPlatformSettings(): Promise<PlatformSettingsSnapshot> 
   return {
     creditCostQuizGeneration: settings.creditCostQuizGeneration,
     creditCostPracticeQuestion: settings.creditCostPracticeQuestion,
-    creditCostRevisionGuideView: settings.creditCostRevisionGuideView,
-    creditCostRevisionGuideGen: settings.creditCostRevisionGuideGen,
     creditCostAiTutorMessage: settings.creditCostAiTutorMessage,
     enforceCreditsForPractice: settings.enforceCreditsForPractice,
-    enforceCreditsForRevisionGuides: settings.enforceCreditsForRevisionGuides,
     enforceCreditsForAiTutor: settings.enforceCreditsForAiTutor,
     enforceCreditsAll: settings.enforceCreditsAll,
     creditsPer1000Xaf: settings.creditsPer1000Xaf,

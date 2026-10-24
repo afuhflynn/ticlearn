@@ -72,32 +72,26 @@ export const queryFamilies = {
   subscription: PLAN,
   /** Payment settings an admin owns. */
   settings: LONG_LIVED,
-  /** The leaderboard, rebuilt on an hourly rollup. */
-  leaderboard: { staleTimeMs: 60 * MINUTE, gcTimeMs: 6 * HOUR },
   /** Admin console reads, which poll on their own where they need to. */
   admin: { staleTimeMs: 5 * MINUTE, gcTimeMs: 2 * HOUR },
-  /** Affiliate reads, which change on a payout. */
-  affiliate: LONG_LIVED,
-  /** Feedback rows. */
-  feedback: LONG_LIVED,
   /** Whether the student has rated the app. */
   rating: LONG_LIVED,
   /** Credits, a number a student spends. */
   credits: ALWAYS_FRESH,
   /** Plan usage counters. */
   usage: ALWAYS_FRESH,
-  /** Notification list. */
-  notifications: ALWAYS_FRESH,
   /** Chat conversations and messages. */
   chat: ALWAYS_FRESH,
-  /** Search results. */
-  search: ALWAYS_FRESH,
   /** Notes, which poll on their own while a note is processing. */
   notes: CONTENT_LIST,
   /** Quizzes, which poll on their own while a quiz is generating. */
   quizzes: CONTENT_LIST,
-  /** Community posts. */
-  community: CONTENT_LIST,
+  /**
+   * The dashboard, which reads where the student left off. It behaves like the
+   * content lists; every mutation that writes one of the three cards
+   * invalidates it in the same breath.
+   */
+  dashboard: CONTENT_LIST,
   /**
    * The student's own numbers on the dashboard. The spec's table does not name
    * this read, and it behaves like the content lists because a submission
@@ -124,11 +118,7 @@ export const queryGroups = {
   notes: [["notes"]],
   quizzes: [["quizzes"]],
   stats: [["user-stats"]],
-  leaderboard: [["leaderboard"]],
-  notifications: [["notifications"]],
-  community: [["community", "posts"]],
-  affiliate: [["affiliate"], ["affiliate", "stats"], ["affiliate", "earnings"]],
-  feedback: [["feedbacks"]],
+  dashboard: [["dashboard", "continue"]],
   rating: [["rating"], ["has-rated"]],
   admin: [["admin"]],
   chat: [["chat", "conversations"]],

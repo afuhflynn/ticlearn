@@ -33,6 +33,23 @@ export function formatRelativeTime(date: Date | string): string {
 }
 
 /**
+ * Format a calendar day in the app's one zone, Africa/Douala, the schema
+ * default and the zone `lib/ai/usage.ts` counts days in. The zone and the
+ * locale are explicit so a server render and a browser render produce the
+ * same string. A hydration boundary hands server data into a client
+ * component, and any host timezone there renders two different days for the
+ * same row.
+ */
+export function formatDay(date: Date | string): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Douala",
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(new Date(date));
+}
+
+/**
  * Truncate text with ellipsis
  */
 export function truncate(text: string, maxLength: number): string {

@@ -16,14 +16,10 @@ import type {
   ContactFormData,
   ContactResponse,
   CreateAffiliateParams,
-  Feedback,
-  FeedbackData,
-  LeaderboardEntry,
   NotePreview,
   NoteSummary,
   NoteWithRelations,
   PaymentSettingsData,
-  Post,
   Quiz,
   QuizPreview,
   Subscription,
@@ -146,16 +142,6 @@ export const api = {
         apiRequest<{ quiz: Quiz }>(`/quizzes/${id}`, { method: "GET" }),
     },
 
-    readiness: () =>
-      apiRequest<{
-        readiness: number;
-        weakestTopic: { name: string; score: number } | null;
-        strongestTopic: { name: string; score: number } | null;
-        topicReadiness: Array<{ topic: string; score: number; notes: number }>;
-        needsAssessment: boolean;
-        recommendations: string[];
-      }>("/readiness", { method: "GET" }),
-
     usage: () => apiRequest<UsageData>("/usage", { method: "GET" }),
 
     credits: () =>
@@ -185,40 +171,6 @@ export const api = {
     settings: () =>
       apiRequest<{ settings: UserSettings }>("/settings", { method: "GET" }),
 
-    notifications: (unreadOnly = false) =>
-      apiRequest<{ notifications: Notification[] }>(
-        `/notifications?unread=${unreadOnly}`,
-        { method: "GET" },
-      ),
-
-    community: {
-      getPosts: (params?: {
-        subject?: string;
-        limit?: number;
-        offset?: number;
-      }) => {
-        const searchParams = new URLSearchParams();
-        if (params?.subject) searchParams.set("subject", params.subject);
-        if (params?.limit) searchParams.set("limit", String(params.limit));
-        if (params?.offset) searchParams.set("offset", String(params.offset));
-        return apiRequest<{ posts: Post[]; total: number }>(
-          `/community/posts?${searchParams.toString()}`,
-          { method: "GET" },
-        );
-      },
-      getPost: (id: string) =>
-        apiRequest<{ post: Post }>(`/community/posts/${id}`, {
-          method: "GET",
-        }),
-    },
-
-    affiliates: {
-      affiliate: () =>
-        apiRequest<{ affiliate: AffiliateData }>("/affiliate", {
-          method: "GET",
-        }),
-    },
-
     payments: {
       settings: () =>
         apiRequest<{ settings: PaymentSettingsData }>(
@@ -229,22 +181,35 @@ export const api = {
         ),
     },
 
-    feedback: () =>
-      apiRequest<{ feedbacks: Feedback[] }>("/feedback", { method: "GET" }),
-
     stats: {
       userStats: () =>
         apiRequest<{ stats: UserStats }>("/stats", {
           method: "GET",
         }),
-      leaderboard: (page = 1, limit = 20) =>
+    },
+
+    dashboard: {
+      continue: () =>
         apiRequest<{
-          leaderboard: LeaderboardEntry[];
-          currentUserRank: number | null;
-          total: number;
-          totalPages: number;
-          page: number;
-        }>(`/leaderboard?page=${page}&limit=${limit}`, { method: "GET" }),
+          recentNotes: Array<{
+            id: string;
+            title: string;
+            fileName: string;
+            status: string;
+            createdAt: string;
+          }>;
+          lastAttempt: {
+            attemptId: string;
+            quizId: string | null;
+            title: string;
+            answeredAt: string;
+          } | null;
+          lastConversation: {
+            id: string;
+            title: string;
+            updatedAt: string;
+          } | null;
+        }>("/dashboard/continue", { method: "GET" }),
     },
 
     chat: {
@@ -282,12 +247,6 @@ export const api = {
       }>("/subscription/me", {
         method: "GET",
       }),
-
-    search: (query: string, type = "all") =>
-      apiRequest<{ results: unknown[] }>(
-        `/search?q=${encodeURIComponent(query)}&type=${type}`,
-        { method: "GET" },
-      ),
 
     invites: {
       accept: (data: { token: string }) =>
@@ -370,49 +329,6 @@ export const api = {
         ),
     },
 
-    feedback: {
-      create: (data: {
-        type: string;
-        subject: string;
-        message: string;
-        isFlagged?: boolean;
-        conversationId?: string;
-        rating?: number;
-      }) =>
-        apiRequest<{ feedback: Feedback }>("/feedback", {
-          method: "POST",
-          body: data,
-        }),
-      createChatRating: (data: {
-        conversationId: string;
-        rating: number;
-        message: string;
-        comment?: string;
-      }) =>
-        apiRequest<{ feedback: Feedback }>("/feedback", {
-          method: "POST",
-          body: {
-            type: "CHAT",
-            subject: "Chat Rating",
-            message: data.comment
-              ? `Last user message:\n${data.message}\n\nComment:\n${data.comment}`
-              : `Last user message:\n${data.message}`,
-            conversationId: data.conversationId,
-            rating: data.rating,
-          },
-        }),
-      createExam: (data: {
-        message?: string;
-        rating?: number;
-        attemptId?: string;
-        mockId?: string;
-      }) =>
-        apiRequest<{ feedback: Feedback }>("/feedback/exam", {
-          method: "POST",
-          body: data,
-        }),
-    },
-
     contact: {
       send: (data: ContactFormData) =>
         apiRequest<ContactResponse>("/contact", {
@@ -451,57 +367,7 @@ export const api = {
         ),
     },
 
-    notifications: {
-      markRead: (id: string) =>
-        apiRequest<{ success: boolean }>(`/notifications/${id}/read`, {
-          method: "POST",
-        }),
-    },
-
-    community: {
-      createPost: (data: {
-        content: string;
-        imageUrl?: string;
-        subject?: string;
-      }) =>
-        apiRequest<{ post: Post }>("/community/posts", {
-          method: "POST",
-          body: data,
-        }),
-      deletePost: (id: string) =>
-        apiRequest<{ success: boolean }>(`/community/posts/${id}`, {
-          method: "DELETE",
-        }),
-      likePost: (postId: string) =>
-        apiRequest<{ success: boolean }>(`/community/posts/${postId}/like`, {
-          method: "POST",
-        }),
-      addComment: (postId: string, data: { content: string }) =>
-        apiRequest<{ comment: unknown }>(
-          `/community/posts/${postId}/comments`,
-          { method: "POST", body: data },
-        ),
-    },
-
     affiliate: {
-      update: (data: { momoNumber?: string; momoName?: string }) =>
-        apiRequest<{ affiliate: AffiliateData }>("/affiliate", {
-          method: "PUT",
-          body: data,
-        }),
-      applyReferral: (code: string) =>
-        apiRequest<{ success: boolean }>("/referral", {
-          method: "POST",
-          body: { code },
-        }),
-      requestPayout: () =>
-        apiRequest<{ success: boolean; message: string; amount: number }>(
-          "/affiliate/payout",
-          {
-            method: "POST",
-          },
-        ),
-
       create: (data: CreateAffiliateParams) =>
         apiRequest<{ success: boolean; message: string; amount: number }>(
           "/admin/affiliates",
@@ -655,36 +521,6 @@ export const api = {
             "/admin/plan-upgrades",
             { method: "PATCH", body: data },
           ),
-      },
-      // Feedback
-      feedback: {
-        getAll: (
-          params: { page?: number; limit?: number; status?: string } = {},
-        ) => {
-          const searchParams = new URLSearchParams();
-          if (params.page) searchParams.set("page", params.page.toString());
-          if (params.limit) searchParams.set("limit", params.limit.toString());
-          if (params.status) searchParams.set("status", params.status);
-          return apiRequest<{
-            feedbacks: FeedbackData[];
-            total: number;
-            page: number;
-            totalPages: number;
-          }>(`/admin/feedback?${searchParams.toString()}`, { method: "GET" });
-        },
-        getById: (id: string) =>
-          apiRequest<{ feedback: FeedbackData }>(`/admin/feedback/${id}`, {
-            method: "GET",
-          }),
-        update: (id: string, data: { status?: string; adminNote?: string }) =>
-          apiRequest<{ feedback: FeedbackData; success: boolean }>(
-            `/admin/feedback`,
-            { method: "PUT", body: { id, ...data } },
-          ),
-        delete: (id: string) =>
-          apiRequest<{ success: boolean }>(`/admin/feedback/${id}`, {
-            method: "DELETE",
-          }),
       },
       // Subscriptions
       subscriptions: {

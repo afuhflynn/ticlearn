@@ -8,8 +8,6 @@ export interface PlanLimits {
   quizGenerations: number;
   aiTutorMessages: number;
   maxConversationMessages: number;
-  canAccessCommunity: boolean;
-  canAccessLeaderboard: boolean;
 }
 
 /**
@@ -23,8 +21,6 @@ export const FREE_LIMITS: PlanLimits = {
   quizGenerations: 4,
   aiTutorMessages: 8,
   maxConversationMessages: 50,
-  canAccessCommunity: false,
-  canAccessLeaderboard: true,
 };
 
 export const PAID_LIMITS: Record<Plan, PlanLimits> = {
@@ -33,32 +29,24 @@ export const PAID_LIMITS: Record<Plan, PlanLimits> = {
     quizGenerations: 20,
     aiTutorMessages: 50,
     maxConversationMessages: 100,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
   },
   STANDARD: {
     pdfUploads: 30,
     quizGenerations: 60,
     aiTutorMessages: UNLIMITED,
     maxConversationMessages: 200,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
   },
   PREMIUM: {
     pdfUploads: UNLIMITED,
     quizGenerations: UNLIMITED,
     aiTutorMessages: UNLIMITED,
     maxConversationMessages: 500,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
   },
   PRO: {
     pdfUploads: UNLIMITED,
     quizGenerations: UNLIMITED,
     aiTutorMessages: UNLIMITED,
     maxConversationMessages: 500,
-    canAccessCommunity: true,
-    canAccessLeaderboard: true,
   },
 };
 

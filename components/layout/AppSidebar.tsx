@@ -2,7 +2,6 @@
 
 import {
   ArrowRight,
-  BarChart3,
   BotMessageSquare,
   ChevronDown,
   ChevronRight,
@@ -10,21 +9,16 @@ import {
   Coins,
   Crown,
   Flame,
-  HeartHandshake,
   LayoutDashboard,
-  Link2,
-  MessageCircle,
   NotebookPen,
   Settings,
   Sparkles,
-  Target,
-  Trophy,
   Upload,
   Users,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -53,20 +47,13 @@ interface NavItem {
 }
 
 const studyNav: NavItem[] = [
-  { href: "/upload", label: "Upload Notes", icon: Upload },
-  { href: "/quizzes", label: "My Quizzes", icon: ClipboardCheck },
-  { href: "/progress", label: "Progress", icon: BarChart3 },
-];
-
-const discoverNav: NavItem[] = [
-  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-  { href: "/community", label: "Community", icon: Users },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
+  { href: "/upload", label: "Upload", icon: Upload },
+  { href: "/quizzes", label: "Quizzes", icon: ClipboardCheck },
 ];
 
 const accountNav: NavItem[] = [
   { href: "/subscription", label: "Subscription", icon: Crown },
-  { href: "/affiliate", label: "Affiliate", icon: Link2 },
-  { href: "/feedback", label: "Feedback", icon: MessageCircle },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -92,21 +79,6 @@ export function AppSidebar() {
   const { data: creditsData, isPending: creditsPending } = useCredits();
   const { usage, chatDailyUsage } = useUsage();
   const { stats, isPending: statsPending } = useUserStats();
-
-  const [readiness, setReadiness] = useState<{ readiness: number } | null>(
-    null,
-  );
-
-  useEffect(() => {
-    fetch("/api/readiness")
-      .then((r) => r.json())
-      .then((d) => {
-        if (!d.needsAssessment) {
-          setReadiness({ readiness: d.readiness });
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   const creditBalance = creditsData?.balance ?? 0;
   const showCreditsTopUp =
@@ -178,26 +150,6 @@ export function AppSidebar() {
                       : "Free"}
               </span>
             </div>
-            {readiness && (
-              <>
-                <span className="text-muted-foreground/40">|</span>
-                <div className="flex items-center gap-1 text-xs">
-                  <Target className="h-3 w-3 text-muted-foreground" />
-                  <span
-                    className={cn(
-                      "tabular-nums font-medium",
-                      readiness.readiness >= 70
-                        ? "text-green-600"
-                        : readiness.readiness >= 40
-                          ? "text-amber-600"
-                          : "text-red-600",
-                    )}
-                  >
-                    {readiness.readiness}%
-                  </span>
-                </div>
-              </>
-            )}
           </div>
         )}
       </SidebarHeader>
@@ -273,14 +225,6 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive("/dashboard")}>
-                  <Link href="/dashboard">
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
               {studyNav.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton asChild isActive={isActive(item.href)}>
@@ -293,39 +237,6 @@ export function AppSidebar() {
               ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel
-            className="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
-            onClick={() => toggleSection("discover")}
-          >
-            <div className="flex items-center gap-2">
-              <HeartHandshake className="h-3.5 w-3.5" />
-              <span>Discover</span>
-            </div>
-            {expandedSections.discover !== false ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-          </SidebarGroupLabel>
-          {expandedSections.discover !== false && (
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {discoverNav.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          )}
         </SidebarGroup>
 
         <SidebarGroup>

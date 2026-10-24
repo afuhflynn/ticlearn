@@ -59,6 +59,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 30 | Free tier conversion surfaces | Slice 5 | planned |
 | 31 | Campus ambassadors | Slice 5 | planned |
 | 32 | Conversion analytics | Slice 5 | planned |
+| 43 | Affiliate invites for partners | Slice 5 | planned |
 | 33 | Mobile responsiveness and device quality | Cross cutting | planned |
 
 ## Epics
@@ -72,7 +73,7 @@ Each epic is one file with its own feature sections.
 - **[Tutor](tutor.md)** · 3 features, Slice 2 · the chat interface, the web search tool and the controls students get over it.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
 - **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
-- **[Commerce](commerce.md)** · 5 features, Slice 5 · the semester pass, payments, the free tier, ambassadors and conversion analytics.
+- **[Commerce](commerce.md)** · 6 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites and conversion analytics.
 
 ## Phasing in one line each
 

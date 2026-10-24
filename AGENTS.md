@@ -33,6 +33,9 @@ pnpm lint
 pnpm format
 pnpm ui:check
 
+# Tests (Vitest, 64 files under tests/; needs the built Prisma client)
+pnpm test --run
+
 # Database
 pnpm db:up          # Postgres on 5435, pgAdmin on 5050
 pnpm db:generate
@@ -43,7 +46,7 @@ pnpm db:seed
 pnpm inngest:start
 ```
 
-There are no tests. Vitest is installed and three test scripts exist, but there is no config file and no test file anywhere, so `pnpm test` fails. Do not treat it as a verification step.
+There are tests. Vitest 4 is configured in `vitest.config.ts` and 64 test files live under `tests/`, run with `pnpm test --run`. The suite covers the proxy, the landing honesty rules, the route table and the loading states, and it needs a build for the route table test (it stands down when `.next/app-path-routes-manifest.json` is missing).
 
 ## Rules
 
@@ -307,6 +310,69 @@ A region that has no data shows the shape of what is coming, at once, as a skele
 - `scripts/check-ui-conventions.mjs`, `scripts/loading-allowlist.json`, `scripts/measure-perceived-speed.ts`
 - `docs/nuqs-setup.md`, `docs/performance/perceived-speed.md`
 <!-- END:loading-states-rework -->
+
+<!-- BEGIN:landing-page-rebuild -->
+# Landing page rebuild (feature 14) - Implementation Summary
+
+## Goal
+Rebuild the public landing page around the three jobs the product does today, and cut the product back to notes, quizzes and Tip in the same change so the page cannot promise a surface the app does not ship. Governed by `docs/specs/0014-landing-page-rebuild/index.md`.
+
+## What was cut
+- Routes and their code: `app/(dashboard)/community`, `leaderboard`, `feedback`, `progress`, `affiliate`, `app/primitive-gallery`, `app/dev/email/[template]`.
+- Fourteen uncalled API routes, seven unused components, unused hook exports, `lib/readiness.ts`, `components/pdf/feedback-report.tsx`.
+- Eight Prisma models (`Post`, `Comment`, `PostLike`, `Feedback`, `Notification`, `RevisionGuide`, `KnowledgeChunk`, `TopicPerformance`) and three enums, in migration `20261023120000_drop_cut_surfaces`.
+- Broken links to `/practice`, `/quiz/[id]`, `/forgot-password` and `/cookies`.
+
+## What was built
+- Dashboard is a continue surface: `lib/dashboard-data.ts`, `app/api/dashboard/continue/route.ts`, `hooks/useDashboard.ts`, `app/(dashboard)/dashboard/dashboard-client.tsx`.
+- `app/(marketing)/page.tsx`: the 0014 landing page, later rebuilt from the approved mockup by spec 0015 (see below). The free limits still come from `FREE_LIMITS` in `lib/plan-limits.ts`.
+- `constants/contact.ts`: one WhatsApp source read by the landing page, the footer, the contact page and the not found page.
+- `scripts/check-landing-honesty.mjs`: fetches the built page, strips scripts, and fails on a banned word, a currency amount, a bare percentage, a phone number or missing metadata. Wired as `honesty:check` and `check` (`ui:check && honesty:check`).
+- `proxy.ts`: `/notes` and `/attempts` added to `protectedRoutes`, the `/chat` redirects retargeted to `/dashboard`, and the sign-in `callbackUrl` no longer double encoded.
+- `prisma/seed.ts`: creates demo account `demo@tic.local` / `TicLearn2026`, an Operating Systems note, a READY quiz, a 2 of 3 attempt and a Tip conversation, plus `public/demo/operating-systems-process-scheduling.pdf`.
+
+## Gotchas in this area
+- The screenshots live in `public/marketing/` as WebP under 40 KB each, captured from the seeded demo. The rebuilt page uses `note-view`, `tip-answer`, `quiz-question` and `attempt-result` at 1280 px; the two 375 px captures are kept but unreferenced.
+- `next.config.ts` sets `X-Frame-Options: SAMEORIGIN` and CSP `frame-ancestors 'self'`, not `DENY`/`'none'`, so the note page can frame its own PDF. Tightening this back breaks the note view.
+- The header and footer are shared client components in `app/(marketing)/layout.tsx`; the page file itself imports only the Tip island.
+- Pricing is still feature 15's. The page prints no price and links to `/pricing`, and the pricing plan copy no longer names the cut surfaces.
+- The global reduced-motion block in `app/globals.css` uses `!important` with a biome suppression comment, because the utilities it overrides live outside the media query.
+- When an edit to a component does not appear in the browser, restart the dev server before debugging the code: Turbopack's watcher has missed changes in this environment.
+
+## Relevant files
+- `app/(marketing)/page.tsx`, `components/marketing/tip-form.tsx`, `constants/contact.ts`
+- `app/(dashboard)/dashboard/dashboard-client.tsx`, `lib/dashboard-data.ts`, `app/api/dashboard/continue/route.ts`
+- `proxy.ts`, `next.config.ts`, `app/layout.tsx`, `app/(marketing)/layout.tsx`
+- `prisma/seed.ts`, `prisma/migrations/20261023120000_drop_cut_surfaces/`
+- `scripts/check-landing-honesty.mjs`, `public/marketing/`
+<!-- END:landing-page-rebuild -->
+
+<!-- BEGIN:landing-page-mockup -->
+# Landing page mockup rebuild (spec 0015) - Implementation Summary
+
+## Goal
+Rebuild `/` section for section from `public/TiCLearn E-Learning Platform Landing Page.png`, keeping the TiCLearn logo, the **Tip** name, the real screenshots and the free limits paid over Mobile Money. The mockup's layout is literal; the pixels and the account limits are ours.
+
+## What changed
+- `app/(marketing)/page.tsx` is a thin composition of server sections in `components/marketing/landing/`: `hero`, `benefits`, `how-it-works`, `study-loop`, `subjects`, `get-started`, `faq-section`, `cta-band`.
+- `MarketingNav` owns the landing-only announcement strip and the mockup's four anchors: `/#how`, `/#tools`, `/#students`, `/#faq`. `MarketingFooter` now has Product / Support / Legal columns and the Cameroon line.
+- The hero has two links and no question box. `components/marketing/tip-form.tsx` is deleted; `/chat?q=` is still handled by `app/chat/page.tsx` for links from elsewhere.
+- The free limits and the MTN/Orange Mobile Money line live in the dark CTA band, read from `FREE_LIMITS` in `lib/plan-limits.ts`.
+- `public/marketing/attempt-result-1280.webp` is a real capture of the seeded attempt, used in the third how-it-works card.
+- `scripts/check-landing-honesty.mjs` no longer bans “progress” or “feedback” (Tip reports study progress, and a quiz shows what was missed). It still bans the cut surfaces, currency amounts, bare percentages and phone numbers.
+- `constants/index.ts` no longer claims per-topic mastery or a readiness score in the FAQ.
+
+## Gotchas
+- The dark band is `bg-foreground text-background`, not the mockup's navy. Colour stays tokens only.
+- The raw `aria-*` rule in `scripts/check-ui-conventions.mjs` applies to new files. Decorative icons in the landing sections carry no aria attribute; only baselined legacy files may.
+- The same change deletes `components/referral-processor.tsx`. That dead global client component painted “Setting up your account.” on every page while `useSession` resolved and called the removed `/api/referral/apply`. Sign-in and sign-up no longer read `pendingReferralCode`.
+
+## Relevant files
+- `app/(marketing)/page.tsx`, `components/marketing/landing/`
+- `components/layout/MarketingNav.tsx`, `components/layout/MarketingFooter.tsx`
+- `scripts/check-landing-honesty.mjs`, `tests/app/(marketing)/page.test.tsx`
+- `docs/specs/0015-landing-page-mockup/index.md`, `public/marketing/attempt-result-1280.webp`
+<!-- END:landing-page-mockup -->
 
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system

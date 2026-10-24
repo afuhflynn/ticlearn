@@ -5,7 +5,6 @@ import {
   computeActivationFunnel,
   computeCohortRetention,
   computeDailyMetrics,
-  computeMasteryMetrics,
   computeMRR,
   computeSubjectDistribution,
   countDistinctActiveUsers,
@@ -229,11 +228,6 @@ export async function GET(req: Request) {
         const today = new Date();
         const subjectDist = await computeSubjectDistribution(today);
         result.subjectDistribution = subjectDist;
-        break;
-      }
-      case "learning": {
-        const mastery = await computeMasteryMetrics();
-        result.mastery = mastery;
         break;
       }
       case "growth": {

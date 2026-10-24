@@ -29,7 +29,9 @@
     "test": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
-    "ui:check": "node scripts/check-ui-conventions.mjs"
+    "ui:check": "node scripts/check-ui-conventions.mjs",
+    "honesty:check": "node scripts/check-landing-honesty.mjs",
+    "check": "pnpm ui:check && pnpm honesty:check"
   },
   "dependencies": {
     "@ai-sdk/google": "^3.0.79",

@@ -4,7 +4,6 @@ import {
   BookOpen,
   Copy,
   Gauge,
-  History,
   MoreHorizontal,
   Pencil,
   Plus,
@@ -83,9 +82,8 @@ type Conversation = {
 
 const workspaceLinks = [
   { href: "/dashboard", label: "Dashboard", icon: Gauge },
-  { href: "/practice", label: "Practice", icon: BookOpen },
   { href: "/upload", label: "Upload notes", icon: UploadCloud },
-  { href: "/practice/history", label: "Attempts", icon: History },
+  { href: "/quizzes", label: "Quizzes", icon: BookOpen },
 ];
 
 export function ChatSidebar() {

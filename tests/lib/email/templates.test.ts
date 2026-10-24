@@ -48,13 +48,11 @@ describe("email templates", () => {
       firstName: "Student",
       streak: 5,
       quizzes: 12,
-      readinessPct: 72,
-      weakestTopic: "Algebra",
-      deltaPct: 4,
       reportUrl: "https://ticlearn.ticsummit.org/quizzes",
       unsubscribeUrl: "https://ticlearn.ticsummit.org/settings",
       weekOf: "2026-10-17",
     });
-    expect(html).toContain("Algebra");
+    expect(html).toContain("Day streak");
+    expect(html).toContain("12");
   });
 });
