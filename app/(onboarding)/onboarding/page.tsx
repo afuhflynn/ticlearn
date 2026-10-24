@@ -1,10 +1,11 @@
 "use client";
 
-import { ArrowRight, ChevronLeft, Loader2 } from "lucide-react";
+import { ArrowRight, ChevronLeft, Loader2, CalendarIcon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DatePicker } from "@/components/ui/date-picker";
 import { LEVELS } from "@/constants/levels";
 import { useSession } from "@/lib/auth-client";
 
@@ -51,11 +52,21 @@ export default function OnboardingPage() {
   const [program, setProgram] = useState("");
   const [targetGoal, setTargetGoal] = useState("");
   const [gender, setGender] = useState<"MALE" | "FEMALE">("MALE");
-  const [age, setAge] = useState<string>("");
+  const [dateOfBirth, setDateOfBirth] = useState<Date | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<string | null>(null);
 
   const totalSteps = 4;
   const progress = ((step + 1) / totalSteps) * 100;
+
+  const calculateAge = (dob: Date) => {
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const m = today.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+      age--;
+    }
+    return age;
+  };
 
   const canProceed = () => {
     switch (step) {
@@ -64,7 +75,9 @@ export default function OnboardingPage() {
       case 1:
         return !!program && !!targetGoal;
       case 2:
-        return !!gender && !!age;
+        if (!dateOfBirth) return false;
+        const age = calculateAge(dateOfBirth);
+        return age >= 15 && age <= 50;
       case 3:
         return !!selectedLevel;
       default:
@@ -73,9 +86,16 @@ export default function OnboardingPage() {
   };
 
   const handleFinish = async () => {
-    if (!selectedLevel) return;
+    if (!selectedLevel || !dateOfBirth) return;
     setSaving(true);
     setError(null);
+
+    const age = calculateAge(dateOfBirth);
+    if (age < 15 || age > 50) {
+      setError("Age must be between 15 and 50 years old.");
+      setSaving(false);
+      return;
+    }
 
     try {
       const res = await fetch("/api/onboarding/level", {
@@ -88,7 +108,7 @@ export default function OnboardingPage() {
           program,
           targetGoal,
           gender,
-          age: age ? parseInt(age, 10) : undefined,
+          dateOfBirth: dateOfBirth.toISOString(),
         }),
       });
 
@@ -234,7 +254,8 @@ export default function OnboardingPage() {
             <div className="text-center">
               <h1 className="text-xl font-bold">A little about you</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                This helps us tune our learning analytics and recommendations.
+                We induce your age from your date of birth (must be between 15 and
+                50 years old).
               </p>
             </div>
 
@@ -261,16 +282,26 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium">Age</label>
-                <Input
-                  type="number"
-                  min="16"
-                  max="80"
-                  placeholder="e.g. 21"
-                  value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  className="h-12 rounded-xl"
+                <label className="mb-2 block text-sm font-medium">
+                  Date of Birth
+                </label>
+                <DatePicker
+                  value={dateOfBirth}
+                  onChange={setDateOfBirth}
+                  placeholder="Select your birth date"
+                  className="h-12 w-full rounded-xl"
                 />
+                {dateOfBirth && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Calculated age: {calculateAge(dateOfBirth)} years old
+                    {calculateAge(dateOfBirth) < 15 ||
+                    calculateAge(dateOfBirth) > 50 ? (
+                      <span className="ml-2 font-semibold text-red-500">
+                        (Must be between 15 and 50)
+                      </span>
+                    ) : null}
+                  </p>
+                )}
               </div>
             </div>
           </div>

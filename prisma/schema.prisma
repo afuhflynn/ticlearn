@@ -38,12 +38,13 @@ model User {
   levelOfStudy String? @map("level_of_study")
 
   // Extended student profile info for Cameroonian universities
-  institution String? @map("institution")
-  faculty     String? @map("faculty")
-  program     String? @map("program")
-  targetGoal  String? @map("target_goal")
-  gender      Gender? @map("gender")
-  age         Int?    @map("age")
+  institution String?   @map("institution")
+  faculty     String?   @map("faculty")
+  program     String?   @map("program")
+  targetGoal  String?   @map("target_goal")
+  gender      Gender?   @map("gender")
+  age         Int?      @map("age")
+  dateOfBirth DateTime? @map("date_of_birth")
 
   // Onboarding flags, moved here from ExamProfile which is being dropped.
   onboardingCompleted Boolean @default(false) @map("onboarding_completed")
