@@ -50,6 +50,33 @@ export function formatDay(date: Date | string): string {
 }
 
 /**
+ * A file size a student can read, e.g. `2.4 MB`.
+ */
+export function formatFileSize(bytes: number): string {
+  if (!Number.isFinite(bytes) || bytes <= 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  const index = Math.min(
+    Math.floor(Math.log(bytes) / Math.log(1024)),
+    units.length - 1,
+  );
+  const value = bytes / 1024 ** index;
+  const rounded =
+    value >= 10 || index === 0 ? Math.round(value) : value.toFixed(1);
+  return `${rounded} ${units[index]}`;
+}
+
+/**
+ * The time of day in Douala, used for the chat allowance reset line.
+ */
+export function formatDoualaTime(date: string | Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    timeZone: "Africa/Douala",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(date));
+}
+
+/**
  * Truncate text with ellipsis
  */
 export function truncate(text: string, maxLength: number): string {

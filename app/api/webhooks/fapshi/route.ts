@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { planCatalog } from "@/constants/plans";
 import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillment";
 import { webhookSecret } from "@/lib/env";
 import { inngest } from "@/lib/inngest/client";
@@ -7,19 +8,11 @@ import { EVENTS, trackEvent } from "@/lib/kpi";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
-const PLAN_LABELS: Record<string, string> = {
-  STARTER: "Starter Plan",
-  STANDARD: "Standard Plan",
-  PREMIUM: "Premium Plan",
-};
-
-const PLAN_PRICES: Record<string, number> = {
-  STARTER: 3000,
-  STANDARD: 5000,
-  PREMIUM: 10000,
-};
-
 const COMMISSION_RATE = 0.2;
+
+function planLabel(plan: string): string {
+  return planCatalog[plan]?.label || plan;
+}
 
 function constantTimeCompare(a: string, b: string): boolean {
   if (a.length !== b.length) {
@@ -69,7 +62,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { transId, status, externalId, amount } = body;
+    const { transId, status, externalId } = body;
 
     if (!externalId || !status) {
       return NextResponse.json(
@@ -156,8 +149,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    // A late callback for an older attempt must not stomp the current one: if
+    // the incoming transId differs from the stored fapshiTransId, it is a
+    // stale event and is ignored.
+    if (sub.fapshiTransId && sub.fapshiTransId !== transId) {
+      return NextResponse.json({ success: true }, { status: 200 });
+    }
+
     if (status === "SUCCESSFUL") {
-      const planPrice = PLAN_PRICES[sub.plan] || sub.amount;
+      // Use the stored amount, not the body amount, so an in flight payment is
+      // receipted at what the student actually paid even if the catalogue
+      // changes later.
+      const planPrice = sub.amount;
       const commission = Math.round(planPrice * COMMISSION_RATE);
 
       const existingStats = await prisma.userStats.findFirst({
@@ -229,8 +232,8 @@ export async function POST(req: Request) {
           to: sub.userEmail,
           props: {
             firstName: sub.userName || "Student",
-            planLabel: PLAN_LABELS[sub.plan],
-            amountFcfa: amount || sub.amount,
+            planLabel: planLabel(sub.plan),
+            amountFcfa: sub.amount,
             reference: transId,
             paidAt: new Date().toISOString(),
             practiceUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
@@ -246,8 +249,8 @@ export async function POST(req: Request) {
           props: {
             userName: sub.userName || "User",
             userEmail: sub.userEmail,
-            planLabel: PLAN_LABELS[sub.plan],
-            amountFcfa: amount || sub.amount,
+            planLabel: planLabel(sub.plan),
+            amountFcfa: sub.amount,
             reference: transId,
           },
         },
@@ -265,7 +268,7 @@ export async function POST(req: Request) {
           to: sub.userEmail,
           props: {
             firstName: sub.userName || "Student",
-            planLabel: PLAN_LABELS[sub.plan],
+            planLabel: planLabel(sub.plan),
             subscriptionUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/subscription`,
           },
         },

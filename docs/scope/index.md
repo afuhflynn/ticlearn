@@ -36,6 +36,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 35 | Loading states and perceived speed | Foundation | in-progress |
 | 42 | Slow screen telemetry | Foundation | planned |
 | 44 | Sign in password reset flow | Foundation | planned |
+| 46 | App shell and navigation rebuild | Foundation | planned |
 | 14 | Landing page rebuild | Slice 1 | done |
 | 15 | Public page set | Slice 1 | done |
 | 16 | Onboarding | Slice 1 | done |
@@ -61,20 +62,21 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 31 | Campus ambassadors | Slice 5 | planned |
 | 32 | Conversion analytics | Slice 5 | planned |
 | 43 | Affiliate invites for partners | Slice 5 | planned |
+| 45 | Dashboard subscription page reconciliation | Slice 5 | planned |
 | 33 | Mobile responsiveness and device quality | Cross cutting | planned |
 
 ## Epics
 
 Each epic is one file with its own feature sections.
 
-- **[Platform](platform.md)** · 17 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email, and how every route renders. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
+- **[Platform](platform.md)** · 19 features, Foundations · the engine under every later slice: security, prompts, the model chain, the database, caching, the design system, email, the app shell, and how every route renders. Plus one cross cutting bar: every screen has to work on a two gigabyte Android phone.
 - **[Carried over](carried-over.md)** · 7 features · what already exists in the codebase, enrolled for context only.
 - **[Pivot](pivot.md)** · 2 features, Foundations · removing the secondary school product outright, mocks, exams and papers included.
 - **[Market](market.md)** · 9 features, Slice 1 · the landing page, the public pages, onboarding and pricing. What a stranger sees and what a new student does in the first two minutes. Plus the search surface: the public course catalogue, the technical SEO foundation, public guides, and readiness for AI answer engines.
 - **[Tutor](tutor.md)** · 3 features, Slice 2 · the chat interface, the web search tool and the controls students get over it.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
 - **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
-- **[Commerce](commerce.md)** · 6 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites and conversion analytics.
+- **[Commerce](commerce.md)** · 7 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites, conversion analytics and the in app subscription page.
 
 ## Phasing in one line each
 

@@ -1,5 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { planCatalog } from "@/constants/plans";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -35,12 +36,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const planAmounts: Record<string, number> = {
-      STARTER: 3000,
-      STANDARD: 5000,
-      PREMIUM: 10000,
-      PRO: 3500,
-    };
+    const amount = planCatalog[plan]?.priceXaf ?? 0;
 
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
@@ -58,13 +54,13 @@ export async function POST(req: Request) {
         userName: user.name,
         plan: plan as any,
         status: "PENDING",
-        amount: planAmounts[plan],
+        amount,
         fapshiTransId: transactionId,
       },
       update: {
         plan: plan as any,
         status: "PENDING",
-        amount: planAmounts[plan],
+        amount,
         fapshiTransId: transactionId,
         activatedAt: null,
       },

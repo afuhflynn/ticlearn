@@ -554,6 +554,7 @@ model ChatMessage {
   role           String
   content        String   @db.Text
   parts          Json
+  stoppedAt      DateTime? @map("stopped_at")
   createdAt      DateTime @default(now()) @map("created_at")
 
   conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)

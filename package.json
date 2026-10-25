@@ -62,6 +62,7 @@
     "@types/pg": "^8.20.0",
     "@uploadthing/react": "^7.3.3",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^2.8.2",
     "@xyflow/react": "^12.10.2",
     "ai": "^6.0.149",
     "axios": "^1.14.0",

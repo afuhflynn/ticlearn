@@ -2,138 +2,270 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useQueryClient } from "@tanstack/react-query";
-import { DefaultChatTransport, type FileUIPart, type UIMessage } from "ai";
+import {
+  DefaultChatTransport,
+  type FileUIPart,
+  isTextUIPart,
+  type UIMessage,
+} from "ai";
 import { RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
-import { TIP_NAME } from "@/components/chat/constants";
+import { AllowanceNotice } from "@/components/chat/allowance-notice";
+import { CHAT_QUIZ_PREFILL, TIP_NAME } from "@/components/chat/constants";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useCheckLimit, useUsage } from "@/hooks";
+import { useUsage } from "@/hooks";
 import { useMessagesPaginated } from "@/hooks/useChat";
 import { normalizeStoredParts } from "@/lib/chat-messages";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
-import { ChatComposer } from "./chat-composer";
+import {
+  ChatComposer,
+  type ChatComposerPrefill,
+  type ChatComposerRestore,
+  type ChatComposerSubmission,
+} from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
-import { CHAT_SUGGESTIONS } from "./constants";
 import { consumePendingChatMessage } from "./pending-message";
+import { suggestionsFromParts } from "./suggested-replies";
 
 type ChatMessageRecord = {
   id: string;
   role: string;
   content: string;
   parts: unknown;
+  stoppedAt?: string | null;
   createdAt: string;
 };
 
+/** The words inside one message, without its attachments or tool parts. */
+function textOf(message: UIMessage): string {
+  return message.parts
+    .filter(isTextUIPart)
+    .map((part) => part.text)
+    .join("\n")
+    .trim();
+}
+
 function ConversationSession({
   conversationId,
+  noteTitle,
   initialMessages,
+  initialStoppedIds,
 }: {
   conversationId: string;
+  noteTitle: string | null;
   initialMessages: UIMessage[];
+  initialStoppedIds: string[];
 }) {
   const queryClient = useQueryClient();
-  const { allowed: canChat } = useCheckLimit("chat");
   const { chatDailyUsage } = useUsage();
-  const { messages, sendMessage, regenerate, status, error } =
-    useChat<UIMessage>({
-      id: conversationId,
-      messages: initialMessages,
-      transport: new DefaultChatTransport({
-        api: `/api/ai/chat?conversationId=${conversationId}`,
-        credentials: "include",
-      }),
-      experimental_throttle: 50,
-      onFinish: ({ messages: updatedMessages, isError }) => {
-        if (isError) {
-          toast.error(`${TIP_NAME} could not finish that response.`);
-          queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-          return;
+
+  const [prefill, setPrefill] = useState<ChatComposerPrefill>();
+  const [restore, setRestore] = useState<ChatComposerRestore>();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [durationMs, setDurationMs] = useState<number | null>(null);
+  const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
+  const [stoppedIds, setStoppedIds] = useState<Set<string>>(
+    () => new Set(initialStoppedIds),
+  );
+
+  const startedAt = useRef<number | null>(null);
+  const lastSubmission = useRef<ChatComposerSubmission | null>(null);
+
+  const chat = useChat<UIMessage>({
+    id: conversationId,
+    messages: initialMessages,
+    transport: new DefaultChatTransport({
+      api: `/api/ai/chat?conversationId=${conversationId}`,
+      credentials: "include",
+    }),
+    experimental_throttle: 50,
+    onFinish: ({ isAbort, isError, message }) => {
+      const elapsed =
+        startedAt.current === null ? null : Date.now() - startedAt.current;
+      startedAt.current = null;
+      lastSubmission.current = null;
+      setDurationMs(elapsed);
+
+      if (isAbort) {
+        const answered = textOf(message).length > 0;
+        if (answered) {
+          // The server saved the partial answer and marked it stopped.
+          setStoppedIds((current) => {
+            const next = new Set(current);
+            next.add(message.id);
+            return next;
+          });
+        } else {
+          // A stop before the first token leaves nothing to keep.
+          chat.setMessages((current) =>
+            current.filter((entry) => entry.id !== message.id),
+          );
         }
-
-        queryClient.setQueryData(
-          queryKeys.chatConversation(conversationId),
-          (
-            current:
-              | {
-                  conversation: {
-                    id: string;
-                    title: string;
-                    createdAt: string;
-                    updatedAt: string;
-                    messages: ChatMessageRecord[];
-                  };
-                }
-              | undefined,
-          ) => {
-            if (!current?.conversation) {
-              return current;
-            }
-
-            return {
-              conversation: {
-                ...current.conversation,
-                messages: updatedMessages.map((message) => ({
-                  id: message.id,
-                  role: message.role,
-                  content: message.parts
-                    .filter((part) => part.type === "text")
-                    .map((part) => part.text)
-                    .join("\n"),
-                  parts: message.parts,
-                  createdAt: new Date().toISOString(),
-                })),
-                updatedAt: new Date().toISOString(),
-              },
-            };
-          },
-        );
-
-        queryClient.invalidateQueries({
-          queryKey: queryKeys.chatConversations,
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.chatMessagesPaginated(conversationId),
         });
-        queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-      },
-      onError: (chatError) => {
-        toast.error(chatError.message || "Failed to send message");
-        queryClient.invalidateQueries({ queryKey: queryKeys.usage });
-      },
-    });
+        void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+        return;
+      }
+
+      if (isError) return;
+
+      // Chips exist only for the turn that just finished. A reloaded thread
+      // carries the same tool part but draws no chips, by design.
+      setLiveSuggestions(suggestionsFromParts(message.parts));
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.chatConversations,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.chatMessagesPaginated(conversationId),
+      });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+    },
+    onError: (chatError) => {
+      toast.error(chatError.message || "Failed to send message");
+
+      // A paste that had to travel as a text file is given back rather than
+      // lost, with its size, when the provider refuses the file part.
+      const last = lastSubmission.current;
+      if (last?.textAttachment) {
+        setRestore({
+          text: [last.text, last.textAttachment]
+            .filter((part) => part.trim().length > 0)
+            .join("\n\n"),
+          notice: `That paste is ${last.textAttachment.length.toLocaleString(
+            "en-US",
+          )} characters and could not be sent as a file. It is back in the box.`,
+          nonce: Date.now(),
+        });
+      }
+
+      void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+    },
+  });
+
+  const { messages, sendMessage, status, error } = chat;
 
   useEffect(() => {
-    const pending = consumePendingChatMessage(conversationId);
-
-    if (!pending?.text && !pending?.files?.length) {
-      return;
-    }
-
-    void sendMessage({
-      text: pending.text || "",
-      files: pending.files as FileUIPart[],
-    });
-  }, [conversationId, sendMessage]);
-
-  useEffect(() => {
-    if (!error) {
-      return;
-    }
-
+    if (!error) return;
     console.error("[CHAT] Client error:", error);
   }, [error]);
 
-  const disabledReason = !canChat
-    ? `You have used ${chatDailyUsage?.used ?? 0} of ${
-        chatDailyUsage?.limit ?? 0
-      } daily messages. You can keep reading your conversations until the timer resets.`
-    : undefined;
+  useEffect(() => {
+    const pending = consumePendingChatMessage(conversationId);
+    if (!pending?.text && !pending?.files?.length) return;
+
+    startedAt.current = Date.now();
+    void sendMessage({
+      text: pending.text || "",
+      files: (pending.files ?? []) as FileUIPart[],
+    });
+  }, [conversationId, sendMessage]);
+
+  const handleSend = useCallback(
+    async (submission: ChatComposerSubmission) => {
+      if (!submission.text.trim() && submission.files.length === 0) return;
+
+      startedAt.current = Date.now();
+      setDurationMs(null);
+      setLiveSuggestions([]);
+      setRestore(undefined);
+      lastSubmission.current = submission;
+
+      try {
+        if (editingId) {
+          await chat.sendMessage(
+            {
+              text: submission.text,
+              files: submission.files,
+              messageId: editingId,
+            },
+            { body: { editMessageId: editingId } },
+          );
+          setEditingId(null);
+        } else {
+          await chat.sendMessage({
+            text: submission.text,
+            files: submission.files,
+          });
+        }
+      } catch {
+        startedAt.current = null;
+        lastSubmission.current = null;
+        setRestore({
+          text: submission.text || submission.textAttachment || "",
+          notice: "That message did not go through. It is back in the box.",
+          nonce: Date.now(),
+        });
+      }
+    },
+    [chat, editingId],
+  );
+
+  const handleReplaceAnswer = useCallback(
+    (messageId?: string) => {
+      startedAt.current = Date.now();
+      setDurationMs(null);
+      setLiveSuggestions([]);
+      setRestore(undefined);
+
+      if (!messageId) {
+        void chat.regenerate();
+        return;
+      }
+
+      setStoppedIds((current) => {
+        if (!current.has(messageId)) return current;
+        const next = new Set(current);
+        next.delete(messageId);
+        return next;
+      });
+      void chat.regenerate({
+        messageId,
+        body: { retryMessageId: messageId },
+      });
+    },
+    [chat],
+  );
+
+  const handleEdit = useCallback((message: UIMessage) => {
+    setEditingId(message.id);
+    setPrefill({ text: textOf(message), nonce: Date.now() });
+  }, []);
+
+  const handleMakeQuiz = useCallback(() => {
+    setPrefill({ text: CHAT_QUIZ_PREFILL, nonce: Date.now() });
+  }, []);
+
+  const handleSuggestion = useCallback(
+    (text: string) => {
+      startedAt.current = Date.now();
+      setDurationMs(null);
+      setLiveSuggestions([]);
+      void sendMessage({ text });
+    },
+    [sendMessage],
+  );
+
+  const spentAllowance =
+    chatDailyUsage !== null &&
+    chatDailyUsage.limit !== -1 &&
+    chatDailyUsage.remaining <= 0;
 
   return (
     <div className="flex h-full flex-col">
-      <div className="min-h-0 flex-1 bg-gradient-to-b from-background via-background to-muted/20">
+      <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-background via-background to-muted/20">
+        {noteTitle ? (
+          <p className="mx-auto w-full max-w-[48rem] shrink-0 px-4 pt-3 text-xs text-muted-foreground">
+            Using{" "}
+            <span className="font-medium text-foreground">{noteTitle}</span>
+          </p>
+        ) : null}
         <ChatMessageList
+          className="min-h-0 flex-1"
+          durationMs={durationMs}
           emptyState={
             <div className="px-4 py-10 text-center text-muted-foreground">
               This conversation is empty. Ask {TIP_NAME} anything to get
@@ -141,38 +273,34 @@ function ConversationSession({
             </div>
           }
           messages={messages}
-          className="mx-auto max-w-3xl"
-          onRetry={() => void regenerate()}
+          onEdit={handleEdit}
+          onMakeQuiz={handleMakeQuiz}
+          onRegenerate={handleReplaceAnswer}
+          onRetry={handleReplaceAnswer}
+          onSuggestion={handleSuggestion}
           status={status}
+          stoppedIds={stoppedIds}
+          suggestions={liveSuggestions}
         />
       </div>
 
-      <div className="border-t bg-background/95 px-4 py-4 backdrop-blur md:px-6">
-        <Suggestions className="mx-auto mb-4 flex max-w-3xl flex-wrap gap-2">
-          {CHAT_SUGGESTIONS.map((suggestion) => (
-            <Suggestion
-              key={suggestion}
-              onClick={() => void sendMessage({ text: suggestion })}
-              suggestion={suggestion}
+      <div className="border-t bg-background/95 px-4 py-4 backdrop-blur">
+        <div className="mx-auto w-full max-w-[48rem]">
+          {spentAllowance ? (
+            <AllowanceNotice resetsAt={chatDailyUsage?.resetsAt} />
+          ) : (
+            <ChatComposer
+              draftKey={conversationId}
+              onCancelReplace={() => setEditingId(null)}
+              onSubmit={handleSend}
+              onStop={() => chat.stop()}
+              prefill={prefill}
+              replaceWarning={editingId !== null}
+              restore={restore}
+              status={status}
             />
-          ))}
-        </Suggestions>
-        <ChatComposer
-          disabled={!canChat}
-          disabledReason={disabledReason}
-          onSubmit={async (message) => {
-            if (!message.text?.trim() && !message.files?.length) {
-              return;
-            }
-
-            await sendMessage({
-              text: message.text,
-              files: message.files as FileUIPart[],
-            });
-          }}
-          className="mx-auto max-w-3xl"
-          status={status}
-        />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -218,10 +346,18 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
     [paginatedMessages],
   );
 
+  const initialStoppedIds = useMemo(
+    () =>
+      paginatedMessages
+        .filter((message: ChatMessageRecord) => Boolean(message.stoppedAt))
+        .map((message: ChatMessageRecord) => message.id),
+    [paginatedMessages],
+  );
+
   if (isPending) {
     return (
       <div
-        className="mx-auto flex h-full w-full max-w-3xl flex-col gap-6 px-4 py-6"
+        className="mx-auto flex h-full w-full max-w-[48rem] flex-col gap-6 px-4 py-6"
         data-slot="chat-thread-skeleton"
       >
         {[1, 2, 3].map((i) => (
@@ -270,9 +406,11 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
       )}
       <div ref={sentinelRef} className="h-1" />
       <ConversationSession
+        key={conversationId}
         conversationId={conversationId}
         initialMessages={initialMessages}
-        key={conversationId}
+        initialStoppedIds={initialStoppedIds}
+        noteTitle={conversationInfo.note?.title ?? null}
       />
     </div>
   );

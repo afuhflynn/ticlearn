@@ -164,6 +164,8 @@ export async function pollPaymentStatusUntilReady(
   return null;
 }
 
+import { planCatalog } from "@/constants/plans";
+
 export interface PaymentPlanConfig {
   STARTER: { amount: number; fcfa: string };
   STANDARD: { amount: number; fcfa: string };
@@ -171,13 +173,10 @@ export interface PaymentPlanConfig {
   PRO: { amount: number; fcfa: string };
 }
 
-export const PLAN_PRICES: PaymentPlanConfig = {
-  STARTER: { amount: 3000, fcfa: "3,000" },
-  STANDARD: { amount: 5000, fcfa: "5,000" },
-  PREMIUM: { amount: 10000, fcfa: "10,000" },
-  PRO: { amount: 3500, fcfa: "3,500" },
-};
-
 export function getPlanPrice(plan: keyof PaymentPlanConfig) {
-  return PLAN_PRICES[plan];
+  const def = planCatalog[plan];
+  if (!def) {
+    return { amount: 0, fcfa: "0" };
+  }
+  return { amount: def.priceXaf, fcfa: def.priceXaf.toLocaleString() };
 }

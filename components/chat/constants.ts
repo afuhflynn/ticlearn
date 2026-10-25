@@ -3,40 +3,42 @@ export const PENDING_CHAT_MESSAGE_PREFIX = "ticlearn-pending-chat";
 /** The tutor's visible name. Every student facing surface reads it from here. */
 export const TIP_NAME = "Tip";
 
-export const CHAT_SUGGESTIONS = [
-  "Walk me through this note step by step",
-  "Quiz me from my notes with real questions",
-  "Explain the hardest part of my latest note",
-  "What should I study from this course today?",
-];
+/** What the composer is filled with when a student asks for practice. */
+export const CHAT_QUIZ_PREFILL = "Quiz me on this";
 
-export const QUICK_ACTIONS = [
+/** The one quiet line naming what Tip can already use. */
+export const CHAT_CAPABILITY_LINE =
+  "Tip can search the web, read your notes, open your quizzes and check your progress.";
+
+/**
+ * The four things a student can start with. A tap fills the composer and
+ * focuses it. It never sends, because a starter is a thought, not a message.
+ */
+export const CHAT_STARTERS = [
   {
-    title: "Study today",
-    description: "Pick one thing from your notes and start there.",
+    title: "Solve a past paper",
     prompt:
-      "Look at the notes I have uploaded and pick the one thing I should study today. Tell me why, then teach the first step.",
-    icon: "progress" as const,
+      "Walk me through a past paper question step by step, then let me try one on my own.",
   },
   {
-    title: "Photo of your notes",
-    description: "Attach a photo and Tip reads it back to you.",
+    title: "Explain my notes",
     prompt:
-      "I am going to attach a photo of my notes. Read it, tell me what it covers, then teach me the hardest part of it.",
-    icon: "image" as const,
+      "Explain the hardest part of my latest note and check whether I understood it.",
   },
   {
-    title: "Note transformer",
-    description: "Convert notes into flashcards, summaries, or quizzes.",
+    title: "Quiz me",
     prompt:
-      "Use my uploaded note or my note library to create a concise summary, 10 flashcards, and 5 practice questions.",
-    icon: "notes" as const,
+      "Quiz me on a topic I am studying, with real exam style questions and the mark scheme.",
   },
   {
-    title: "Mistake debrief",
-    description: "Review mistakes and decide what to do next.",
+    title: "Plan my revision",
     prompt:
-      "Analyze my recent quiz performance and give me a mistake debrief with next actions.",
-    icon: "quiz" as const,
+      "Help me plan my revision for the next two weeks, starting from the topics I find hardest.",
   },
-];
+] as const;
+
+/** The label on a stopped answer. */
+export const CHAT_STOPPED_LABEL = "Stopped";
+
+/** The sentence a student reads when their daily messages are used up. */
+export const CHAT_ALLOWANCE_SPENT_LABEL = "Your daily messages are used up.";

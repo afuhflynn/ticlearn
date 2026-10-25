@@ -1,50 +1,110 @@
 /**
- * One plan list, read by the server page and by the client island that owns the
- * subscribe handler. It lives here rather than inline in the page so the two
- * halves cannot drift apart.
+ * One plan catalogue, the only place a plan price, period, label, feature or
+ * limit reference is defined. The public page, the payment route, the webhook,
+ * the manual route and the dashboard all read it instead of keeping their own
+ * copies, so the price shown can never drift from the price charged.
+ *
+ * `FREE` is not a value of the `Plan` enum. It is synthesised for a user with
+ * no active subscription, so the catalogue handles `"FREE"` separately from
+ * the `Plan` enum values.
  */
-export interface Plan {
-  name: string;
-  price: string;
-  period?: string;
-  priceKey: string;
-  description: string;
+import type { Plan } from "@/lib/generated/prisma/enums";
+import { FREE_LIMITS, PAID_LIMITS } from "@/lib/plan-limits";
+
+export interface PlanDefinition {
+  key: Plan | "FREE";
+  label: string;
+  priceXaf: number;
+  period: "forever" | "month" | "semester";
+  semesterMonths?: number;
   features: string[];
   cta: string;
-  popular: boolean;
   href: string;
+  popular?: boolean;
 }
 
-export const plans: Plan[] = [
-  {
-    name: "Free",
-    price: "0",
-    priceKey: "FREE",
-    description: "Perfect for getting started",
+export const planCatalog: Record<string, PlanDefinition> = {
+  FREE: {
+    key: "FREE",
+    label: "Free",
+    priceXaf: 0,
+    period: "forever",
     features: [
-      "2 notes",
-      "4 quizzes from your notes",
-      "8 Tip messages a day",
+      `${FREE_LIMITS.pdfUploads} notes`,
+      `${FREE_LIMITS.quizGenerations} quizzes from your notes`,
+      `${FREE_LIMITS.aiTutorMessages} Tip messages a day`,
       "Read any note you upload, any time",
     ],
     cta: "Get Started",
-    popular: false,
     href: "/sign-up",
   },
-  {
-    name: "Pro",
-    price: "3,500",
-    period: "/month",
-    priceKey: "PRO",
-    description: "For serious study",
+  PRO: {
+    key: "PRO",
+    label: "Semester Pass",
+    priceXaf: 2_500,
+    period: "semester",
+    semesterMonths: 5,
     features: [
       "Unlimited notes",
       "Unlimited quizzes from your notes",
       "Unlimited Tip messages",
       "Every quiz traces back to the page it came from",
     ],
-    cta: "Start Free Trial",
+    cta: "Start Semester Pass",
+    href: "/api/payment/initiate",
     popular: true,
+  },
+  STARTER: {
+    key: "STARTER",
+    label: "Starter",
+    priceXaf: 3_000,
+    period: "month",
+    features: [
+      `${PAID_LIMITS.STARTER.pdfUploads} notes`,
+      `${PAID_LIMITS.STARTER.quizGenerations} quizzes from your notes`,
+      `${PAID_LIMITS.STARTER.aiTutorMessages} Tip messages a day`,
+      "Read any note you upload, any time",
+    ],
+    cta: "Start Starter",
     href: "/api/payment/initiate",
   },
+  STANDARD: {
+    key: "STANDARD",
+    label: "Standard",
+    priceXaf: 5_000,
+    period: "month",
+    features: [
+      `${PAID_LIMITS.STANDARD.pdfUploads} notes`,
+      `${PAID_LIMITS.STANDARD.quizGenerations} quizzes from your notes`,
+      "Unlimited Tip messages",
+      "Every quiz traces back to the page it came from",
+    ],
+    cta: "Start Standard",
+    href: "/api/payment/initiate",
+  },
+  PREMIUM: {
+    key: "PREMIUM",
+    label: "Premium",
+    priceXaf: 10_000,
+    period: "month",
+    features: [
+      "Unlimited notes",
+      "Unlimited quizzes from your notes",
+      "Unlimited Tip messages",
+      "Every quiz traces back to the page it came from",
+    ],
+    cta: "Start Premium",
+    href: "/api/payment/initiate",
+  },
+};
+
+/** The two tiers the public page shows, Free and Semester Pass. */
+export const publicPlans: PlanDefinition[] = [
+  planCatalog.FREE,
+  planCatalog.PRO,
 ];
+
+/** The payable catalogue keys a student can actually buy (everything except Free). */
+export const payablePlans: string[] = Object.keys(planCatalog).filter(
+  (key) => key !== "FREE",
+);

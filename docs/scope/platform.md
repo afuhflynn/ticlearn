@@ -1,6 +1,6 @@
 # Platform
 
-The engine under every later slice. Sixteen foundations: security, the prompt registry, the model chain, the database, background work, caching, the design system, email, and how every route paints. Plus one cross cutting bar that every slice is measured against: the screens have to work on the phone our students actually own.
+The engine under every later slice. Nineteen foundations: security, the prompt registry, the model chain, the database, background work, caching, the design system, email, the app shell, and how every route paints. Plus one cross cutting bar that every slice is measured against: the screens have to work on the phone our students actually own.
 
 (basis: research/audience-and-market.md · research/env-inventory.md · research/performance-and-database.md · research/ui-toolkit.md · research/security.md · research/email-system.md · research/stack-and-storage.md · research/seo-and-rendering.md)
 
@@ -242,6 +242,13 @@ The sign-up page commits a student an account, but a forgotten password has no r
 - [ ] Design it (spec): `/solution-architect sign in password reset flow`
 
 (basis: research/design-reference.md §3 · recovery questions on sign-in are a support cost centre; the honest FAQ wording from spec 0016 holds only until the flow exists)
+
+### 46. App shell and navigation rebuild · needs a decision · GA
+The app has two shells. `/chat` renders its own sidebar and header, so opening the tutor replaces the student's navigation with a conversation list, while every other signed in page renders a different sidebar and header. On a phone that means two different menu toggles, one of them a notebook icon pinned over the header. The dashboard header also draws a notification bell that opens nothing, left over from the surface spec 0014 cut. The sidebar spends its top third on a greeting, a streak, points, a plan badge and a gradient Tip card before the first link, and `AppSidebar` styles an active state for a chat route it never renders.
+**Done when:** one shell wraps every signed in page, the sidebar carries the brand, a new chat action, the conversation list, the study links and the account at the bottom, one toggle in one place opens it on every screen, no header control does nothing, the sidebar is a drawer below `md` and a column or rail above it, and the chat keeps its conversation list without a second rail.
+- [ ] Design it (spec): `/solution-architect app shell rebuild`
+
+(basis: code audit of `app/(dashboard)/layout.tsx`, `app/chat/layout.tsx`, `components/layout/AppSidebar.tsx`, `components/layout/DashboardHeader.tsx` and `components/chat/chat-header.tsx` on 2026-10-25 · the split is visible in the two route group layouts, and the dead bell is left from the notification surface cut in spec 0014)
 
 ## Cross cutting
 

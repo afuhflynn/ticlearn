@@ -34,8 +34,8 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
     className={cn(
       "group flex w-full flex-col gap-2",
       from === "user"
-        ? "is-user ml-auto max-w-[88%] justify-end md:max-w-[78%]"
-        : "is-assistant max-w-3xl",
+        ? "is-user ml-auto max-w-[85%] justify-end"
+        : "is-assistant w-full",
       className,
     )}
     {...props}
@@ -51,9 +51,9 @@ export const MessageContent = ({
 }: MessageContentProps) => (
   <div
     className={cn(
-      "is-user:dark flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm shadow-sm",
-      "group-[.is-user]:ml-auto group-[.is-user]:rounded-2xl group-[.is-user]:rounded-br-md group-[.is-user]:bg-primary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-primary-foreground",
-      "group-[.is-assistant]:rounded-2xl group-[.is-assistant]:rounded-tl-md group-[.is-assistant]:border group-[.is-assistant]:bg-card/80 group-[.is-assistant]:px-4 group-[.is-assistant]:py-3 group-[.is-assistant]:text-foreground",
+      "flex w-fit max-w-full min-w-0 flex-col gap-2 overflow-hidden text-sm",
+      "group-[.is-user]:ml-auto group-[.is-user]:rounded-[var(--radius)] group-[.is-user]:bg-primary group-[.is-user]:px-4 group-[.is-user]:py-3 group-[.is-user]:text-primary-foreground",
+      "group-[.is-assistant]:w-full group-[.is-assistant]:text-foreground",
       className,
     )}
     {...props}

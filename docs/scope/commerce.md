@@ -47,3 +47,10 @@ Today any signed in student becomes a paying affiliate by loading `/affiliate`, 
 - [ ] Design it (spec): `/solution-architect affiliate invites`
 
 (basis: spec 0014 surface audit · the current GET creates a payable active affiliate on page load, the apply route updates outside its transaction so a parallel double submit pays twice, and admin payout decrements the lifetime total)
+
+### 45. Dashboard subscription page reconciliation · needs a decision · from spec 0019
+Spec 0019 rebuilds the public pricing page around Free plus one Semester Pass, but the in-app subscription page still sells three monthly plans with its own price map, feature copy and credit discounts. A signed in student therefore sees a second, different offer from the one the public page just showed them.
+**Done when:** the dashboard subscription page shows the same Free plus Semester Pass offer as `/pricing`, its upgrade action leads to the same payment path, its price map, feature copy and credit discounts all read the one catalogue in `constants/plans.ts`, and no surface in the app prints a monthly plan the public page does not sell.
+- [ ] Design it (spec): `/solution-architect dashboard subscription reconciliation`
+
+(basis: spec 0019 follow-up · the dashboard grid and the public page would otherwise stay two offers, and the credits copy is a separate balance that must not be folded into the catalogue)

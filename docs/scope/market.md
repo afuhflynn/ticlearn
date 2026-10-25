@@ -59,10 +59,19 @@ Today the wizard asks school level and subject, which is meaningless now. A firs
 
 (basis: research/design-reference.md §1 · both local competitors identify students by WhatsApp number and not by email, and forty eight percent of signups were lost at one role question)
 
-### 17. Pricing page · needs a decision · GA
+### 17. Pricing page · done · GA
 Research is clear that a month to month subscription is the wrong shape here and that a semester pass around 2,500 XAF sits in the proven band. One local competitor's own pricing page shows identical bullets across three tiers, which the research calls the single biggest trust destroyer in this market. Ours will not ship that way.
 **Done when:** the page shows genuinely different contents per tier, the semester is the default unit with the monthly equivalent shown as a secondary line, there is no auto renewal language anywhere, the payment gateway and both mobile money providers are named, and the free tier is described honestly rather than hidden.
-- [ ] Design it (spec): `/solution-architect pricing page`
+- [x] Design it (spec): `/solution-architect pricing page` · spec [0019](../specs/0019-pricing-page.md)
+- [x] Build it: `/feature-build pricing page` · code in `constants/plans.ts`, `components/marketing/pricing-plans.tsx`, `app/(marketing)/pricing/page.tsx`, `lib/fapshi.ts`, `app/api/payment/initiate/route.ts`, `app/api/webhooks/fapshi/route.ts`, `app/api/subscription/manual/route.ts`, `app/(dashboard)/subscription/page.tsx`
+  - [x] One plan catalogue and the money path, so the price on the card equals the amount charged and the four duplicate price maps are gone (covers AC-1, AC-6)
+  - [x] Two honest tiers on the page, bullets read from the real limits, semester first with an estimated monthly line, providers named, no renewal language, server page with the cards as the only island (covers AC-2, AC-3, AC-4, AC-5, AC-10)
+  - [x] Subscribe, current plan and pending payment states, signed out to sign in and back, plain retry on failure (covers AC-6, AC-7, AC-8, AC-11, AC-12)
+  - [x] Page metadata and the test suite, including the stale webhook guard (covers AC-9)
+- [x] Verify it: `/verify-release pricing page`
+- [x] Test it: `/test-engineer pricing page`
+- [x] Review it (fresh model): `/peer-review pricing page`
+- [x] Document it: `/tech-writer pricing page`
 
 (basis: research/audience-and-market.md §8 · a proven consumer band of 1,600 to 5,000 XAF a month and a hard floor of 500 XAF and a ceiling of 18,500 XAF observed in the market)
 
