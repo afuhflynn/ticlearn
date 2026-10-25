@@ -229,6 +229,7 @@ export const api = {
             createdAt: string;
             updatedAt: string;
             summary: string | null;
+            note: { id: string; title: string } | null;
           };
           messages: ChatMessage[];
           nextCursor: string | null;

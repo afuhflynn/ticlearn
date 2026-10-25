@@ -49,3 +49,42 @@ export function normalizeGeneratedQuestions(
     })
     .filter((q): q is z.infer<typeof generatedQuestionSchema> => q !== null);
 }
+
+/** The longest suggestion that still fits one line on a 360 pixel screen. */
+export const SUGGESTION_MAX_CHARS = 60;
+
+/** Never more than three, never fewer than two when any survive. */
+export const SUGGESTION_MAX_COUNT = 3;
+
+/**
+ * A suggestion is model output read from the open web, so it is treated as
+ * untrusted: links keep only their words, markdown punctuation goes, the
+ * length is capped and duplicates collapse. A chip sends its own short text
+ * and nothing else, so a planted suggestion cannot become a link or a long
+ * instruction.
+ */
+export function sanitizeSuggestions(input: string[]): string[] {
+  const seen = new Set<string>();
+  const kept: string[] = [];
+
+  for (const raw of input) {
+    if (typeof raw !== "string") continue;
+    const text = raw
+      .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/[*_`~]/g, "")
+      .replace(/^[#>\s]+/gm, "")
+      .replace(/\s+/g, " ")
+      .trim();
+
+    if (text.length === 0 || text.length > SUGGESTION_MAX_CHARS) continue;
+    const key = text.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    kept.push(text);
+    if (kept.length === SUGGESTION_MAX_COUNT) break;
+  }
+
+  return kept.length >= 2 ? kept : [];
+}

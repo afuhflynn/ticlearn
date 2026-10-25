@@ -1,24 +1,20 @@
 "use client";
 
 import type { FileUIPart } from "ai";
-import { BarChart3, FileText, ImageIcon, Shapes, Zap } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
-import type { PromptInputMessage } from "@/components/ai-elements/prompt-input";
-import { Suggestion, Suggestions } from "@/components/ai-elements/suggestion";
+import { AllowanceNotice } from "@/components/chat/allowance-notice";
 import { useUsage } from "@/hooks";
 import { useCreateConversation } from "@/hooks/useChat";
 import { useSession } from "@/lib/auth-client";
-import { ChatComposer } from "./chat-composer";
-import { CHAT_SUGGESTIONS, QUICK_ACTIONS, TIP_NAME } from "./constants";
+import {
+  ChatComposer,
+  type ChatComposerPrefill,
+  type ChatComposerSubmission,
+} from "./chat-composer";
+import { CHAT_STARTERS, TIP_NAME } from "./constants";
 import { storePendingChatMessage } from "./pending-message";
-
-const actionIcons = {
-  notes: FileText,
-  progress: BarChart3,
-  quiz: Shapes,
-  image: ImageIcon,
-};
 
 export function ChatLanding({
   noteId,
@@ -29,31 +25,27 @@ export function ChatLanding({
 }) {
   const router = useRouter();
   const createConversation = useCreateConversation();
-  const { canUseAIChat } = useUsage();
+  const { chatDailyUsage } = useUsage();
   const { data: session } = useSession();
+  const [prefill, setPrefill] = useState<ChatComposerPrefill | undefined>(
+    initialQuestion ? { text: initialQuestion, nonce: Date.now() } : undefined,
+  );
 
-  const startConversation = async (text: string) => {
-    try {
-      const result = await createConversation.mutateAsync({
-        noteId: noteId ?? undefined,
-      });
-      storePendingChatMessage(result.conversation.id, { text });
-      router.push(`/chat/${result.conversation.id}`);
-    } catch {
-      toast.error("Failed to create conversation");
-    }
-  };
+  const spentAllowance =
+    chatDailyUsage !== null &&
+    chatDailyUsage.limit !== -1 &&
+    chatDailyUsage.remaining <= 0;
 
-  const handleSubmit = async (message: PromptInputMessage) => {
-    if (!message.text?.trim() && !message.files?.length) return;
+  const startConversation = async (submission: ChatComposerSubmission) => {
+    if (!submission.text.trim() && submission.files.length === 0) return;
 
     try {
       const result = await createConversation.mutateAsync({
         noteId: noteId ?? undefined,
       });
       storePendingChatMessage(result.conversation.id, {
-        text: message.text || "",
-        files: message.files as FileUIPart[],
+        text: submission.text,
+        files: submission.files as FileUIPart[],
       });
       router.push(`/chat/${result.conversation.id}`);
     } catch {
@@ -63,82 +55,55 @@ export function ChatLanding({
 
   return (
     <div className="flex h-full flex-col overflow-y-auto">
-      <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col justify-center gap-6 px-4 py-8 md:px-8 md:py-12">
-        <div className="space-y-4 text-center">
-          <div className="mx-auto inline-flex items-center rounded-full border bg-card px-3 py-1 text-xs font-medium text-muted-foreground shadow-sm">
-            {TIP_NAME} · your notes, your quizzes, your questions
-          </div>
-          <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-5xl">
-            Hello {session?.user.name.split(" ")[0]}, let's turn confusion into
-            a study move.
-          </h1>
-          <p className="mx-auto max-w-2xl text-sm text-muted-foreground md:text-base">
-            Ask from your learning data, drop a PDF or DOCX, and {TIP_NAME} will
-            quote your own notes back to you, then teach you what they mean.
+      <div className="mx-auto flex w-full max-w-[48rem] flex-1 flex-col justify-center gap-8 px-4 py-8 md:py-12">
+        <div className="space-y-3 text-center">
+          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {TIP_NAME}
           </p>
-          {noteId && (
+          <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
+            Hello {session?.user.name.split(" ")[0]}, what are we studying
+            today?
+          </h1>
+          <p className="mx-auto max-w-xl text-sm text-muted-foreground md:text-base">
+            Ask anything, drop a photo of a past paper, or start from a note.{" "}
+            {TIP_NAME} explains at your level and checks that it landed.
+          </p>
+          {noteId ? (
             <p className="mx-auto inline-flex w-fit items-center rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
               Talking about one of your notes
             </p>
+          ) : null}
+        </div>
+
+        <div className="space-y-6">
+          {spentAllowance ? (
+            <AllowanceNotice resetsAt={chatDailyUsage?.resetsAt} />
+          ) : (
+            <ChatComposer
+              draftKey="new"
+              onSubmit={startConversation}
+              prefill={prefill}
+              status="ready"
+            />
           )}
-        </div>
 
-        <div className="mx-auto w-full max-w-2xl space-y-4">
-          <ChatComposer
-            disabled={!canUseAIChat}
-            initialText={initialQuestion ?? ""}
-            disabledReason={
-              canUseAIChat
-                ? undefined
-                : "You can still browse old conversations, but your daily chat allowance is exhausted until the next reset."
-            }
-            onSubmit={handleSubmit}
-            status="ready"
-          />
-        </div>
-
-        <div className="mx-auto grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {QUICK_ACTIONS.map((action) => {
-            const Icon = actionIcons[action.icon];
-            return (
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
+            {CHAT_STARTERS.map((starter) => (
               <button
-                key={action.title}
+                className="flex min-h-24 flex-col items-start gap-1.5 rounded-[var(--radius)] border bg-card p-4 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                key={starter.title}
+                onClick={() =>
+                  setPrefill({ text: starter.prompt, nonce: Date.now() })
+                }
                 type="button"
-                onClick={() => startConversation(action.prompt)}
-                className="flex min-h-32 flex-col items-start gap-2 rounded-2xl border bg-card/80 p-4 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary/50 hover:bg-accent active:scale-[0.98]"
               >
-                <span className="rounded-xl bg-primary/10 p-2 text-primary">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="text-sm font-semibold">{action.title}</span>
-                <span className="line-clamp-3 text-xs text-muted-foreground leading-relaxed">
-                  {action.description}
+                <span className="text-sm font-semibold">{starter.title}</span>
+                <span className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
+                  {starter.prompt}
                 </span>
               </button>
-            );
-          })}
-        </div>
-
-        <Suggestions className="mx-auto flex w-full max-w-3xl flex-wrap justify-center gap-2">
-          {CHAT_SUGGESTIONS.map((suggestion) => (
-            <Suggestion
-              key={suggestion}
-              onClick={() => startConversation(suggestion)}
-              suggestion={suggestion}
-            />
-          ))}
-        </Suggestions>
-
-        <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Images, PDFs, DOCX, text & CSV
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Web search enabled
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <Zap className="h-3 w-3" /> Study context aware
-          </span>
+            ))}
+          </div>
         </div>
       </div>
     </div>

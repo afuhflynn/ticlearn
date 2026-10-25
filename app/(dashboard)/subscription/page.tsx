@@ -49,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { planCatalog } from "@/constants/plans";
 import { useUsage } from "@/hooks";
 import { correctionsForKeys } from "@/nuqs";
 import {
@@ -113,10 +114,10 @@ const CREDIT_COST_EXAMPLES = [
   { action: "AI tutor message", baseCost: 5, icon: "MessageSquare" },
 ];
 
-const PLAN_PRICES = {
-  STARTER: 3000,
-  STANDARD: 5000,
-  PREMIUM: 10000,
+const PLAN_PRICES: Record<string, number> = {
+  STARTER: planCatalog.STARTER.priceXaf,
+  STANDARD: planCatalog.STANDARD.priceXaf,
+  PREMIUM: planCatalog.PREMIUM.priceXaf,
 };
 
 interface PaymentSettings {

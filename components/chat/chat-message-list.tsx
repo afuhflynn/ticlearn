@@ -1,18 +1,12 @@
 "use client";
 
-import {
-  isReasoningUIPart,
-  isTextUIPart,
-  isToolOrDynamicToolUIPart,
-  type ToolUIPart,
-  type UIMessage,
-} from "ai";
+import { isTextUIPart, type UIMessage } from "ai";
 import {
   CheckIcon,
   CopyIcon,
-  FileIcon,
-  FileTextIcon,
-  RefreshCw,
+  PencilIcon,
+  RefreshCwIcon,
+  SparklesIcon,
 } from "lucide-react";
 import { type ComponentProps, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -28,28 +22,18 @@ import {
   MessageContent,
   MessageResponse,
 } from "@/components/ai-elements/message";
-import {
-  Reasoning,
-  ReasoningContent,
-  ReasoningTrigger,
-} from "@/components/ai-elements/reasoning";
-import {
-  Source,
-  Sources,
-  SourcesContent,
-  SourcesTrigger,
-} from "@/components/ai-elements/sources";
 import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
-import {
-  Tool,
-  ToolContent,
-  ToolHeader,
-  ToolInput,
-  ToolOutput,
-} from "@/components/ai-elements/tool";
-import { TIP_NAME } from "@/components/chat/constants";
+import { ActivityBlock } from "@/components/chat/activity-block";
+import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
+import { FilePreview } from "@/components/chat/file-preview";
+import { SuggestedReplies } from "@/components/chat/suggested-replies";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+type ChatStatus = "submitted" | "streaming" | "ready" | "error";
+
+const ACTION_ROW =
+  "flex items-center gap-1 opacity-100 transition-opacity [@media(pointer:fine)]:opacity-0 [@media(pointer:fine)]:group-focus-within:opacity-100 [@media(pointer:fine)]:group-hover:opacity-100";
 
 function normalizeMarkdownForDisplay(content: string) {
   if (!content) return content;
@@ -61,159 +45,189 @@ function normalizeMarkdownForDisplay(content: string) {
     .replace(/([^\n])\n(#{1,6}\s)/g, "$1\n\n$2");
 }
 
-function getToolTitle(toolType: string) {
-  return toolType
-    .replace(/^tool-/, "")
-    .replace(/([A-Z])/g, " $1")
-    .replace(/^./, (value) => value.toUpperCase())
-    .trim();
+function messageText(message: UIMessage): string {
+  return message.parts
+    .filter(isTextUIPart)
+    .map((part) => part.text)
+    .join("\n");
 }
 
-function summarizeToolPart(
-  part:
-    | ToolUIPart
-    | (UIMessage["parts"][number] & {
-        state?: string;
-        output?: unknown;
-        errorText?: string;
-      }),
-) {
-  if (part.state === "output-error") {
-    return part.errorText ?? "The tool returned an error.";
-  }
-
-  if (part.state !== "output-available") {
-    return `${getToolTitle(part.type)} is still running.`;
-  }
-
-  const output =
-    "output" in part
-      ? (part.output as Record<string, unknown> | undefined)
-      : {};
-
-  if (part.type === "tool-getUserNotes" || part.type === "tool-searchNotes") {
-    const notes = Array.isArray(output?.notes) ? output.notes : [];
-    if (notes.length === 0) {
-      return "No matching notes were found.";
-    }
-
-    return `I found ${notes.length} note${notes.length === 1 ? "" : "s"} in your library.`;
-  }
-
-  if (part.type === "tool-getUserQuizzes") {
-    const quizzes = Array.isArray(output?.quizzes) ? output.quizzes : [];
-    if (quizzes.length === 0) {
-      return "No quizzes matched that request.";
-    }
-
-    return `I found ${quizzes.length} quiz${quizzes.length === 1 ? "" : "zes"} for you.`;
-  }
-
-  if (part.type === "tool-webSearch") {
-    const results = Array.isArray(output?.results) ? output.results : [];
-    return `Web search returned ${results.length} result${results.length === 1 ? "" : "s"}.`;
-  }
-
-  if (part.type === "tool-getStudyProgress") {
-    return "I pulled your latest study progress details.";
-  }
-
-  if (part.type === "tool-getSubscriptionContext") {
-    return "I checked your current subscription and access details.";
-  }
-
-  return "Tool results are available below.";
-}
-
-function ToolParts({ parts }: { parts: UIMessage["parts"] }) {
-  const toolParts = parts.filter(isToolOrDynamicToolUIPart);
-
-  if (toolParts.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="mt-3 space-y-3">
-      {toolParts.map((part) => (
-        <Tool
-          className="group"
-          defaultOpen={part.state !== "output-available"}
-          key={part.toolCallId}
-        >
-          <ToolHeader
-            state={part.state}
-            title={getToolTitle(part.type)}
-            type={part.type === "dynamic-tool" ? "tool-dynamic" : part.type}
-          />
-          <ToolContent>
-            {"input" in part ? <ToolInput input={part.input} /> : null}
-            <ToolOutput
-              errorText={
-                "errorText" in part ? (part.errorText ?? undefined) : undefined
-              }
-              output={"output" in part ? part.output : undefined}
-            />
-          </ToolContent>
-        </Tool>
-      ))}
-    </div>
-  );
-}
-
-function FileParts({ parts }: { parts: UIMessage["parts"] }) {
+function MessageFileParts({ parts }: { parts: UIMessage["parts"] }) {
   const fileParts = parts.filter(
     (
-      p,
-    ): p is {
+      part,
+    ): part is {
       type: "file";
       mediaType: string;
       filename?: string;
       url: string;
-    } => p.type === "file" && "url" in p,
+    } => part.type === "file" && "url" in part,
   );
 
   if (fileParts.length === 0) return null;
 
   return (
-    <div className="mb-3 flex flex-wrap gap-2">
-      {fileParts.map((part) => {
-        const isImage = part.mediaType?.startsWith("image/");
-        const key = `${part.url}-${part.filename ?? "file"}`;
+    <div className="mb-1 flex flex-wrap gap-2">
+      {fileParts.map((part) => (
+        <FilePreview
+          file={{
+            url: part.url,
+            filename: part.filename,
+            mediaType: part.mediaType,
+          }}
+          key={`${part.url}-${part.filename ?? "file"}`}
+        />
+      ))}
+    </div>
+  );
+}
 
-        if (isImage) {
-          return (
-            <a
-              key={key}
-              href={part.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group relative overflow-hidden rounded-xl border bg-card shadow-sm"
-            >
-              {/* biome-ignore lint/performance/noImgElement: Chat attachments use arbitrary signed/external URLs that cannot be preconfigured for next/image. */}
-              <img
-                alt={part.filename || "Attached image"}
-                src={part.url}
-                className="h-28 w-28 object-cover transition-opacity group-hover:opacity-80"
-              />
-            </a>
-          );
-        }
+function useCopy() {
+  const [copied, setCopied] = useState(false);
 
-        const Icon =
-          part.mediaType === "application/pdf" ? FileTextIcon : FileIcon;
-        return (
-          <a
-            key={key}
-            href={part.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2 text-xs shadow-sm hover:bg-muted/50"
-          >
-            <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />
-            <span className="max-w-32 truncate">{part.filename || "File"}</span>
-          </a>
-        );
-      })}
+  const copy = (value: string) => {
+    if (!value.trim()) return;
+    void navigator.clipboard
+      ?.writeText(value)
+      .then(() => {
+        setCopied(true);
+        toast.success("Copied to clipboard");
+        window.setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => toast.error("Could not copy that text."));
+  };
+
+  return { copied, copy };
+}
+
+function AnswerActions({
+  message,
+  onRegenerate,
+  onMakeQuiz,
+}: {
+  message: UIMessage;
+  onRegenerate?: (messageId: string) => void;
+  onMakeQuiz?: () => void;
+}) {
+  const { copied, copy } = useCopy();
+  const text = normalizeMarkdownForDisplay(messageText(message)).trim();
+
+  return (
+    <MessageActions className={ACTION_ROW}>
+      <MessageAction
+        className="size-11"
+        label="Copy answer"
+        onClick={() => copy(text)}
+      >
+        {copied ? (
+          <CheckIcon aria-hidden="true" className="size-4 text-green-600" />
+        ) : (
+          <CopyIcon aria-hidden="true" className="size-4" />
+        )}
+      </MessageAction>
+      <MessageAction
+        className="size-11"
+        label="Regenerate answer"
+        onClick={() => onRegenerate?.(message.id)}
+      >
+        <RefreshCwIcon aria-hidden="true" className="size-4" />
+      </MessageAction>
+      <MessageAction
+        className="size-11"
+        label="Make a quiz from this"
+        onClick={() => onMakeQuiz?.()}
+      >
+        <SparklesIcon aria-hidden="true" className="size-4" />
+      </MessageAction>
+    </MessageActions>
+  );
+}
+
+function QuestionActions({
+  message,
+  onEdit,
+}: {
+  message: UIMessage;
+  onEdit?: (message: UIMessage) => void;
+}) {
+  const { copied, copy } = useCopy();
+
+  return (
+    <MessageActions className={cn(ACTION_ROW, "justify-end")}>
+      <MessageAction
+        className="size-11"
+        label="Copy question"
+        onClick={() => copy(messageText(message).trim())}
+      >
+        {copied ? (
+          <CheckIcon aria-hidden="true" className="size-4 text-green-600" />
+        ) : (
+          <CopyIcon aria-hidden="true" className="size-4" />
+        )}
+      </MessageAction>
+      <MessageAction
+        className="size-11"
+        label="Edit question"
+        onClick={() => onEdit?.(message)}
+      >
+        <PencilIcon aria-hidden="true" className="size-4" />
+      </MessageAction>
+    </MessageActions>
+  );
+}
+
+function StoppedLine({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+      <span>{CHAT_STOPPED_LABEL}</span>
+      {onRetry ? (
+        <Button
+          className="min-h-11"
+          onClick={onRetry}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <RefreshCwIcon aria-hidden="true" className="mr-1.5 size-4" />
+          Try again
+        </Button>
+      ) : null}
+    </div>
+  );
+}
+
+/**
+ * The line shown from the moment send is pressed, before any answer text
+ * exists. It is the same disclosure the answer will carry, so nothing jumps
+ * when the first token lands.
+ */
+function ThinkingLine({ status }: { status: ChatStatus }) {
+  return (
+    <Message from="assistant">
+      <ActivityBlock parts={[]} status={status} />
+    </Message>
+  );
+}
+
+function FailedLine({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <div className="flex flex-col items-start gap-2 text-sm text-muted-foreground">
+      <p>
+        The connection dropped before that answer finished. What already arrived
+        is still above.
+      </p>
+      {onRetry ? (
+        <Button
+          className="min-h-11"
+          onClick={onRetry}
+          size="sm"
+          type="button"
+          variant="outline"
+        >
+          <RefreshCwIcon aria-hidden="true" className="mr-1.5 size-4" />
+          Try again
+        </Button>
+      ) : null}
     </div>
   );
 }
@@ -221,34 +235,33 @@ function FileParts({ parts }: { parts: UIMessage["parts"] }) {
 function MessageBody({
   message,
   isStreaming = false,
+  isNewestAssistant = false,
+  stopped = false,
+  durationMs,
+  suggestions,
+  onRetry,
+  onRegenerate,
+  onEdit,
+  onMakeQuiz,
+  onSuggestion,
 }: {
   message: UIMessage;
   isStreaming?: boolean;
+  isNewestAssistant?: boolean;
+  stopped?: boolean;
+  durationMs?: number | null;
+  suggestions?: string[];
+  onRetry?: (messageId?: string) => void;
+  onRegenerate?: (messageId: string) => void;
+  onEdit?: (message: UIMessage) => void;
+  onMakeQuiz?: () => void;
+  onSuggestion?: (text: string) => void;
 }) {
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const text = message.parts
-    .filter(isTextUIPart)
-    .map((part) => part.text)
-    .join("\n");
+  const text = useMemo(() => messageText(message), [message]);
   const normalizedText = normalizeMarkdownForDisplay(text);
-  const reasoning = message.parts
-    .filter(isReasoningUIPart)
-    .map((part) => part.text)
-    .join("\n");
-  const sourceParts = message.parts.filter(
-    (part) => part.type === "source-url" || part.type === "source-document",
-  );
-  const toolSummary =
-    !text.trim() && message.parts.some(isToolOrDynamicToolUIPart)
-      ? message.parts
-          .filter(isToolOrDynamicToolUIPart)
-          .map((part) => summarizeToolPart(part))
-          .join("\n")
-      : "";
+  const isAssistant = message.role === "assistant";
 
-  // The caret is drawn inside every paragraph of the answer and the stylesheet
-  // keeps it in the last one only, so it sits at the end of the text while
-  // the tokens are still arriving.
+  // The caret lives at the end of the last paragraph while tokens arrive.
   const components = useMemo(
     () => ({
       p: ({ children, ...props }: ComponentProps<"p">) => (
@@ -261,112 +274,53 @@ function MessageBody({
     [isStreaming],
   );
 
-  const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedId(id);
-    toast.success("Copied to clipboard");
-    setTimeout(() => setCopiedId(null), 2000);
-  };
+  if (isAssistant) {
+    return (
+      <>
+        <ActivityBlock
+          durationMs={durationMs}
+          parts={message.parts}
+          status={isStreaming ? "streaming" : "ready"}
+        />
+
+        {normalizedText.trim() ? (
+          <div className="chat-answer w-full text-sm leading-7">
+            <MessageResponse components={components}>
+              {normalizedText}
+            </MessageResponse>
+          </div>
+        ) : null}
+
+        {stopped ? <StoppedLine onRetry={() => onRetry?.(message.id)} /> : null}
+
+        {isNewestAssistant && suggestions && suggestions.length > 0 ? (
+          <SuggestedReplies
+            onSelect={(question) => onSuggestion?.(question)}
+            questions={suggestions}
+          />
+        ) : null}
+
+        {!isStreaming && normalizedText.trim() ? (
+          <AnswerActions
+            message={message}
+            onMakeQuiz={onMakeQuiz}
+            onRegenerate={onRegenerate}
+          />
+        ) : null}
+      </>
+    );
+  }
 
   return (
     <>
-      {message.role === "assistant" ? (
-        <div className="mb-2 flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary">
-            {TIP_NAME}
-          </span>
-          Study assistant
-        </div>
-      ) : null}
-
-      <FileParts parts={message.parts} />
-
-      {sourceParts.length > 0 ? (
-        <Sources>
-          <SourcesTrigger count={sourceParts.length} />
-          <SourcesContent>
-            {sourceParts.map((part, index) => (
-              <Source
-                href={"url" in part ? (part.url ?? "") : ""}
-                key={`${message.id}-source-${index}`}
-                title={"title" in part ? (part.title ?? "") : ""}
-              />
-            ))}
-          </SourcesContent>
-        </Sources>
-      ) : null}
-
-      {reasoning ? (
-        <Reasoning duration={0}>
-          <ReasoningTrigger />
-          <ReasoningContent>{reasoning}</ReasoningContent>
-        </Reasoning>
-      ) : null}
-
-      {text.trim() || toolSummary ? (
-        <MessageContent>
-          <div className="chat-answer">
-            <MessageResponse components={components}>
-              {normalizedText.trim() || toolSummary}
-            </MessageResponse>
-          </div>
-        </MessageContent>
-      ) : null}
-
-      <ToolParts parts={message.parts} />
-
-      {message.role === "assistant" && (
-        <MessageActions className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-          <MessageAction
-            tooltip="Copy response"
-            onClick={() => handleCopy(normalizedText.trim(), message.id)}
-          >
-            {copiedId === message.id ? (
-              <CheckIcon className="w-3.5 h-3.5 text-green-500" />
-            ) : (
-              <CopyIcon className="w-3.5 h-3.5" />
-            )}
-          </MessageAction>
-        </MessageActions>
-      )}
-    </>
-  );
-}
-
-/**
- * The thinking line. It sits inside the answer bubble and it is the only
- * thing shown while the model has not answered. The first token replaces it.
- */
-function ThinkingBubble() {
-  return (
-    <Message from="assistant">
       <MessageContent>
-        <p className="text-sm text-muted-foreground">{TIP_NAME} is thinking…</p>
-      </MessageContent>
-    </Message>
-  );
-}
-
-/**
- * The bubble for a failed answer. A plain line and a retry, never a lost
- * answer that reads as broken.
- */
-function FailedBubble({ onRetry }: { onRetry?: () => void }) {
-  return (
-    <Message from="assistant">
-      <MessageContent>
-        <p className="text-sm text-muted-foreground">
-          That answer did not make it through. Nothing was lost, so you can ask
-          again.
-        </p>
-        {onRetry ? (
-          <Button size="sm" variant="outline" onClick={onRetry}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Try again
-          </Button>
+        <MessageFileParts parts={message.parts} />
+        {normalizedText.trim() ? (
+          <p className="whitespace-pre-wrap break-words">{normalizedText}</p>
         ) : null}
       </MessageContent>
-    </Message>
+      <QuestionActions message={message} onEdit={onEdit} />
+    </>
   );
 }
 
@@ -375,29 +329,42 @@ export function ChatMessageList({
   status,
   emptyState,
   onRetry,
+  onRegenerate,
+  onEdit,
+  onMakeQuiz,
+  onSuggestion,
+  stoppedIds,
+  durationMs,
+  suggestions,
   className,
 }: {
   messages: UIMessage[];
-  status: "submitted" | "streaming" | "ready" | "error";
+  status: ChatStatus;
   emptyState?: React.ReactNode;
   /** Sends the last question again through the same transport. */
-  onRetry?: () => void;
+  onRetry?: (messageId?: string) => void;
+  onRegenerate?: (messageId: string) => void;
+  onEdit?: (message: UIMessage) => void;
+  onMakeQuiz?: () => void;
+  onSuggestion?: (text: string) => void;
+  stoppedIds?: Set<string>;
+  durationMs?: number | null;
+  suggestions?: string[];
   className?: string;
 }) {
   const lastMessage = messages[messages.length - 1];
-  const lastMessageHasText = lastMessage
-    ? lastMessage.parts.some(
-        (part) => isTextUIPart(part) && part.text.trim().length > 0,
-      )
-    : false;
+  const lastAssistantIndex = messages.reduce(
+    (found, message, index) => (message.role === "assistant" ? index : found),
+    -1,
+  );
 
-  // The thinking line is shown until the first token arrives, and the first
-  // token replaces it.
-  const isThinking =
+  // While nothing has come back yet, the activity line stands where the
+  // answer will be. Once an assistant message exists it carries its own.
+  const showThinkingLine =
     (status === "submitted" || status === "streaming") &&
-    (!lastMessage || lastMessage.role !== "assistant" || !lastMessageHasText);
+    (!lastMessage || lastMessage.role !== "assistant");
 
-  const isStreamingAnswer = status === "streaming" && lastMessageHasText;
+  const isStreamingAnswer = status === "streaming";
 
   return (
     <Conversation className={cn("h-full", className)}>
@@ -407,15 +374,36 @@ export function ChatMessageList({
         {messages.map((message, index) => (
           <Message from={message.role} key={message.id}>
             <MessageBody
+              durationMs={
+                index === lastAssistantIndex && status === "ready"
+                  ? durationMs
+                  : undefined
+              }
+              isNewestAssistant={
+                index === lastAssistantIndex && status === "ready"
+              }
+              isStreaming={
+                isStreamingAnswer &&
+                index === messages.length - 1 &&
+                message.role === "assistant"
+              }
               message={message}
-              isStreaming={isStreamingAnswer && index === messages.length - 1}
+              onEdit={onEdit}
+              onMakeQuiz={onMakeQuiz}
+              onRegenerate={onRegenerate}
+              onRetry={onRetry}
+              onSuggestion={onSuggestion}
+              stopped={stoppedIds?.has(message.id) ?? false}
+              suggestions={
+                index === lastAssistantIndex ? suggestions : undefined
+              }
             />
           </Message>
         ))}
 
-        {isThinking ? <ThinkingBubble /> : null}
+        {showThinkingLine ? <ThinkingLine status={status} /> : null}
 
-        {status === "error" ? <FailedBubble onRetry={onRetry} /> : null}
+        {status === "error" ? <FailedLine onRetry={() => onRetry?.()} /> : null}
       </ConversationContent>
       <ConversationScrollButton />
     </Conversation>

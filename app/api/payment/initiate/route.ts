@@ -1,11 +1,8 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { payablePlans } from "@/constants/plans";
 import { auth } from "@/lib/auth";
-import {
-  getPlanPrice,
-  initiatePayment,
-  type PaymentPlanConfig,
-} from "@/lib/fapshi";
+import { getPlanPrice, initiatePayment } from "@/lib/fapshi";
 import { EVENTS, trackEvent } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
 
@@ -16,11 +13,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const { plan } = await request.json();
-    if (!["STARTER", "STANDARD", "PREMIUM", "PRO"].includes(plan)) {
+    if (!payablePlans.includes(plan)) {
       return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
     }
 
-    const price = getPlanPrice(plan as keyof PaymentPlanConfig);
+    const price = getPlanPrice(plan);
 
     let subscription = await prisma.subscription.findFirst({
       where: { userId: session.user.id },

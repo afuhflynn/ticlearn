@@ -8,6 +8,7 @@ import {
   WEB_SEARCH_TOOL_POLICIES,
   wrapTool,
 } from "@/lib/ai/tool-policy";
+import { sanitizeSuggestions } from "@/lib/ai/validators";
 import {
   getEffectiveCreditCost,
   getUserCreditBalance,
@@ -179,6 +180,13 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
     description: getToolDescription("get_note_context"),
     inputSchema: z.object({
       noteId: z.string().min(1).describe("The note ID."),
+      noteTitle: z
+        .string()
+        .max(120)
+        .optional()
+        .describe(
+          "The note title, when it is already known. It names the note for the student while the tool runs.",
+        ),
     }),
     execute: async ({ noteId }) => {
       const note = await prisma.note.findFirst({
@@ -395,11 +403,17 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
       title: z.string().min(3).max(120).describe("Quiz title."),
       noteId: z
         .string()
-        .describe("ID of the user's note this quiz comes from."),
+        .optional()
+        .describe(
+          "ID of the user's note this quiz comes from. Omit it when the student has no note in play and the quiz is built from the topic they named.",
+        ),
       noteTitle: z
         .string()
         .max(120)
-        .describe("Note title shown on the quiz card."),
+        .optional()
+        .describe(
+          "Note title shown on the quiz card. Omit it when there is no note; the quiz title is used instead.",
+        ),
       timed: z.boolean().default(false).describe("Whether the quiz is timed."),
       timeLimit: z
         .number()
@@ -445,15 +459,22 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
       timeLimit,
       questions,
     }) => {
-      const note = await prisma.note.findFirst({
-        where: { id: noteId, userId },
-        select: { id: true },
-      });
-      if (!note) {
-        throw new Error(
-          "Note not found or does not belong to the current user.",
-        );
+      // A quiz no longer needs a note. When the student has none in play the
+      // note stays null and the topic they named becomes the card title.
+      let note: { id: string } | null = null;
+      if (noteId) {
+        note = await prisma.note.findFirst({
+          where: { id: noteId, userId },
+          select: { id: true },
+        });
+        if (!note) {
+          throw new Error(
+            "Note not found or does not belong to the current user.",
+          );
+        }
       }
+      const resolvedNoteTitle = noteTitle?.trim() || title;
+      const resolvedNoteId = note?.id ?? null;
 
       if (timed && !timeLimit) {
         throw new Error("timeLimit is required when timed is true.");
@@ -495,8 +516,8 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
         const created = await tx.quiz.create({
           data: {
             userId,
-            noteId,
-            noteTitle,
+            noteId: resolvedNoteId,
+            noteTitle: resolvedNoteTitle,
             title,
             questionCount: questions.length,
             status: "READY",
@@ -542,10 +563,26 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
         isPublic: quiz.isPublic,
         timed: quiz.timed,
         timeLimit: quiz.timeLimit,
-        noteId: noteId ?? null,
-        noteTitle,
+        noteId: resolvedNoteId,
+        noteTitle: resolvedNoteTitle,
         status: quiz.status,
       };
+    },
+  });
+
+  const suggestRepliesTool = tool({
+    description: getToolDescription("suggest_replies"),
+    inputSchema: z.object({
+      questions: z
+        .array(z.string())
+        .describe(
+          "Two or three short questions the student could ask next, written in their own voice.",
+        ),
+    }),
+    execute: async ({ questions }) => {
+      // The model's shape is a proposal, not a contract. The sanitizer keeps
+      // two or three safe questions and turns an unusable set into none.
+      return { questions: sanitizeSuggestions(questions) };
     },
   });
 
@@ -596,5 +633,8 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
       CREATE_QUIZ_TOOL_POLICIES,
       policyContext,
     ),
+    // No policy applies: the tool touches no user data, only the model's own
+    // two or three sentences, which the sanitizer caps.
+    suggestReplies: wrapTool(suggestRepliesTool, [], policyContext),
   };
 }

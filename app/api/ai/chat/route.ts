@@ -6,6 +6,11 @@ import { createChatTools } from "@/lib/ai/tools";
 import { logUsage } from "@/lib/ai/usage";
 import { auth } from "@/lib/auth";
 import {
+  isKnownToolName,
+  logUnknownTool,
+  SILENT_TOOL_NAMES,
+} from "@/lib/chat/activity-labels";
+import {
   extractTextFromParts,
   normalizeStoredParts,
 } from "@/lib/chat-messages";
@@ -94,29 +99,91 @@ async function runAfterFirstByte(input: {
   }
 }
 
-async function saveMessage(
-  conversationId: string,
-  userId: string,
-  role: string,
-  content: string,
-  parts: unknown,
-) {
+/**
+ * The row id is the id the client already holds, so Regenerate and Edit can
+ * name a message that was written in this same session. A row the client
+ * loaded from the database keeps the id it was read with either way.
+ */
+async function saveMessage(input: {
+  conversationId: string;
+  userId: string;
+  role: string;
+  content: string;
+  parts: unknown;
+  id?: string;
+  stoppedAt?: Date;
+}) {
   const msg = await prisma.chatMessage.create({
     data: {
-      conversationId,
-      userId,
-      role,
-      content,
-      parts: parts as never,
+      ...(input.id ? { id: input.id } : {}),
+      conversationId: input.conversationId,
+      userId: input.userId,
+      role: input.role,
+      content: input.content,
+      parts: input.parts as never,
+      ...(input.stoppedAt ? { stoppedAt: input.stoppedAt } : {}),
     },
   });
 
   await prisma.chatConversation.update({
-    where: { id: conversationId },
+    where: { id: input.conversationId },
     data: { updatedAt: new Date() },
   });
 
   return msg;
+}
+
+type ConversationNote = {
+  id: string;
+  userId: string;
+  title: string;
+  summary: string | null;
+  keyPoints: string[];
+  extractedText: string | null;
+};
+
+/**
+ * What the model sees about an attached note before it reads anything else.
+ * The excerpt stops at 4000 characters; the note tools can read the rest.
+ */
+function noteContextFor(note: ConversationNote | null): string {
+  if (!note) return NO_NOTE_CONTEXT;
+
+  const keyPoints = note.keyPoints.filter(Boolean).join("; ");
+
+  const lines = [
+    `The student attached the note "${note.title}".`,
+    note.summary ? `Summary: ${note.summary}` : "",
+    keyPoints ? `Key points: ${keyPoints}` : "",
+    note.extractedText
+      ? `Excerpt (first 4000 characters):\n${note.extractedText.slice(0, 4000)}`
+      : "",
+    `Call getNoteContext with noteId "${note.id}" to read any part beyond the excerpt.`,
+  ].filter(Boolean);
+
+  return lines.join("\n\n");
+}
+
+function toolNameOf(part: unknown): string {
+  const type = (part as { type?: string }).type ?? "";
+  if (type === "dynamic-tool") {
+    return (part as { toolName?: string }).toolName ?? "";
+  }
+  return type.replace(/^tool-/, "");
+}
+
+/** A new tool must be noticed, never printed. One log line per unknown name. */
+function logUnknownTools(parts: unknown): void {
+  if (!Array.isArray(parts)) return;
+  for (const part of parts) {
+    if (!part || typeof part !== "object") continue;
+    const type = (part as { type?: string }).type;
+    if (typeof type !== "string") continue;
+    if (!type.startsWith("tool-") && type !== "dynamic-tool") continue;
+    const name = toolNameOf(part);
+    if (!name || SILENT_TOOL_NAMES.has(name)) continue;
+    if (!isKnownToolName(name)) logUnknownTool(name);
+  }
 }
 
 function byteLength(value: string): number {
@@ -148,6 +215,30 @@ function cleanParts(message: UIMessage): UIMessage {
   return kept.length === parts.length
     ? message
     : { ...message, parts: kept as UIMessage["parts"] };
+}
+
+/**
+ * A stopped answer keeps what arrived and drops a step that never returned.
+ * A half finished tool part would otherwise reload as a permanent spinner.
+ */
+function settleStoppedParts(parts: UIMessage["parts"]): UIMessage["parts"] {
+  return parts.filter((part) => !isToolPart(part) || isFinishedToolPart(part));
+}
+
+/** Every row written after one message, in writing order. */
+function afterMessage(
+  conversationId: string,
+  userId: string,
+  target: { id: string; createdAt: Date },
+) {
+  return {
+    conversationId,
+    userId,
+    OR: [
+      { createdAt: { gt: target.createdAt } },
+      { createdAt: target.createdAt, id: { gt: target.id } },
+    ],
+  };
 }
 
 /**
@@ -259,6 +350,14 @@ export async function POST(req: Request) {
     const body = (await req.json()) as {
       messages?: UIMessage[];
       agentMode?: boolean;
+      /** Set by the composer when a question is edited in place. */
+      editMessageId?: string;
+      /** Set by Retry and Regenerate when an answer is replaced. */
+      retryMessageId?: string;
+      // The AI SDK's own envelope. Read as well so the protocol and our own
+      // fields cannot disagree about which message is being rewritten.
+      trigger?: string;
+      messageId?: string;
     };
     const url = new URL(req.url);
     const conversationId = url.searchParams.get("conversationId");
@@ -312,7 +411,19 @@ export async function POST(req: Request) {
       await Promise.all([
         prisma.chatConversation.findFirst({
           where: { id: conversationId, userId },
-          include: { _count: { select: { messages: true } } },
+          include: {
+            _count: { select: { messages: true } },
+            note: {
+              select: {
+                id: true,
+                userId: true,
+                title: true,
+                summary: true,
+                keyPoints: true,
+                extractedText: true,
+              },
+            },
+          },
         }),
         prisma.subscription.findFirst({
           where: { userId },
@@ -353,6 +464,17 @@ export async function POST(req: Request) {
     const plan = subscription?.plan || "FREE";
     const isPaid = plan !== "FREE" && subscription?.status === "ACTIVE";
 
+    // An edit updates one stored question and removes what followed it. A
+    // retry replaces one stored answer. Neither appends a question, so neither
+    // writes a user row and neither counts toward the thread length.
+    const retryTargetId =
+      body.retryMessageId ??
+      (body.trigger === "regenerate-message" ? body.messageId : undefined);
+    const editTargetId =
+      body.editMessageId ??
+      (body.trigger === "submit-message" ? body.messageId : undefined);
+    const isRewrite = Boolean(editTargetId || retryTargetId);
+
     const enforcement = creditEnforcementEffective(settings);
     const tutorCost = settings.creditCostAiTutorMessage;
 
@@ -387,7 +509,10 @@ export async function POST(req: Request) {
       PREMIUM: 500,
     };
     const maxMessagesPerConversation = conversationLimits[plan] ?? 50;
-    if (conversation._count.messages >= maxMessagesPerConversation) {
+    if (
+      !isRewrite &&
+      conversation._count.messages >= maxMessagesPerConversation
+    ) {
       return NextResponse.json(
         {
           error: `This conversation has reached the ${maxMessagesPerConversation}-message limit. Please start a new conversation to continue.`,
@@ -399,22 +524,98 @@ export async function POST(req: Request) {
     const normalizedUserParts = normalizeStoredParts(latestUserMessage.parts);
     const userContent = extractTextFromParts(normalizedUserParts);
 
-    // The student's turn is written before the stream starts. A closed tab
-    // loses the answer, but it must not lose the question they asked.
-    const userMsgRecord = await saveMessage(
-      conversationId,
-      userId,
-      "user",
-      userContent,
-      normalizedUserParts,
-    );
+    let userMsgRecord: { id: string } | null = null;
+
+    if (editTargetId) {
+      // The edited question is rewritten in place and every turn that followed
+      // it is removed, so a reload can never resurrect the replaced answer.
+      const target = await prisma.chatMessage.findFirst({
+        where: {
+          id: editTargetId,
+          conversationId,
+          userId,
+          role: "user",
+        },
+        select: { id: true, createdAt: true },
+      });
+      if (!target) {
+        return NextResponse.json(
+          { error: "Message not found" },
+          { status: 404 },
+        );
+      }
+
+      await prisma.$transaction([
+        prisma.chatMessage.update({
+          where: { id: target.id },
+          data: {
+            content: userContent,
+            parts: normalizedUserParts as never,
+            stoppedAt: null,
+          },
+        }),
+        prisma.chatMessage.deleteMany({
+          where: afterMessage(conversationId, userId, target),
+        }),
+        prisma.chatConversation.update({
+          where: { id: conversationId },
+          data: { updatedAt: new Date() },
+        }),
+      ]);
+      userMsgRecord = target;
+    } else if (retryTargetId) {
+      const target = await prisma.chatMessage.findFirst({
+        where: {
+          id: retryTargetId,
+          conversationId,
+          userId,
+          role: "assistant",
+        },
+        select: { id: true, createdAt: true },
+      });
+      if (!target) {
+        return NextResponse.json(
+          { error: "Message not found" },
+          { status: 404 },
+        );
+      }
+
+      await prisma.$transaction([
+        prisma.chatMessage.deleteMany({
+          where: afterMessage(conversationId, userId, target),
+        }),
+        prisma.chatConversation.update({
+          where: { id: conversationId },
+          data: { updatedAt: new Date() },
+        }),
+      ]);
+
+      // The question is already stored. It keeps its place as the reference
+      // for the credit ledger.
+      userMsgRecord = await prisma.chatMessage.findFirst({
+        where: { conversationId, userId, role: "user" },
+        orderBy: { createdAt: "desc" },
+        select: { id: true },
+      });
+    } else {
+      // The student's turn is written before the stream starts. A closed tab
+      // loses the answer, but it must not lose the question they asked.
+      userMsgRecord = await saveMessage({
+        conversationId,
+        userId,
+        role: "user",
+        content: userContent,
+        parts: normalizedUserParts,
+        id: latestUserMessage.id,
+      });
+    }
 
     const messageCount = conversation._count.messages;
     const conversationTitle = conversation.title;
 
     trackEvent(userId, EVENTS.CHAT_MESSAGE, { conversationId }).catch(() => {});
 
-    if (messageCount === 0 && conversationTitle === "New Chat") {
+    if (!isRewrite && messageCount === 0 && conversationTitle === "New Chat") {
       // Fire and forget. The title job is background work, and waiting on the
       // send would hold the first token hostage to a network call.
       inngest
@@ -434,6 +635,13 @@ export async function POST(req: Request) {
 
     const studentLevel = levelRow?.levelOfStudy?.trim();
 
+    // A note belongs to the student who owns it, so a conversation that points
+    // at someone else's note reads as no note at all.
+    const attachedNote =
+      conversation.note && conversation.note.userId === userId
+        ? conversation.note
+        : null;
+
     const { text: systemPrompt, settings: promptSettings } = await getPrompt(
       "chat",
       "chat_system",
@@ -442,7 +650,7 @@ export async function POST(req: Request) {
         studentLevel:
           studentLevel ||
           "not on file yet, so start from the plain definition and offer depth when they ask",
-        noteContext: NO_NOTE_CONTEXT,
+        noteContext: noteContextFor(attachedNote),
         profileContext,
         appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "",
       },
@@ -473,9 +681,13 @@ export async function POST(req: Request) {
 
       const assistantContent = agentResult.text;
 
-      await saveMessage(conversationId, userId, "assistant", assistantContent, [
-        { type: "text", text: assistantContent },
-      ]);
+      await saveMessage({
+        conversationId,
+        userId,
+        role: "assistant",
+        content: assistantContent,
+        parts: [{ type: "text", text: assistantContent }],
+      });
 
       if (enforcement.aiTutor && tutorCost > 0) {
         try {
@@ -486,7 +698,7 @@ export async function POST(req: Request) {
               amount: tutorCost,
               type: "AI_TUTOR_MESSAGE",
               description: "TiC AI tutor message (agent)",
-              referenceId: userMsgRecord.id,
+              referenceId: userMsgRecord?.id ?? conversationId,
             });
           }
         } catch (err) {
@@ -520,7 +732,7 @@ export async function POST(req: Request) {
         console.error("[Chat] stream error:", err);
         return "Failed to generate response.";
       },
-      onFinish: async ({ isAborted, responseMessage }) => {
+      onFinish: async ({ finishReason, isAborted, responseMessage }) => {
         // Runs with the stream alive, so the work lands even on serverless.
         void runAfterFirstByte({
           userId,
@@ -529,18 +741,31 @@ export async function POST(req: Request) {
         }).catch(() => {});
 
         try {
-          if (isAborted) return;
+          logUnknownTools(responseMessage.parts);
 
-          const assistantParts = normalizeStoredParts(responseMessage.parts);
+          const rawParts = normalizeStoredParts(responseMessage.parts);
+          // A client stop cancels the stream before any finish chunk, so a
+          // missing finish reason is what a stop looks like from here. The
+          // SDK's own abort flag covers a provider side cut.
+          const stopped = isAborted || finishReason === undefined;
+          const assistantParts = stopped
+            ? settleStoppedParts(rawParts)
+            : rawParts;
           const assistantContent = extractTextFromParts(assistantParts);
 
-          await saveMessage(
+          // A stop before the first token leaves no answer to keep. The
+          // question stands alone and nothing half drawn is stored.
+          if (stopped && assistantContent.length === 0) return;
+
+          await saveMessage({
             conversationId,
             userId,
-            "assistant",
-            assistantContent,
-            assistantParts,
-          );
+            role: "assistant",
+            content: assistantContent,
+            parts: assistantParts,
+            id: responseMessage.id || undefined,
+            ...(stopped ? { stoppedAt: new Date() } : {}),
+          });
 
           if (enforcement.aiTutor && tutorCost > 0) {
             try {
@@ -551,7 +776,7 @@ export async function POST(req: Request) {
                   amount: tutorCost,
                   type: "AI_TUTOR_MESSAGE",
                   description: "TiC AI tutor message",
-                  referenceId: userMsgRecord.id,
+                  referenceId: userMsgRecord?.id ?? conversationId,
                 });
               }
             } catch (err) {

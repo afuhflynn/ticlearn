@@ -448,6 +448,8 @@ export interface ChatMessage {
   role: string;
   content: string;
   parts: unknown;
+  /** Set when the student stopped the stream and the partial answer was kept. */
+  stoppedAt?: string | null;
   createdAt: string;
 }
 

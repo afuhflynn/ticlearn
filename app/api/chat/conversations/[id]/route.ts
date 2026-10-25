@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
@@ -35,6 +36,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         createdAt: true,
         updatedAt: true,
         summary: true,
+        note: { select: { id: true, title: true } },
       },
     });
 
@@ -55,6 +57,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
         role: true,
         content: true,
         parts: true,
+        stoppedAt: true,
         createdAt: true,
       },
     });
@@ -127,9 +130,25 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
 
     const { id } = await params;
 
-    // Batched file key scan, 200 messages per batch, so giant threads
-    // never load in one unbounded read.
+    // Ownership is checked before any file is touched. Without this, a known
+    // conversation id would let a student delete another student's files on a
+    // row their own delete later refuses.
+    const owned = await prisma.chatConversation.findFirst({
+      where: { id, userId: session.user.id },
+      select: { id: true },
+    });
+    if (!owned) {
+      return NextResponse.json(
+        { error: "Conversation not found" },
+        { status: 404 },
+      );
+    }
+
+    // Batched file scan, 200 messages per batch, so giant threads
+    // never load in one unbounded read. Old UploadThing links and new Blob
+    // files are both collected; either cleanup is best effort.
     const fileKeys: string[] = [];
+    const blobUrls: string[] = [];
     let cursor: string | undefined;
     for (;;) {
       const batch = await prisma.chatMessage.findMany({
@@ -145,13 +164,14 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
         const parts = msg.parts as Array<Record<string, unknown>>;
         if (!Array.isArray(parts)) continue;
         for (const part of parts) {
-          if (
-            part?.type === "file" &&
-            typeof part?.url === "string" &&
-            part.url.startsWith("https://utfs.io/")
-          ) {
+          if (part?.type !== "file" || typeof part?.url !== "string") {
+            continue;
+          }
+          if (part.url.startsWith("https://utfs.io/")) {
             const key = getUploadThingFileKey(part.url);
             if (key) fileKeys.push(key);
+          } else if (part.url.includes(".blob.vercel-storage.com/")) {
+            blobUrls.push(part.url);
           }
         }
       }
@@ -165,6 +185,15 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
         await utapi.deleteFiles(fileKeys);
       } catch (e) {
         console.error("[CHAT] Failed to delete UploadThing files:", e);
+      }
+    }
+
+    if (blobUrls.length > 0) {
+      try {
+        await del(blobUrls);
+      } catch (e) {
+        // A file left behind must never block the student's delete.
+        console.error("[CHAT] Failed to delete Blob files:", e);
       }
     }
 
