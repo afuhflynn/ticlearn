@@ -374,6 +374,44 @@ Rebuild `/` section for section from `public/TiCLearn E-Learning Platform Landin
 - `docs/specs/0015-landing-page-mockup/index.md`, `public/marketing/attempt-result-1280.webp`
 <!-- END:landing-page-mockup -->
 
+<!-- BEGIN:chat-interface-rebuild -->
+# Chat interface rebuild (spec 0020) - Implementation Summary
+
+## Goal
+Rebuild the chat around one reading column and one activity line, make the composer stop, grow and preview its files, add suggested questions under the newest answer, and stop gating Tip on an uploaded note. Governed by `docs/specs/0020-chat-interface-rebuild/index.md` (AC-1 to AC-24).
+
+## What was built
+- `components/chat/chat-message-list.tsx`: plain answers, the student's message as the only bubble, per message actions (Copy, Regenerate, Make a quiz from this, Edit), the stopped line and the failure line.
+- `components/chat/activity-block.tsx` and `lib/chat/activity-labels.ts`: one collapsed line, expandable into ordered steps and `source-*` sources, a plain sentence for a failed step, `Thought for Ns` from the live turn only, the `Working` fallback and a one time server log for an unlabelled tool. `suggestReplies` is silent and never appears as a step.
+- `components/chat/chat-composer.tsx`: grows to a maximum then scrolls, Enter sends with a fine pointer, the send control becomes stop while streaming, per file progress, a failed file blocks send, a paste over 6000 characters becomes a text attachment with `Show in text field`, and the draft lives in `sessionStorage` under `ticlearn-chat-draft:<conversationId>`.
+- `components/chat/file-preview.tsx`: image lightbox with zoom and a document sheet, never a new tab.
+- `components/chat/suggested-replies.tsx`: chips under the newest answer only, read from the live turn, never from a reloaded thread.
+- `components/chat/allowance-notice.tsx`: the spent allowance line with the Douala reset time and a plan link.
+- `app/api/chat/upload/route.ts`: `handleUpload` token, session, declared type and size checks (8 MB image, 16 MB PDF or DOCX, 4 MB text), 60 second expiry, scoped to `chat/<userId>/`.
+- `app/api/ai/chat/route.ts`: message ids written from the client id, edit and retry in one transaction, note context from the conversation, a stopped answer saved with `stoppedAt`, unknown tool logging, and the conversation length check skipped on a rewrite.
+- `prisma/schema.prisma`: `ChatMessage.stoppedAt`, migration `20261025072654_add_chat_message_stopped_at`.
+- Prompts: `chat_system` v3 (a note is never required, one scoping question for a vague request, `suggestReplies` at the end of a substantive answer), `create_quiz` v3 (`noteId` optional, topic as the card title), new `suggest_replies`.
+- `lib/ai/validators.ts`: `sanitizeSuggestions`, which keeps two or three, caps each at 60 characters and strips links, markdown and duplicates.
+
+## Gotchas in this area
+- **A stopped answer is detected by a missing finish reason.** A client stop cancels the stream before any finish chunk, so `isAborted || finishReason === undefined` is what a stop looks like on the server. A stop before the first token saves no assistant row.
+- **The assistant row keeps the AI SDK message id.** Regenerate and Edit address a row by that id, so a row written in this session is reachable without a reload.
+- **Chips exist only for the live turn.** `liveSuggestions` is set in `onFinish` and cleared on send, so a reloaded thread draws the same tool part with no chips. That is intended, not a bug.
+- **`ui:check` refuses raw `aria-*` in new files.** A new file takes its accessible name from an `sr-only` span and its disclosure state from `components/ui/collapsible`. The polite live region and the sighted only wrapper live in `components/ui/live-region.tsx`, so the activity line never writes `aria-live` by hand.
+- **The spinner rule reaches `animate-spin` too.** The activity line uses a pulsing dot and the composer's stop button uses a square icon, because a spinner is not a loading state.
+- **`components/ai-elements/` now holds only what the chat uses**: `conversation.tsx`, `message.tsx`, `streaming-caret.tsx`. The eight replaced primitives were deleted, which also takes shiki out of the chat bundle.
+- **The Blob path is unproven live.** `BLOB_READ_WRITE_TOKEN` is documented in `.env.example` and absent from `.env`, so the token route, a 16 MB PDF and the delete cleanup are covered by tests and the type checker only.
+- **CSP now allows `https://vercel.com` in `connect-src`** (the SDK's upload host) and `https://*.public.blob.vercel-storage.com` in `img-src`, `connect-src` and `frame-src`. `frame-ancestors` stays `'none'`.
+
+## Relevant files
+- `components/chat/` (`chat-thread`, `chat-message-list`, `chat-composer`, `chat-landing`, `activity-block`, `file-preview`, `suggested-replies`, `allowance-notice`, `constants`, `pending-message`)
+- `lib/chat/activity-labels.ts`, `lib/chat-messages.ts`, `lib/ai/validators.ts`, `lib/ai/tools.ts`
+- `app/api/ai/chat/route.ts`, `app/api/chat/upload/route.ts`, `app/api/chat/conversations/[id]/route.ts`
+- `components/ui/live-region.tsx`, `components/ai-elements/{conversation,message,streaming-caret}.tsx`
+- `prompts/chat/chat_system.md`, `prompts/tools/create_quiz.md`, `prompts/tools/suggest_replies.md`
+- `tests/components/chat-composer.test.tsx`, `tests/components/chat-activity-block.test.tsx`, `tests/components/chat-message-list.test.tsx`, `tests/components/file-preview.test.tsx`, `tests/components/live-region.test.tsx`, `tests/components/suggested-replies.test.tsx`, `tests/lib/ai/suggestions.test.ts`
+<!-- END:chat-interface-rebuild -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 
