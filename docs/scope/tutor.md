@@ -11,16 +11,16 @@ NOTE: We actually are suggesting to use  vercel blob db for handling image uploa
 Students currently see raw tool call traces, which reads as broken. Every serious product collapses that activity into a labelled line above the answer that expands on tap. The composer has no auto grow, the send button is disabled mid stream so the stop control is unreachable, an attachment opens a link instead of a preview, the attachment count is wrong, and there is a resize handle nobody asked for. ChatGPT is the reference for this.
 **Done when:** an in progress answer shows one collapsed activity line above it with human phrasing such as "Searching the web" and "Read 5 sources", tapping it expands the detail, the composer grows to a maximum height then scrolls, Enter sends and Shift Enter newlines, the stop control is reachable while streaming, an attachment previews on tap and removes individually with an accurate count, and a new chat shows three or four tappable suggestions that fill the composer rather than send. Spec 0020 also moves chat uploads to Vercel Blob and removes the note gate, so Tip researches, teaches and builds practice with or without a note.
 - [x] Design it (spec): `/solution-architect chat interface rebuild` · spec [0020](../specs/0020-chat-interface-rebuild/index.md)
-- [ ] Build it: `/feature-build chat interface rebuild`
-  - [ ] The activity line through every layer, one label map with a fallback, steps, sources and a failed step (covers AC-1, AC-2, AC-3, AC-4, AC-18)
-  - [ ] Composer mechanics and stopped answers kept and marked, retry replacing by message id (covers AC-5, AC-6)
-  - [ ] Blob client upload with its token route, per file progress, attachment previews and the delete path (covers AC-7, AC-9, AC-15, AC-19)
-  - [ ] Long paste as a text attachment, the per conversation draft and the note context on the send path (covers AC-10, AC-11, AC-12)
-  - [ ] De-gate the tutor in the prompt and the quiz tool, the capability line, the four starters, the suggested questions under the newest answer, and the allowance and connection states (covers AC-8, AC-13, AC-14, AC-16, AC-17, AC-23, AC-24)
+- [x] Build it: `/feature-build chat interface rebuild`
+  - [x] The activity line through every layer, one label map with a fallback, steps, sources and a failed step (covers AC-1, AC-2, AC-3, AC-4, AC-18)
+  - [x] Composer mechanics and stopped answers kept and marked, retry replacing by message id (covers AC-5, AC-6)
+  - [x] Blob client upload with its token route, per file progress, attachment previews and the delete path (covers AC-7, AC-9, AC-15, AC-19). The live 16 MB proof waits on `BLOB_READ_WRITE_TOKEN`, which is not in `.env` yet
+  - [x] Long paste as a text attachment, the per conversation draft and the note context on the send path (covers AC-10, AC-11, AC-12)
+  - [x] De-gate the tutor in the prompt and the quiz tool, the capability line, the four starters, the suggested questions under the newest answer, and the allowance and connection states (covers AC-8, AC-13, AC-14, AC-16, AC-17, AC-23, AC-24)
 - [ ] Verify it: `/verify-release chat interface rebuild`
-- [ ] Test it: `/test-engineer chat interface rebuild`
-- [ ] Review it (fresh model): `/peer-review chat interface rebuild`
-- [ ] Document it: `/tech-writer chat interface rebuild`
+- [x] Test it: `/test-engineer chat interface rebuild`
+- [x] Review it (fresh model): `/peer-review chat interface rebuild`
+- [x] Document it: `/tech-writer chat interface rebuild`
 
 (basis: research/chat-experience.md §1 and §2 · six of twelve surveyed systems use action specific labels and none ship raw JSON, so the vocabulary is copied rather than invented; also, three separate public complaint threads show Enter sending instead of newlining on mobile is a real problem)
 

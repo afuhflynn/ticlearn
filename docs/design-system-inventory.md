@@ -234,6 +234,13 @@
     "exception": null
   },
   {
+    "file": "components/ui/live-region.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-10-25",
+    "exception": "Built for spec 0020, it has no registry element behind it. A polite live region and a sighted only wrapper are the two assistive text cases the activity line needs, and neither is a control."
+  },
+  {
     "file": "components/ui/navigation-menu.tsx",
     "base": "radix",
     "registryVersion": "unknown",

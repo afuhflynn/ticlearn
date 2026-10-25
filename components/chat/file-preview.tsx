@@ -77,7 +77,7 @@ export function FilePreview({
           className,
         )}
       >
-        <ImageOffIcon aria-hidden="true" className="size-4" />
+        <ImageOffIcon className="size-4" />
         Preview unavailable
       </span>
     );
@@ -85,19 +85,20 @@ export function FilePreview({
 
   return (
     <>
-      <button
-        aria-label={`Preview ${name}`}
+      <Button
         className={cn(
-          "flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-[var(--radius-md)] border bg-muted text-muted-foreground transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+          "size-16 shrink-0 overflow-hidden p-0 text-muted-foreground",
           className,
         )}
         onClick={() => setOpen(true)}
         type="button"
+        variant="outline"
       >
+        <span className="sr-only">Preview {name}</span>
         {isImage && file.url ? (
           // biome-ignore lint/performance/noImgElement: chat files come from arbitrary Blob and legacy origins that next/image cannot preconfigure.
           <img
-            alt={name}
+            alt=""
             className="size-full object-cover"
             height={64}
             onError={() => setBroken(true)}
@@ -105,11 +106,11 @@ export function FilePreview({
             width={64}
           />
         ) : file.mediaType === "application/pdf" ? (
-          <FileTextIcon aria-hidden="true" className="size-6" />
+          <FileTextIcon className="size-6" />
         ) : (
-          <PaperclipIcon aria-hidden="true" className="size-6" />
+          <PaperclipIcon className="size-6" />
         )}
-      </button>
+      </Button>
 
       {isImage ? (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -129,25 +130,25 @@ export function FilePreview({
             </div>
             <div className="flex items-center justify-center gap-2">
               <Button
-                aria-label="Zoom out"
                 onClick={() => setZoom((current) => Math.max(1, current - 0.5))}
                 size="icon-lg"
                 type="button"
                 variant="outline"
               >
-                <ZoomOutIcon aria-hidden="true" />
+                <ZoomOutIcon />
+                <span className="sr-only">Zoom out</span>
               </Button>
               <span className="min-w-12 text-center text-xs text-muted-foreground">
                 {Math.round(zoom * 100)}%
               </span>
               <Button
-                aria-label="Zoom in"
                 onClick={() => setZoom((current) => Math.min(3, current + 0.5))}
                 size="icon-lg"
                 type="button"
                 variant="outline"
               >
-                <ZoomInIcon aria-hidden="true" />
+                <ZoomInIcon />
+                <span className="sr-only">Zoom in</span>
               </Button>
             </div>
           </DialogContent>

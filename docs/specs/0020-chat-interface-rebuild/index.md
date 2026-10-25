@@ -1,7 +1,7 @@
 # 0020. Rebuild the chat interface and stop gating the tutor on notes
 
 **Date**: 2026-10-25
-**Status**: Proposed
+**Status**: Built, 2026-10-25. The live Blob upload proof, `/verify-release`, `/peer-review` and `/tech-writer` are still open.
 
 ## Summary
 
@@ -258,6 +258,7 @@ Tracer Bullet. Slice one rebuilds the thread shell and puts the activity line th
 
 ## Follow-up
 
+- [ ] Prove the Blob path against a real store. `BLOB_READ_WRITE_TOKEN` is documented in `.env.example` but is not in `.env` yet, so `/api/chat/upload`, a 16 MB PDF and the delete cleanup are proven by the unit tests and the type checker only. Add the token, upload one 16 MB PDF, then delete the conversation and confirm the file is gone from the store.
 - [ ] The app shell and navigation rebuild is its own scope feature (46), not part of this spec. It touches every authed page: one sidebar, one header, one toggle, and the conversation list inside the main sidebar.
 - [ ] Full generative UI, where the model renders a component we did not design (a graph, a step list), is a different decision from generated suggestions and is not in this slice.
 - [ ] A chip that sends on tap has no undo. If mistaps show up in the data, the next step is a short undo affordance on the sent message.
