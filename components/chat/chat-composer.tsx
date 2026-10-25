@@ -238,7 +238,11 @@ export function ChatComposer({
         return;
       }
 
-      updateAttachment(item.id, { status: "uploading", progress: 0 });
+      updateAttachment(item.id, {
+        status: "uploading",
+        progress: 0,
+        error: undefined,
+      });
       try {
         const result = await upload(
           `chat/${userId}/${crypto.randomUUID()}-${safeFileName(item.name)}`,
