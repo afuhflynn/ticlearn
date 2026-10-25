@@ -2,6 +2,7 @@
 
 import type { UIMessage } from "ai";
 import { ArrowUpRightIcon } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 /** Read the chips from the one silent tool that produced them. */
 export function suggestionsFromParts(parts: UIMessage["parts"]): string[] {
@@ -39,18 +40,16 @@ export function SuggestedReplies({
   return (
     <div className="flex w-full flex-wrap gap-2">
       {questions.map((question) => (
-        <button
-          className="inline-flex min-h-11 max-w-full items-center gap-1.5 rounded-full border bg-background px-3 text-left text-sm transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        <Button
+          className="h-auto min-h-11 max-w-full items-center gap-1.5 rounded-full px-3 py-2 text-left text-sm font-normal whitespace-normal"
           key={question}
           onClick={() => onSelect(question)}
           type="button"
+          variant="outline"
         >
           <span className="min-w-0 break-words">{question}</span>
-          <ArrowUpRightIcon
-            aria-hidden="true"
-            className="size-3.5 shrink-0 text-muted-foreground"
-          />
-        </button>
+          <ArrowUpRightIcon className="size-3.5 shrink-0 text-muted-foreground" />
+        </Button>
       ))}
     </div>
   );

@@ -23,6 +23,8 @@ import {
 import { CHAT_CAPABILITY_LINE, TIP_NAME } from "@/components/chat/constants";
 import { FilePreview } from "@/components/chat/file-preview";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useSession } from "@/lib/auth-client";
 import { cn, formatFileSize } from "@/lib/utils";
 
@@ -475,7 +477,7 @@ export function ChatComposer({
                 />
               ) : (
                 <span className="flex size-16 shrink-0 items-center justify-center rounded-[var(--radius-md)] border bg-muted text-muted-foreground">
-                  <PaperclipIcon aria-hidden="true" className="size-5" />
+                  <PaperclipIcon className="size-5" />
                 </span>
               )}
               <div className="min-w-0 max-w-40">
@@ -492,45 +494,48 @@ export function ChatComposer({
                   <p className="text-xs text-destructive">{item.error}</p>
                 ) : null}
                 {item.source === "paste" ? (
-                  <button
-                    className="mt-1 text-left text-xs underline underline-offset-2"
+                  <Button
+                    className="mt-1 h-auto px-0 text-left text-xs font-normal"
                     onClick={() => showPasteInTextField(item)}
                     type="button"
+                    variant="link"
                   >
                     Show in text field
-                  </button>
+                  </Button>
                 ) : null}
               </div>
               {item.status === "failed" && item.source === "file" ? (
                 <Button
-                  aria-label={`Retry ${item.name}`}
                   className="size-11 shrink-0"
                   onClick={() => retryAttachment(item)}
                   type="button"
                   variant="ghost"
                 >
-                  <RotateCwIcon aria-hidden="true" className="size-4" />
+                  <RotateCwIcon className="size-4" />
+                  <span className="sr-only">Retry {item.name}</span>
                 </Button>
               ) : null}
               <Button
-                aria-label={`Remove ${item.name}`}
                 className="size-11 shrink-0"
                 onClick={() => removeAttachment(item.id)}
                 type="button"
                 variant="ghost"
               >
-                <XIcon aria-hidden="true" className="size-4" />
+                <XIcon className="size-4" />
+                <span className="sr-only">Remove {item.name}</span>
               </Button>
             </div>
           ))}
           {hiddenCount > 0 ? (
-            <button
-              className="flex h-16 min-w-11 items-center justify-center rounded-[var(--radius-md)] border bg-muted/30 px-3 text-xs font-medium"
+            <Button
+              className="h-16 min-w-11 px-3 text-xs"
               onClick={() => setShowAllAttachments(true)}
               type="button"
+              variant="outline"
             >
               +{hiddenCount}
-            </button>
+              <span className="sr-only"> more attachments</span>
+            </Button>
           ) : null}
         </div>
       ) : null}
@@ -567,31 +572,34 @@ export function ChatComposer({
         onSubmit={handleSubmit}
       >
         <div className="flex items-end gap-1">
-          <input
+          <Input
             accept={CHAT_ACCEPT}
-            aria-label="Attach files"
             className="hidden"
+            id="chat-attachment-input"
             multiple
             onChange={handleFileChange}
             ref={inputRef}
             type="file"
           />
           <Button
-            aria-label="Attach files"
             className="size-11 shrink-0"
             disabled={disabled}
             onClick={() => inputRef.current?.click()}
             type="button"
             variant="ghost"
           >
-            <PlusIcon aria-hidden="true" className="size-5" />
+            <PlusIcon className="size-5" />
+            <span className="sr-only">Attach files</span>
           </Button>
 
-          <textarea
-            aria-label={`Message ${TIP_NAME}`}
-            className="field-sizing-content max-h-48 min-h-11 w-full resize-none overflow-y-auto bg-transparent px-1 py-2.5 text-sm leading-6 outline-none placeholder:text-muted-foreground"
+          <label className="sr-only" htmlFor="chat-message-input">
+            Message {TIP_NAME}
+          </label>
+          <Textarea
+            className="max-h-48 min-h-11 resize-none border-0 bg-transparent px-1 py-2.5 text-sm leading-6 shadow-none focus-visible:ring-0 dark:bg-transparent"
             disabled={disabled}
             enterKeyHint={coarsePointer ? "enter" : "send"}
+            id="chat-message-input"
             onChange={(event) => setText(event.target.value)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
@@ -603,21 +611,21 @@ export function ChatComposer({
 
           {streaming ? (
             <Button
-              aria-label="Stop answering"
               className="size-11 shrink-0"
               onClick={() => onStop?.()}
               type="button"
             >
-              <SquareIcon aria-hidden="true" className="size-4" />
+              <SquareIcon className="size-4" />
+              <span className="sr-only">Stop answering</span>
             </Button>
           ) : (
             <Button
-              aria-label="Send message"
               className="size-11 shrink-0"
               disabled={!canSend}
               type="submit"
             >
-              <SendIcon aria-hidden="true" className="size-4" />
+              <SendIcon className="size-4" />
+              <span className="sr-only">Send message</span>
             </Button>
           )}
         </div>

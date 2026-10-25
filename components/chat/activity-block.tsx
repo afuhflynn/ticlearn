@@ -11,9 +11,15 @@ import {
   CheckIcon,
   ChevronDownIcon,
   ExternalLinkIcon,
-  Loader2Icon,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Decorative, LiveRegion } from "@/components/ui/live-region";
 import {
   FALLBACK_ACTIVITY_LABEL,
   SILENT_TOOL_NAMES,
@@ -109,7 +115,20 @@ function ElapsedClock() {
     return () => window.clearInterval(timer);
   }, []);
 
-  return <span aria-hidden="true">{seconds}s</span>;
+  // The seconds tick for the eye only. A live region would read them out
+  // again every second, which is not what a student waiting wants to hear.
+  return <Decorative className="text-xs">{seconds}s</Decorative>;
+}
+
+/**
+ * A dot that breathes while a step runs. It is not a spinner: the words beside
+ * it already name the step, and a spinner would say only that something, at
+ * some point, might finish.
+ */
+function RunningDot() {
+  return (
+    <span className="size-1.5 shrink-0 animate-pulse rounded-full bg-current opacity-70 motion-reduce:animate-none" />
+  );
 }
 
 export function ActivityBlock({
@@ -129,11 +148,8 @@ export function ActivityBlock({
     streaming && steps.length === 0
       ? FALLBACK_ACTIVITY_LABEL
       : runningStep?.label;
-  const liveText =
-    currentLabel || (steps.length > 0 ? "Finished" : FALLBACK_ACTIVITY_LABEL);
 
-  const finished = !streaming;
-  if (finished && steps.length === 0 && sources.length === 0) {
+  if (!streaming && steps.length === 0 && sources.length === 0) {
     return null;
   }
 
@@ -149,47 +165,49 @@ export function ActivityBlock({
   const sourceCount = sources.length;
 
   return (
-    <div className="w-full" data-slot="activity-block">
-      <button
-        aria-expanded={open}
-        className="flex min-h-11 w-full items-center gap-2 rounded-md text-left text-sm text-muted-foreground transition-colors hover:text-foreground"
-        onClick={() => setOpen((current) => !current)}
-        type="button"
-      >
-        {streaming ? (
-          <Loader2Icon
-            aria-hidden="true"
-            className="size-3.5 shrink-0 animate-spin motion-reduce:animate-none"
-          />
-        ) : (
-          <CheckIcon aria-hidden="true" className="size-3.5 shrink-0" />
-        )}
-        <span className="min-w-0 truncate">
-          {summary}
-          {sourceCount > 0
-            ? ` · Read ${sourceCount} source${sourceCount === 1 ? "" : "s"}`
-            : ""}
-        </span>
-        {streaming ? (
-          <span className="ml-auto text-xs">
-            <ElapsedClock />
-          </span>
-        ) : null}
-        <ChevronDownIcon
-          aria-hidden="true"
-          className={cn(
-            "size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
-            open ? "rotate-180" : "",
-            streaming ? "" : "ml-auto",
+    <Collapsible
+      className="w-full"
+      data-slot="activity-block"
+      onOpenChange={setOpen}
+      open={open}
+    >
+      <CollapsibleTrigger asChild>
+        <Button
+          className="min-h-11 w-full justify-start gap-2 px-0 text-left text-sm font-normal text-muted-foreground hover:bg-transparent hover:text-foreground"
+          type="button"
+          variant="ghost"
+        >
+          {streaming ? (
+            <RunningDot />
+          ) : (
+            <CheckIcon className="size-3.5 shrink-0" />
           )}
-        />
-      </button>
+          <span className="min-w-0 truncate">
+            {summary}
+            {sourceCount > 0
+              ? ` · Read ${sourceCount} source${sourceCount === 1 ? "" : "s"}`
+              : ""}
+          </span>
+          {streaming ? (
+            <span className="ml-auto">
+              <ElapsedClock />
+            </span>
+          ) : null}
+          <ChevronDownIcon
+            className={cn(
+              "size-4 shrink-0 transition-transform duration-200 motion-reduce:transition-none",
+              open ? "rotate-180" : "",
+              streaming ? "" : "ml-auto",
+            )}
+          />
+        </Button>
+      </CollapsibleTrigger>
 
-      <span aria-live="polite" className="sr-only">
-        {liveText}
-      </span>
+      {/* One sentence per step, announced when the step changes and never
+          again while the clock ticks. */}
+      {streaming ? <LiveRegion>{currentLabel ?? ""}</LiveRegion> : null}
 
-      {open ? (
+      <CollapsibleContent>
         <div className="mt-1 space-y-2 pb-2 pl-5 text-sm">
           {steps.length === 0 ? (
             <p className="text-muted-foreground">No steps to show.</p>
@@ -199,20 +217,11 @@ export function ActivityBlock({
                 <li className="text-muted-foreground" key={step.id}>
                   <span className="flex items-start gap-2">
                     {step.failed ? (
-                      <AlertCircleIcon
-                        aria-hidden="true"
-                        className="mt-0.5 size-3.5 shrink-0 text-destructive"
-                      />
+                      <AlertCircleIcon className="mt-0.5 size-3.5 shrink-0 text-destructive" />
                     ) : step.state === "output-available" ? (
-                      <CheckIcon
-                        aria-hidden="true"
-                        className="mt-0.5 size-3.5 shrink-0"
-                      />
+                      <CheckIcon className="mt-0.5 size-3.5 shrink-0" />
                     ) : (
-                      <span
-                        aria-hidden="true"
-                        className="mt-1.5 size-1.5 shrink-0 rounded-full bg-current opacity-60"
-                      />
+                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-current opacity-60" />
                     )}
                     <span className="min-w-0">
                       {step.failed
@@ -247,10 +256,7 @@ export function ActivityBlock({
                       rel="noopener noreferrer"
                       target="_blank"
                     >
-                      <ExternalLinkIcon
-                        aria-hidden="true"
-                        className="mt-0.5 size-3 shrink-0"
-                      />
+                      <ExternalLinkIcon className="mt-0.5 size-3 shrink-0" />
                       <span className="min-w-0 break-words">
                         {source.title}
                       </span>
@@ -261,7 +267,7 @@ export function ActivityBlock({
             </div>
           ) : null}
         </div>
-      ) : null}
-    </div>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
