@@ -1,11 +1,19 @@
 "use client";
 
-import { ArrowRight, ChevronLeft, Loader2, CalendarIcon } from "lucide-react";
+import { ArrowRight, ChevronLeft, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { LEVELS } from "@/constants/levels";
 import { useSession } from "@/lib/auth-client";
 
@@ -74,10 +82,11 @@ export default function OnboardingPage() {
         return !!institution && !!faculty;
       case 1:
         return !!program && !!targetGoal;
-      case 2:
+      case 2: {
         if (!dateOfBirth) return false;
         const age = calculateAge(dateOfBirth);
         return age >= 15 && age <= 50;
+      }
       case 3:
         return !!selectedLevel;
       default:
@@ -166,40 +175,49 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">
+              <div className="space-y-2">
+                <Label htmlFor="onboarding-institution">
                   University / Institution
-                </label>
-                <select
-                  value={institution}
-                  onChange={(e) => setInstitution(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background p-3 text-sm"
+                </Label>
+                <Select
+                  onValueChange={setInstitution}
+                  value={institution || undefined}
                 >
-                  <option value="">Select your university...</option>
-                  {UNIVERSITIES.map((uni) => (
-                    <option key={uni} value={uni}>
-                      {uni}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    className="h-12 w-full rounded-xl"
+                    id="onboarding-institution"
+                  >
+                    <SelectValue placeholder="Select your university..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {UNIVERSITIES.map((uni) => (
+                      <SelectItem key={uni} value={uni}>
+                        {uni}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium">
+              <div className="space-y-2">
+                <Label htmlFor="onboarding-faculty">
                   Faculty or Department
-                </label>
-                <select
-                  value={faculty}
-                  onChange={(e) => setFaculty(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background p-3 text-sm"
-                >
-                  <option value="">Select your faculty...</option>
-                  {FACULTIES.map((fac) => (
-                    <option key={fac} value={fac}>
-                      {fac}
-                    </option>
-                  ))}
-                </select>
+                </Label>
+                <Select onValueChange={setFaculty} value={faculty || undefined}>
+                  <SelectTrigger
+                    className="h-12 w-full rounded-xl"
+                    id="onboarding-faculty"
+                  >
+                    <SelectValue placeholder="Select your faculty..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FACULTIES.map((fac) => (
+                      <SelectItem key={fac} value={fac}>
+                        {fac}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -215,35 +233,40 @@ export default function OnboardingPage() {
             </div>
 
             <div className="space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium">
+              <div className="space-y-2">
+                <Label htmlFor="onboarding-program">
                   Programme / Major Name
-                </label>
+                </Label>
                 <Input
-                  type="text"
-                  placeholder="e.g. Computer Science, Law, Medicine"
-                  value={program}
-                  onChange={(e) => setProgram(e.target.value)}
                   className="h-12 rounded-xl"
+                  id="onboarding-program"
+                  onChange={(e) => setProgram(e.target.value)}
+                  placeholder="e.g. Computer Science, Law, Medicine"
+                  type="text"
+                  value={program}
                 />
               </div>
 
-              <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Primary Target Goal
-                </label>
-                <select
-                  value={targetGoal}
-                  onChange={(e) => setTargetGoal(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-background p-3 text-sm"
+              <div className="space-y-2">
+                <Label htmlFor="onboarding-goal">Primary Target Goal</Label>
+                <Select
+                  onValueChange={setTargetGoal}
+                  value={targetGoal || undefined}
                 >
-                  <option value="">Select your goal...</option>
-                  {GOALS.map((goal) => (
-                    <option key={goal} value={goal}>
-                      {goal}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    className="h-12 w-full rounded-xl"
+                    id="onboarding-goal"
+                  >
+                    <SelectValue placeholder="Select your goal..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GOALS.map((goal) => (
+                      <SelectItem key={goal} value={goal}>
+                        {goal}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -254,14 +277,14 @@ export default function OnboardingPage() {
             <div className="text-center">
               <h1 className="text-xl font-bold">A little about you</h1>
               <p className="mt-1 text-sm text-muted-foreground">
-                We induce your age from your date of birth (must be between 15 and
-                50 years old).
+                We induce your age from your date of birth (must be between 15
+                and 50 years old).
               </p>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium">Gender</label>
+                <p className="mb-2 block text-sm font-medium">Gender</p>
                 <div className="grid grid-cols-2 gap-3">
                   {(["MALE", "FEMALE"] as const).map((g) => (
                     <button
@@ -282,9 +305,7 @@ export default function OnboardingPage() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm font-medium">
-                  Date of Birth
-                </label>
+                <p className="mb-2 block text-sm font-medium">Date of Birth</p>
                 <DatePicker
                   value={dateOfBirth}
                   onChange={setDateOfBirth}

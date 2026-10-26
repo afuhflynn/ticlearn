@@ -8,7 +8,13 @@ import {
   RefreshCwIcon,
   SparklesIcon,
 } from "lucide-react";
-import { type ComponentProps, useMemo, useState } from "react";
+import {
+  type ComponentProps,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast } from "sonner";
 import {
   Conversation,
@@ -28,6 +34,7 @@ import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
 import { FilePreview } from "@/components/chat/file-preview";
 import { SuggestedReplies } from "@/components/chat/suggested-replies";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
@@ -146,9 +153,11 @@ function AnswerActions({
 function QuestionActions({
   message,
   onEdit,
+  canEdit = true,
 }: {
   message: UIMessage;
   onEdit?: (message: UIMessage) => void;
+  canEdit?: boolean;
 }) {
   const { copied, copy } = useCopy();
 
@@ -167,12 +176,96 @@ function QuestionActions({
       </MessageAction>
       <MessageAction
         className="size-11"
+        disabled={!canEdit}
         label="Edit question"
         onClick={() => onEdit?.(message)}
       >
         <PencilIcon aria-hidden="true" className="size-4" />
       </MessageAction>
     </MessageActions>
+  );
+}
+
+/**
+ * A question is edited where it sits in the thread, not in the composer at the
+ * bottom of the page. Saving rewrites the question and replaces the answer that
+ * followed it, which is what the server already does for an edited turn.
+ */
+function QuestionEditor({
+  message,
+  onSave,
+  onCancel,
+}: {
+  message: UIMessage;
+  onSave: (text: string) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(() => messageText(message));
+  const boxRef = useRef<HTMLTextAreaElement | null>(null);
+  const inputId = `edit-question-${message.id}`;
+
+  useEffect(() => {
+    const box = boxRef.current;
+    if (!box) return;
+    box.focus();
+    box.setSelectionRange(box.value.length, box.value.length);
+  }, []);
+
+  const save = () => {
+    const next = draft.trim();
+    if (!next) return;
+    onSave(next);
+  };
+
+  return (
+    <div className="ml-auto w-full rounded-[var(--radius)] border border-primary/40 bg-card p-2 shadow-sm">
+      <label className="sr-only" htmlFor={inputId}>
+        Edit your question
+      </label>
+      <Textarea
+        className="max-h-48 min-h-11 resize-none border-0 bg-transparent px-1 py-2 text-sm leading-6 shadow-none focus-visible:ring-0 dark:bg-transparent"
+        enterKeyHint="send"
+        id={inputId}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            onCancel();
+            return;
+          }
+          if (event.key !== "Enter" || event.shiftKey) return;
+          if (event.nativeEvent.isComposing) return;
+          // On a phone, Return adds a line and the Save button is the action,
+          // the same rule the composer follows.
+          if (window.matchMedia("(pointer: coarse)").matches) return;
+          event.preventDefault();
+          save();
+        }}
+        ref={boxRef}
+        rows={Math.min(8, Math.max(2, draft.split("\n").length))}
+        value={draft}
+      />
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <Button
+          className="min-h-11"
+          onClick={onCancel}
+          size="sm"
+          type="button"
+          variant="ghost"
+        >
+          Cancel
+        </Button>
+        <Button
+          className="min-h-11"
+          disabled={!draft.trim()}
+          onClick={save}
+          size="sm"
+          type="button"
+        >
+          Save
+        </Button>
+      </div>
+    </div>
   );
 }
 
@@ -242,8 +335,12 @@ function MessageBody({
   onRetry,
   onRegenerate,
   onEdit,
+  onEditSubmit,
+  onEditCancel,
   onMakeQuiz,
   onSuggestion,
+  editing = false,
+  canEdit = true,
 }: {
   message: UIMessage;
   isStreaming?: boolean;
@@ -254,8 +351,12 @@ function MessageBody({
   onRetry?: (messageId?: string) => void;
   onRegenerate?: (messageId: string) => void;
   onEdit?: (message: UIMessage) => void;
+  onEditSubmit?: (message: UIMessage, text: string) => void;
+  onEditCancel?: () => void;
   onMakeQuiz?: () => void;
   onSuggestion?: (text: string) => void;
+  editing?: boolean;
+  canEdit?: boolean;
 }) {
   const text = useMemo(() => messageText(message), [message]);
   const normalizedText = normalizeMarkdownForDisplay(text);
@@ -311,6 +412,19 @@ function MessageBody({
     );
   }
 
+  if (editing) {
+    return (
+      <>
+        <MessageFileParts parts={message.parts} />
+        <QuestionEditor
+          message={message}
+          onCancel={() => onEditCancel?.()}
+          onSave={(text) => onEditSubmit?.(message, text)}
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <MessageContent>
@@ -319,7 +433,7 @@ function MessageBody({
           <p className="whitespace-pre-wrap break-words">{normalizedText}</p>
         ) : null}
       </MessageContent>
-      <QuestionActions message={message} onEdit={onEdit} />
+      <QuestionActions canEdit={canEdit} message={message} onEdit={onEdit} />
     </>
   );
 }
@@ -331,6 +445,7 @@ export function ChatMessageList({
   onRetry,
   onRegenerate,
   onEdit,
+  onEditSubmit,
   onMakeQuiz,
   onSuggestion,
   stoppedIds,
@@ -344,7 +459,9 @@ export function ChatMessageList({
   /** Sends the last question again through the same transport. */
   onRetry?: (messageId?: string) => void;
   onRegenerate?: (messageId: string) => void;
+  /** Opens the question in place. Calling it again closes the editor. */
   onEdit?: (message: UIMessage) => void;
+  onEditSubmit?: (message: UIMessage, text: string) => void;
   onMakeQuiz?: () => void;
   onSuggestion?: (text: string) => void;
   stoppedIds?: Set<string>;
@@ -352,11 +469,22 @@ export function ChatMessageList({
   suggestions?: string[];
   className?: string;
 }) {
+  const [editingId, setEditingId] = useState<string | null>(null);
   const lastMessage = messages[messages.length - 1];
   const lastAssistantIndex = messages.reduce(
     (found, message, index) => (message.role === "assistant" ? index : found),
     -1,
   );
+
+  const handleEdit = (message: UIMessage) => {
+    onEdit?.(message);
+    setEditingId((current) => (current === message.id ? null : message.id));
+  };
+
+  const handleEditSubmit = (message: UIMessage, text: string) => {
+    setEditingId(null);
+    onEditSubmit?.(message, text);
+  };
 
   // While nothing has come back yet, the activity line stands where the
   // answer will be. Once an assistant message exists it carries its own.
@@ -374,11 +502,13 @@ export function ChatMessageList({
         {messages.map((message, index) => (
           <Message from={message.role} key={message.id}>
             <MessageBody
+              canEdit={status === "ready"}
               durationMs={
                 index === lastAssistantIndex && status === "ready"
                   ? durationMs
                   : undefined
               }
+              editing={message.role === "user" && editingId === message.id}
               isNewestAssistant={
                 index === lastAssistantIndex && status === "ready"
               }
@@ -388,7 +518,9 @@ export function ChatMessageList({
                 message.role === "assistant"
               }
               message={message}
-              onEdit={onEdit}
+              onEdit={handleEdit}
+              onEditCancel={() => setEditingId(null)}
+              onEditSubmit={handleEditSubmit}
               onMakeQuiz={onMakeQuiz}
               onRegenerate={onRegenerate}
               onRetry={onRetry}

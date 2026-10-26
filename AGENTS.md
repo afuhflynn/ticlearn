@@ -412,6 +412,32 @@ Rebuild the chat around one reading column and one activity line, make the compo
 - `tests/components/chat-composer.test.tsx`, `tests/components/chat-activity-block.test.tsx`, `tests/components/chat-message-list.test.tsx`, `tests/components/file-preview.test.tsx`, `tests/components/live-region.test.tsx`, `tests/components/suggested-replies.test.tsx`, `tests/lib/ai/suggestions.test.ts`
 <!-- END:chat-interface-rebuild -->
 
+<!-- BEGIN:chat-polish -->
+
+# Chat polish, conversation titles, onboarding selects, sidebar - Implementation Summary
+
+## What changed
+- **A question is edited in place.** `components/chat/chat-message-list.tsx` renders a `QuestionEditor` in the question's own row (Save, Cancel, Escape, Return on a fine pointer). Saving calls `handleEditSubmit` in `chat-thread.tsx`, which sends the message id through both the AI SDK envelope and the `editMessageId` body field. The composer no longer prefills for an edit, and `replaceWarning` / `onCancelReplace` / the draft-before-replace machinery are gone.
+- **The composer clears at once.** `handleSubmit` in `chat-composer.tsx` clears the text, attachments, notice and draft storage before calling `onSubmit`, so the box is empty while the answer is still streaming. A rejected send is put back through the `restore` prop.
+- **Conversation titles land.** `lib/chat/title.ts` holds `provisionalChatTitle`, `cleanGeneratedTitle` and `isReplaceableTitle`. The chat route writes a provisional title from the first message before the stream starts and enqueues the Inngest job with it. The job cleans the model's title and skips a title the student renamed by hand. The thread refetches the conversation list once more after four seconds.
+- **The streaming caret no longer blinks.** `components/ai-elements/streaming-caret.tsx` is a steady bar, and the CSS in `app/globals.css` keeps it on the direct last paragraph only, so a list or blockquote cannot draw several.
+- **Onboarding uses the Radix select.** The university, faculty and goal controls in `app/(onboarding)/onboarding/page.tsx` are `components/ui/select.tsx`, with a `Label` bound to each trigger.
+- **The sidebar account group is gone.** Subscription and Settings sit in the same plain list as Home, Upload and Quizzes in `components/layout/AppSidebar.tsx`; the admin group is unchanged.
+
+## Gotchas
+- `lib/chat/title.ts` is imported by both the route and the Inngest job. The job compares the stored title with the provisional one it was given, so a rename made while the job runs is never overwritten.
+- The provisional title is written before the stream starts, so the first `chatConversations` invalidation already shows a real name. The model's refinement arrives later and is picked up by the delayed refetch.
+- The caret test still mocks `motion/react`; the component no longer imports it, and the mock is harmless.
+
+## Relevant files
+- `components/chat/chat-message-list.tsx`, `components/chat/chat-thread.tsx`, `components/chat/chat-composer.tsx`
+- `lib/chat/title.ts`, `app/api/ai/chat/route.ts`, `lib/inngest/functions.ts`
+- `components/ai-elements/streaming-caret.tsx`, `app/globals.css`
+- `app/(onboarding)/onboarding/page.tsx`, `components/layout/AppSidebar.tsx`
+- `tests/lib/chat/title.test.ts`, `tests/components/chat-message-list.test.tsx`, `tests/components/chat-composer.test.tsx`
+
+<!-- END:chat-polish -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 

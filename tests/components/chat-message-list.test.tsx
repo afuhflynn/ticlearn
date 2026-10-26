@@ -128,3 +128,70 @@ describe("ChatMessageList", () => {
     );
   });
 });
+
+describe("editing a question in place (covers: AC-22)", () => {
+  it("edits the question where it sits and saves the new wording", async () => {
+    const user = userEvent.setup();
+    const onEditSubmit = vi.fn();
+    const question = message("user", "Explain mitosis");
+
+    render(
+      <ChatMessageList
+        messages={[question, message("assistant", "Here is the answer")]}
+        onEditSubmit={onEditSubmit}
+        status="ready"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit question" }));
+
+    const editor = screen.getByRole("textbox", {
+      name: "Edit your question",
+    });
+    expect(editor).toHaveValue("Explain mitosis");
+
+    await user.clear(editor);
+    await user.type(editor, "Explain meiosis");
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(onEditSubmit).toHaveBeenCalledWith(question, "Explain meiosis");
+    expect(
+      screen.queryByRole("textbox", { name: "Edit your question" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("closes the editor on cancel without sending anything", async () => {
+    const user = userEvent.setup();
+    const onEditSubmit = vi.fn();
+
+    render(
+      <ChatMessageList
+        messages={[message("user", "Explain mitosis")]}
+        onEditSubmit={onEditSubmit}
+        status="ready"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "Edit question" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(
+      screen.queryByRole("textbox", { name: "Edit your question" }),
+    ).not.toBeInTheDocument();
+    expect(onEditSubmit).not.toHaveBeenCalled();
+    expect(screen.getByText("Explain mitosis")).toBeInTheDocument();
+  });
+
+  it("does not offer an edit while an answer is streaming", () => {
+    render(
+      <ChatMessageList
+        messages={[message("user", "Explain mitosis")]}
+        status="streaming"
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Edit question" }),
+    ).toBeDisabled();
+  });
+});

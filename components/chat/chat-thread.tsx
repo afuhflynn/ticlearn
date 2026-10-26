@@ -64,7 +64,6 @@ function ConversationSession({
 
   const [prefill, setPrefill] = useState<ChatComposerPrefill>();
   const [restore, setRestore] = useState<ChatComposerRestore>();
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [durationMs, setDurationMs] = useState<number | null>(null);
   const [liveSuggestions, setLiveSuggestions] = useState<string[]>([]);
   const [stoppedIds, setStoppedIds] = useState<Set<string>>(
@@ -73,6 +72,7 @@ function ConversationSession({
 
   const startedAt = useRef<number | null>(null);
   const lastSubmission = useRef<ChatComposerSubmission | null>(null);
+  const titleRefresh = useRef<number | null>(null);
 
   const chat = useChat<UIMessage>({
     id: conversationId,
@@ -123,6 +123,18 @@ function ConversationSession({
         queryKey: queryKeys.chatMessagesPaginated(conversationId),
       });
       void queryClient.invalidateQueries({ queryKey: queryKeys.usage });
+
+      // The model names the conversation after the first turn, in the
+      // background. One later read picks that name up without a reload; a
+      // provisional name is already on screen from the first message.
+      if (titleRefresh.current !== null) {
+        window.clearTimeout(titleRefresh.current);
+      }
+      titleRefresh.current = window.setTimeout(() => {
+        void queryClient.invalidateQueries({
+          queryKey: queryKeys.chatConversations,
+        });
+      }, 4000);
     },
     onError: (chatError) => {
       toast.error(chatError.message || "Failed to send message");
@@ -153,6 +165,15 @@ function ConversationSession({
     console.error("[CHAT] Client error:", error);
   }, [error]);
 
+  useEffect(
+    () => () => {
+      if (titleRefresh.current !== null) {
+        window.clearTimeout(titleRefresh.current);
+      }
+    },
+    [],
+  );
+
   useEffect(() => {
     const pending = consumePendingChatMessage(conversationId);
     if (!pending?.text && !pending?.files?.length) return;
@@ -175,22 +196,10 @@ function ConversationSession({
       lastSubmission.current = submission;
 
       try {
-        if (editingId) {
-          await chat.sendMessage(
-            {
-              text: submission.text,
-              files: submission.files,
-              messageId: editingId,
-            },
-            { body: { editMessageId: editingId } },
-          );
-          setEditingId(null);
-        } else {
-          await chat.sendMessage({
-            text: submission.text,
-            files: submission.files,
-          });
-        }
+        await chat.sendMessage({
+          text: submission.text,
+          files: submission.files,
+        });
       } catch {
         startedAt.current = null;
         lastSubmission.current = null;
@@ -201,7 +210,45 @@ function ConversationSession({
         });
       }
     },
-    [chat, editingId],
+    [chat],
+  );
+
+  /**
+   * A question edited in place keeps its id, so the transport rewrites it and
+   * drops the answer that followed. The files already on the question travel
+   * again, because the rewrite replaces its parts.
+   */
+  const handleEditSubmit = useCallback(
+    async (message: UIMessage, text: string) => {
+      const next = text.trim();
+      if (!next) return;
+
+      const files = message.parts.filter(
+        (part): part is FileUIPart => part.type === "file" && "url" in part,
+      );
+
+      startedAt.current = Date.now();
+      setDurationMs(null);
+      setLiveSuggestions([]);
+      setRestore(undefined);
+      lastSubmission.current = { text: next, files };
+
+      try {
+        await chat.sendMessage(
+          { text: next, files, messageId: message.id },
+          { body: { editMessageId: message.id } },
+        );
+      } catch {
+        startedAt.current = null;
+        lastSubmission.current = null;
+        setRestore({
+          text: next,
+          notice: "That edit did not go through. It is back in the box.",
+          nonce: Date.now(),
+        });
+      }
+    },
+    [chat],
   );
 
   const handleReplaceAnswer = useCallback(
@@ -229,11 +276,6 @@ function ConversationSession({
     },
     [chat],
   );
-
-  const handleEdit = useCallback((message: UIMessage) => {
-    setEditingId(message.id);
-    setPrefill({ text: textOf(message), nonce: Date.now() });
-  }, []);
 
   const handleMakeQuiz = useCallback(() => {
     setPrefill({ text: CHAT_QUIZ_PREFILL, nonce: Date.now() });
@@ -273,7 +315,7 @@ function ConversationSession({
             </div>
           }
           messages={messages}
-          onEdit={handleEdit}
+          onEditSubmit={handleEditSubmit}
           onMakeQuiz={handleMakeQuiz}
           onRegenerate={handleReplaceAnswer}
           onRetry={handleReplaceAnswer}
@@ -291,11 +333,9 @@ function ConversationSession({
           ) : (
             <ChatComposer
               draftKey={conversationId}
-              onCancelReplace={() => setEditingId(null)}
               onSubmit={handleSend}
               onStop={() => chat.stop()}
               prefill={prefill}
-              replaceWarning={editingId !== null}
               restore={restore}
               status={status}
             />

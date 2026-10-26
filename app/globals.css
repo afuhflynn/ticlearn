@@ -289,14 +289,15 @@
   }
 }
 
-/* The caret sits at the end of the last line of the answer, so a long answer
-   never reads as a stalled one. It is drawn inside every paragraph of the
-   answer and only the last one keeps it. These rules sit outside a cascade
-   layer on purpose, so they beat the utility class on the caret itself. */
-.chat-answer p > [data-slot="streaming-caret"] {
+/* The caret marks the end of the answer while tokens arrive, and only the last
+   paragraph of the answer keeps it. The direct child selector matters: a list
+   item or a blockquote paragraph is not the end of the answer, and drawing a
+   caret in each one reads as several cursors. These rules sit outside a
+   cascade layer on purpose, so they beat the utility class on the caret. */
+.chat-answer [data-slot="streaming-caret"] {
   display: none;
 }
 
-.chat-answer p:last-child > [data-slot="streaming-caret"] {
+.chat-answer > p:last-child > [data-slot="streaming-caret"] {
   display: inline-block;
 }
