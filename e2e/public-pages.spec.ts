@@ -22,9 +22,7 @@ test("the pricing page shows the plans and its own title", async ({ page }) => {
   await expect(
     page.getByRole("button", { name: "Start Free Trial" }),
   ).toBeVisible();
-  await expect(page).toHaveTitle(
-    "TiCLearn Pricing · Free and Semester Pass Plans",
-  );
+  await expect(page).toHaveTitle("TiCLearn Pricing · Free and Semester Pass");
 });
 
 test("the FAQ answers open for a student", async ({ page }) => {

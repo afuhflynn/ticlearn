@@ -174,6 +174,21 @@ describe("the social card a public page publishes (AC-3)", () => {
     expect(openGraph.type).toBe("website");
   });
 
+  it("carries the page's own title and description on the card", () => {
+    const metadata = publicPageMetadata({
+      title: "Contact TiCLearn",
+      description: "Reach the team on WhatsApp.",
+      path: "/contact",
+    });
+    const twitter = metadata.twitter as unknown as {
+      title: string;
+      description: string;
+    };
+
+    expect(twitter.title).toBe(metadata.title);
+    expect(twitter.description).toBe(metadata.description);
+  });
+
   it("reuses the one image for the Twitter card at large size", () => {
     const metadata = publicPageMetadata({
       title: "About TiCLearn",
@@ -339,5 +354,84 @@ describe("one host for the whole public set (AC-7)", () => {
     );
 
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("the sitemap stays valid XML a crawler will accept (AC-4)", () => {
+  // The protocol defines one closed set of values. A typo in a page's
+  // changeFrequency makes the entry invalid, which drops the whole URL.
+  const CHANGE_FREQUENCIES = [
+    "always",
+    "hourly",
+    "daily",
+    "weekly",
+    "monthly",
+    "yearly",
+    "never",
+  ];
+
+  it("lists each URL once", () => {
+    const urls = sitemap().map((entry) => entry.url);
+
+    expect(new Set(urls).size).toBe(urls.length);
+  });
+
+  it("keeps every priority between zero and one", () => {
+    for (const entry of sitemap()) {
+      const priority = entry.priority as number;
+
+      expect(priority, entry.url).toBeGreaterThanOrEqual(0);
+      expect(priority, entry.url).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("uses only a change frequency the protocol defines", () => {
+    for (const entry of sitemap()) {
+      expect(CHANGE_FREQUENCIES, entry.url).toContain(entry.changeFrequency);
+    }
+  });
+
+  it("marks every entry as touched at build time", () => {
+    const entries = sitemap();
+    const now = Date.now();
+
+    for (const entry of entries) {
+      const touched = (entry.lastModified as Date).getTime();
+
+      expect(touched, entry.url).toBeLessThanOrEqual(now);
+      expect(touched, entry.url).toBeGreaterThan(now - 60_000);
+    }
+  });
+});
+
+describe("the robots file keeps the public set crawlable (AC-5)", () => {
+  const disallowed = () => (robots().rules as { disallow: string[] }).disallow;
+
+  it("never closes the whole site", () => {
+    // A bare "/" or "*" here would block every public page the sitemap
+    // publishes, which is the opposite of the intent and silent at a glance.
+    expect(disallowed()).not.toContain("/");
+    expect(disallowed()).not.toContain("");
+    expect(disallowed()).not.toContain("*");
+  });
+
+  it("names each authed root once", () => {
+    const rules = disallowed();
+
+    expect(new Set(rules).size).toBe(rules.length);
+  });
+
+  it("blocks no path the sitemap publishes", () => {
+    for (const entry of sitemap()) {
+      const path = entry.url.startsWith(SITE_URL)
+        ? entry.url.slice(SITE_URL.length) || "/"
+        : entry.url;
+
+      for (const prefix of disallowed()) {
+        expect(path === prefix || path.startsWith(`${prefix}/`), path).toBe(
+          false,
+        );
+      }
+    }
   });
 });

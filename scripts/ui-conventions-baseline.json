@@ -25,7 +25,6 @@
     "app/(admin)/admin/users/page.tsx",
     "app/(auth)/sign-in/sign-in-form.tsx",
     "app/(auth)/sign-up/sign-up-form.tsx",
-    "app/(onboarding)/onboarding/page.tsx",
     "app/api/admin/plan-upgrades/route.ts",
     "app/api/admin/users/route.ts",
     "app/api/ai/chat/route.ts",

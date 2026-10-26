@@ -1,7 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { ChatComposer } from "@/components/chat/chat-composer";
 import { CHAT_CAPABILITY_LINE } from "@/components/chat/constants";
 
@@ -131,6 +139,35 @@ describe("sending and stopping (covers: AC-5, AC-6)", () => {
     expect(box()).toHaveValue("");
   });
 
+  it("clears the box at once, before the answer finishes", async () => {
+    const user = userEvent.setup();
+    let finish: () => void = () => {};
+    const onSubmit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+
+    render(
+      <ChatComposer
+        draftKey="conversation-1"
+        onSubmit={onSubmit}
+        status="ready"
+      />,
+    );
+
+    await user.type(box(), "Explain osmosis");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    // The answer has not arrived, and the box is already empty, so the message
+    // on screen is the message that was sent.
+    expect(box()).toHaveValue("");
+
+    finish();
+  });
+
   it("inserts a newline on Shift Enter instead of sending", async () => {
     const user = userEvent.setup();
     const { onSubmit } = renderComposer();
@@ -188,9 +225,7 @@ describe("attachments (covers: AC-7, AC-9)", () => {
 
     expect(await screen.findByText("paper.png")).toBeInTheDocument();
     await waitFor(() => expect(uploadMock).toHaveBeenCalledOnce());
-    await waitFor(() =>
-      expect(screen.getByText("2.0 KB")).toBeInTheDocument(),
-    );
+    await waitFor(() => expect(screen.getByText("2.0 KB")).toBeInTheDocument());
     expect(screen.getByText("1 attachment.")).toBeInTheDocument();
 
     await user.type(box(), "Look at this");
@@ -240,9 +275,7 @@ describe("attachments (covers: AC-7, AC-9)", () => {
     expect(screen.queryByText("page-4.png")).not.toBeInTheDocument();
     expect(screen.getByText("5 attachments.")).toBeInTheDocument();
 
-    await user.click(
-      screen.getByRole("button", { name: /more attachments/ }),
-    );
+    await user.click(screen.getByRole("button", { name: /more attachments/ }));
 
     expect(screen.getByText("page-4.png")).toBeInTheDocument();
     expect(screen.getByText("page-5.png")).toBeInTheDocument();
@@ -384,7 +417,7 @@ describe("long pastes and drafts (covers: AC-10, AC-11)", () => {
   });
 });
 
-describe("prefill, edit and replace (covers: AC-8, AC-21, AC-22)", () => {
+describe("prefill (covers: AC-8, AC-21)", () => {
   it("fills the box from a starter without sending", async () => {
     const { rerender, onSubmit } = renderComposer();
 
@@ -400,48 +433,6 @@ describe("prefill, edit and replace (covers: AC-8, AC-21, AC-22)", () => {
     await waitFor(() => expect(box()).toHaveValue("Quiz me on this"));
     expect(onSubmit).not.toHaveBeenCalled();
   });
-
-  it("keeps the replace line visible while editing", () => {
-    renderComposer({ replaceWarning: true });
-
-    expect(
-      screen.getByText("Everything after this message will be replaced."),
-    ).toBeInTheDocument();
-  });
-
-  it("gives the draft back when the edit is cancelled", async () => {
-    const user = userEvent.setup();
-    const onCancelReplace = vi.fn();
-    const { rerender, onSubmit } = renderComposer();
-
-    await user.type(box(), "my draft");
-
-    rerender(
-      <ChatComposer
-        draftKey="conversation-1"
-        onCancelReplace={onCancelReplace}
-        onSubmit={onSubmit}
-        prefill={{ text: "edited message", nonce: 1 }}
-        replaceWarning
-        status="ready"
-      />,
-    );
-    await waitFor(() => expect(box()).toHaveValue("edited message"));
-
-    await user.click(screen.getByRole("button", { name: "Cancel edit" }));
-    expect(onCancelReplace).toHaveBeenCalledOnce();
-
-    rerender(
-      <ChatComposer
-        draftKey="conversation-1"
-        onCancelReplace={onCancelReplace}
-        onSubmit={onSubmit}
-        status="ready"
-      />,
-    );
-
-    await waitFor(() => expect(box()).toHaveValue("my draft"));
-  });
 });
 
 describe("the composer and assistive technology (covers: AC-18)", () => {
@@ -454,6 +445,8 @@ describe("the composer and assistive technology (covers: AC-18)", () => {
     expect(
       screen.getByRole("button", { name: "Stop answering" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("textbox", { name: "Message Tip" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Message Tip" }),
+    ).toBeInTheDocument();
   });
 });

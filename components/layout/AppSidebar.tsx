@@ -221,7 +221,8 @@ export function AppSidebar() {
           </Link>
         </div>
 
-        {/* Study */}
+        {/* Study and account, one plain list. An account accordion hid two
+            destinations behind a second tap for no gain. */}
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -235,48 +236,23 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {accountNav.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton asChild isActive={isActive(item.href)}>
+                    <Link href={item.href}>
+                      <item.icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                      {item.href === "/subscription" && plan && !planLoading ? (
+                        <SidebarMenuBadge>
+                          {plan === "PREMIUM" ? "Premium" : "Free"}
+                        </SidebarMenuBadge>
+                      ) : null}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
             </SidebarMenu>
           </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel
-            className="flex cursor-pointer items-center justify-between rounded-md px-3 py-2 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted/50"
-            onClick={() => toggleSection("account")}
-          >
-            <div className="flex items-center gap-2">
-              <Settings className="h-3.5 w-3.5" />
-              <span>Account</span>
-            </div>
-            {expandedSections.account ? (
-              <ChevronDown className="h-3.5 w-3.5" />
-            ) : (
-              <ChevronRight className="h-3.5 w-3.5" />
-            )}
-          </SidebarGroupLabel>
-          {expandedSections.account && (
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {accountNav.map((item) => (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton asChild isActive={isActive(item.href)}>
-                      <Link href={item.href}>
-                        <item.icon className="h-4 w-4" />
-                        <span>{item.label}</span>
-                        {item.href === "/subscription" &&
-                          plan &&
-                          !planLoading && (
-                            <SidebarMenuBadge>
-                              {plan === "PREMIUM" ? "Premium" : "Free"}
-                            </SidebarMenuBadge>
-                          )}
-                      </Link>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                ))}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          )}
         </SidebarGroup>
 
         {isAdmin && (

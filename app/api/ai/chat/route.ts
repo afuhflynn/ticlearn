@@ -10,6 +10,7 @@ import {
   logUnknownTool,
   SILENT_TOOL_NAMES,
 } from "@/lib/chat/activity-labels";
+import { provisionalChatTitle } from "@/lib/chat/title";
 import {
   extractTextFromParts,
   normalizeStoredParts,
@@ -610,18 +611,33 @@ export async function POST(req: Request) {
       });
     }
 
-    const messageCount = conversation._count.messages;
     const conversationTitle = conversation.title;
 
     trackEvent(userId, EVENTS.CHAT_MESSAGE, { conversationId }).catch(() => {});
 
-    if (!isRewrite && messageCount === 0 && conversationTitle === "New Chat") {
+    if (!isRewrite && conversationTitle === "New Chat") {
+      // A readable name is written before the stream starts, so the sidebar
+      // never reads "New Chat" once the student has asked something. The model
+      // refines it in the background.
+      const provisionalTitle = provisionalChatTitle(userContent);
+      if (provisionalTitle !== "New Chat") {
+        await prisma.chatConversation.update({
+          where: { id: conversationId },
+          data: { title: provisionalTitle },
+        });
+      }
+
       // Fire and forget. The title job is background work, and waiting on the
-      // send would hold the first token hostage to a network call.
+      // model would hold the first token hostage to a network call.
       inngest
         .send({
           name: "chat/generate-title",
-          data: { conversationId, userContent, userId },
+          data: {
+            conversationId,
+            userContent,
+            userId,
+            provisionalTitle,
+          },
         })
         .catch((titleError) => {
           console.error("[CHAT] Failed to enqueue chat title:", titleError);

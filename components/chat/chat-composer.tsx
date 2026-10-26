@@ -123,8 +123,6 @@ export function ChatComposer({
   onSubmit,
   onStop,
   prefill,
-  replaceWarning,
-  onCancelReplace,
   restore,
   status,
   className,
@@ -136,8 +134,6 @@ export function ChatComposer({
   onSubmit: (message: ChatComposerSubmission) => void | Promise<void>;
   onStop?: () => void;
   prefill?: ChatComposerPrefill;
-  replaceWarning?: boolean;
-  onCancelReplace?: () => void;
   restore?: ChatComposerRestore;
   status: ChatStatus;
   className?: string;
@@ -152,9 +148,6 @@ export function ChatComposer({
   const [showAllAttachments, setShowAllAttachments] = useState(false);
   const [coarsePointer, setCoarsePointer] = useState(false);
   const draftStorageKey = `ticlearn-chat-draft:${draftKey}`;
-  const draftBeforeReplace = useRef<string | null>(null);
-  const wasReplacing = useRef(false);
-  const sentWhileReplacing = useRef(false);
 
   const streaming = status === "submitted" || status === "streaming";
 
@@ -178,7 +171,7 @@ export function ChatComposer({
     }
   }, [draftStorageKey, text]);
 
-  // A starter card, an edit, or Make a quiz from this.
+  // A starter card, or Make a quiz from this.
   useEffect(() => {
     if (!prefill) return;
     setText(prefill.text);
@@ -192,6 +185,7 @@ export function ChatComposer({
     return () => window.cancelAnimationFrame(frame);
   }, [prefill]);
 
+  // A rejected submission comes back to the box, with the reason.
   useEffect(() => {
     if (!restore) return;
     setText(restore.text);
@@ -201,24 +195,6 @@ export function ChatComposer({
     });
     return () => window.cancelAnimationFrame(frame);
   }, [restore]);
-
-  // Hold the draft an edit replaced, then give it back if the edit is cancelled.
-  useEffect(() => {
-    if (replaceWarning && !wasReplacing.current) {
-      draftBeforeReplace.current = text;
-      sentWhileReplacing.current = false;
-    }
-    if (
-      !replaceWarning &&
-      wasReplacing.current &&
-      !sentWhileReplacing.current &&
-      draftBeforeReplace.current !== null
-    ) {
-      setText(draftBeforeReplace.current);
-      draftBeforeReplace.current = null;
-    }
-    wasReplacing.current = Boolean(replaceWarning);
-  }, [replaceWarning, text]);
 
   const updateAttachment = useCallback(
     (id: string, patch: Partial<ComposerAttachment>) => {
@@ -359,7 +335,7 @@ export function ChatComposer({
     (text.trim().length > 0 || attachments.length > 0);
 
   const handleSubmit = useCallback(
-    async (event?: FormEvent<HTMLFormElement>) => {
+    (event?: FormEvent<HTMLFormElement>) => {
       event?.preventDefault();
       if (streaming) {
         onStop?.();
@@ -377,33 +353,28 @@ export function ChatComposer({
         }));
       const paste = attachments.find((item) => item.source === "paste");
 
-      if (replaceWarning) sentWhileReplacing.current = true;
-
-      await onSubmit({
+      const submission: ChatComposerSubmission = {
         text: text.trim(),
         files,
         textAttachment: paste?.textContent,
-      });
+      };
 
+      // The box is cleared at once, before the answer starts, so the message
+      // on screen is the message that was sent. A rejected send puts its text
+      // back through the restore prop.
       setText("");
       setAttachments([]);
       setNotice(null);
+      setShowAllAttachments(false);
       try {
         window.sessionStorage.removeItem(draftStorageKey);
       } catch {
         // Ignore an unavailable session storage.
       }
+
+      void onSubmit(submission);
     },
-    [
-      attachments,
-      canSend,
-      draftStorageKey,
-      onStop,
-      onSubmit,
-      replaceWarning,
-      streaming,
-      text,
-    ],
+    [attachments, canSend, draftStorageKey, onStop, onSubmit, streaming, text],
   );
 
   const handleKeyDown = useCallback(
@@ -412,7 +383,7 @@ export function ChatComposer({
       if (event.nativeEvent.isComposing) return;
       if (coarsePointer) return;
       event.preventDefault();
-      void handleSubmit();
+      handleSubmit();
     },
     [coarsePointer, handleSubmit],
   );
@@ -537,24 +508,6 @@ export function ChatComposer({
               <span className="sr-only"> more attachments</span>
             </Button>
           ) : null}
-        </div>
-      ) : null}
-
-      {replaceWarning ? (
-        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-dashed px-3 py-2 text-xs">
-          <span>Everything after this message will be replaced.</span>
-          <Button
-            className="min-h-11"
-            onClick={() => {
-              sentWhileReplacing.current = false;
-              onCancelReplace?.();
-            }}
-            size="sm"
-            type="button"
-            variant="ghost"
-          >
-            Cancel edit
-          </Button>
         </div>
       ) : null}
 

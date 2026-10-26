@@ -457,11 +457,15 @@ export const generateChatTitle = inngest.createFunction(
     triggers: { event: "chat/generate-title" },
   },
   async ({ event }) => {
-    const { conversationId, userContent, userId } = event.data;
+    const { conversationId, userContent, userId, provisionalTitle } =
+      event.data;
     try {
       const { getPromptOrFallback } = await import("@/lib/prompts/loader");
       const { generateTextWithFallback } = await import(
         "@/lib/ai/orchestrator"
+      );
+      const { cleanGeneratedTitle, isReplaceableTitle } = await import(
+        "@/lib/chat/title"
       );
       const prompt = await getPromptOrFallback("chat", "chat_title", {
         userMessage: userContent,
@@ -471,8 +475,23 @@ export const generateChatTitle = inngest.createFunction(
         prompt,
         userId: userId ?? null,
       });
-      const newTitle = result.text.trim().slice(0, 50) || "New Chat";
+
+      const newTitle = cleanGeneratedTitle(result.text);
+      if (!newTitle) {
+        return { success: true, title: provisionalTitle ?? null };
+      }
+
       const { prisma } = await import("@/lib/prisma");
+      const conversation = await prisma.chatConversation.findUnique({
+        where: { id: conversationId },
+        select: { title: true },
+      });
+
+      // A title the student renamed by hand wins over the model's suggestion.
+      if (!isReplaceableTitle(conversation?.title, provisionalTitle)) {
+        return { success: true, title: conversation?.title ?? null };
+      }
+
       await prisma.chatConversation.update({
         where: { id: conversationId },
         data: { title: newTitle },
