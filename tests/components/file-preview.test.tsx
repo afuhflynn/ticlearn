@@ -1,6 +1,14 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { FilePreview, isImageFile } from "@/components/chat/file-preview";
 
 /**
@@ -196,7 +204,9 @@ describe("a document attachment (covers: AC-7, AC-15)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Preview essay.docx" }));
+    await user.click(
+      screen.getByRole("button", { name: "Preview essay.docx" }),
+    );
 
     expect(
       screen.getByText(/This document type cannot be drawn inside the page/),

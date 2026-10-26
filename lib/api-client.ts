@@ -202,11 +202,6 @@ export const api = {
             title: string;
             answeredAt: string;
           } | null;
-          lastConversation: {
-            id: string;
-            title: string;
-            updatedAt: string;
-          } | null;
         }>("/dashboard/continue", { method: "GET" }),
     },
 
@@ -340,7 +335,6 @@ export const api = {
       update: (data: {
         emailNotifications?: boolean;
         pushNotifications?: boolean;
-        weeklyDigest?: boolean;
       }) =>
         apiRequest<{ settings: UserSettings }>("/settings", {
           method: "PUT",

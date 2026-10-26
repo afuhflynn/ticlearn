@@ -6,13 +6,10 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
-  Coins,
   Crown,
-  Flame,
   LayoutDashboard,
   NotebookPen,
   Settings,
-  Sparkles,
   Upload,
   Users,
 } from "lucide-react";
@@ -25,17 +22,14 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
-  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { useCredits, usePlan, useUsage, useUserStats } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 
@@ -63,7 +57,7 @@ const adminNav: NavItem[] = [
 ];
 
 export function AppSidebar() {
-  const { data: session, isPending } = useSession();
+  const { data: session } = useSession();
   const pathname = usePathname();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [expandedSections, setExpandedSections] = useState<
@@ -74,24 +68,6 @@ export function AppSidebar() {
   const isAdmin = userRole === "ADMIN";
   const userName = session?.user?.name || "Learner";
   const userInitial = userName.charAt(0).toUpperCase();
-
-  const { isLoading: planLoading, plan } = usePlan();
-  const { data: creditsData, isPending: creditsPending } = useCredits();
-  const { usage, chatDailyUsage } = useUsage();
-  const { stats, isPending: statsPending } = useUserStats();
-
-  const creditBalance = creditsData?.balance ?? 0;
-  const showCreditsTopUp =
-    !creditsPending &&
-    typeof creditsData?.balance === "number" &&
-    creditBalance > 0;
-  const isPaid = plan === "STANDARD" || plan === "PREMIUM";
-  const streak = stats?.currentStreak ?? 0;
-  const totalPoints = stats?.totalPoints ?? 0;
-  const aiMessagesUsed = chatDailyUsage?.used ?? 0;
-  const aiMessagesLimit = chatDailyUsage?.limit ?? 8;
-  const aiMessagesRemaining = Math.max(0, aiMessagesLimit - aiMessagesUsed);
-  const isPremium = plan === "PREMIUM";
 
   const toggleSection = (sectionId: string) => {
     setExpandedSections((prev) => ({
@@ -121,37 +97,9 @@ export function AppSidebar() {
               <p className="truncate text-sm font-semibold leading-tight">
                 Hi, {userName.split(" ")[0]}
               </p>
-              {!statsPending && streak > 0 && (
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Flame className="h-3 w-3 text-orange-500" />
-                  <span>{streak}-day streak</span>
-                  <span className="mx-1">·</span>
-                  <span className="tabular-nums">{totalPoints} pts</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
-        {!planLoading && plan && (
-          <div className="mt-2.5 flex items-center gap-2 rounded-lg border bg-card px-3 py-1.5">
-            <div className="flex items-center gap-1.5 text-xs font-medium">
-              {isPremium ? (
-                <Crown className="h-3.5 w-3.5 text-amber-500" />
-              ) : (
-                <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-              <span>
-                {plan === "PREMIUM"
-                  ? "Premium"
-                  : plan === "STANDARD"
-                    ? "Standard"
-                    : plan === "STARTER"
-                      ? "Starter"
-                      : "Free"}
-              </span>
-            </div>
-          </div>
-        )}
       </SidebarHeader>
 
       <SidebarContent>
@@ -194,20 +142,6 @@ export function AppSidebar() {
               >
                 Tip
               </p>
-              {!isPremium && (
-                <p
-                  className={cn(
-                    "mt-0.5 text-xs leading-tight",
-                    isActive("/chat")
-                      ? "text-primary-foreground/75"
-                      : "text-muted-foreground",
-                  )}
-                >
-                  {aiMessagesRemaining > 0
-                    ? `${aiMessagesRemaining} messages today`
-                    : "No messages left"}
-                </p>
-              )}
             </div>
             <ArrowRight
               className={cn(
@@ -242,11 +176,6 @@ export function AppSidebar() {
                     <Link href={item.href}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.label}</span>
-                      {item.href === "/subscription" && plan && !planLoading ? (
-                        <SidebarMenuBadge>
-                          {plan === "PREMIUM" ? "Premium" : "Free"}
-                        </SidebarMenuBadge>
-                      ) : null}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -290,52 +219,6 @@ export function AppSidebar() {
           </SidebarGroup>
         )}
       </SidebarContent>
-
-      {!isPending && !planLoading && !isAdmin && (
-        <SidebarFooter className="border-t p-3">
-          {!isPaid ? (
-            <Link
-              href="/subscription"
-              className="group flex items-center gap-3 rounded-lg border border-primary/20 bg-gradient-to-r from-primary/5 to-primary/[0.02] px-3 py-2.5 transition-all hover:border-primary/40 hover:from-primary/10"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                <Sparkles className="h-4 w-4 text-primary" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-tight">
-                  {showCreditsTopUp
-                    ? `${creditBalance.toLocaleString()} credits`
-                    : "Upgrade plan"}
-                </p>
-                <p className="mt-0.5 text-xs leading-tight text-muted-foreground">
-                  {showCreditsTopUp
-                    ? "Top up anytime"
-                    : "Unlock unlimited practice"}
-                </p>
-              </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />
-            </Link>
-          ) : showCreditsTopUp ? (
-            <Link
-              href="/subscription#credits-top-up"
-              className="group flex items-center gap-3 rounded-lg border border-transparent bg-muted/50 px-3 py-2.5 transition-all hover:bg-muted"
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted-foreground/10">
-                <Coins className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-tight">
-                  {creditBalance.toLocaleString()} credits
-                </p>
-                <p className="mt-0.5 text-xs leading-tight text-muted-foreground">
-                  Buy more
-                </p>
-              </div>
-              <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-all group-hover:opacity-100 group-hover:translate-x-0.5" />
-            </Link>
-          ) : null}
-        </SidebarFooter>
-      )}
     </>
   );
 

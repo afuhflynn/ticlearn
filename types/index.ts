@@ -318,6 +318,11 @@ export interface UsageData {
     quizGenerations: number;
     aiTutorMessages: number;
   };
+  /** What one action costs this account, after the plan multiplier. */
+  creditCosts: {
+    quizGeneration: number;
+    aiTutorMessage: number;
+  };
   canUpload: boolean;
   canGenerateQuiz: boolean;
   canUseAIChat: boolean;

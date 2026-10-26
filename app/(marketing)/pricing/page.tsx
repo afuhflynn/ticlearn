@@ -17,27 +17,25 @@ export const metadata = publicPageMetadata({
  */
 export default function PricingPage() {
   return (
-    <div className="mx-auto max-w-5xl space-y-10 py-12 px-4">
-      <div className="text-center space-y-6">
+    <div className="mx-auto max-w-5xl px-4 py-12">
+      <div className="mx-auto mb-10 max-w-2xl space-y-5 text-center">
         <h1 className="text-4xl font-bold tracking-tight md:text-5xl">
           Simple, honest pricing
         </h1>
-        <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-          Start free. When you are ready, one Semester Pass at 2,500 FCFA paid
-          over MTN Mobile Money or Orange Money unlocks unlimited notes, quizzes
-          and Tip messages. One time payment, no card, no auto renewal.
+        <p className="text-lg text-muted-foreground">
+          Start free with 200 credits. When you are ready, one Semester Pass at
+          2,500 FCFA adds 12,000 credits and removes the free limits. Paid once
+          over MTN Mobile Money or Orange Money, with no card and no auto
+          renewal.
         </p>
       </div>
 
       <PricingPlans plans={publicPlans} />
 
-      <div className="text-center text-sm text-muted-foreground max-w-lg mx-auto space-y-2">
-        <p>
-          Pay with MTN Mobile Money or Orange Money via Fapshi. This is a one
-          time payment for the semester: no auto renewal, no card and no hidden
-          charge.
-        </p>
-      </div>
+      <p className="mx-auto mt-8 max-w-lg text-center text-sm text-muted-foreground">
+        A quiz uses credits from your balance, and Tip uses a small amount per
+        message. Your balance is shown on your subscription page at any time.
+      </p>
     </div>
   );
 }

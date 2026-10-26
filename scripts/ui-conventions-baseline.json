@@ -10,16 +10,12 @@
     "app/(dashboard)/attempts/[id]/page.tsx",
     "app/(dashboard)/notes/[id]/page.tsx",
     "app/(dashboard)/quizzes/[id]/page.tsx",
-    "app/(dashboard)/subscription/page.tsx",
-    "app/(dashboard)/upload/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",
-    "components/chat/chat-message-list.tsx",
-    "components/layout/AppSidebar.tsx"
+    "components/chat/chat-message-list.tsx"
   ],
   "dark-colour-utility": [
     "app/(dashboard)/attempts/[id]/page.tsx",
-    "app/(dashboard)/quizzes/[id]/page.tsx",
-    "app/(dashboard)/subscription/page.tsx"
+    "app/(dashboard)/quizzes/[id]/page.tsx"
   ],
   "raw-aria": [
     "app/(admin)/admin/users/page.tsx",
@@ -38,7 +34,6 @@
     "app/(auth)/sign-up/sign-up-form.tsx",
     "app/(auth)/verify-email/verify-email-form.tsx",
     "app/(dashboard)/settings/page.tsx",
-    "app/(dashboard)/upload/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",
     "components/chat/chat-landing.tsx",
     "components/chat/chat-sidebar.tsx",

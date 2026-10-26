@@ -42,7 +42,9 @@ describe("suggestionsFromParts (covers: AC-24)", () => {
 
   it("draws nothing while the tool has not finished", () => {
     expect(
-      suggestionsFromParts([suggestPart(["What is a derivative?"], "input-available")]),
+      suggestionsFromParts([
+        suggestPart(["What is a derivative?"], "input-available"),
+      ]),
     ).toEqual([]);
   });
 
@@ -70,9 +72,7 @@ describe("suggestionsFromParts (covers: AC-24)", () => {
   });
 
   it("draws nothing when the tool never ran", () => {
-    expect(
-      suggestionsFromParts([textPart("Here is the answer")]),
-    ).toEqual([]);
+    expect(suggestionsFromParts([textPart("Here is the answer")])).toEqual([]);
   });
 });
 
@@ -95,10 +95,7 @@ describe("the suggestion chips (covers: AC-23)", () => {
 
     expect(
       screen.getAllByRole("button").map((button) => button.textContent),
-    ).toEqual([
-      "What is a derivative?",
-      "Show me a past paper question",
-    ]);
+    ).toEqual(["What is a derivative?", "Show me a past paper question"]);
   });
 
   it("sends the tapped question verbatim", async () => {

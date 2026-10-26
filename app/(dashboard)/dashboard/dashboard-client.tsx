@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  ArrowRight,
-  BotMessageSquare,
-  ClipboardCheck,
-  FileText,
-  Plus,
-} from "lucide-react";
+import { ArrowRight, ClipboardCheck, FileText, Plus } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,7 +37,6 @@ export function DashboardClient({ userName }: { userName: string }) {
   const {
     recentNotes,
     lastAttempt,
-    lastConversation,
     isPending,
     isRefreshing,
     isError,
@@ -74,7 +67,7 @@ export function DashboardClient({ userName }: { userName: string }) {
         longWaitMessage={DASHBOARD_LONG_WAIT}
         onRetry={() => void refetch()}
       >
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Recent notes</CardTitle>
@@ -164,51 +157,6 @@ export function DashboardClient({ userName }: { userName: string }) {
                   </EmptyHeader>
                   <Button asChild size="sm" variant="outline">
                     <Link href="/quizzes">Go to my quizzes</Link>
-                  </Button>
-                </Empty>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Last conversation</CardTitle>
-              <CardDescription>
-                Pick up with Tip where you stopped
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {lastConversation ? (
-                <Link
-                  href={`/chat/${lastConversation.id}`}
-                  className="flex items-center justify-between gap-3 rounded-lg border p-3 transition-colors hover:border-primary/40"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <BotMessageSquare className="h-5 w-5 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">
-                        {lastConversation.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Opened {formatDay(lastConversation.updatedAt)}
-                      </p>
-                    </div>
-                  </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-                </Link>
-              ) : (
-                <Empty className="border-0 p-0">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <BotMessageSquare className="size-4 text-muted-foreground" />
-                    </EmptyMedia>
-                    <EmptyTitle>No conversation yet</EmptyTitle>
-                    <EmptyDescription>
-                      Tip reads your note and teaches it back to you.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                  <Button asChild size="sm" variant="outline">
-                    <Link href="/chat">Ask Tip</Link>
                   </Button>
                 </Empty>
               )}

@@ -5,6 +5,7 @@ import { fulfillCreditPurchaseFromFapshi } from "@/lib/credit-purchase-fulfillme
 import { webhookSecret } from "@/lib/env";
 import { inngest } from "@/lib/inngest/client";
 import { EVENTS, trackEvent } from "@/lib/kpi";
+import { grantPlanCredits } from "@/lib/plan-credits";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
@@ -189,6 +190,14 @@ export async function POST(req: Request) {
         plan: sub.plan,
         amount: planPrice,
       }).catch(() => {});
+
+      // Award plan-based credits once when a subscription activates, so a
+      // paid plan comes with its credits included and no separate purchase.
+      await grantPlanCredits({
+        userId: sub.userId,
+        plan: sub.plan,
+        subscriptionId: sub.id,
+      }).catch(console.error);
 
       if (sub.user.referredBy) {
         const affiliate = await prisma.affiliate.findUnique({

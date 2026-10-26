@@ -43,7 +43,6 @@ export function useUpdateSettings() {
     mutationFn: async (data: {
       emailNotifications?: boolean;
       pushNotifications?: boolean;
-      weeklyDigest?: boolean;
     }) => {
       const result = await api.mutations.settings.update(data);
       return result;

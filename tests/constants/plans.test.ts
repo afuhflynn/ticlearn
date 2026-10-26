@@ -81,7 +81,9 @@ describe("the plan catalogue (spec 0019 AC-1)", () => {
     expect(free.features).toContain(
       `${FREE_LIMITS.aiTutorMessages} Tip messages a day`,
     );
-    expect(free.features).toContain("Read any note you upload, any time");
+    expect(free.features).toContain(
+      "200 starting credits, enough for 4 quizzes",
+    );
   });
 
   it("reads the semester pass bullets from PAID_LIMITS.PRO (spec 0019 AC-3)", () => {

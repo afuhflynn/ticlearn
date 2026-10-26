@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import { grantPlanCredits } from "@/lib/plan-credits";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -138,6 +139,12 @@ export async function POST(req: Request) {
         },
       },
     });
+
+    await grantPlanCredits({
+      userId,
+      plan: subscription.plan,
+      subscriptionId: subscription.id,
+    }).catch(console.error);
 
     return NextResponse.json({ subscription, success: true });
   } catch (error) {

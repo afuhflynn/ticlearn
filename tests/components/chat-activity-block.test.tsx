@@ -28,10 +28,7 @@ const toolPart = (
     output: { ok: true },
   }) as unknown as UIMessage["parts"][number];
 
-const sourcePart = (
-  title: string,
-  url: string,
-): UIMessage["parts"][number] =>
+const sourcePart = (title: string, url: string): UIMessage["parts"][number] =>
   ({
     type: "source-url",
     sourceId: `source-${title}`,
@@ -174,16 +171,9 @@ describe("the collapsed activity line (covers: AC-1, AC-3)", () => {
   });
 
   it("shows no duration for a stored conversation", () => {
-    render(
-      <ActivityBlock
-        parts={[toolPart("getUserNotes")]}
-        status="ready"
-      />,
-    );
+    render(<ActivityBlock parts={[toolPart("getUserNotes")]} status="ready" />);
 
-    expect(
-      screen.getByRole("button", { name: "Thought" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Thought" })).toBeInTheDocument();
   });
 
   it("draws nothing once a plain answer finished with no steps", () => {

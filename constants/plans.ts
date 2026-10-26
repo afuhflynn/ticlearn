@@ -17,6 +17,8 @@ export interface PlanDefinition {
   priceXaf: number;
   period: "forever" | "month" | "semester";
   semesterMonths?: number;
+  /** Credits the plan adds to the account when it activates. */
+  credits: number;
   features: string[];
   cta: string;
   href: string;
@@ -29,11 +31,12 @@ export const planCatalog: Record<string, PlanDefinition> = {
     label: "Free",
     priceXaf: 0,
     period: "forever",
+    credits: 200,
     features: [
       `${FREE_LIMITS.pdfUploads} notes`,
       `${FREE_LIMITS.quizGenerations} quizzes from your notes`,
       `${FREE_LIMITS.aiTutorMessages} Tip messages a day`,
-      "Read any note you upload, any time",
+      "200 starting credits, enough for 4 quizzes",
     ],
     cta: "Get Started",
     href: "/sign-up",
@@ -44,10 +47,12 @@ export const planCatalog: Record<string, PlanDefinition> = {
     priceXaf: 2_500,
     period: "semester",
     semesterMonths: 5,
+    credits: 12_000,
     features: [
       "Unlimited notes",
       "Unlimited quizzes from your notes",
       "Unlimited Tip messages",
+      "12,000 credits included for the semester",
       "Every quiz traces back to the page it came from",
     ],
     cta: "Start Semester Pass",
@@ -59,11 +64,12 @@ export const planCatalog: Record<string, PlanDefinition> = {
     label: "Starter",
     priceXaf: 3_000,
     period: "month",
+    credits: 1_600,
     features: [
       `${PAID_LIMITS.STARTER.pdfUploads} notes`,
       `${PAID_LIMITS.STARTER.quizGenerations} quizzes from your notes`,
       `${PAID_LIMITS.STARTER.aiTutorMessages} Tip messages a day`,
-      "Read any note you upload, any time",
+      "1,600 credits included",
     ],
     cta: "Start Starter",
     href: "/api/payment/initiate",
@@ -73,11 +79,12 @@ export const planCatalog: Record<string, PlanDefinition> = {
     label: "Standard",
     priceXaf: 5_000,
     period: "month",
+    credits: 3_600,
     features: [
       `${PAID_LIMITS.STANDARD.pdfUploads} notes`,
       `${PAID_LIMITS.STANDARD.quizGenerations} quizzes from your notes`,
       "Unlimited Tip messages",
-      "Every quiz traces back to the page it came from",
+      "3,600 credits included",
     ],
     cta: "Start Standard",
     href: "/api/payment/initiate",
@@ -87,11 +94,12 @@ export const planCatalog: Record<string, PlanDefinition> = {
     label: "Premium",
     priceXaf: 10_000,
     period: "month",
+    credits: 12_000,
     features: [
       "Unlimited notes",
       "Unlimited quizzes from your notes",
       "Unlimited Tip messages",
-      "Every quiz traces back to the page it came from",
+      "12,000 credits included",
     ],
     cta: "Start Premium",
     href: "/api/payment/initiate",

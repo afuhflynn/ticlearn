@@ -21,11 +21,21 @@ const SCRIPT = "scripts/check-landing-honesty.mjs";
 const source = fs.readFileSync(path.join(ROOT, SCRIPT), "utf8");
 const run = promisify(execFile);
 
-/** The paths the gate fetches, read from the script it fetches them with. */
-const GATE_PATHS = Array.from(
-  source.matchAll(/^\s*\{ path: "([^"]+)", name: "[^"]+"/gm),
-  (match) => match[1],
-);
+/**
+ * The paths the gate fetches, read from the script it fetches them with. The
+ * list is sliced out first, because an entry may be written across several
+ * lines (the pricing page carries an extra flag) and a line-anchored pattern
+ * would quietly miss it.
+ */
+function readGatePaths(): string[] {
+  const start = source.indexOf("const PAGES");
+  const end = source.indexOf("];", start);
+  const block = start === -1 || end === -1 ? "" : source.slice(start, end);
+
+  return Array.from(block.matchAll(/path: "([^"]+)"/g), (match) => match[1]);
+}
+
+const GATE_PATHS = readGatePaths();
 
 const HONEST = {
   title: "TiCLearn · Study your own lecture notes",

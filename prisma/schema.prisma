@@ -30,7 +30,7 @@ model User {
   warningSentAt DateTime? @map("warning_sent_at")
 
   // Credits system
-  credits            Int @default(0) @map("credits")
+  credits            Int @default(200) @map("credits")
   totalCreditsEarned Int @default(0) @map("total_credits_earned")
 
   // Level of study, the one academic fact we hold about a student.

@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { inngest } from "@/lib/inngest/client";
+import { grantPlanCredits } from "@/lib/plan-credits";
 import { prisma } from "@/lib/prisma";
 
 interface RouteParams {
@@ -132,6 +133,12 @@ export async function PUT(req: Request, { params }: RouteParams) {
     });
 
     if (status === "ACTIVE") {
+      await grantPlanCredits({
+        userId: subscription.userId,
+        plan: subscription.plan,
+        subscriptionId: subscription.id,
+      }).catch(console.error);
+
       await sendSubscriptionNotification(
         id,
         "ACTIVATE",

@@ -1,37 +1,57 @@
 "use client";
 
-import { Camera, Loader2, Lock, Mail, Save, User } from "lucide-react";
+import {
+  Bell,
+  Camera,
+  Check,
+  KeyRound,
+  LogOut,
+  Mail,
+  Sparkles,
+  User,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Field,
+  FieldDescription,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { useSettings, useUpdateProfile, useUpdateSettings } from "@/hooks";
-import { useSession } from "@/lib/auth-client";
+import { signOut, useSession } from "@/lib/auth-client";
 import { useUploadThing } from "@/lib/uploadthing";
 import { SettingsSkeleton } from "../student-skeletons";
 
+/**
+ * Settings is three real things: who you are, how you sign in, and what we are
+ * allowed to send you. Every control here changes something the server stores.
+ * Nothing is a placeholder.
+ */
 export default function SettingsPage() {
-  const { data: session, isPending: sessionLoading } = useSession();
+  const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { settings, isLoading: settingsLoading } = useSettings();
-  const updateProfileMutation = useUpdateProfile();
-  const updateSettingsMutation = useUpdateSettings();
-
-  const [isSaving, setIsSaving] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const updateProfile = useUpdateProfile();
+  const updateSettings = useUpdateSettings();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -42,18 +62,17 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  const [emailNotifications, setEmailNotifications] = useState(true);
+  const [emailNotifications, setEmailNotifications] = useState(false);
   const [pushNotifications, setPushNotifications] = useState(true);
 
-  const { startUpload } = useUploadThing("profileImage", {
-    onUploadError: (err) => {
-      toast.error(`Upload failed: ${err.message}`);
-      setIsUploading(false);
+  const { startUpload, isUploading } = useUploadThing("profileImage", {
+    onUploadError: (error) => {
+      toast.error(error.message);
     },
   });
 
   useEffect(() => {
-    if (!sessionLoading && !session?.user) {
+    if (!sessionPending && !session?.user) {
       router.push("/sign-in");
       return;
     }
@@ -63,324 +82,415 @@ export default function SettingsPage() {
       setEmail(session.user.email || "");
       setImage(session.user.image || null);
     }
-  }, [session, sessionLoading, router]);
+  }, [session, sessionPending, router]);
 
   useEffect(() => {
-    if (settings) {
-      setEmailNotifications(settings.emailNotifications ?? false);
-      setPushNotifications(settings.pushNotifications ?? true);
-    }
+    if (!settings) return;
+    setEmailNotifications(settings.emailNotifications);
+    setPushNotifications(settings.pushNotifications);
   }, [settings]);
+
+  const profileChanged = session?.user
+    ? name.trim() !== (session.user.name || "")
+    : false;
 
   const handleSaveProfile = async () => {
     if (!name.trim()) {
-      toast.error("Name is required");
+      toast.error("Your name cannot be empty.");
       return;
     }
 
-    setIsSaving(true);
     try {
-      await updateProfileMutation.mutateAsync({ name });
-      toast.success("Profile updated!");
+      await updateProfile.mutateAsync({ name: name.trim() });
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Failed to update profile",
+        error instanceof Error ? error.message : "The profile was not saved.",
       );
-    } finally {
-      setIsSaving(false);
+    }
+  };
+
+  const handlePhoto = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Choose an image file.");
+      return;
+    }
+
+    try {
+      const uploaded = await startUpload([file]);
+      const uploadedFile = uploaded?.[0];
+      if (!uploadedFile?.url) {
+        toast.error("The photo was not uploaded.");
+        return;
+      }
+      setImage(uploadedFile.url);
+      await updateProfile.mutateAsync({ image: uploadedFile.url });
+    } catch {
+      toast.error("The photo was not uploaded.");
     }
   };
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      toast.error("Please fill in all password fields");
+      toast.error("Fill in all three password fields.");
       return;
     }
-
     if (newPassword !== confirmPassword) {
-      toast.error("New passwords do not match");
+      toast.error("The two new passwords do not match.");
       return;
     }
-
     if (newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters");
+      toast.error("Use at least 8 characters.");
       return;
     }
 
     setIsChangingPassword(true);
     try {
-      const response = await fetch("/api/profile", {
-        method: "PUT",
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
+        body: JSON.stringify({
+          currentPassword,
+          newPassword,
+          revokeOtherSessions: false,
+        }),
       });
-      const data = await response.json();
 
-      if (data.success) {
-        toast.success("Password changed successfully!");
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      } else {
-        toast.error(data.error || "Failed to change password");
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(
+          data?.message || data?.error || "The password was not changed.",
+        );
       }
-    } catch {
-      toast.error("Failed to change password");
+
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Password changed.");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "The password was not changed.",
+      );
     } finally {
       setIsChangingPassword(false);
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("image/")) {
-      toast.error("Please choose an image file");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      const uploaded = await startUpload([file]);
-      const uploadedFile = uploaded?.[0];
-
-      if (uploadedFile?.url) {
-        setImage(uploadedFile.url);
-        await updateProfileMutation.mutateAsync({ image: uploadedFile.url });
-        toast.success("Profile photo updated!");
-      } else {
-        toast.error("Failed to upload image");
-      }
-    } catch {
-      toast.error("Failed to upload image");
-    } finally {
-      setIsUploading(false);
-      e.target.value = "";
-    }
-  };
-
-  const handleNotificationChange = async (
+  const handleNotification = async (
     key: "emailNotifications" | "pushNotifications",
     value: boolean,
   ) => {
-    if (key === "emailNotifications") {
-      setEmailNotifications(value);
-    } else {
-      setPushNotifications(value);
-    }
+    if (key === "emailNotifications") setEmailNotifications(value);
+    else setPushNotifications(value);
 
     try {
-      await updateSettingsMutation.mutateAsync({ [key]: value });
-      toast.success("Notification settings updated");
-    } catch (error) {
-      console.error("Failed to update notification settings:", error);
-      toast.error("Failed to update notification settings");
+      await updateSettings.mutateAsync({ [key]: value });
+    } catch {
+      if (key === "emailNotifications") setEmailNotifications(!value);
+      else setPushNotifications(!value);
+      toast.error("That preference was not saved.");
     }
   };
 
-  if (sessionLoading || settingsLoading) {
+  if (sessionPending || settingsLoading) {
     return <SettingsSkeleton />;
   }
 
+  const initial = (name || email || "?").charAt(0).toUpperCase();
+  const passwordReady =
+    currentPassword.length > 0 &&
+    newPassword.length >= 8 &&
+    newPassword === confirmPassword;
+
   return (
-    <div className="space-y-8">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your account and preferences
+          Your account, your password, and what we are allowed to send you.
         </p>
       </div>
 
-      {/* Profile Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>Update your personal information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src={image ?? ""} />
-                <AvatarFallback className="text-2xl">
-                  {name?.charAt(0).toUpperCase() || "U"}
-                </AvatarFallback>
-              </Avatar>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isUploading}
-                className="absolute bottom-0 right-0 flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 disabled:opacity-50"
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="space-y-6 lg:col-span-3">
+          <Card>
+            <CardHeader>
+              <CardTitle>Profile</CardTitle>
+              <CardDescription>
+                This name is what Tip and your quiz pages call you.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="relative">
+                  <Avatar className="size-16">
+                    <AvatarImage src={image ?? ""} alt="" />
+                    <AvatarFallback className="text-lg">
+                      {initial}
+                    </AvatarFallback>
+                  </Avatar>
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="absolute -right-1 -bottom-1 size-7 rounded-full"
+                    disabled={isUploading}
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Camera className="size-3.5" />
+                    <span className="sr-only">Change profile photo</span>
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handlePhoto}
+                  />
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{name || "Learner"}</p>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {email}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {isUploading
+                      ? "Uploading the photo…"
+                      : "A photo is optional. Up to 2 MB."}
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="settings-name">Name</FieldLabel>
+                  <Input
+                    id="settings-name"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    autoComplete="name"
+                  />
+                </Field>
+
+                <Field>
+                  <FieldLabel htmlFor="settings-email">Email</FieldLabel>
+                  <Input
+                    id="settings-email"
+                    type="email"
+                    value={email}
+                    readOnly
+                    disabled
+                  />
+                  <FieldDescription>
+                    Your email is how you sign in, so it cannot be changed here.
+                  </FieldDescription>
+                </Field>
+              </FieldGroup>
+            </CardContent>
+
+            <CardFooter className="justify-end">
+              <Button
+                onClick={handleSaveProfile}
+                disabled={updateProfile.isPending || !profileChanged}
               >
-                {isUploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                {updateProfile.isPending ? (
+                  "Saving…"
                 ) : (
-                  <Camera className="h-4 w-4" />
+                  <>
+                    <Check className="mr-2 size-4" />
+                    Save profile
+                  </>
                 )}
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageUpload}
-                className="hidden"
-              />
-            </div>
-            <div>
-              <p className="font-medium">{name}</p>
-              <p className="text-sm text-muted-foreground">{email}</p>
-            </div>
-          </div>
+              </Button>
+            </CardFooter>
+          </Card>
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <div className="relative flex items-center">
-                <User className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="pl-9"
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <KeyRound className="size-4 text-muted-foreground" />
+                Password
+              </CardTitle>
+              <CardDescription>
+                Use at least 8 characters. You stay signed in on this device.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent>
+              <FieldGroup>
+                <Field>
+                  <FieldLabel htmlFor="current-password">
+                    Current password
+                  </FieldLabel>
+                  <Input
+                    id="current-password"
+                    type="password"
+                    value={currentPassword}
+                    onChange={(event) => setCurrentPassword(event.target.value)}
+                    autoComplete="current-password"
+                  />
+                </Field>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field>
+                    <FieldLabel htmlFor="new-password">New password</FieldLabel>
+                    <Input
+                      id="new-password"
+                      type="password"
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel htmlFor="confirm-password">
+                      Repeat it
+                    </FieldLabel>
+                    <Input
+                      id="confirm-password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) =>
+                        setConfirmPassword(event.target.value)
+                      }
+                      autoComplete="new-password"
+                    />
+                  </Field>
+                </div>
+              </FieldGroup>
+
+              {newPassword.length > 0 && newPassword.length < 8 ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  {8 - newPassword.length} more character
+                  {8 - newPassword.length === 1 ? "" : "s"} needed.
+                </p>
+              ) : null}
+              {confirmPassword.length > 0 && newPassword !== confirmPassword ? (
+                <p className="mt-3 text-sm text-destructive">
+                  The two new passwords do not match.
+                </p>
+              ) : null}
+            </CardContent>
+
+            <CardFooter className="justify-end">
+              <Button
+                variant="outline"
+                onClick={handleChangePassword}
+                disabled={isChangingPassword || !passwordReady}
+              >
+                {isChangingPassword ? "Changing…" : "Change password"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <div className="space-y-6 lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="size-4 text-muted-foreground" />
+                Notifications
+              </CardTitle>
+              <CardDescription>
+                Choose what reaches you outside the app.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Email</p>
+                  <p className="text-sm text-muted-foreground">
+                    Account news, and a reminder when your exam is close.
+                  </p>
+                </div>
+                <Switch
+                  checked={emailNotifications}
+                  onCheckedChange={(checked) =>
+                    void handleNotification("emailNotifications", checked)
+                  }
+                  disabled={updateSettings.isPending}
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <div className="relative flex items-center">
-                <Mail className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  disabled
-                  className="pl-9 bg-muted"
+
+              <Separator />
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">In the app</p>
+                  <p className="text-sm text-muted-foreground">
+                    A note finishes processing, or a quiz is ready.
+                  </p>
+                </div>
+                <Switch
+                  checked={pushNotifications}
+                  onCheckedChange={(checked) =>
+                    void handleNotification("pushNotifications", checked)
+                  }
+                  disabled={updateSettings.isPending}
                 />
               </div>
-              <p className="text-xs text-muted-foreground">
-                Email cannot be changed
-              </p>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          <Button onClick={handleSaveProfile} disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              <>
-                <Save className="mr-2 h-4 w-4" />
-                Save Changes
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Account</CardTitle>
+              <CardDescription>Where you stand right now.</CardDescription>
+            </CardHeader>
 
-      {/* Password Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Change Password</CardTitle>
-          <CardDescription>
-            Update your password to keep your account secure
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <div className="relative flex items-center">
-                <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="currentPassword"
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  className="pl-9"
-                />
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Mail className="size-4" />
+                  Sign in
+                </span>
+                <span className="max-w-[60%] truncate text-sm">{email}</span>
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <div className="relative flex items-center">
-                <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="newPassword"
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative flex items-center">
-                <Lock className="absolute left-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-9"
-                />
-              </div>
-            </div>
-          </div>
-          <Button onClick={handleChangePassword} disabled={isChangingPassword}>
-            {isChangingPassword ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Changing...
-              </>
-            ) : (
-              "Change Password"
-            )}
-          </Button>
-        </CardContent>
-      </Card>
 
-      {/* Notifications Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notifications</CardTitle>
-          <CardDescription>Choose how you want to be notified</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="font-medium">Email Notifications</p>
-              <p className="text-sm text-muted-foreground">
-                Receive updates and reminders via email
-              </p>
-            </div>
-            <Switch
-              checked={emailNotifications}
-              onCheckedChange={(checked) =>
-                handleNotificationChange("emailNotifications", checked)
-              }
-            />
-          </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <User className="size-4" />
+                  Account
+                </span>
+                <Badge variant="outline" className="capitalize">
+                  {(session?.user as { role?: string })?.role?.toLowerCase() ||
+                    "student"}
+                </Badge>
+              </div>
 
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="font-medium">Push Notifications</p>
-              <p className="text-sm text-muted-foreground">
-                Receive in-app notifications
-              </p>
-            </div>
-            <Switch
-              checked={pushNotifications}
-              onCheckedChange={(checked) =>
-                handleNotificationChange("pushNotifications", checked)
-              }
-            />
-          </div>
-        </CardContent>
-      </Card>
+              <Separator />
+
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/subscription">
+                  <Sparkles className="mr-2 size-4" />
+                  Plan, credits and usage
+                </Link>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="w-full text-destructive hover:text-destructive"
+                onClick={async () => {
+                  await signOut();
+                  router.push("/");
+                }}
+              >
+                <LogOut className="mr-2 size-4" />
+                Sign out
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }
