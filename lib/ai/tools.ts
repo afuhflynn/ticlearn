@@ -1,10 +1,10 @@
-import { tavily } from "@tavily/core";
 import { tool } from "ai";
 import { z } from "zod";
 import {
   CREATE_QUIZ_TOOL_POLICIES,
   createToolPolicyContext,
   DEFAULT_CHAT_TOOL_POLICIES,
+  READ_PAGE_TOOL_POLICIES,
   WEB_SEARCH_TOOL_POLICIES,
   wrapTool,
 } from "@/lib/ai/tool-policy";
@@ -21,20 +21,15 @@ import {
 } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 import { getToolDescription } from "@/lib/prompts/loader";
-
-const TAVILY_API_KEY = process.env.TAVILY_API_KEY;
-
-type SearchDepth = "basic" | "advanced";
+import { runReadPage, runWebSearch } from "@/lib/web-search";
+import {
+  PER_REQUEST_CAPS,
+  SEARCH_DEPTHS,
+  SEARCH_RECENCIES,
+} from "@/lib/web-search/types";
 
 type ToolFactoryOptions = {
   userId: string;
-};
-
-type TavilySearchResult = {
-  title: string;
-  url: string;
-  content: string;
-  score: number;
 };
 
 const notePreviewSelect = {
@@ -62,65 +57,74 @@ const quizPreviewSelect = {
   updatedAt: true,
 } as const;
 
-async function searchWithTavily(
-  query: string,
-  options: {
-    searchDepth?: SearchDepth;
-    maxResults?: number;
-  } = {},
-): Promise<TavilySearchResult[]> {
-  if (!TAVILY_API_KEY) {
-    throw new Error(
-      "Web search is unavailable because TAVILY_API_KEY is not set.",
-    );
-  }
-
-  const client = tavily({ apiKey: TAVILY_API_KEY });
-  const response = await client.search(query, {
-    searchDepth: options.searchDepth ?? "advanced",
-    includeAnswer: true,
-    maxResults: options.maxResults ?? 5,
-  });
-
-  return (response.results ?? []).map((result) => ({
-    title: result.title ?? "",
-    url: result.url ?? "",
-    content: result.content ?? "",
-    score: result.score ?? 0,
-  }));
-}
-
-function truncateResults(
-  results: TavilySearchResult[],
-  maxChars = 2000,
-): TavilySearchResult[] {
-  return results.map((r) => ({
-    ...r,
-    content: r.content.slice(0, maxChars),
-  }));
-}
-
 export function createChatTools({ userId }: ToolFactoryOptions) {
   const policyContext = createToolPolicyContext(userId);
+
+  // Per request, not per conversation. A five step agent turn must not multiply
+  // the search budget, so the refusal is a plain result, never an error.
+  let webSearchCalls = 0;
+  let readPageCalls = 0;
 
   const webSearchTool = tool({
     description: getToolDescription("web_search"),
     inputSchema: z.object({
-      query: z.string().min(3).describe("The web search query."),
-      searchDepth: z
-        .enum(["basic", "advanced"])
-        .default("basic")
-        .describe("Whether to do a faster basic search or a deeper search."),
+      query: z
+        .string()
+        .min(3)
+        .max(500)
+        .describe("What to search for, written as a search query."),
+      depth: z
+        .enum(SEARCH_DEPTHS)
+        .default("quick")
+        .describe(
+          "quick reads snippets only. thorough also reads the pages, and is slower and rarer.",
+        ),
+      recency: z
+        .enum(SEARCH_RECENCIES)
+        .default("any")
+        .describe(
+          "How recent the results should be. any applies no time filter.",
+        ),
+      country: z
+        .string()
+        .regex(/^[A-Za-z]{2}$/)
+        .default("CM")
+        .describe("Two letter country code the results should come from."),
     }),
-    execute: async ({ query, searchDepth }) => {
-      const results = await searchWithTavily(query, {
-        searchDepth,
-        maxResults: 5,
-      });
-      return {
-        query,
-        results: truncateResults(results),
-      };
+    execute: async ({ query, depth, recency, country }) => {
+      if (webSearchCalls >= PER_REQUEST_CAPS.webSearch) {
+        return { ok: false, degraded: true, results: [] };
+      }
+      webSearchCalls += 1;
+
+      return runWebSearch({ query, depth, recency, country }, { userId });
+    },
+  });
+
+  const readPageTool = tool({
+    description: getToolDescription("read_page"),
+    inputSchema: z.object({
+      url: z
+        .string()
+        .min(1)
+        .max(2_048)
+        .describe("The full page address, starting with http or https."),
+    }),
+    execute: async ({ url }) => {
+      if (readPageCalls >= PER_REQUEST_CAPS.readPage) {
+        return {
+          ok: false,
+          title: null,
+          body: null,
+          truncated: false,
+          warnings: [],
+          reason:
+            "This answer has already opened as many pages as it can. I will work with what it has.",
+        };
+      }
+      readPageCalls += 1;
+
+      return runReadPage(url, { userId });
     },
   });
 
@@ -588,6 +592,7 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
 
   return {
     webSearch: wrapTool(webSearchTool, WEB_SEARCH_TOOL_POLICIES, policyContext),
+    readPage: wrapTool(readPageTool, READ_PAGE_TOOL_POLICIES, policyContext),
     getUserNotes: wrapTool(
       getUserNotesTool,
       DEFAULT_CHAT_TOOL_POLICIES,

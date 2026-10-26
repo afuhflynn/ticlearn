@@ -438,6 +438,38 @@ Rebuild the chat around one reading column and one activity line, make the compo
 
 <!-- END:chat-polish -->
 
+<!-- BEGIN:web-search-tooling -->
+# Web search tooling (spec 0022)
+
+## Goal
+Firecrawl is the primary search and page reader, Tavily is the fallback, and both hide behind two tools the model sees as plain capability. One module, `lib/web-search/`, owns the providers, the normalisation, the caps, the shared cache and the bookkeeping. No provider name ever reaches a tool result.
+
+## The two tools
+- `webSearch`: `query` (3 to 500), `depth` (`quick` or `thorough`, default `quick`), `recency` (default `any`), `country` (default `CM`). Returns `ok`, `degraded`, `results[]`.
+- `readPage`: one `url` (max 2,048). Returns `ok`, `title`, `body`, `truncated`, `warnings`, and a `reason` on a refusal. Firecrawl only, never cached.
+
+## The chain
+Cache, then Firecrawl search, then Firecrawl with page fetch (the normal `thorough` path and the single retry after a `quick` answer was not useful), then Tavily, then an honest empty answer. A hard failure skips the second Firecrawl pass. The event row is written before the cache and the cache before the debit.
+
+## Gotchas in this area
+- **The cap is a promise, so `truncateAtBoundary` never returns more than the cap it is given.** The mark is counted in the budget, and a cap too small to hold the text and the mark takes the hard cut instead. `applyCaps` drops a tail shorter than `MIN_READABLE_SNIPPET_CHARS` (the AC-4 usability floor) rather than showing a fragment, so 12,000 never becomes 12,010.
+- **AC-3 and AC-17 pull against each other on a rejected key.** The reading taken here: any Firecrawl hard failure, a `401` included, skips the second pass and goes to Tavily. "Fails fast" therefore means no wasted second pass and no Tavily call spent confirming a missing key, not "no fallback at all". A missing key logs once per process and starts the chain at Tavily.
+- **A hard failure is not a retryable reason.** Calling a provider again seconds after a `429` is a bug, so the second pass only runs when the first answer came back and was not useful.
+- **This feature debits one credit with no plan multiplier.** `creditCostWebSearch` is the only value the spec names, so a plan tier changes nothing here.
+- **The per request cap lives in the `createChatTools` closure**, not in the module, because the request is the scope. 2 searches and 3 reads; the refusal is a plain result.
+- **`readPage` has no policy wrapper on purpose.** Its scheme, host and length checks run in the module before any fetch, and `READ_PAGE_TOOL_POLICIES` is empty.
+- **The cache key must carry depth.** A stored `quick` entry has no body, and a `thorough` caller must never receive a bodyless one.
+
+## Relevant files
+- `lib/web-search/`: `types.ts`, `http.ts`, `query.ts`, `normalize.ts`, `firecrawl.ts`, `tavily.ts`, `index.ts`
+- `lib/ai/tools.ts`, `lib/ai/tool-policy.ts`, `lib/chat/activity-labels.ts`
+- `prompts/tools/web_search.md`, `prompts/tools/read_page.md`, `prompts/chat/chat_system.md`
+- `lib/platform-settings-direct.ts`, `app/api/admin/platform-settings/route.ts`, `app/(admin)/admin/platform-settings/page.tsx`
+- `lib/inngest/cache-cleanup-functions.ts`, `prisma/schema.prisma`, `prisma/migrations/20261026142424_add_web_search_tooling/`
+- `tests/lib/web-search/`, `tests/lib/chat/activity-labels.test.ts`
+
+<!-- END:web-search-tooling -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 

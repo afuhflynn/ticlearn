@@ -149,6 +149,13 @@ export const WEB_SEARCH_TOOL_POLICIES: PolicyName[] = [
   "chatInputCap",
 ];
 
+/**
+ * `readPage` needs no wrapper here: its scheme, host and length checks run in
+ * `lib/web-search` before any request leaves the server, and a refusal comes
+ * back as a result rather than a thrown error.
+ */
+export const READ_PAGE_TOOL_POLICIES: PolicyName[] = [];
+
 export const CREATE_QUIZ_TOOL_POLICIES: PolicyName[] = [
   "userScope",
   "noIsPublic",

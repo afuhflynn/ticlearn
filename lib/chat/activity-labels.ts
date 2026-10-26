@@ -36,6 +36,7 @@ const LABELS: Record<string, LabelBuilder> = {
       ? `Searching the web for ${quote(limit(query))}`
       : "Searching the web";
   },
+  readPage: () => "Reading that page",
   getUserNotes: () => "Reading your notes",
   searchNotes: (input) => {
     const query = readString(input, "query");
@@ -59,6 +60,7 @@ const LABELS: Record<string, LabelBuilder> = {
 /** The plain sentence under a failed step. */
 const FAILURE_LABELS: Record<string, string> = {
   webSearch: "Couldn't reach the web. Answering without it.",
+  readPage: "Couldn't read that page. Answering without it.",
   getUserNotes: "Couldn't read your notes. Answering without them.",
   searchNotes: "Couldn't search your notes. Answering without them.",
   getNoteContext: "Couldn't open that note. Answering without it.",

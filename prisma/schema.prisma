@@ -71,6 +71,7 @@ model User {
   engagementLogs       EngagementLog[]
   emailSuppression     EmailSuppression[]
   aiUsageEvents        AiUsageEvent[]        @relation("AiUsageEvents")
+  webSearchEvents      WebSearchEvent[]      @relation("WebSearchEvents")
 
   @@index([role, createdAt])
   @@index([referredBy])
@@ -587,6 +588,8 @@ model PlatformSettings {
   creditCostQuizGeneration    Int @default(50) @map("credit_cost_quiz_generation")
   creditCostPracticeQuestion  Int @default(5) @map("credit_cost_practice_question")
   creditCostAiTutorMessage    Int @default(5) @map("credit_cost_ai_tutor_message")
+  /// Credit charged for one useful web search or page read (spec 0022).
+  creditCostWebSearch         Int @default(1) @map("credit_cost_web_search")
   /// Credit gating for quiz generation from practice.
   enforceCreditsForPractice Boolean @default(true) @map("enforce_credits_for_practice")
   enforceCreditsForAiTutor  Boolean @default(true) @map("enforce_credits_for_ai_tutor")
@@ -679,6 +682,41 @@ model AppCache {
   @@map("app_cache")
 }
 
+/// One row per web search or page read (spec 0022). The tool result never carries
+/// a provider name; this table is the only place that knows who answered.
+model WebSearchEvent {
+  id               String   @id @default(cuid())
+  userId           String?  @map("user_id")
+  tool             String   @map("tool") // webSearch | readPage
+  query            String?  @map("query") // null for readPage
+  url              String?  @map("url") // null for webSearch
+  queryHash        String   @map("query_hash")
+  requestedDepth   String?  @map("requested_depth")
+  requestedRecency String?  @map("requested_recency")
+  country          String   @default("CM") @map("country")
+  servedBy         String?  @map("served_by") // firecrawl | tavily | cache
+  fallbackUsed     Boolean  @default(false) @map("fallback_used")
+  degraded         Boolean  @default(false) @map("degraded")
+  resultCount      Int      @default(0) @map("result_count")
+  usableCount      Int      @default(0) @map("usable_count")
+  contextChars     Int      @default(0) @map("context_chars")
+  contextTruncated Boolean  @default(false) @map("context_truncated")
+  providerCredits  Int      @default(0) @map("provider_credits")
+  creditsCharged   Int      @default(0) @map("credits_charged")
+  durationMs       Int      @default(0) @map("duration_ms")
+  attempts         Json     @map("attempts")
+  errorCode        String?  @map("error_code")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user User? @relation("WebSearchEvents", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([queryHash, createdAt])
+  @@index([userId, createdAt])
+  @@index([servedBy, createdAt])
+  @@map("web_search_events")
+}
+
 // Credits System
 // ===========================================
 
@@ -706,6 +744,7 @@ enum CreditType {
   AI_TUTOR_MESSAGE // Spending credits on TiC tutor messages
   BONUS // Admin or promotional bonuses
   CREDIT_PURCHASE // Credits purchased via Mobile Money (pay-as-you-go)
+  WEB_SEARCH // Spending credits on one useful web search or page read
 }
 
 enum CreditPurchaseStatus {

@@ -77,9 +77,6 @@ importers:
       '@tanstack/react-table':
         specifier: ^9.2.8
         version: 9.2.8(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
-      '@tavily/core':
-        specifier: ^0.7.2
-        version: 0.7.2
       '@types/pdfkit':
         specifier: ^0.17.5
         version: 0.17.5
@@ -3970,9 +3967,6 @@ packages:
     resolution: {integrity: sha512-M4D6fY5jnc7z7TaoD3Pjvz5R+8MbhzCGYdkcFf2T1AgjigwLinvFWZh6mtqfN016A7yGIroOL0GiTlVGsTh6Vg==}
     engines: {node: '>=20'}
 
-  '@tavily/core@0.7.2':
-    resolution: {integrity: sha512-N9xfw9miPD1jyVKYTMWV1hQvWPNjATT9Hffr6tv7VMHzwOPOeBwfX/R25ZE2F7meTyq6xSeGxclWnLVH2xHqFA==}
-
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
     engines: {node: '>=18'}
@@ -5951,9 +5945,6 @@ packages:
 
   js-md5@0.8.3:
     resolution: {integrity: sha512-qR0HB5uP6wCuRMrWPTrkMaev7MJZwJuuw4fnwAzRgP4J4/F8RwtodOKpGp4XpqsLBFzzgqIO42efFAyz2Et6KQ==}
-
-  js-tiktoken@1.0.21:
-    resolution: {integrity: sha512-biOj/6M5qdgx5TKjDnFT1ymSpM5tbd3ylwDtrQvFQSu0Z7bBYko2dF+W/aUkXUPuk6IVpRxk/3Q2sHOzGlS36g==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -11804,15 +11795,6 @@ snapshots:
     dependencies:
       '@tanstack/store': 0.11.2
 
-  '@tavily/core@0.7.2':
-    dependencies:
-      axios: 1.15.0
-      https-proxy-agent: 7.0.6
-      js-tiktoken: 1.0.21
-    transitivePeerDependencies:
-      - debug
-      - supports-color
-
   '@testing-library/dom@10.4.2':
     dependencies:
       '@babel/code-frame': 7.29.0
@@ -13862,10 +13844,6 @@ snapshots:
   jose@6.2.2: {}
 
   js-md5@0.8.3: {}
-
-  js-tiktoken@1.0.21:
-    dependencies:
-      base64-js: 1.5.1
 
   js-tokens@4.0.0: {}
 

@@ -18,6 +18,7 @@ export type PlatformSettingsSnapshot = Pick<
   | "creditCostQuizGeneration"
   | "creditCostPracticeQuestion"
   | "creditCostAiTutorMessage"
+  | "creditCostWebSearch"
   | "enforceCreditsForPractice"
   | "enforceCreditsForAiTutor"
   | "enforceCreditsAll"
@@ -37,6 +38,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettingsSnapshot = {
   creditCostQuizGeneration: 50,
   creditCostPracticeQuestion: 5,
   creditCostAiTutorMessage: 5,
+  creditCostWebSearch: 1,
   enforceCreditsForPractice: true,
   enforceCreditsForAiTutor: true,
   enforceCreditsAll: false,
@@ -66,6 +68,7 @@ export async function readPlatformSettings(): Promise<PlatformSettingsSnapshot> 
     creditCostQuizGeneration: settings.creditCostQuizGeneration,
     creditCostPracticeQuestion: settings.creditCostPracticeQuestion,
     creditCostAiTutorMessage: settings.creditCostAiTutorMessage,
+    creditCostWebSearch: settings.creditCostWebSearch,
     enforceCreditsForPractice: settings.enforceCreditsForPractice,
     enforceCreditsForAiTutor: settings.enforceCreditsForAiTutor,
     enforceCreditsAll: settings.enforceCreditsAll,
