@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
 import { LEGAL_LAST_UPDATED } from "@/constants";
 import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "Privacy Policy · TiCLearn",
   description:
     "How TiCLearn handles your account, your notes and your chats, and who processes them.",
-};
+  path: "/privacy",
+});
 
 /**
  * The privacy page, from spec 0016 AC-8. It says only what the system really

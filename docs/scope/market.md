@@ -75,10 +75,19 @@ Research is clear that a month to month subscription is the wrong shape here and
 
 (basis: research/audience-and-market.md §8 · a proven consumer band of 1,600 to 5,000 XAF a month and a hard floor of 500 XAF and a ceiling of 18,500 XAF observed in the market)
 
-### 36. Technical SEO foundation · needs a decision · GA
+### 36. Technical SEO foundation · done · GA
 Today no page emits a social image, so every share into a WhatsApp group, which is how sharing actually happens here, renders with no picture. Six of seven public pages ship a secondary school description, three of them cannot even carry metadata because they are marked as client components, and there are no canonicals, no alternate language links, and one structured data component that is dead code. Authed pages are simultaneously blocked in robots and marked indexable, which is contradictory.
 **Done when:** every public page emits a title, a description written for this audience, a canonical, a share image at the size WhatsApp wants and a Twitter card, the sitemap lists every public URL and nothing authed, one central rule keeps signed in pages out of the index without hiding pages we want, alternate language links treat English and French as separate markets rather than translations, and the structured data on each page is a type that genuinely applies.
-- [ ] Design it (spec): `/solution-architect technical SEO foundation`
+- [x] Design it (spec): `/solution-architect technical SEO foundation` · spec [0021](../../specs/0021-technical-seo-foundation/index.md)
+- [x] Build it: /feature-build technical SEO foundation · code in `lib/seo.ts`, `app/layout.tsx`, `app/(marketing)/layout.tsx`, `app/(auth)/layout.tsx`, `app/robots.ts`, `app/sitemap.ts`, `components/seo/`, `public/og/`, `scripts/check-landing-honesty.mjs`
+  - [x] Scaffold shared SEO helpers: lib/seo.ts with SITE_URL, AUTHED_PREFIXES, canonical and hreflang builders, OG defaults, Organization and WebSite schema builders; shared public layout; OG image files under public/og (satisfies AC-3, AC-6, AC-7)
+  - [x] Wire metadata on all public pages: marketing pages plus the three client component auth pages via server wrapper, with canonical, en-CM alternate, and OG image where applicable (satisfies AC-1, AC-2)
+  - [x] Harden sitemap and robots: static sitemap listing only public URLs, robots.ts disallowing authed prefixes via shared AUTHED_PREFIXES, no authed page indexable (satisfies AC-4, AC-5)
+  - [x] Extend honesty gate and verify build: honesty checker on all ten public pages, require canonical everywhere, run lint, build, and tests (satisfies AC-8)
+- [x] Verify it: /verify-release technical SEO foundation · passed 2026-10-26, AC-1 to AC-8 met at runtime
+- [x] Test it: /test-engineer technical SEO foundation · 888 passing, 0 failing, 2026-10-26
+- [ ] Review it (fresh model): /peer-review technical SEO foundation
+- [ ] Document it: /tech-writer technical SEO foundation
 
 (basis: research/seo-and-rendering.md §1 and §3 · eight competitors ship zero structured data, so it is uncontested ground, and the WhatsApp share image is the single highest return fix in the set)
 

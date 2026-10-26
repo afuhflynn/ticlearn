@@ -1,14 +1,16 @@
-import type { Metadata } from "next";
 import { FaWhatsapp } from "react-icons/fa6";
 import { FaqAccordion } from "@/components/marketing/faq-accordion";
 import { FAQ_ITEMS } from "@/constants";
 import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "FAQ · Cost, Data Use and Offline Access",
   description:
     "Answers Cameroonian university students ask most: what TiCLearn costs, how much data it uses, and whether it works on a weak connection.",
-};
+  path: "/faq",
+  ogImage: "/og/faq.png",
+});
 
 export default function FAQPage() {
   return (

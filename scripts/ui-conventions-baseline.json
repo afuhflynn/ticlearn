@@ -6,7 +6,7 @@
     "app/(admin)/admin/payment-settings/page.tsx",
     "app/(admin)/admin/plan-upgrades/page.tsx",
     "app/(admin)/admin/subscriptions/page.tsx",
-    "app/(auth)/verify-email/page.tsx",
+    "app/(auth)/verify-email/verify-email-form.tsx",
     "app/(dashboard)/attempts/[id]/page.tsx",
     "app/(dashboard)/notes/[id]/page.tsx",
     "app/(dashboard)/quizzes/[id]/page.tsx",
@@ -23,8 +23,8 @@
   ],
   "raw-aria": [
     "app/(admin)/admin/users/page.tsx",
-    "app/(auth)/sign-in/page.tsx",
-    "app/(auth)/sign-up/page.tsx",
+    "app/(auth)/sign-in/sign-in-form.tsx",
+    "app/(auth)/sign-up/sign-up-form.tsx",
     "app/(onboarding)/onboarding/page.tsx",
     "app/api/admin/plan-upgrades/route.ts",
     "app/api/admin/users/route.ts",
@@ -35,9 +35,9 @@
     "components/layout/MarketingFooter.tsx"
   ],
   "hand-rolled-control": [
-    "app/(auth)/sign-in/page.tsx",
-    "app/(auth)/sign-up/page.tsx",
-    "app/(auth)/verify-email/page.tsx",
+    "app/(auth)/sign-in/sign-in-form.tsx",
+    "app/(auth)/sign-up/sign-up-form.tsx",
+    "app/(auth)/verify-email/verify-email-form.tsx",
     "app/(dashboard)/settings/page.tsx",
     "app/(dashboard)/upload/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",

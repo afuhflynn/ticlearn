@@ -42,7 +42,30 @@ const LAYOUTS = [
   "app/(admin)/layout.tsx",
 ];
 
-const AUTHED_LAYOUTS = [...LAYOUTS, "app/(auth)/layout.tsx"];
+describe("the crawl rule (spec 0012 AC-7, narrowed by spec 0021 AC-5)", () => {
+  it.each(LAYOUTS)("%s takes the directive from the helper", (layout) => {
+    const source = read(layout);
+
+    expect(source).toContain("noIndex");
+  });
+
+  it.each(LAYOUTS)("%s does not write the directive by hand", (layout) => {
+    const source = read(layout);
+
+    expect(source).not.toContain("robots:");
+  });
+
+  /**
+   * Spec 0021 makes the three auth pages public: they are listed in the
+   * sitemap and indexable, so their layout must not spread `noIndex`. The
+   * signed in groups keep it.
+   */
+  it("the auth group stays public", () => {
+    const source = read("app/(auth)/layout.tsx");
+
+    expect(source).not.toContain("noIndex");
+  });
+});
 
 describe("a layout is a shell (spec 0012 AC-2)", () => {
   it.each(LAYOUTS)("%s reads no session and no database", (layout) => {
@@ -65,26 +88,6 @@ describe("a layout is a shell (spec 0012 AC-2)", () => {
 
     expect(source).not.toContain("redirect(");
   });
-});
-
-describe("the crawl rule (spec 0012 AC-7)", () => {
-  it.each(AUTHED_LAYOUTS)(
-    "%s takes the directive from the helper",
-    (layout) => {
-      const source = read(layout);
-
-      expect(source).toContain("noIndex");
-    },
-  );
-
-  it.each(AUTHED_LAYOUTS)(
-    "%s does not write the directive by hand",
-    (layout) => {
-      const source = read(layout);
-
-      expect(source).not.toContain("robots:");
-    },
-  );
 });
 
 describe("the public pages stay server rendered (spec 0012 AC-10)", () => {

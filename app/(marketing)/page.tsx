@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { LandingBenefits } from "@/components/marketing/landing/benefits";
 import { LandingCtaBand } from "@/components/marketing/landing/cta-band";
 import { LandingFaq } from "@/components/marketing/landing/faq-section";
@@ -7,15 +6,16 @@ import { LandingHero } from "@/components/marketing/landing/hero";
 import { LandingHowItWorks } from "@/components/marketing/landing/how-it-works";
 import { LandingStudyLoop } from "@/components/marketing/landing/study-loop";
 import { LandingSubjects } from "@/components/marketing/landing/subjects";
+import { WebSiteSchema } from "@/components/seo/WebSiteSchema";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "TiCLearn · Make your course notes make sense",
   description:
     "Bring your lecture notes, slides and handouts. TiCLearn gives you clearer explanations, focused practice and feedback that helps you decide what to review next.",
-  alternates: {
-    canonical: "/",
-  },
-};
+  path: "/",
+  ogImage: "/og/home.png",
+});
 
 /**
  * The landing page, from spec 0015. The layout follows the approved mockup
@@ -26,6 +26,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <div className="flex flex-col">
+      <WebSiteSchema />
       <LandingHero />
       <LandingBenefits />
       <LandingHowItWorks />

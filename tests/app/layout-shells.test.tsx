@@ -136,10 +136,29 @@ describe.each(LAYOUTS)("the layout shell $name (spec 0012 AC-2)", (layout) => {
   });
 });
 
-describe.each(LAYOUTS)("the layout shell $name (spec 0012 AC-7)", (layout) => {
-  it("takes its crawl rule from the helper", async () => {
-    const module = await layout.load();
+describe.each(LAYOUTS.filter((l) => l.name !== "app/(auth)/layout.tsx"))(
+  "the layout shell $name (spec 0012 AC-7)",
+  (layout) => {
+    it("takes its crawl rule from the helper", async () => {
+      const module = await layout.load();
 
-    expect(module.metadata?.robots).toEqual({ index: false, follow: false });
+      expect(module.metadata?.robots).toEqual({ index: false, follow: false });
+    });
+  },
+);
+
+/**
+ * The auth pages are public and indexable (spec 0021 AC-1, AC-2, AC-4). They
+ * live in a route group, but the group is not a signed in surface: sign in,
+ * sign up and verify email are in the sitemap and each carries its own
+ * canonical. Only the signed in groups keep the noindex rule.
+ */
+describe("the auth group is public (spec 0021)", () => {
+  it("does not carry the noindex rule", async () => {
+    const module = (await import(
+      "@/app/(auth)/layout"
+    )) as unknown as LayoutModule;
+
+    expect(module.metadata?.robots).toBeUndefined();
   });
 });

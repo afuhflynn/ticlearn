@@ -1,30 +1,13 @@
-import type { Metadata } from "next";
 import { PricingPlans } from "@/components/marketing/pricing-plans";
 import { publicPlans } from "@/constants/plans";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "TiCLearn Pricing · Free and Semester Pass",
   description:
     "TiCLearn is free to start, and one Semester Pass at 2,500 FCFA paid over MTN Mobile Money or Orange Money unlocks unlimited notes, quizzes and Tip messages. A one time payment, no card, no auto renewal.",
-  alternates: {
-    canonical: "/pricing",
-  },
-  openGraph: {
-    title: "TiCLearn Pricing · Free and Semester Pass",
-    description:
-      "Free to start, 2,500 FCFA Semester Pass over MTN Mobile Money or Orange Money. One time payment, no card, no auto renewal.",
-    url: "https://ticlearn.ticsummit.org/pricing",
-    type: "website",
-    locale: "en_CM",
-    siteName: "TiCLearn",
-  },
-  twitter: {
-    title: "TiCLearn Pricing · Free and Semester Pass",
-    description:
-      "Free to start, 2,500 FCFA Semester Pass over MTN Mobile Money or Orange Money. One time payment, no card, no auto renewal.",
-    card: "summary_large_image",
-  },
-};
+  path: "/pricing",
+});
 
 /**
  * The public pricing page, from spec 0019. The heading, copy, metadata and the

@@ -42,8 +42,10 @@ describe("the pricing page (spec 0019 AC-9)", () => {
     );
   });
 
-  it("carries a canonical for /pricing", () => {
-    expect(metadata.alternates?.canonical).toBe("/pricing");
+  it("carries a self referencing canonical for /pricing", () => {
+    expect(metadata.alternates?.canonical).toBe(
+      "https://ticlearn.ticsummit.org/pricing",
+    );
   });
 });
 

@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
 import { FaWhatsapp } from "react-icons/fa6";
 import { Button } from "@/components/ui/button";
 import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "Contact TiCLearn",
   description: "Questions about TiCLearn? Reach the team on WhatsApp.",
-};
+  path: "/contact",
+});
 
 /**
  * The contact page, from spec 0016 AC-6. The form that used to post to

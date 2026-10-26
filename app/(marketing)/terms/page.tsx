@@ -1,12 +1,13 @@
-import type { Metadata } from "next";
 import { LEGAL_LAST_UPDATED } from "@/constants";
 import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "Terms of Service · TiCLearn",
   description:
     "The rules for using TiCLearn: accounts, uploads, chats and paying with MTN MoMo and Orange Money.",
-};
+  path: "/terms",
+});
 
 /**
  * The terms page, from spec 0016 AC-7. The money stance is deliberately
