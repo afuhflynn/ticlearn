@@ -259,3 +259,37 @@ describe("the structured data is rendered once (AC-6)", () => {
     expect(readSource("app/layout.tsx")).not.toContain("OrganizationSchema");
   });
 });
+
+/**
+ * AC-1 asks for a description written for this audience on every page, which
+ * only holds while each page's copy is its own. Ten pages sharing one title is
+ * the drift the shared helper cannot catch, because the helper is happy to
+ * build the same object ten times.
+ */
+describe("the ten public pages say different things (AC-1)", () => {
+  async function titles(): Promise<string[]> {
+    return Promise.all(
+      PAGES.map(async (page) => String((await page.load()).metadata.title)),
+    );
+  }
+
+  async function descriptions(): Promise<string[]> {
+    return Promise.all(
+      PAGES.map(async (page) =>
+        String((await page.load()).metadata.description),
+      ),
+    );
+  }
+
+  it("gives every page a title of its own", async () => {
+    const values = await titles();
+
+    expect(new Set(values).size).toBe(PAGES.length);
+  });
+
+  it("gives every page a description of its own", async () => {
+    const values = await descriptions();
+
+    expect(new Set(values).size).toBe(PAGES.length);
+  });
+});
