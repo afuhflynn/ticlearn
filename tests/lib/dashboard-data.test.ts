@@ -12,7 +12,6 @@ import { getDashboardContinue } from "@/lib/dashboard-data";
 const prisma = vi.hoisted(() => ({
   note: { findMany: vi.fn() },
   quizAttempt: { findFirst: vi.fn() },
-  chatConversation: { findFirst: vi.fn() },
 }));
 
 vi.mock("@/lib/prisma", () => ({ prisma }));
@@ -20,14 +19,12 @@ vi.mock("@/lib/prisma", () => ({ prisma }));
 beforeEach(() => {
   prisma.note.findMany.mockReset();
   prisma.quizAttempt.findFirst.mockReset();
-  prisma.chatConversation.findFirst.mockReset();
 });
 
 describe("getDashboardContinue (spec 0014 AC-3)", () => {
-  it("reads the three pieces with the limits the payload promises", async () => {
+  it("reads the two pieces with the limits the payload promises", async () => {
     prisma.note.findMany.mockResolvedValue([]);
     prisma.quizAttempt.findFirst.mockResolvedValue(null);
-    prisma.chatConversation.findFirst.mockResolvedValue(null);
 
     await getDashboardContinue("user-42");
 
@@ -42,12 +39,6 @@ describe("getDashboardContinue (spec 0014 AC-3)", () => {
       expect.objectContaining({
         where: { userId: "user-42" },
         orderBy: { completedAt: "desc" },
-      }),
-    );
-    expect(prisma.chatConversation.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { userId: "user-42" },
-        orderBy: { updatedAt: "desc" },
       }),
     );
   });
@@ -68,12 +59,6 @@ describe("getDashboardContinue (spec 0014 AC-3)", () => {
       quizTitle: "Process scheduling check",
       completedAt: new Date("2026-10-23T11:00:00.000Z"),
     });
-    prisma.chatConversation.findFirst.mockResolvedValue({
-      id: "conversation-1",
-      title: "Round robin time slice",
-      updatedAt: new Date("2026-10-23T12:00:00.000Z"),
-    });
-
     const payload = await getDashboardContinue("user-42");
 
     expect(payload).toEqual({
@@ -92,23 +77,16 @@ describe("getDashboardContinue (spec 0014 AC-3)", () => {
         title: "Process scheduling check",
         answeredAt: "2026-10-23T11:00:00.000Z",
       },
-      lastConversation: {
-        id: "conversation-1",
-        title: "Round robin time slice",
-        updatedAt: "2026-10-23T12:00:00.000Z",
-      },
     });
   });
 
-  it("keeps the attempt and conversation nullable so an empty dashboard paints", async () => {
+  it("keeps the attempt nullable so an empty dashboard paints", async () => {
     prisma.note.findMany.mockResolvedValue([]);
     prisma.quizAttempt.findFirst.mockResolvedValue(null);
-    prisma.chatConversation.findFirst.mockResolvedValue(null);
 
     const payload = await getDashboardContinue("user-42");
 
     expect(payload.recentNotes).toEqual([]);
     expect(payload.lastAttempt).toBeNull();
-    expect(payload.lastConversation).toBeNull();
   });
 });

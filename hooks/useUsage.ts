@@ -24,6 +24,7 @@ interface UseUsageResult {
   previousPlan: string | null;
   limits: PlanLimits;
   usage: Usage;
+  creditCosts: { quizGeneration: number; aiTutorMessage: number };
   canUpload: boolean;
   canGenerateQuiz: boolean;
   canUseAIChat: boolean;
@@ -60,6 +61,10 @@ export function useUsage(): UseUsageResult {
       pdfUploads: data?.usage?.pdfUploads ?? 0,
       quizGenerations: data?.usage?.quizGenerations ?? 0,
       aiTutorMessages: data?.usage?.aiTutorMessages ?? 0,
+    },
+    creditCosts: {
+      quizGeneration: data?.creditCosts?.quizGeneration ?? 50,
+      aiTutorMessage: data?.creditCosts?.aiTutorMessage ?? 5,
     },
     canUpload: data?.canUpload ?? true,
     canGenerateQuiz: data?.canGenerateQuiz ?? true,

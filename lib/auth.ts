@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { emailOTP } from "better-auth/plugins";
+import { grantCredits } from "@/lib/credits";
 import { inngest } from "@/lib/inngest/client";
 import { trustedOrigins } from "./env";
 import { trackEvent } from "./kpi";
@@ -82,6 +83,15 @@ export const auth = betterAuth({
     user: {
       create: {
         after: async (user) => {
+          // Every new user starts with 200 credits so they can generate
+          // quizzes and use Tip right away, with no separate purchase needed.
+          await grantCredits({
+            userId: user.id,
+            amount: 200,
+            type: "BONUS",
+            description: "Welcome bonus: 200 credits to start learning",
+          }).catch(console.error);
+
           // Send the welcome email to every signup, not just Google accounts.
           await inngest
             .send({

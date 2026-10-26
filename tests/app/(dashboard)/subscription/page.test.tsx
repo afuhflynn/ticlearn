@@ -2,59 +2,45 @@
 import { render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SubscriptionPage from "@/app/(dashboard)/subscription/page";
-import { planCatalog } from "@/constants/plans";
-
-const sessionState = vi.hoisted(() => ({
-  current: null as null | { user: { id: string; email: string; name: string } },
-}));
+import { getPlanLimits } from "@/lib/plan-limits";
 
 const usageState = vi.hoisted(() => ({
-  plan: "FREE" as string,
-  status: "NONE" as string,
-  previousPlan: null as string | null,
-  isPending: false as boolean,
-  isPaid: false as boolean,
+  current: {
+    plan: "FREE",
+    status: "NONE",
+    previousPlan: null as string | null,
+    isPending: false,
+    isPaid: false,
+  },
 }));
 
-const routerPush = vi.hoisted(() => vi.fn());
-const searchParamsState = vi.hoisted(() => new URLSearchParams());
 const queryStates = vi.hoisted(() => ({
-  tab: "auto" as const,
-  modal: "" as const,
+  modal: "",
   setView: vi.fn(),
 }));
 
-vi.mock("@/lib/auth-client", () => ({
-  useSession: () => ({ data: sessionState.current }),
-}));
+const routerPush = vi.hoisted(() => vi.fn());
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPush }),
-  useSearchParams: () => searchParamsState,
 }));
 
 vi.mock("nuqs", async (importOriginal) => {
   const actual = await importOriginal<typeof import("nuqs")>();
   return {
     ...actual,
-    useQueryStates: () => [queryStates, queryStates.setView] as unknown,
+    useQueryStates: () => [queryStates, queryStates.setView],
   };
 });
-
-vi.mock("@/nuqs", () => ({
-  correctionsForKeys: vi.fn(() => ({})),
-}));
 
 vi.mock("@/hooks", () => ({
   useUsage: () => ({
     plan: usageState.current.plan,
     status: usageState.current.status,
     previousPlan: usageState.current.previousPlan,
-    limits: {
-      ...planCatalog[usageState.current.plan as keyof typeof planCatalog],
-      maxConversationMessages: 50,
-    },
-    usage: { pdfUploads: 0, quizGenerations: 0, aiTutorMessages: 0 },
+    limits: getPlanLimits(usageState.current.plan),
+    usage: { pdfUploads: 1, quizGenerations: 2, aiTutorMessages: 3 },
+    creditCosts: { quizGeneration: 50, aiTutorMessage: 5 },
     canUpload: true,
     canGenerateQuiz: true,
     canUseAIChat: true,
@@ -63,6 +49,9 @@ vi.mock("@/hooks", () => ({
     isPaid: usageState.current.isPaid,
     isPending: usageState.current.isPending,
     refetch: vi.fn(),
+  }),
+  useCredits: () => ({
+    data: { balance: 200, totalEarned: 200, earned: 200, spent: 0 },
   }),
 }));
 
@@ -75,7 +64,6 @@ vi.mock("../student-skeletons", () => ({
 }));
 
 beforeEach(() => {
-  sessionState.current = null;
   usageState.current = {
     plan: "FREE",
     status: "NONE",
@@ -83,23 +71,12 @@ beforeEach(() => {
     isPending: false,
     isPaid: false,
   };
-  routerPush.mockReset();
-  searchParamsState.delete("tab");
-  searchParamsState.delete("modal");
   queryStates.setView.mockReset();
   vi.stubGlobal(
     "fetch",
     vi.fn(async () => ({
       ok: true,
-      json: async () => ({
-        mtnNumber: null,
-        orangeNumber: null,
-        balance: 0,
-        creditsPer1000Xaf: 100,
-        minCreditPurchaseXaf: 100,
-        maxCreditPurchaseXaf: 50_000,
-        minXafEffective: 100,
-      }),
+      json: async () => ({ mtnNumber: null, orangeNumber: null }),
     })),
   );
 });
@@ -109,9 +86,6 @@ afterEach(() => {
 });
 
 function setActivePlan(plan: string, status: "ACTIVE" | "PENDING" = "ACTIVE") {
-  sessionState.current = {
-    user: { id: "u-1", email: "a@b.com", name: "Student" },
-  };
   usageState.current = {
     plan,
     status,
@@ -122,31 +96,40 @@ function setActivePlan(plan: string, status: "ACTIVE" | "PENDING" = "ACTIVE") {
 }
 
 describe("the dashboard subscription page", () => {
-  it("renders the page once usage and settings load", async () => {
+  it("renders the page once usage and payment settings load", async () => {
     setActivePlan("PRO", "ACTIVE");
     render(<SubscriptionPage />);
 
-    await screen.findByText("Subscription & Usage");
+    await screen.findByText("Plan & credits");
     expect(screen.queryByTestId("skeleton")).not.toBeInTheDocument();
   });
 
-  it("shows the active plan label as the current state (spec 0019 AC-11)", async () => {
+  it("shows the active plan label and its status", async () => {
     setActivePlan("PRO", "ACTIVE");
     render(<SubscriptionPage />);
 
-    expect(await screen.findByText("PRO")).toBeInTheDocument();
-    expect(
-      screen.getByText("You are currently on the PRO plan"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Semester Pass")).toBeInTheDocument();
+    expect(screen.getByText("active")).toBeInTheDocument();
   });
 
-  it("shows the pending payment note and keeps the action available (spec 0019 AC-12)", async () => {
+  it("shows the pending payment note without offering a second charge", async () => {
     setActivePlan("PRO", "PENDING");
     render(<SubscriptionPage />);
 
-    expect(await screen.findByText("Payment Processing")).toBeInTheDocument();
     expect(
-      screen.getByText("Upgrading to PRO - please complete payment"),
+      await screen.findByText("Payment not finished yet"),
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Finish the payment on your phone/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the free limits and the starting credit balance", async () => {
+    setActivePlan("FREE", "ACTIVE");
+    render(<SubscriptionPage />);
+
+    expect(await screen.findByText("Free")).toBeInTheDocument();
+    expect(screen.getByText("200")).toBeInTheDocument();
+    expect(screen.getByText("1 of 2")).toBeInTheDocument();
   });
 });

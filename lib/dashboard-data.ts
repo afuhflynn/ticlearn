@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 /**
  * The one read the dashboard paints, from spec 0014. It answers a single
- * question: where did this student leave off? Three pieces of evidence and one
+ * question: where did this student leave off? Two pieces of evidence and one
  * action, no numbers, no score.
  *
  * The API route calls this and so does the server render of the dashboard page,
@@ -28,11 +28,6 @@ export interface DashboardContinue {
     title: string;
     answeredAt: string;
   } | null;
-  lastConversation: {
-    id: string;
-    title: string;
-    updatedAt: string;
-  } | null;
 }
 
 function jsonReady<T>(value: T): T {
@@ -42,7 +37,7 @@ function jsonReady<T>(value: T): T {
 export async function getDashboardContinue(
   userId: string,
 ): Promise<DashboardContinue> {
-  const [notes, attempt, conversation] = await Promise.all([
+  const [notes, attempt] = await Promise.all([
     prisma.note.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
@@ -65,11 +60,6 @@ export async function getDashboardContinue(
         completedAt: true,
       },
     }),
-    prisma.chatConversation.findFirst({
-      where: { userId },
-      orderBy: { updatedAt: "desc" },
-      select: { id: true, title: true, updatedAt: true },
-    }),
   ]);
 
   return {
@@ -86,13 +76,6 @@ export async function getDashboardContinue(
           quizId: attempt.quizId,
           title: attempt.quizTitle,
           answeredAt: attempt.completedAt.toISOString(),
-        }
-      : null,
-    lastConversation: conversation
-      ? {
-          id: conversation.id,
-          title: conversation.title,
-          updatedAt: conversation.updatedAt.toISOString(),
         }
       : null,
   };

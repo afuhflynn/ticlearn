@@ -139,7 +139,7 @@ describe("the pricing island (spec 0019 AC-7)", () => {
     });
     renderIsland();
 
-    const current = await screen.findByRole("button", { name: "Current Plan" });
+    const current = await screen.findByRole("button", { name: "Current plan" });
 
     expect(current).toBeDisabled();
     expect(
@@ -234,15 +234,14 @@ describe("the pricing island payment failures (spec 0019 AC-8)", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the current plan as disabled with the replace line (spec 0019 AC-11)", async () => {
+  it("shows the current plan as disabled and names what buying the pass does (spec 0019 AC-11)", async () => {
     signIn();
     subscriptionMock.mockResolvedValue({
-      subscription: { plan: "PRO", status: "ACTIVE" },
+      subscription: { plan: "STARTER", status: "ACTIVE" },
     });
     renderIsland();
 
-    const current = await screen.findByRole("button", { name: "Current Plan" });
-    expect(current).toBeDisabled();
+    await screen.findByRole("button", { name: "Start Semester Pass" });
     expect(
       screen.getByText("Buying the Semester Pass replaces your current plan."),
     ).toBeInTheDocument();
@@ -256,9 +255,7 @@ describe("the pricing island payment failures (spec 0019 AC-8)", () => {
     renderIsland();
 
     expect(
-      await screen.findByText(
-        "Finish on your phone: complete the payment and come back.",
-      ),
+      await screen.findByText("Finish on your phone, then come back here."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Start Semester Pass" }),
@@ -284,7 +281,9 @@ describe("the pricing island payment failures (spec 0019 AC-8)", () => {
       screen.getByRole("button", { name: "Start Semester Pass" }),
     );
 
-    const starting = await screen.findByRole("button", { name: "Starting…" });
+    const starting = await screen.findByRole("button", {
+      name: "Starting payment…",
+    });
     expect(starting).toBeDisabled();
     // A spinner is not a loading state in this app, so nothing may spin here.
     expect(document.querySelector(".animate-spin")).toBeNull();

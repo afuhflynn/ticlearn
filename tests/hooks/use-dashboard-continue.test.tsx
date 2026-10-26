@@ -42,11 +42,6 @@ const read = {
     title: "Process scheduling check",
     answeredAt: "2026-10-23T11:00:00.000Z",
   },
-  lastConversation: {
-    id: "conversation-1",
-    title: "Round robin time slice",
-    updatedAt: "2026-10-23T12:00:00.000Z",
-  },
 };
 
 beforeEach(() => {
@@ -63,7 +58,6 @@ describe("useDashboardContinue (spec 0014 AC-3)", () => {
 
     expect(result.current.recentNotes).toEqual([]);
     expect(result.current.lastAttempt).toBeNull();
-    expect(result.current.lastConversation).toBeNull();
     expect(result.current.isPending).toBe(true);
   });
 
@@ -80,6 +74,5 @@ describe("useDashboardContinue (spec 0014 AC-3)", () => {
     const [context] = calls[0];
     expect(context.queryKey).toEqual(queryKeys.dashboardContinue);
     expect(result.current.lastAttempt).toEqual(read.lastAttempt);
-    expect(result.current.lastConversation).toEqual(read.lastConversation);
   });
 });

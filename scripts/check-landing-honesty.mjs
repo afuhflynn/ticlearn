@@ -39,7 +39,12 @@ const PAGES = [
   // The pricing page is the one surface whose job is to state the real price
   // (spec 0019), so the currency rule is relaxed here and only here. Every
   // other amount on every other page is still rejected.
-  { path: "/pricing", name: "pricing", requireCanonical: true, allowCurrency: true },
+  {
+    path: "/pricing",
+    name: "pricing",
+    requireCanonical: true,
+    allowCurrency: true,
+  },
   { path: "/sign-in", name: "sign-in", requireCanonical: true },
   { path: "/sign-up", name: "sign-up", requireCanonical: true },
   { path: "/verify-email", name: "verify-email", requireCanonical: true },

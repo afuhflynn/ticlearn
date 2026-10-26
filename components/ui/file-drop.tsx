@@ -1,55 +1,108 @@
-// biome-ignore-all lint/a11y/useSemanticElements: File drop is a layout region and keeps a div API for drag events.
-
 "use client";
 
+import { UploadCloud } from "lucide-react";
 import * as React from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface FileDropProps {
   accept?: string;
   multiple?: boolean;
+  disabled?: boolean;
   onFiles: (files: File[]) => void;
   className?: string;
+  title?: string;
+  description?: string;
+  hint?: string;
+  actionLabel?: string;
 }
 
+/**
+ * The one file picker in the app. It owns the drag state so the drop area can
+ * answer while a file is over it, and it keeps the picker a real button for
+ * keyboard and screen reader users.
+ */
 export function FileDrop({
   accept,
   multiple,
+  disabled = false,
   onFiles,
   className,
+  title = "Choose a file or drag it here",
+  description,
+  hint,
+  actionLabel = "Choose file",
 }: FileDropProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = React.useState(false);
 
   function handleFiles(fileList: FileList | null) {
-    if (!fileList) return;
+    if (!fileList || disabled) return;
     onFiles(Array.from(fileList));
   }
 
   return (
-    <div
-      role="group"
-      aria-label="File upload"
+    <fieldset
+      aria-label={title}
       className={cn(
-        "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-input p-6 text-center",
+        "m-0 flex min-w-0 flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-input px-6 py-10 text-center transition-colors",
+        isDragging && "border-primary bg-primary/5",
+        disabled && "pointer-events-none opacity-60",
         className,
       )}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        handleFiles(e.dataTransfer.files);
+      onDragEnter={(event) => {
+        event.preventDefault();
+        if (!disabled) setIsDragging(true);
+      }}
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!disabled) setIsDragging(true);
+      }}
+      onDragLeave={(event) => {
+        event.preventDefault();
+        setIsDragging(false);
+      }}
+      onDrop={(event) => {
+        event.preventDefault();
+        setIsDragging(false);
+        handleFiles(event.dataTransfer.files);
       }}
     >
-      <button type="button" onClick={() => inputRef.current?.click()}>
-        Choose files
-      </button>
+      <div className="flex size-12 items-center justify-center rounded-full bg-muted">
+        <UploadCloud className="size-5 text-muted-foreground" />
+      </div>
+
+      <div className="space-y-1">
+        <p className="text-sm font-medium">{title}</p>
+        {description ? (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={disabled}
+        onClick={() => inputRef.current?.click()}
+      >
+        {actionLabel}
+      </Button>
+
+      {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
+
       <input
         ref={inputRef}
         type="file"
         accept={accept}
         multiple={multiple}
+        disabled={disabled}
         className="hidden"
-        onChange={(e) => handleFiles(e.target.files)}
+        onChange={(event) => {
+          handleFiles(event.target.files);
+          event.target.value = "";
+        }}
       />
-    </div>
+    </fieldset>
   );
 }

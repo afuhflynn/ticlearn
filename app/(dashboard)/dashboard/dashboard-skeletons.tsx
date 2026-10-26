@@ -41,14 +41,14 @@ export function ContinueCardSkeleton() {
   );
 }
 
-/** The three continue cards, in the grid they sit in. */
+/** The two continue cards, in the grid they sit in. */
 export function DashboardContinueSkeleton() {
   return (
     <div
-      className="grid gap-6 lg:grid-cols-3"
+      className="grid gap-6 lg:grid-cols-2"
       data-slot="dashboard-continue-skeleton"
     >
-      {placeholderKeys(3).map((key) => (
+      {placeholderKeys(2).map((key) => (
         <ContinueCardSkeleton key={key} />
       ))}
     </div>

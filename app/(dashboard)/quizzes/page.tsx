@@ -1,16 +1,28 @@
 "use client";
 
-import { ListTodo, Play, Plus, Trash2 } from "lucide-react";
+import { ListTodo, Play, Plus, SearchX, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect, useRef } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -49,26 +61,32 @@ function QuizGeneratingLine() {
   if (!isLongWait) return null;
   return (
     <ProgressLine
-      className="mt-3"
       message="Your quiz is still being written."
       estimate="It usually takes about a minute."
     />
   );
 }
 
+function statusLabel(status: QuizListItem["status"]) {
+  if (status === "READY") return "Ready";
+  if (status === "GENERATING") return "Writing";
+  return "Failed";
+}
+
 export default function QuizzesPage() {
   const { data: session, isPending: sessionPending } = useSession();
   const router = useRouter();
-  // Search text lives in the URL, so refresh, back, forward, and
-  // shared links reproduce the same filtered list.
+
+  // Search text lives in the URL, so refresh, back, forward, and shared links
+  // reproduce the same filtered list.
   const [q, setQ] = useQueryState(
     "q",
     quizzesViewParsers.q.withOptions({ history: "replace" }),
   );
   const rawParams = useSearchParams();
 
-  // A raw key that disagrees with the canonical value corrects
-  // itself with replace history.
+  // A raw key that disagrees with the canonical value corrects itself with
+  // replace history.
   useEffect(() => {
     const patch = correctionsForKeys(rawParams, { q }, quizzesViewDefaults);
     if (patch.q !== undefined && patch.q !== q) setQ(patch.q);
@@ -78,32 +96,40 @@ export default function QuizzesPage() {
     useQuizzes("my");
   const deleteQuiz = useDeleteQuiz();
 
-  const hasGeneratingQuiz = (quizzes as QuizListItem[])?.some(
-    (q) => q.status === "GENERATING",
-  );
+  const list = quizzes as QuizListItem[];
+  const isGenerating = list.some((quiz) => quiz.status === "GENERATING");
 
-  const prevQuizStatuses = useRef<Map<string, string>>(new Map());
+  const previousStatuses = useRef<Map<string, string>>(new Map());
 
+  // A quiz that just finished jumps to its own page, because that is the
+  // moment the student was waiting for.
   useEffect(() => {
-    const newlyReadyQuiz = (quizzes as QuizListItem[])?.find((q) => {
-      const prevStatus = prevQuizStatuses.current.get(q.id);
-      return q.status === "READY" && prevStatus === "GENERATING";
+    const justReady = list.find((quiz) => {
+      const previous = previousStatuses.current.get(quiz.id);
+      return quiz.status === "READY" && previous === "GENERATING";
     });
 
-    if (newlyReadyQuiz) {
-      router.push(`/quizzes/${newlyReadyQuiz.id}`);
+    if (justReady) {
+      router.push(`/quizzes/${justReady.id}`);
     }
 
-    (quizzes as QuizListItem[])?.forEach((q) => {
-      prevQuizStatuses.current.set(q.id, q.status);
-    });
-  }, [quizzes, router]);
+    for (const quiz of list) {
+      previousStatuses.current.set(quiz.id, quiz.status);
+    }
+  }, [list, router]);
 
   if (sessionPending) {
     return (
-      <div className="space-y-8">
-        <Skeleton className="h-9 w-48" />
-        <QuizListSkeleton />
+      <div className="mx-auto w-full max-w-6xl space-y-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-40" />
+            <Skeleton className="h-4 w-64 max-w-full" />
+          </div>
+          <Skeleton className="h-9 w-32 rounded-md" />
+        </div>
+        <Skeleton className="h-10 w-full rounded-md" />
+        <QuizListSkeleton count={6} />
       </div>
     );
   }
@@ -113,36 +139,30 @@ export default function QuizzesPage() {
     return null;
   }
 
-  const filteredQuizzes = (quizzes as QuizListItem[]).filter(
-    (quiz) =>
-      quiz.title.toLowerCase().includes(q.toLowerCase()) ||
-      quiz.noteTitle?.toLowerCase().includes(q.toLowerCase()),
-  );
-
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this quiz?")) {
-      await deleteQuiz.mutateAsync(id);
-    }
-  };
+  const term = q.trim().toLowerCase();
+  const filtered = term
+    ? list.filter(
+        (quiz) =>
+          quiz.title.toLowerCase().includes(term) ||
+          quiz.noteTitle?.toLowerCase().includes(term),
+      )
+    : list;
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+    <div className="mx-auto w-full max-w-6xl space-y-8">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">My Quizzes</h1>
-            {hasGeneratingQuiz && (
-              <span className="text-xs text-muted-foreground">Generating</span>
-            )}
-          </div>
+          <h1 className="text-3xl font-bold tracking-tight">Quizzes</h1>
           <p className="text-muted-foreground">
-            View and manage your generated quizzes
+            {list.length === 0
+              ? "Quizzes you make from your notes will live here."
+              : `${list.length} quiz${list.length === 1 ? "" : "zes"} from your notes${isGenerating ? " · one is being written" : ""}.`}
           </p>
         </div>
         <Button asChild>
           <Link href="/upload">
-            <Plus className="mr-2 h-4 w-4" />
-            Generate Quiz
+            <Plus className="mr-2 size-4" />
+            Make a quiz
           </Link>
         </Button>
       </div>
@@ -150,12 +170,12 @@ export default function QuizzesPage() {
       <UrlSearchInput
         value={q}
         onCommit={setQ}
-        placeholder="Search quizzes..."
+        placeholder="Search by title or note"
         ariaLabel="Search quizzes"
       />
 
       <PendingRegion
-        fallback={<QuizListSkeleton />}
+        fallback={<QuizListSkeleton count={6} />}
         isError={isError}
         isOffline={isOffline}
         isPending={isPending}
@@ -164,76 +184,135 @@ export default function QuizzesPage() {
         longWaitMessage="Still loading your quizzes. This normally takes a moment."
         onRetry={() => void refetch()}
       >
-        {filteredQuizzes.length > 0 ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredQuizzes.map((quiz) => (
-              <Card key={quiz.id} className="transition-all hover:shadow-lg">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="line-clamp-1">
-                        {quiz.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-1">
-                        {quiz.noteTitle}
-                      </CardDescription>
-                    </div>
-                    <Badge
-                      variant={
-                        quiz.status === "READY" ? "default" : "secondary"
-                      }
-                    >
-                      {quiz.status}
-                    </Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">
-                      {quiz.questionCount} questions
-                    </span>
-                    <div className="flex gap-2">
-                      {quiz.status === "READY" ? (
-                        <Button size="sm" asChild>
-                          <Link href={`/quizzes/${quiz.id}`}>
-                            <Play className="mr-1 h-4 w-4" />
-                            Start
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button size="sm" disabled>
-                          Generating
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(quiz.id)}
+        {filtered.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {filtered.map((quiz) => {
+              const isReady = quiz.status === "READY";
+              return (
+                <Card key={quiz.id} className="flex flex-col">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 space-y-1">
+                        <CardTitle className="line-clamp-2 text-base">
+                          {quiz.title}
+                        </CardTitle>
+                        <CardDescription className="line-clamp-1 text-xs">
+                          {quiz.noteTitle || "No source note"}
+                        </CardDescription>
+                      </div>
+                      <Badge
+                        variant={
+                          isReady
+                            ? "default"
+                            : quiz.status === "ERROR"
+                              ? "destructive"
+                              : "secondary"
+                        }
+                        className="shrink-0"
                       >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
+                        {statusLabel(quiz.status)}
+                      </Badge>
                     </div>
-                  </div>
-                  {quiz.status === "GENERATING" ? <QuizGeneratingLine /> : null}
-                </CardContent>
-              </Card>
-            ))}
+                  </CardHeader>
+
+                  <CardContent className="flex-1 space-y-3">
+                    <p className="text-sm text-muted-foreground">
+                      {quiz.questionCount} question
+                      {quiz.questionCount === 1 ? "" : "s"}
+                    </p>
+                    {quiz.status === "GENERATING" ? (
+                      <QuizGeneratingLine />
+                    ) : null}
+                    {quiz.status === "ERROR" ? (
+                      <p className="text-sm text-muted-foreground">
+                        This quiz did not finish. Delete it and make a new one
+                        from the note.
+                      </p>
+                    ) : null}
+                  </CardContent>
+
+                  <CardFooter className="gap-2">
+                    {isReady ? (
+                      <Button size="sm" className="flex-1" asChild>
+                        <Link href={`/quizzes/${quiz.id}`}>
+                          <Play className="mr-2 size-4" />
+                          Start
+                        </Link>
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="flex-1"
+                        disabled
+                      >
+                        {quiz.status === "GENERATING"
+                          ? "Writing…"
+                          : "Unavailable"}
+                      </Button>
+                    )}
+
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <Trash2 className="size-4 text-destructive" />
+                          <span className="sr-only">Delete {quiz.title}</span>
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete this quiz?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            “{quiz.title}” and its attempts are removed. The
+                            note it came from stays.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Keep it</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => void deleteQuiz.mutateAsync(quiz.id)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </CardFooter>
+                </Card>
+              );
+            })}
           </div>
+        ) : term ? (
+          <Empty className="rounded-xl border">
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <SearchX className="size-4 text-muted-foreground" />
+              </EmptyMedia>
+              <EmptyTitle>Nothing matches “{q}”</EmptyTitle>
+              <EmptyDescription>
+                Try a shorter word, or clear the search to see every quiz.
+              </EmptyDescription>
+            </EmptyHeader>
+            <Button variant="outline" onClick={() => setQ("")}>
+              Clear search
+            </Button>
+          </Empty>
         ) : (
-          <Empty className="border-0 p-0">
+          <Empty className="rounded-xl border">
             <EmptyHeader>
               <EmptyMedia variant="icon">
                 <ListTodo className="size-4 text-muted-foreground" />
               </EmptyMedia>
               <EmptyTitle>No quizzes yet</EmptyTitle>
               <EmptyDescription>
-                Generate your first quiz from uploaded notes.
+                Open a note and choose Quiz. The questions come from that note,
+                and every answer links back to the page it came from.
               </EmptyDescription>
             </EmptyHeader>
             <Button asChild>
               <Link href="/upload">
-                <Plus className="mr-2 h-4 w-4" />
-                Generate Quiz
+                <Sparkles className="mr-2 size-4" />
+                Make your first quiz
               </Link>
             </Button>
           </Empty>

@@ -98,6 +98,10 @@ describe("the pricing page markup (spec 0019 AC-10)", () => {
     expect(metadata.twitter?.title).toBe(
       "TiCLearn Pricing · Free and Semester Pass",
     );
-    expect(metadata.twitter?.card).toBe("summary_large_image");
+    // Next types `twitter` as a union of card shapes, and the card name only
+    // exists on the members that carry one, so the field is read through a
+    // narrow shape rather than the union.
+    const twitter = metadata.twitter as { card?: string } | undefined;
+    expect(twitter?.card).toBe("summary_large_image");
   });
 });

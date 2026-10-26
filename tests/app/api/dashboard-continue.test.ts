@@ -36,11 +36,6 @@ const continuePayload = {
     title: "Process scheduling check",
     answeredAt: "2026-10-23T11:00:00.000Z",
   },
-  lastConversation: {
-    id: "conversation-1",
-    title: "Round robin time slice",
-    updatedAt: "2026-10-23T12:00:00.000Z",
-  },
 };
 
 beforeEach(() => {

@@ -2,12 +2,14 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getChatResetWindow, getRemainingAllowance } from "@/lib/chat-usage";
+import { getEffectiveCreditCost } from "@/lib/credits";
 import {
   getPlanLimits,
   limitReached,
   remainingOf,
   resolvePlan,
 } from "@/lib/plan-limits";
+import { getPlatformSettings } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
 export async function GET() {
@@ -67,6 +69,13 @@ export async function GET() {
       limits.aiTutorMessages,
       chatsToday,
     );
+    const settings = await getPlatformSettings();
+    const planValue = plan === "FREE" ? null : plan;
+    const quizCreditCost = getEffectiveCreditCost(
+      settings.creditCostQuizGeneration,
+      planValue,
+      settings,
+    );
 
     return NextResponse.json({
       plan,
@@ -82,6 +91,10 @@ export async function GET() {
         pdfUploads: noteCount,
         quizGenerations: quizCount,
         aiTutorMessages: chatsToday,
+      },
+      creditCosts: {
+        quizGeneration: quizCreditCost,
+        aiTutorMessage: settings.creditCostAiTutorMessage,
       },
       chatDailyUsage: {
         used: chatsToday,

@@ -1,10 +1,11 @@
 "use client";
 
-import { Check, Smartphone } from "lucide-react";
+import { Check, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -50,6 +51,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
   const currentPlan = subscription?.plan || "FREE";
   const isActive = subscription?.status === "ACTIVE";
   const isPending = subscription?.status === "PENDING";
+  const hasPaidPlan = isActive && currentPlan !== "FREE";
 
   const handleSubscribe = async (planKey: string) => {
     if (!session) {
@@ -81,120 +83,122 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
   const periodLabel = (plan: PlanDefinition): string => {
     if (plan.period === "semester") return "per semester";
     if (plan.period === "month") return "per month";
-    return "";
+    return "forever";
   };
 
   const monthlyEstimate = (plan: PlanDefinition): string | null => {
     if (plan.period !== "semester" || !plan.semesterMonths) return null;
     const perMonth = Math.round(plan.priceXaf / plan.semesterMonths);
-    return `about ${perMonth.toLocaleString()} FCFA a month (estimate)`;
+    return `about ${perMonth.toLocaleString()} FCFA a month (estimate), paid once`;
   };
 
   return (
-    <div className="grid gap-6 md:grid-cols-2 lg:gap-8 max-w-3xl mx-auto">
-      {error && (
+    <div className="space-y-6">
+      {error ? (
         <Alert
-          className="mx-auto max-w-lg border-destructive/50 bg-destructive/10 text-destructive"
+          className="border-destructive/50 bg-destructive/10 text-destructive"
           variant="destructive"
         >
           {error}
         </Alert>
-      )}
-      {plans.map((plan) => {
-        const isCurrentPlan = currentPlan === plan.key && isActive;
-        const isPaid = plan.key !== "FREE";
-        return (
-          <Card
-            key={plan.key}
-            className={`flex flex-col ${
-              plan.popular ? "border-primary shadow-lg relative" : ""
-            }`}
-          >
-            {plan.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <span className="rounded-full bg-primary px-4 py-1 text-xs font-medium text-primary-foreground">
-                  One semester
-                </span>
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="text-2xl font-bold">{plan.label}</CardTitle>
-              <div className="mt-4">
-                <span className="text-4xl font-bold">
-                  {plan.priceXaf.toLocaleString()}
-                </span>
-                <span className="ml-2 text-sm text-muted-foreground">FCFA</span>
-              </div>
-              {periodLabel(plan) && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  <span className="font-medium">{periodLabel(plan)}</span>
+      ) : null}
+
+      <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2 lg:gap-8">
+        {plans.map((plan) => {
+          const isFree = plan.key === "FREE";
+          const isCurrentPlan = currentPlan === plan.key && isActive;
+          return (
+            <Card
+              key={plan.key}
+              className={
+                plan.popular
+                  ? "flex flex-col border-primary ring-1 ring-primary"
+                  : "flex flex-col"
+              }
+            >
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <CardTitle className="text-2xl font-bold">
+                    {plan.label}
+                  </CardTitle>
+                  {plan.popular ? (
+                    <Badge className="gap-1">
+                      <Sparkles className="size-3" />
+                      One semester
+                    </Badge>
+                  ) : null}
                 </div>
-              )}
-              {monthlyEstimate(plan) && (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {monthlyEstimate(plan)}
+
+                <div className="mt-4 flex flex-wrap items-baseline gap-2">
+                  <span className="text-4xl font-bold tabular-nums">
+                    {plan.priceXaf.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-muted-foreground">FCFA</span>
+                  <span className="text-sm text-muted-foreground">
+                    {periodLabel(plan)}
+                  </span>
                 </div>
-              )}
-            </CardHeader>
-            <CardContent className="flex-1">
-              <ul className="space-y-3">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-chart-1" />
-                    <span className="text-sm">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-            <CardFooter>
-              {!isPaid ? (
-                <Button className="w-full" variant="outline" asChild>
-                  <Link href={plan.href}>{plan.cta}</Link>
-                </Button>
-              ) : isCurrentPlan ? (
-                <>
-                  <Button className="w-full" disabled>
-                    Current Plan
-                  </Button>
-                  <p className="mt-2 text-xs text-muted-foreground text-center">
-                    Buying the Semester Pass replaces your current plan.
+
+                {monthlyEstimate(plan) ? (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {monthlyEstimate(plan)}
                   </p>
-                </>
-              ) : isPending ? (
-                <>
-                  <Button
-                    className="w-full"
-                    onClick={() => handleSubscribe(plan.key)}
-                  >
-                    {plan.cta}
-                  </Button>
-                  <p className="mt-2 text-xs text-muted-foreground text-center">
-                    Finish on your phone: complete the payment and come back.
-                  </p>
-                </>
-              ) : (
-                <Button
-                  className="w-full"
-                  onClick={() => handleSubscribe(plan.key)}
-                  disabled={loading}
-                >
-                  {loading ? (
-                    <>
-                      <Smartphone className="mr-2 h-4 w-4" />
-                      Starting…
-                    </>
+                ) : null}
+              </CardHeader>
+
+              <CardContent className="flex-1">
+                <ul className="space-y-3">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-3">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+
+              <CardFooter className="flex-col items-stretch gap-2">
+                {isFree ? (
+                  isCurrentPlan || (session && currentPlan === "FREE") ? (
+                    <Button className="w-full" variant="outline" disabled>
+                      Current plan
+                    </Button>
+                  ) : session ? (
+                    <Button className="w-full" variant="outline" disabled>
+                      Included in every account
+                    </Button>
                   ) : (
-                    <>
-                      <Smartphone className="mr-2 h-4 w-4" />
-                      {plan.cta}
-                    </>
-                  )}
-                </Button>
-              )}
-            </CardFooter>
-          </Card>
-        );
-      })}
+                    <Button className="w-full" variant="outline" asChild>
+                      <Link href={plan.href}>{plan.cta}</Link>
+                    </Button>
+                  )
+                ) : isCurrentPlan ? (
+                  <Button className="w-full" disabled>
+                    Current plan
+                  </Button>
+                ) : (
+                  <>
+                    <Button
+                      className="w-full"
+                      onClick={() => handleSubscribe(plan.key)}
+                      disabled={loading}
+                    >
+                      {loading ? "Starting payment…" : plan.cta}
+                    </Button>
+                    <p className="text-center text-xs text-muted-foreground">
+                      {isPending
+                        ? "Finish on your phone, then come back here."
+                        : hasPaidPlan
+                          ? "Buying the Semester Pass replaces your current plan."
+                          : "Paid once over MTN Mobile Money or Orange Money."}
+                    </p>
+                  </>
+                )}
+              </CardFooter>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }

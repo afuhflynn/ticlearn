@@ -6,10 +6,11 @@ import { DashboardClient } from "@/app/(dashboard)/dashboard/dashboard-client";
 /**
  * The dashboard client (spec 0014, AC-3).
  *
- * Three continue cards and one upload action, no stat cards or scores. The
+ * Two continue cards and one upload action, no stat cards or scores. The
  * routing is the contract: a note card opens that note, the last quiz card
- * opens the attempt review page, the conversation opens in Tip, and every
- * empty card offers the one path that fills it.
+ * opens the attempt review page, and every empty card offers the one path
+ * that fills it. The conversation card was removed on purpose: the dashboard
+ * is notes and the last quiz, and nothing else.
  */
 const continueState = vi.hoisted(() => vi.fn());
 
@@ -41,11 +42,6 @@ const full = {
     title: "Process scheduling check",
     answeredAt: "2026-10-23T11:00:00.000Z",
   },
-  lastConversation: {
-    id: "conversation-3",
-    title: "Round robin time slice",
-    updatedAt: "2026-10-23T12:00:00.000Z",
-  },
   isPending: false,
   isRefreshing: false,
   isError: false,
@@ -57,7 +53,6 @@ const empty = {
   ...full,
   recentNotes: [],
   lastAttempt: null,
-  lastConversation: null,
 };
 
 describe("DashboardClient with data (spec 0014 AC-3)", () => {
@@ -71,9 +66,6 @@ describe("DashboardClient with data (spec 0014 AC-3)", () => {
     expect(
       screen.getByRole("link", { name: /Process scheduling check/ }),
     ).toHaveAttribute("href", "/attempts/attempt-9");
-    expect(
-      screen.getByRole("link", { name: /Round robin time slice/ }),
-    ).toHaveAttribute("href", "/chat/conversation-3");
   });
 
   it("labels each note with the file the student uploaded, a field the read really sends", () => {
@@ -139,10 +131,6 @@ describe("DashboardClient with nothing yet (spec 0014 AC-3)", () => {
     expect(
       screen.getByRole("link", { name: "Go to my quizzes" }),
     ).toHaveAttribute("href", "/quizzes");
-    expect(screen.getByRole("link", { name: "Ask Tip" })).toHaveAttribute(
-      "href",
-      "/chat",
-    );
   });
 
   it("shows no scores, no stat cards and no readiness numbers", () => {

@@ -470,6 +470,41 @@ Cache, then Firecrawl search, then Firecrawl with page fetch (the normal `thorou
 
 <!-- END:web-search-tooling -->
 
+<!-- BEGIN:plans-credits-and-student-pages -->
+# Plans, credits and the student pages - Implementation Summary
+
+## Goal
+Credits arrive with the plan instead of behind a separate purchase, every plan statement matches what the product actually does, and the subscription, quizzes, upload, settings and dashboard pages are rebuilt on that truth.
+
+## What changed
+- `prisma/schema.prisma`: the credit balance defaults to 200, in migration `20261026152554_award_200_credits_on_signup`. Signup grants the same 200 in `lib/auth.ts` as a `BONUS` credit row, so a new account can generate four quizzes before paying anything.
+- `lib/plan-credits.ts`: `planCredits` (STARTER 1,600, STANDARD 3,600, PREMIUM and PRO 12,000) and `grantPlanCredits`, which writes `referenceId: plan:<subscriptionId>` so a repeated webhook or a second activate click cannot award twice. The Fapshi webhook, the admin create route and the admin activate route all call it.
+- `constants/plans.ts`: every plan carries a `credits` number and a feature line for it. Students see Free and the Semester Pass only (`publicPlans`); the monthly tiers stay in the catalogue for admin and payment routes.
+- `components/marketing/pricing-plans.tsx`: two cards, no clipped badge, stacked footer, a current plan that cannot be pressed, an "Included in every account" state for a signed in student, and the estimate line marked as an estimate.
+- `app/api/usage/route.ts` returns `creditCosts`, the plan adjusted price of one quiz and one Tip message, so the quiz dialog and the subscription page print the number the account is actually charged.
+- `app/(dashboard)/subscription/page.tsx`: plan, credits and usage on one page, with the upgrade dialog and the Mobile Money fallback under it.
+- `app/(dashboard)/quizzes/page.tsx`: search in the URL, status aware cards, delete behind an `AlertDialog`, and two different empty states (nothing yet, nothing matches).
+- `app/(dashboard)/upload/page.tsx`: one upload card beside the stages list, a note grid with the real card, and the rename and quiz dialogs in the URL through `nuqs/upload.ts`. `components/ui/file-drop.tsx` is now a real drop area with drag state.
+- `app/(dashboard)/settings/page.tsx`: profile, password, notifications and account, each control writing to a real endpoint. The password now posts to Better Auth's `/api/auth/change-password`; the old code posted to `/api/profile`, whose schema rejects both password fields, so it never worked.
+- `app/(dashboard)/dashboard/dashboard-client.tsx` is Recent notes and Last quiz, and `getDashboardContinue` reads only those two, so the unused conversation query is gone.
+- `components/layout/AppSidebar.tsx` and `DashboardHeader.tsx` lost the credits card, the streak line, the plan badge and the bell.
+
+## Gotchas in this area
+- **A plan grants credits once, by `referenceId`.** Any new activation path must call `grantPlanCredits`, not `grantCredits` with its own id, or a retry doubles the balance.
+- **PRO and PREMIUM say unlimited, but quizzes still cost credits.** The 12,000 award is the practical ceiling, and the copy never promises an endless supply.
+- **The free plan is `FREE`, which is not a `Plan` enum value.** Every route derives it with `resolvePlan`, as before.
+- **SettingsSkeleton, SubscriptionSkeleton, NoteListSkeleton and QuizListSkeleton mirror the rebuilt layouts.** Change a card and change its skeleton in the same edit, or the page moves under the student when data lands.
+- **A hidden `<input type="file">` is the one hand-rolled control left in settings.** `pnpm ui:check` accepts it because the file is baselined with a reason, and `FileDrop` owns the upload page so no raw input is left there.
+
+## Relevant files
+- `lib/plan-credits.ts`, `lib/auth.ts`, `constants/plans.ts`, `prisma/schema.prisma`
+- `app/api/usage/route.ts`, `app/api/webhooks/fapshi/route.ts`, `app/api/admin/subscriptions/route.ts`, `app/api/admin/subscriptions/[id]/route.ts`
+- `app/(dashboard)/{subscription,quizzes,upload,settings}/`, `app/(dashboard)/dashboard/`, `app/(dashboard)/student-skeletons.tsx`
+- `components/marketing/pricing-plans.tsx`, `app/(marketing)/pricing/page.tsx`
+- `components/ui/file-drop.tsx`, `components/layout/AppSidebar.tsx`, `components/layout/DashboardHeader.tsx`
+- `lib/dashboard-data.ts`, `hooks/useDashboard.ts`, `lib/api-client.ts`
+<!-- END:plans-credits-and-student-pages -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 

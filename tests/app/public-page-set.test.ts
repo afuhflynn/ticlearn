@@ -65,9 +65,15 @@ function sitemapRoutes(): string[] {
 
 function gateRoutes(): string[] {
   const source = readSource(GATE);
+  // An entry may span several lines (the pricing page carries an extra flag),
+  // so the list is sliced out and every path inside it is read, rather than
+  // matching entry shape by line.
+  const start = source.indexOf("const PAGES");
+  const end = source.indexOf("];", start);
+  const block = start === -1 || end === -1 ? "" : source.slice(start, end);
 
   return Array.from(
-    source.matchAll(/^\s*\{ path: "([^"]+)", name: "[^"]+"/gm),
+    block.matchAll(/path: "([^"]+)"/g),
     (match) => match[1],
   ).sort();
 }

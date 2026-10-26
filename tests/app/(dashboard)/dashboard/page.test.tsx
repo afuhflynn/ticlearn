@@ -15,7 +15,6 @@ const dashboardData = vi.hoisted(() => ({
   getDashboardContinue: vi.fn(async () => ({
     recentNotes: [],
     lastAttempt: null,
-    lastConversation: null,
   })),
 }));
 
