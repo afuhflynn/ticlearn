@@ -1,14 +1,16 @@
 import { ArrowRight, BookOpen, GraduationCap, Sparkles } from "lucide-react";
-import type { Metadata } from "next";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { publicPageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata = publicPageMetadata({
   title: "About TiCLearn · Tic Foundation",
   description:
     "Who builds TiCLearn, and why university students in Buea and Bamenda study their own lecture notes with Tip.",
-};
+  path: "/about",
+  ogImage: "/og/about.png",
+});
 
 /**
  * The about page, from spec 0016 AC-9. It carries a true mission and story

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MarketingFooter } from "@/components/layout/MarketingFooter";
 import { MarketingNav } from "@/components/layout/MarketingNav";
+import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
 
 export const metadata: Metadata = {
   title: "TiCLearn - Study Your Lecture Notes with Tip",
@@ -14,6 +15,7 @@ export const metadata: Metadata = {
     locale: "en_CM",
     siteName: "TiCLearn",
   },
+  robots: { index: true, follow: true },
 };
 
 export default function MarketingLayout({
@@ -23,6 +25,7 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="flex min-h-screen flex-col">
+      <OrganizationSchema />
       <MarketingNav />
       <main className="flex-1">{children}</main>
       <MarketingFooter />

@@ -264,4 +264,37 @@ describe("the pricing island payment failures (spec 0019 AC-8)", () => {
       screen.getByRole("button", { name: "Start Semester Pass" }),
     ).not.toBeDisabled();
   });
+
+  it("shows the starting label with no spinner while the payment starts", async () => {
+    signIn();
+    let resolvePayment: (value: unknown) => void = () => {};
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        () =>
+          new Promise((resolve) => {
+            resolvePayment = resolve;
+          }),
+      ),
+    );
+    const user = userEvent.setup();
+    renderIsland();
+
+    await user.click(
+      screen.getByRole("button", { name: "Start Semester Pass" }),
+    );
+
+    const starting = await screen.findByRole("button", { name: "Starting…" });
+    expect(starting).toBeDisabled();
+    // A spinner is not a loading state in this app, so nothing may spin here.
+    expect(document.querySelector(".animate-spin")).toBeNull();
+
+    resolvePayment({
+      ok: true,
+      json: async () => ({ link: "https://checkout.test/abc123" }),
+    });
+    await waitFor(() =>
+      expect(window.location.href).toBe("https://checkout.test/abc123"),
+    );
+  });
 });

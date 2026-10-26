@@ -1,23 +1,13 @@
 import type { MetadataRoute } from "next";
+import { AUTHED_PREFIXES, SITE_URL } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: [
-        "/admin/",
-        "/api/",
-        "/dashboard/",
-        "/chat/",
-        "/settings/",
-        "/quizzes/",
-        "/notes/",
-        "/attempts/",
-        "/upload/",
-        "/subscription/",
-      ],
+      disallow: AUTHED_PREFIXES,
     },
-    sitemap: "https://ticlearn.ticsummit.org/sitemap.xml",
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }

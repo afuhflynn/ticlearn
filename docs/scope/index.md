@@ -41,7 +41,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 15 | Public page set | Slice 1 | done |
 | 16 | Onboarding | Slice 1 | done |
 | 17 | Pricing page | Slice 1 | done |
-| 36 | Technical SEO foundation | Slice 1 | planned |
+| 36 | Technical SEO foundation | Slice 1 | done |
 | 37 | Public course and faculty catalogue | Slice 1 | planned |
 | 38 | Public guides and study content | Slice 1 | planned |
 | 39 | GEO and AI answer readiness | Slice 1 | planned |

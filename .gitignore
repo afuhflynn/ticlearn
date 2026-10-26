@@ -62,3 +62,6 @@ mprocs.log
 
 # template images for design inspiration only
 /template_images
+
+# runtime process ids written by local dev tooling
+*.pid

@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import { extractRouterConfig } from "uploadthing/server";
-import { OrganizationSchema } from "@/components/seo/OrganizationSchema";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { SITE_URL } from "@/lib/seo";
 import { QueryProvider } from "@/providers/QueryProvider";
 import { ourFileRouter } from "./api/uploadthing/core";
 
@@ -38,7 +38,10 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://ticlearn.ticsummit.org"),
+  // The one host. Resolved from SITE_URL in lib/seo.ts, so a domain change is
+  // one edit and every canonical, alternate, OG image and sitemap entry moves
+  // together.
+  metadataBase: new URL(SITE_URL),
   title: "TiCLearn - Study Your Lecture Notes with Tip",
   description:
     "Upload your lecture notes, turn them into quizzes, and learn with Tip, the tutor that teaches from your own material. Built for university students in Cameroon.",
@@ -51,7 +54,7 @@ export const metadata: Metadata = {
     "lecture notes",
     "education",
   ],
-  authors: [{ name: "TiCLearn Team", url: "https://ticlearn.ticsummit.org" }],
+  authors: [{ name: "TiCLearn Team", url: SITE_URL }],
   manifest: "/manifest.webmanifest",
   icons: {
     icon: [
@@ -110,7 +113,6 @@ export default function RootLayout({
       className={`h-full antialiased ${geistSans.variable} ${geistMono.variable} ${instrumentSerif.variable}`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
-        <OrganizationSchema />
         <NextSSRPlugin routerConfig={extractRouterConfig(ourFileRouter)} />
         <ThemeProvider
           attribute="class"

@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import HomePage, { metadata } from "@/app/(marketing)/page";
 import { FREE_LIMITS } from "@/lib/plan-limits";
+import { canonicalUrl } from "@/lib/seo";
 
 /**
  * The landing page (spec 0015).
@@ -163,7 +164,7 @@ describe("the landing page (spec 0015)", () => {
 
   it("carries its own metadata", () => {
     expect(metadata.title).toBe("TiCLearn · Make your course notes make sense");
-    expect(metadata.alternates?.canonical).toBe("/");
+    expect(metadata.alternates?.canonical).toBe(canonicalUrl("/"));
   });
 
   it("resolves every in-page anchor the nav and footer rely on (spec 0015 AC-5)", () => {

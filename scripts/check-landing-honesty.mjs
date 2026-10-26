@@ -2,9 +2,9 @@
 import process from "node:process";
 
 /**
- * The honesty rule set for the whole public set, from spec 0016 AC-10. The
- * landing page (spec 0015) plus the five public pages: About, FAQ, contact,
- * Terms and Privacy.
+ * The honesty rule set for the whole public set, from spec 0016 AC-10 and
+ * spec 0021 AC-8. All ten public pages: landing, About, FAQ, contact, Terms,
+ * Privacy, Pricing, and the three auth pages (sign in, sign up, verify email).
  *
  * Each page is fetched as a reader receives it, the scripts are removed, and
  * what is left is checked for the things a page about this product must never
@@ -12,8 +12,8 @@ import process from "node:process";
  * address, or a surface that was cut. "Progress" and "feedback" are allowed
  * now: Tip reports study progress in chat, and a quiz shows what was missed.
  *
- * The landing page keeps its canonical rule; the five public pages do not,
- * because canonicals and the rest of technical SEO belong to feature 36.
+ * Every public page must carry a canonical URL in its served HTML, per spec
+ * 0021 AC-2.
  *
  * The app must be running. `pnpm build && pnpm start` is the honest target;
  * `pnpm dev` works too. Pass a base URL as the first argument or set
@@ -31,11 +31,18 @@ const baseUrl = (
 
 const PAGES = [
   { path: "/", name: "landing", requireCanonical: true },
-  { path: "/about", name: "about", requireCanonical: false },
-  { path: "/faq", name: "faq", requireCanonical: false },
-  { path: "/contact", name: "contact", requireCanonical: false },
-  { path: "/terms", name: "terms", requireCanonical: false },
-  { path: "/privacy", name: "privacy", requireCanonical: false },
+  { path: "/about", name: "about", requireCanonical: true },
+  { path: "/faq", name: "faq", requireCanonical: true },
+  { path: "/contact", name: "contact", requireCanonical: true },
+  { path: "/terms", name: "terms", requireCanonical: true },
+  { path: "/privacy", name: "privacy", requireCanonical: true },
+  // The pricing page is the one surface whose job is to state the real price
+  // (spec 0019), so the currency rule is relaxed here and only here. Every
+  // other amount on every other page is still rejected.
+  { path: "/pricing", name: "pricing", requireCanonical: true, allowCurrency: true },
+  { path: "/sign-in", name: "sign-in", requireCanonical: true },
+  { path: "/sign-up", name: "sign-up", requireCanonical: true },
+  { path: "/verify-email", name: "verify-email", requireCanonical: true },
 ];
 
 const BANNED_WORDS = [
@@ -171,10 +178,12 @@ async function checkPage(page) {
     }
   }
 
-  for (const match of findMatches(text, CURRENCY)) {
-    failures.push(
-      `currency amount “${match.value}” (${context(text, match.at)})`,
-    );
+  if (!page.allowCurrency) {
+    for (const match of findMatches(text, CURRENCY)) {
+      failures.push(
+        `currency amount “${match.value}” (${context(text, match.at)})`,
+      );
+    }
   }
   for (const match of findMatches(text, PERCENTAGE)) {
     failures.push(

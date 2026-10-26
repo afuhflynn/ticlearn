@@ -4,6 +4,7 @@ import { Check, Smartphone } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -92,12 +93,12 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:gap-8 max-w-3xl mx-auto">
       {error && (
-        <div
-          className="mx-auto max-w-lg rounded-md border border-destructive/50 bg-destructive/10 p-4 text-sm text-destructive"
-          role="alert"
+        <Alert
+          className="mx-auto max-w-lg border-destructive/50 bg-destructive/10 text-destructive"
+          variant="destructive"
         >
           {error}
-        </div>
+        </Alert>
       )}
       {plans.map((plan) => {
         const isCurrentPlan = currentPlan === plan.key && isActive;
@@ -179,7 +180,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
                 >
                   {loading ? (
                     <>
-                      <Smartphone className="mr-2 h-4 w-4 animate-spin" />
+                      <Smartphone className="mr-2 h-4 w-4" />
                       Starting…
                     </>
                   ) : (
