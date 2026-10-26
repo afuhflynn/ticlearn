@@ -24,10 +24,20 @@ Students currently see raw tool call traces, which reads as broken. Every seriou
 
 (basis: research/chat-experience.md §1 and §2 · six of twelve surveyed systems use action specific labels and none ship raw JSON, so the vocabulary is copied rather than invented; also, three separate public complaint threads show Enter sending instead of newlining on mobile is a real problem)
 
-### 19. Web search tooling · needs a decision · GA
-The agent has one search provider today. Make Firecrawl the primary and Tavily the fallback, behind one tool the model sees, so the model never has to reason about which provider is up. Research measured the sharp edges: Firecrawl's default highlights setting returns pages instead of snippets, it has no Cameroon proxy, Tavily's raw content is uncapped and will flood the context, and Firecrawl is up to ten times cheaper per call.
-**Done when:** one tool with one normalised output shape, Firecrawl tried first, Tavily used only when Firecrawl errors or returns nothing usable, an empty result gets one more Firecrawl attempt in a different mode before falling back, results are deduplicated and capped before reaching the model, and we can measure which provider actually served each answer.
-- [ ] Design it (spec): `/solution-architect web search tooling`
+### 19. Web search tooling · in-progress · GA
+The agent has one search provider today. Make Firecrawl the primary and Tavily the fallback, behind tools the model sees as plain capability, so the model never has to reason about which provider is up. Research measured the sharp edges: Firecrawl's default highlights setting returns pages instead of snippets, it has no Cameroon proxy, Tavily's raw content is uncapped and will flood the context, and Firecrawl is up to ten times cheaper per call.
+**Done when:** one normalised output shape across the tools, Firecrawl tried first for a search, Tavily used only when Firecrawl errors or returns nothing usable, an empty result gets one more Firecrawl attempt in a different mode before falling back, a pasted link is read by its own tool through Firecrawl alone, results are deduplicated and capped before reaching the model, a repeat question costs nothing, a fresh useful search costs the configured credit, and we can measure which provider actually served each answer.
+- [x] Design it (spec): `/solution-architect web search tooling` · spec [0022](../specs/0022-web-search-tooling/index.md)
+- [x] Build it: `/feature-build web search tooling`
+  - [x] Provider module, the thin fetch clients, the Firecrawl search pass, normalisation, dedupe and the caps (covers AC-1, AC-2, AC-6, AC-7, AC-8) · code in `lib/web-search/`, `lib/ai/tools.ts`, `prompts/tools/web_search.md`
+  - [x] The fallback walk, the second Firecrawl pass, the Tavily client and the honest empty answer (covers AC-3, AC-4, AC-5, AC-9) · code in `lib/web-search/index.ts`, `lib/web-search/tavily.ts`, `lib/web-search/normalize.ts`
+  - [x] Events, the shared cache, the 90 day sweep, the credit debit and the platform setting (covers AC-11, AC-12, AC-13, AC-14, AC-15) · code in `lib/web-search/index.ts`, `lib/web-search/query.ts`, `lib/inngest/cache-cleanup-functions.ts`, `lib/platform-settings-direct.ts`, `app/api/admin/platform-settings/route.ts`, `app/(admin)/admin/platform-settings/page.tsx`, `prisma/migrations/20261026142424_add_web_search_tooling/`
+  - [x] `readPage` with its guard, prompt file and label, plus the per request cap (covers AC-10, AC-16, AC-19) · code in `lib/web-search/index.ts`, `lib/web-search/types.ts`, `lib/ai/tools.ts`, `lib/ai/tool-policy.ts`, `prompts/tools/read_page.md`, `lib/chat/activity-labels.ts`
+  - [x] Config gate, remove the old Tavily block and its dependency, prompt cleanup (covers AC-17, AC-18) · code in `lib/web-search/firecrawl.ts`, `lib/ai/tools.ts`, `prompts/chat/chat_system.md`, `package.json`, `.env.example`
+- [ ] Verify it: `/verify-release web search tooling`
+- [ ] Test it: `/test-engineer web search tooling`
+- [ ] Review it (fresh model): `/peer-review web search tooling`
+- [ ] Document it: `/tech-writer web search tooling`
 
 (basis: research/web-search-tooling.md §4 and §5 · fall back on not useful rather than only on errors, because an empty result is a mode problem while an error is a provider problem)
 

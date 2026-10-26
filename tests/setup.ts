@@ -70,6 +70,12 @@ vi.mock("@/lib/prisma", () => ({
       deleteMany: vi.fn(),
       count: vi.fn(),
     },
+    webSearchEvent: {
+      create: vi.fn(async () => ({ id: "web-search-event-1" })),
+      update: vi.fn(async () => ({})),
+      findMany: vi.fn(async () => []),
+      deleteMany: vi.fn(async () => ({ count: 0 })),
+    },
     quiz: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -248,18 +254,6 @@ vi.mock("@/lib/ai", () => ({
   DEFAULT_QUIZ_TOPICS: ["topic1", "topic2"],
 }));
 
-vi.mock("@/tavily/core", () => ({
-  tavily: vi.fn(() => ({
-    search: vi.fn(() => Promise.resolve({ results: [], answer: "" })),
-  })),
-}));
-
 vi.mock("@ai-sdk/google", () => ({
   google: vi.fn(() => ({ modelId: "gemini-2.5-flash" })),
-}));
-
-vi.mock("@tavily/core", () => ({
-  tavily: vi.fn(() => ({
-    search: vi.fn(() => Promise.resolve({ results: [], answer: "" })),
-  })),
 }));

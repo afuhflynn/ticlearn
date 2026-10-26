@@ -21,6 +21,7 @@ type PlatformSettings = {
   creditCostQuizGeneration: number;
   creditCostPracticeQuestion: number;
   creditCostAiTutorMessage: number;
+  creditCostWebSearch: number;
   creditCostMultiplierStarter: number;
   creditCostMultiplierStandard: number;
   creditCostMultiplierPremium: number;
@@ -220,6 +221,7 @@ export default function AdminPlatformSettingsPage() {
               ["creditCostQuizGeneration", "Quiz generation"],
               ["creditCostPracticeQuestion", "Practice — per question"],
               ["creditCostAiTutorMessage", "AI tutor — per message"],
+              ["creditCostWebSearch", "Web search — per search or page read"],
             ] as const
           ).map(([key, label]) => (
             <div key={key} className="space-y-2">
