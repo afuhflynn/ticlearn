@@ -36,6 +36,12 @@ import { SuggestedReplies } from "@/components/chat/suggested-replies";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
 
@@ -124,6 +130,7 @@ function AnswerActions({
       <MessageAction
         className="size-11"
         label="Copy answer"
+        tooltip="Copy answer"
         onClick={() => copy(text)}
       >
         {copied ? (
@@ -135,6 +142,7 @@ function AnswerActions({
       <MessageAction
         className="size-11"
         label="Regenerate answer"
+        tooltip="Regenerate answer"
         onClick={() => onRegenerate?.(message.id)}
       >
         <RefreshCwIcon aria-hidden="true" className="size-4" />
@@ -142,6 +150,7 @@ function AnswerActions({
       <MessageAction
         className="size-11"
         label="Make a quiz from this"
+        tooltip="Make a quiz from this"
         onClick={() => onMakeQuiz?.()}
       >
         <SparklesIcon aria-hidden="true" className="size-4" />
@@ -166,6 +175,7 @@ function QuestionActions({
       <MessageAction
         className="size-11"
         label="Copy question"
+        tooltip="Copy question"
         onClick={() => copy(messageText(message).trim())}
       >
         {copied ? (
@@ -178,6 +188,7 @@ function QuestionActions({
         className="size-11"
         disabled={!canEdit}
         label="Edit question"
+        tooltip="Edit question"
         onClick={() => onEdit?.(message)}
       >
         <PencilIcon aria-hidden="true" className="size-4" />
@@ -245,6 +256,9 @@ function QuestionEditor({
         rows={Math.min(8, Math.max(2, draft.split("\n").length))}
         value={draft}
       />
+      <p className="mt-1 text-xs text-muted-foreground">
+        Sending will replace this answer and everything after it.
+      </p>
       <div className="flex items-center justify-end gap-2 pt-1">
         <Button
           className="min-h-11"
@@ -274,16 +288,25 @@ function StoppedLine({ onRetry }: { onRetry?: () => void }) {
     <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
       <span>{CHAT_STOPPED_LABEL}</span>
       {onRetry ? (
-        <Button
-          className="min-h-11"
-          onClick={onRetry}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <RefreshCwIcon aria-hidden="true" className="mr-1.5 size-4" />
-          Try again
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="min-h-11"
+                onClick={onRetry}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <RefreshCwIcon aria-hidden="true" className="mr-1.5 size-4" />
+                Try again
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Try again</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       ) : null}
     </div>
   );
@@ -310,16 +333,25 @@ function FailedLine({ onRetry }: { onRetry?: () => void }) {
         is still above.
       </p>
       {onRetry ? (
-        <Button
-          className="min-h-11"
-          onClick={onRetry}
-          size="sm"
-          type="button"
-          variant="outline"
-        >
-          <RefreshCwIcon aria-hidden="true" className="mr-1.5 size-4" />
-          Try again
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                className="min-h-11"
+                onClick={onRetry}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                <RefreshCwIcon aria-hidden="true" className="mr-1.5 size-4" />
+                Try again
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Try again</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       ) : null}
     </div>
   );
