@@ -6,7 +6,7 @@ import {
   Gauge,
   MoreHorizontal,
   Pencil,
-  Plus,
+  SquarePen,
   Search,
   Trash2,
   UploadCloud,
@@ -51,6 +51,12 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   useChatConversations,
   useCreateConversation,
@@ -173,103 +179,119 @@ export function ChatSidebar() {
   return (
     <>
       <Sidebar collapsible="offcanvas" variant="sidebar">
-        <SidebarHeader className="border-b px-3 py-4">
-          <div className="flex items-center justify-between gap-2">
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <Image
-                src="/icons/favicon-32x32.png"
-                alt="TiCLearn Logo"
-                width={32}
-                height={32}
-                className="h-8 w-8 text-primary"
-              />
-              <span className="text-xl font-bold">{TIP_NAME}</span>
-            </Link>
-            <Button
-              onClick={handleCreateConversation}
-              size="sm"
-              variant="secondary"
+        <SidebarHeader className="p-2">
+          <div className="flex items-center justify-between gap-1 py-0.5 pl-1.5">
+            <Link
+              className="flex items-center gap-2 text-sm font-semibold tracking-tight"
+              href="/dashboard"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              New
-            </Button>
+              <Image
+                alt={`${TIP_NAME} logo`}
+                className="size-5"
+                height={20}
+                src="/icons/favicon-32x32.png"
+                width={20}
+              />
+              {TIP_NAME}
+            </Link>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="size-8"
+                    onClick={handleCreateConversation}
+                    size="icon"
+                    variant="ghost"
+                  >
+                    <SquarePen className="size-4" />
+                    <span className="sr-only">New chat</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>New chat</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
-          <div className="mt-3 grid grid-cols-2 gap-2">
-            {workspaceLinks.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  asChild
-                  className="justify-start gap-2 rounded-xl text-xs"
-                  key={item.href}
-                  size="sm"
-                  variant={
-                    pathname.startsWith(item.href) ? "secondary" : "ghost"
-                  }
-                >
-                  <Link href={item.href}>
-                    <Icon className="h-3.5 w-3.5" />
-                    {item.label}
-                  </Link>
-                </Button>
-              );
-            })}
+          <div className="relative mt-1">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search chats"
+              className="h-9 w-full rounded-[var(--radius)] border-0 bg-accent/50 py-2 pl-8 pr-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:bg-accent"
+            />
           </div>
         </SidebarHeader>
 
         <SidebarContent>
-          <div className="px-3 py-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search chats..."
-                className="w-full rounded-xl border bg-background py-2 pl-9 pr-3 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
-              />
-            </div>
-          </div>
+          <SidebarGroup className="px-2 pt-2">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-0.5">
+                {workspaceLinks.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <SidebarMenuButton
+                        asChild
+                        className="rounded-[var(--radius)] text-sm"
+                        isActive={pathname.startsWith(item.href)}
+                      >
+                        <Link href={item.href}>
+                          <Icon className="text-muted-foreground" />
+                          <span className="truncate">{item.label}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
 
           {isPending ? (
             <div
-              className="space-y-2 px-2"
+              className="space-y-2 px-4 pt-1"
               data-slot="conversation-list-skeleton"
             >
               {placeholderKeys(5).map((key) => (
-                <Skeleton key={key} className="h-8 w-full rounded-xl" />
+                <Skeleton
+                  key={key}
+                  className="h-8 w-full rounded-[var(--radius)]"
+                />
               ))}
             </div>
           ) : conversations.length === 0 ? (
-            <p className="px-5 py-3 text-sm text-muted-foreground">
+            <p className="px-4 pt-2 text-sm text-muted-foreground">
               No conversations yet.
             </p>
           ) : (
             <ScrollArea className="flex-1">
               {filteredAndGrouped.length === 0 && searchQuery ? (
-                <p className="px-5 py-3 text-sm text-muted-foreground">
+                <p className="px-4 pt-2 text-sm text-muted-foreground">
                   No conversations matching “{searchQuery}”
                 </p>
               ) : (
                 filteredAndGrouped.map((group) => (
-                  <SidebarGroup key={group.label}>
-                    <SidebarGroupLabel className="px-5 text-xs font-medium uppercase tracking-[0.2em] text-muted-foreground">
+                  <SidebarGroup className="px-2" key={group.label}>
+                    <SidebarGroupLabel className="px-2 text-xs font-medium text-muted-foreground">
                       {group.label}
                     </SidebarGroupLabel>
                     <SidebarGroupContent>
-                      <SidebarMenu className="px-2">
+                      <SidebarMenu className="gap-0.5">
                         {group.conversations.map((conversation) => {
                           const active =
                             pathname === `/chat/${conversation.id}`;
                           return (
                             <SidebarMenuItem
+                              className="group/menu-item relative"
                               key={conversation.id}
-                              className="group/menu-item flex w-full items-center gap-1 rounded-xl px-1"
                             >
                               <SidebarMenuButton
                                 asChild
-                                className="min-w-0 flex-1 rounded-xl"
+                                className="truncate rounded-[var(--radius)] text-sm"
                                 isActive={active}
                               >
                                 <Link
@@ -280,16 +302,25 @@ export function ChatSidebar() {
                                 </Link>
                               </SidebarMenuButton>
                               <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button
-                                    aria-label={`Actions for ${conversation.title}`}
-                                    className="h-7 w-7 shrink-0 opacity-80 transition-opacity md:opacity-0 md:group-hover/menu-item:opacity-100"
-                                    size="icon"
-                                    variant="ghost"
-                                  >
-                                    <MoreHorizontal className="h-3.5 w-3.5" />
-                                  </Button>
-                                </DropdownMenuTrigger>
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button
+                                          aria-label={`Actions for ${conversation.title}`}
+                                          className="absolute right-1.5 top-1/2 size-7 -translate-y-1/2 opacity-80 transition-opacity md:opacity-0 md:group-focus-within/menu-item:opacity-100 md:group-hover/menu-item:opacity-100"
+                                          size="icon"
+                                          variant="ghost"
+                                        >
+                                          <MoreHorizontal className="size-3.5" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Options</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
                                 <DropdownMenuContent
                                   align="end"
                                   className="w-44"
@@ -335,7 +366,7 @@ export function ChatSidebar() {
           )}
         </SidebarContent>
 
-        <SidebarFooter className="border-t p-3">
+        <SidebarFooter className="p-2 pb-3">
           <ChatUsageCard compact />
         </SidebarFooter>
         <SidebarRail />

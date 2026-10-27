@@ -13,8 +13,7 @@ import {
   type ChatComposerPrefill,
   type ChatComposerSubmission,
 } from "./chat-composer";
-import { StarterCards } from "./starter-cards";
-import { TIP_NAME } from "./constants";
+import { StarterRows } from "./starter-rows";
 import { storePendingChatMessage } from "./pending-message";
 
 export function ChatLanding({
@@ -58,17 +57,10 @@ export function ChatLanding({
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="mx-auto flex w-full max-w-[48rem] flex-1 flex-col justify-center gap-8 px-4 py-8 md:py-12">
         <div className="space-y-3 text-center">
-          <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            {TIP_NAME}
-          </p>
           <h1 className="text-balance text-3xl font-semibold tracking-tight md:text-4xl">
             Hello {session?.user.name.split(" ")[0]}, what are we studying
             today?
           </h1>
-          <p className="mx-auto max-w-xl text-sm text-muted-foreground md:text-base">
-            Ask anything, drop a photo of a past paper, or start from a note.{" "}
-            {TIP_NAME} explains at your level and checks that it landed.
-          </p>
           {noteId ? (
             <p className="mx-auto inline-flex w-fit items-center rounded-full border bg-card px-3 py-1 text-xs text-muted-foreground">
               Talking about one of your notes
@@ -76,7 +68,7 @@ export function ChatLanding({
           ) : null}
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {spentAllowance ? (
             <AllowanceNotice resetsAt={chatDailyUsage?.resetsAt} />
           ) : (
@@ -88,7 +80,7 @@ export function ChatLanding({
             />
           )}
 
-          <StarterCards
+          <StarterRows
             onStart={(prompt) =>
               setPrefill({ text: prompt, nonce: Date.now() })
             }

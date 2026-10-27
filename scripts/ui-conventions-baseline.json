@@ -36,7 +36,6 @@
     "app/(dashboard)/settings/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",
     "components/chat/chat-sidebar.tsx",
-    "components/chat/chat-thread.tsx",
-    "components/chat/starter-cards.tsx"
+    "components/chat/chat-thread.tsx"
   ]
 }
