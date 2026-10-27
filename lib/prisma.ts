@@ -14,15 +14,21 @@ const adapter = new PrismaPg({
   // process. The default therefore allows 20 connections per instance with no
   // stated ceiling behind it, and serverless scales instances out.
   //
-  // `max: 5` caps each pool at 10 connections per instance. `idleTimeoutMillis`
+  // `max: 5` caps each pool at 5 connections per instance. `idleTimeoutMillis`
   // releases connections instead of holding them against a small quota while an
   // instance sits idle, and `connectionTimeoutMillis` means a request fails
   // rather than waiting indefinitely for a connection.
   //
+  // Neon's free tier auto-suspends after inactivity; waking the compute can take
+  // 10–30 seconds, so the connection timeout must be high enough to survive a
+  // cold start. 5 seconds is not enough and causes
+  // `prisma:error Connection terminated due to connection timeout` on the first
+  // request after a suspend.
+  //
   // Raise these when the database plan changes.
   max: 5,
   idleTimeoutMillis: 10_000,
-  connectionTimeoutMillis: 5_000,
+  connectionTimeoutMillis: 30_000,
 });
 
 const globalForPrisma = globalThis as unknown as {
