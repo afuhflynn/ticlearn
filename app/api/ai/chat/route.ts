@@ -30,7 +30,7 @@ import { limit } from "@/lib/rate-limit";
 export const runtime = "nodejs";
 
 /** One chat turn may not carry more than this, measured as bytes not characters. */
-const MAX_REQUEST_BYTES = 64 * 1024;
+const MAX_REQUEST_BYTES = 256 * 1024;
 
 /** A single part stays under this many characters, checked before trimming. */
 const MAX_PART_CHARS = 8000;
@@ -306,17 +306,12 @@ function afterMessage(
  * away with the history they belonged to.
  */
 function trimForModel(messages: UIMessage[]): UIMessage[] {
-  const lastUserIndex = messages.reduce(
-    (found, message, index) => (message.role === "user" ? index : found),
-    -1,
-  );
-  const from = lastUserIndex === -1 ? 0 : lastUserIndex;
-  const tail = messages.slice(from).map(cleanParts);
+  const cleaned = messages.map(cleanParts);
 
   const kept: UIMessage[] = [];
   let bytes = 0;
-  for (let index = tail.length - 1; index >= 0; index -= 1) {
-    const message = tail[index];
+  for (let index = cleaned.length - 1; index >= 0; index -= 1) {
+    const message = cleaned[index];
     const size = byteLength(JSON.stringify(message));
     // The turn the student just wrote always travels, even on its own.
     if (kept.length > 0 && bytes + size > MAX_REQUEST_BYTES) break;

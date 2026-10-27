@@ -1,4 +1,4 @@
-import { generateObject, generateText, streamText } from "ai";
+import { generateObject, generateText, streamText, type UIMessage } from "ai";
 import type { z } from "zod";
 import { type CacheKeyInput, withCache } from "@/lib/cache";
 import { noteColdStart } from "@/lib/cache/cold-start";
@@ -24,6 +24,25 @@ import {
 import { DEFAULT_USD_TO_XAF_RATE, MUSE_COST_PER_CALL_XAF } from "./pricing";
 import { getTaskConfig, resolveChain } from "./registry";
 import { logUsage, usageFromResult } from "./usage";
+
+/**
+ * Tasks that try Muse Spark 1.3 (Meta Model API) first, then fall through to
+ * the OpenRouter chain. Muse handles non-streaming `generate` calls natively.
+ * For streaming (`streamChat`), Muse responds with a single buffered chunk
+ * because it has no streaming endpoint; OpenRouter provides real-time streaming
+ * as the fallback.
+ */
+const MUSE_PRIMARY_TASKS = new Set([
+  "summarize",
+  "grading",
+  "quiz_gen",
+]);
+
+/** Stream-capable tasks that try Muse first, then fall through to OpenRouter. */
+const MUSE_PRIMARY_STREAM_TASKS = new Set(["fast_chat"]);
+
+/** The Muse model ID used as the primary attempt. */
+const MUSE_PRIMARY_MODEL = "muse-spark-1.3";
 
 /** Identity of the prompt file behind a call. Traces cache keys and logs. */
 export interface PromptRef {
@@ -227,6 +246,17 @@ async function runGenerate<T>(
     }
   }
 
+  // Muse-primary tasks (registered as OpenRouter tasks) try Muse first, then
+  // fall through to the OpenRouter chain. This keeps OpenRouter models as the
+  // fallback chain so a Muse failure never leaves the student without AI.
+  if (MUSE_PRIMARY_TASKS.has(opts.task)) {
+    try {
+      return await runGenerateMuse(opts, MUSE_PRIMARY_MODEL, coldStart);
+    } catch (_museError) {
+      // Muse failed or is not configured; fall through to OpenRouter chain.
+    }
+  }
+
   const { runnable } = await splitChain(chain);
   if (runnable.length === 0) {
     await logUsage({
@@ -371,6 +401,87 @@ async function runGenerateMuse<T>(
   return { object: result.object, modelId };
 }
 
+/**
+ * Single Muse text generation for streaming tasks. Muse has no streaming
+ * endpoint, so the complete response is buffered and emitted as a single
+ * chunk. On any failure the error propagates so streamChat can fall through
+ * to the OpenRouter chain (which provides real-time streaming).
+ */
+async function runGenerateMuseStream(
+  opts: StreamChatOptions,
+  modelId: string,
+  coldStart: boolean,
+): Promise<StreamChatResult> {
+  const started = Date.now();
+  const streamParams = callParams(opts.modelOptions);
+  const result = await withDeadline(MUSE_PER_LEG_TIMEOUT_MS, (signal) =>
+    generateText({
+      model: chainMuse(modelId),
+      system: opts.system,
+      messages: opts.messages as never,
+      tools: opts.tools as never,
+      timeout: MUSE_PER_LEG_TIMEOUT_MS,
+      maxRetries: 0,
+      abortSignal: signal,
+      temperature: streamParams.temperature,
+      maxOutputTokens: streamParams.maxOutputTokens,
+      ...streamParams.rest,
+    }),
+  );
+
+  const text = typeof result.text === "string" ? result.text : "";
+  const parsed = usageFromResult(result as { usage?: unknown }, modelId);
+  const rate = DEFAULT_USD_TO_XAF_RATE;
+  const costUsd = MUSE_COST_PER_CALL_XAF / rate;
+  await logUsage({
+    userId: opts.userId ?? null,
+    task: opts.task,
+    modelId,
+    promptTokens: parsed.promptTokens,
+    completionTokens: parsed.completionTokens,
+    costUsd,
+    latencyMs: Date.now() - started,
+    promptRef: opts.promptRef,
+    coldStart,
+  }).catch(() => {});
+
+  const textStream = (async function* () {
+    yield text;
+  })();
+
+  const responseMessage: UIMessage = {
+    id: crypto.randomUUID(),
+    role: "assistant",
+    parts: [{ type: "text", text }],
+  };
+
+  return {
+    textStream,
+    toUIMessageStreamResponse: (handlers) => {
+      const encoder = new TextEncoder();
+      const body = new ReadableStream({
+        start(controller) {
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: "text", delta: text })}\n\n`),
+          );
+          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+      if (handlers.onFinish) {
+        handlers.onFinish({
+          finishReason: "stop",
+          isAborted: false,
+          responseMessage,
+        });
+      }
+      return new Response(body, {
+        headers: { "content-type": "text/event-stream" },
+      });
+    },
+  };
+}
+
 function logPromptUse(task: string, ref?: PromptRef): void {
   if (ref) {
     console.debug(
@@ -379,11 +490,37 @@ function logPromptUse(task: string, ref?: PromptRef): void {
   }
 }
 
-export async function streamChat(opts: StreamChatOptions) {
+type StreamChatResult = {
+  textStream: AsyncIterable<string>;
+  toUIMessageStreamResponse: (handlers: {
+    onError?: (err: unknown) => string;
+    onFinish?: (
+      result: {
+        finishReason?: string;
+        isAborted?: boolean;
+        responseMessage: UIMessage;
+      },
+    ) => void;
+    [key: string]: unknown;
+  }) => Response;
+};
+
+export async function streamChat(opts: StreamChatOptions): Promise<StreamChatResult> {
   logPromptUse(opts.task, opts.promptRef);
   const cold = noteColdStart();
   const multimodal = hasImageParts(opts.messages);
   const chain = resolveChain(opts.task, { multimodal });
+
+  // Muse-primary stream task: try Muse first (buffered single-chunk response),
+  // then fall through to OpenRouter streaming which provides real-time tokens.
+  if (MUSE_PRIMARY_STREAM_TASKS.has(opts.task)) {
+    try {
+      return await runGenerateMuseStream(opts, MUSE_PRIMARY_MODEL, cold);
+    } catch (_museError) {
+      // Muse failed or is not configured; fall through to OpenRouter chain.
+    }
+  }
+
   const { runnable } = await splitChain(chain);
   const tried: Array<{ model: string; error: string }> = [];
   let lastError: unknown = null;

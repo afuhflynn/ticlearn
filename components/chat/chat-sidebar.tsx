@@ -257,7 +257,7 @@ export function ChatSidebar() {
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
-                    className="rounded-[var(--radius)] text-sm"
+                    className="text-sm"
                     isActive={pathname === "/chat"}
                     tooltip="New chat"
                   >
@@ -278,7 +278,7 @@ export function ChatSidebar() {
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild
-                      className="rounded-[var(--radius)] text-sm"
+                      className="text-sm"
                       isActive={pathname.startsWith(item.href)}
                       tooltip={item.label}
                     >
@@ -329,12 +329,12 @@ export function ChatSidebar() {
                           >
                             <SidebarMenuButton
                               asChild
-                              className="truncate rounded-[var(--radius)] text-sm"
+                              className="truncate text-sm"
                               isActive={active}
                             >
                               <Link
                                 href={`/chat/${conversation.id}`}
-                                className="min-w-0 truncate"
+                                className="min-w-0 truncate pr-8"
                               >
                                 {conversation.title}
                               </Link>

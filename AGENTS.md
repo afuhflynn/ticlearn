@@ -256,7 +256,7 @@ Keep AI calls fast and predictable through OpenRouter: one server-side gateway, 
 - `lib/ai/chain.ts`: model IDs, deadlines, classification and model construction
 - `lib/ai/breaker.ts`: health and cooldown state
 - `lib/ai/orchestrator.ts`: generate, streamChat, text generation and fallback walks
-- `lib/ai/registry.ts`: task names and cache TTLs
+- `lib/ai/registry.ts`: task names and cache TTLs. `provider` field decides OpenRouter vs Muse/Baseten for registry-registered tasks (`course_analysis`, `question_gen`, `answer_evaluation`, `next_step` → meta; `visual_analysis` → baseten). Additionally, `lib/ai/orchestrator.ts` tries Muse Spark 1.3 first for `summarize`, `grading`, `quiz_gen` (non-streaming `generate`) and `fast_chat` (streaming `streamChat`), with OpenRouter as the failure-resistant fallback chain. If Muse is down, unconfigured, or fails, OpenRouter models take over seamlessly.
 - `lib/ai/cache.ts`: in-memory sha256 cache
 - `lib/ai/index.ts`: extraction, summarization, quiz and exam generation, grading helpers
 - `lib/ai/tools.ts`: chat tool definitions (web search, notes, quizzes, progress, createQuiz)
@@ -615,6 +615,46 @@ and usage awareness living on the composer instead of a sidebar card.
 - `app/chat/layout.tsx`, `lib/chat/conversations.ts`
 - `tests/app/layout-shells.test.tsx` (no ChatHeader mock), `tests/lib/prisma.test.ts`
 <!-- END:chat-shell-rework -->
+
+<!-- BEGIN:dashboard-sidebar-redesign -->
+# Dashboard sidebar redesign and chat fixes - Implementation Summary
+
+## Goal
+Fix sidebar UI polish (no rounded borders, better truncate width), redesign the dashboard sidebar to match the chat sidebar (responsive, well-sized, aligned, no "Hi, name"), fix the "AI help is briefly unavailable" error during document processing, and fix chat context/inertia by retaining more conversation history.
+
+## Changes
+
+### ChatSidebar (Issue 1)
+- Removed `rounded-[var(--radius)]` from all `SidebarMenuButton` classNames — no rounded borders on sidebar items
+- Added `pr-8` to conversation `Link` to reserve space for the hover menu icon so titles aren't interrupted on hover
+- Files: `components/chat/chat-sidebar.tsx`
+
+### Dashboard sidebar redesign (Issue 2)
+- Removed "Hi, {userName}" from sidebar header — header now shows only a centered avatar
+- Sidebar header uses `p-2 pb-1.5` padding matching chat sidebar
+- Mobile toggle uses `NotebookPen` icon matching chat sidebar pattern
+- DashboardHeader keeps `px-4 md:px-6` padding with `SidebarTrigger` toggle
+- Files: `components/layout/AppSidebar.tsx`, `components/layout/DashboardHeader.tsx`
+
+### AI unavailable error fix (Issue 3)
+- Increased `CHAIN_DEADLINE_MS` from 10s to 30s in `lib/ai/chain.ts`
+- Increased per-attempt budget cap from 6s to 15s in `lib/ai/chain.ts`
+- Updated test expectations in `tests/lib/ai/chain.test.ts`
+- Files: `lib/ai/chain.ts`, `tests/lib/ai/chain.test.ts`
+
+### Chat context/inertia fix (Issue 4)
+- Increased `MAX_REQUEST_BYTES` from 64KB to 256KB in `app/api/ai/chat/route.ts`
+- Changed `trimForModel` to retain all conversation history (trimmed from oldest) instead of only keeping from the last user message
+- Files: `app/api/ai/chat/route.ts`
+
+## Relevant files
+- `components/chat/chat-sidebar.tsx`
+- `components/layout/AppSidebar.tsx`
+- `components/layout/DashboardHeader.tsx`
+- `lib/ai/chain.ts`
+- `app/api/ai/chat/route.ts`
+- `tests/lib/ai/chain.test.ts`
+<!-- END:dashboard-sidebar-redesign -->
 
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system

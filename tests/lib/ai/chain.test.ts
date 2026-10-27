@@ -261,7 +261,7 @@ describe("error classification (covers: AC-3)", () => {
 
 describe("perAttemptBudget", () => {
   it("gives every attempt a real slice of time instead of an even split", () => {
-    expect(perAttemptBudget(CHAIN_DEADLINE_MS, 12)).toBe(6000);
+    expect(perAttemptBudget(CHAIN_DEADLINE_MS, 12)).toBe(15000);
   });
 
   it("never drops below two seconds, so a slow model is not cut off instantly", () => {
@@ -269,14 +269,14 @@ describe("perAttemptBudget", () => {
     expect(perAttemptBudget(100, 12)).toBe(2000);
   });
 
-  it("never exceeds the six second per attempt cap, even with a huge total", () => {
-    expect(perAttemptBudget(120_000, 2)).toBe(6000);
+  it("never exceeds the fifteen second per attempt cap, even with a huge total", () => {
+    expect(perAttemptBudget(120_000, 2)).toBe(15000);
   });
 
   it("falls back to the shared deadline when given a nonsense total", () => {
-    expect(perAttemptBudget(Number.NaN, 1)).toBe(6000);
-    expect(perAttemptBudget(0, 1)).toBe(6000);
-    expect(perAttemptBudget(-5, 1)).toBe(6000);
+    expect(perAttemptBudget(Number.NaN, 1)).toBe(15000);
+    expect(perAttemptBudget(0, 1)).toBe(15000);
+    expect(perAttemptBudget(-5, 1)).toBe(15000);
   });
 
   it("uses the whole shared deadline when the total is under the cap", () => {

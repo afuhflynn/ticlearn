@@ -15,7 +15,7 @@ export const OPEN_WEIGHT_CHAIN: string[] = [
   "meta-llama/llama-3.3-70b-instruct",
 ];
 
-export const CHAIN_DEADLINE_MS = 10_000;
+export const CHAIN_DEADLINE_MS = 30_000;
 /**
  * Streaming gets its own budget. A chat turn can run several tool steps
  * (`stopWhen: stepCountIs(5)`), so a total equal to the object path cap would
@@ -132,7 +132,7 @@ export function perAttemptBudget(totalMs: number, remaining: number): number {
   const safeTotal =
     Number.isFinite(totalMs) && totalMs > 0 ? totalMs : CHAIN_DEADLINE_MS;
   void remaining;
-  return Math.max(2000, Math.min(safeTotal, 6000));
+  return Math.max(2000, Math.min(safeTotal, 15000));
 }
 
 export async function withDeadline<T>(
