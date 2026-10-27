@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ComponentProps } from "react";
 import {
@@ -368,6 +368,86 @@ describe("attachments (covers: AC-7, AC-9)", () => {
     expect(await screen.findByText(/· 0%/)).toBeInTheDocument();
     await user.type(box(), "Still typing");
     expect(box()).toHaveValue("Still typing");
+  });
+});
+
+describe("multi file attachments (covers: AC-7)", () => {
+  it("caps one message at six attachments and says so", async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.upload(
+      fileInput(),
+      Array.from({ length: 8 }, (_, index) =>
+        imageFile(`page-${index + 1}.png`),
+      ),
+    );
+
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(6));
+    expect(screen.getByText("6 attachments.")).toBeInTheDocument();
+    expect(
+      await screen.findByText("You can attach up to 6 files per message."),
+    ).toBeInTheDocument();
+  });
+
+  it("counts a pasted text file against the same cap", async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.upload(
+      fileInput(),
+      Array.from({ length: 6 }, (_, index) =>
+        imageFile(`page-${index + 1}.png`),
+      ),
+    );
+    await waitFor(() => expect(screen.getByText("6 attachments.")));
+
+    await user.click(box());
+    await user.paste("word ".repeat(1300));
+
+    expect(screen.queryByText("pasted-text.txt")).not.toBeInTheDocument();
+    expect(screen.getAllByText("6 attachments.")).toHaveLength(1);
+    expect(
+      screen.getByText("You can attach up to 6 files per message."),
+    ).toBeInTheDocument();
+  });
+
+  it("attaches files dropped onto the composer card", async () => {
+    renderComposer();
+
+    const form = document.querySelector("form");
+    expect(form).not.toBeNull();
+
+    fireEvent.dragOver(form as Element, {
+      dataTransfer: { types: ["Files"] },
+    });
+    fireEvent.drop(form as Element, {
+      dataTransfer: {
+        types: ["Files"],
+        files: [imageFile("dropped-1.png"), imageFile("dropped-2.png")],
+      },
+    });
+
+    expect(
+      await screen.findByRole("img", { name: "dropped-1.png" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "dropped-2.png" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("2 attachments.")).toBeInTheDocument();
+    await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(2));
+  });
+
+  it("ignores a drag that carries no files", () => {
+    renderComposer();
+
+    const form = document.querySelector("form");
+    fireEvent.drop(form as Element, {
+      dataTransfer: { types: ["text/plain"], files: [] },
+    });
+
+    expect(screen.getByText(CHAT_CAPABILITY_LINE)).toBeInTheDocument();
+    expect(uploadMock).not.toHaveBeenCalled();
   });
 });
 
