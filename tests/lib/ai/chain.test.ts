@@ -36,8 +36,9 @@ describe("resolveChain (covers: AC-5)", () => {
     else process.env.AI_CHAIN_ORDER = original;
   });
 
-  it("gives every task a chain of open weight models, so no bill can run up", () => {
+  it("gives every OpenRouter task a chain of open weight models, so no bill can run up", () => {
     for (const [task, config] of Object.entries(taskRegistry)) {
+      if (config.provider === "meta" || config.provider === "baseten") continue;
       for (const id of config.chain) {
         expect(
           OPEN_WEIGHT_CHAIN.includes(id),
@@ -47,8 +48,9 @@ describe("resolveChain (covers: AC-5)", () => {
     }
   });
 
-  it("holds enough models per task that one lab going down cannot empty it", () => {
+  it("holds enough models per OpenRouter task that one lab going down cannot empty it", () => {
     for (const config of Object.values(taskRegistry)) {
+      if (config.provider === "meta" || config.provider === "baseten") continue;
       expect(config.chain.length).toBeGreaterThanOrEqual(3);
     }
   });

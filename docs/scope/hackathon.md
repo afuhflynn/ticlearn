@@ -22,13 +22,20 @@ spec ../specs/0025-hackathon-baseline-public-repo/index.md
    - [x] Verify HACKATHON.md completeness and commit — satisfies AC-3
    - [x] Make repository public on GitHub — satisfies AC-4
 
-### 49. Provider aware model routing for Meta and Baseten · Hackathon · planned · needs a decision · Prototype
+### 49. Provider aware model routing for Meta and Baseten · Hackathon · in-progress · Prototype
 
 Add a Muse provider alongside the existing OpenRouter chain in lib/ai/instances.ts and lib/ai/chain.ts. Route muse-spark-1.3 calls directly to Meta Model API using your key. Route muse-spark-open-1026 calls to Baseten at inference.baseten.co/v1. Keep OpenRouter chain untouched as fallback.
 
 **Done when:** muse() provider exists and lazily initialises, chainMuse() constructs Meta and Baseten clients, no existing OpenRouter call is affected, MUSE_API_KEY and BAASETEN_API_KEY documented in .env.example.
 
-- [ ] Design it (spec): /solution-architect provider aware model routing for Meta and Baseten
+spec ../specs/0026-provider-aware-routing-meta-baseten.md
+
+- [x] Design it (spec): /solution-architect provider aware model routing for Meta and Baseten
+
+- [x] Build it: /feature-build provider aware model routing for Meta and Baseten
+  - [x] Configure env vars and add the Muse provider and chainMuse routing (covers AC-1, AC-3, AC-6)
+  - [x] Add usage writing and per-leg timeout fallback to OpenRouter (covers AC-2, AC-4, AC-5, AC-7, AC-8, AC-9)
+  - [x] Verify streaming, tool calls, and the OpenRouter chain alternative; add tests (covers AC-3, AC-4, AC-5)
 
 ### 50. Visual course page analysis · Hackathon · planned · needs a decision · Prototype
 

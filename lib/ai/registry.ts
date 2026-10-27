@@ -7,6 +7,9 @@ export interface TaskConfig {
   requiresTools: boolean;
   requiresMultimodal: boolean;
   cacheTtlMs?: number;
+  /** Provider that serves this task. Defaults to openrouter; meta and baseten
+   *  route through chainMuse instead of chainModel. */
+  provider?: "openrouter" | "meta" | "baseten";
 }
 
 /**
@@ -100,6 +103,46 @@ export const taskRegistry: Record<string, TaskConfig> = {
     requiresMultimodal: true,
     cacheTtlMs: 0,
   },
+
+  course_analysis: {
+    chain: ["muse-spark-1.3"],
+    requiresTools: false,
+    requiresMultimodal: false,
+    cacheTtlMs: 0,
+    provider: "meta",
+  },
+
+  question_gen: {
+    chain: ["muse-spark-1.3"],
+    requiresTools: false,
+    requiresMultimodal: false,
+    cacheTtlMs: 7 * 24 * 60 * 60 * 1000,
+    provider: "meta",
+  },
+
+  answer_evaluation: {
+    chain: ["muse-spark-1.3"],
+    requiresTools: false,
+    requiresMultimodal: false,
+    cacheTtlMs: 0,
+    provider: "meta",
+  },
+
+  next_step: {
+    chain: ["muse-spark-1.3"],
+    requiresTools: false,
+    requiresMultimodal: false,
+    cacheTtlMs: 0,
+    provider: "meta",
+  },
+
+  visual_analysis: {
+    chain: ["meta-models/muse-spark-open-1026"],
+    requiresTools: false,
+    requiresMultimodal: true,
+    cacheTtlMs: 0,
+    provider: "baseten",
+  },
 };
 
 export function getTaskConfig(task: string): TaskConfig {
@@ -123,6 +166,12 @@ export function resolveChain(
   task: string,
   options: { multimodal?: boolean } = {},
 ): string[] {
+  const config = getTaskConfig(task);
+  // Muse tasks (Meta and Baseten) bypass the OpenRouter chain logic entirely.
+  // Their chain is a single model ID that routes directly through chainMuse.
+  if (config.provider === "meta" || config.provider === "baseten") {
+    return [...config.chain];
+  }
   const override = (process.env.AI_CHAIN_ORDER ?? "")
     .split(",")
     .map((entry) => entry.trim())
@@ -131,7 +180,7 @@ export function resolveChain(
   if (override.length > 0) {
     chain = override;
   } else if (options.multimodal) {
-    chain = [...getTaskConfig(task).chain];
+    chain = [...config.chain];
   } else {
     chain = [...TEXT_CHAIN];
   }

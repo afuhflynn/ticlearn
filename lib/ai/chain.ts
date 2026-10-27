@@ -1,4 +1,4 @@
-import { openrouter } from "./instances";
+import { baseten, muse, openrouter } from "./instances";
 
 /**
  * Open weight models only, cheapest first. The platform cannot carry a bill for
@@ -22,11 +22,30 @@ export const CHAIN_DEADLINE_MS = 10_000;
  * truncate real answers mid sentence.
  */
 export const CHAIN_STREAM_DEADLINE_MS = 120_000;
+/**
+ * Per-leg timeout for a Muse (Meta or Baseten) call. Shorter than the shared
+ * OpenRouter chain deadline so a slow provider cannot consume the whole budget
+ * before fallthrough to OpenRouter happens.
+ */
+export const MUSE_PER_LEG_TIMEOUT_MS = 8_000;
 export const TRIP_THRESHOLD = 3;
 export const COOLDOWN_MS = 2 * 60_000;
 
 export function chainModel(modelId: string) {
   return openrouter()(modelId);
+}
+
+/**
+ * Builds a Muse model for the given model ID. Model IDs starting with
+ * `meta-models/` route to Baseten; everything else routes to Meta Model API.
+ * Each call constructs the provider fresh so a missing key throws at call time
+ * and can be caught for OpenRouter fallback.
+ */
+export function chainMuse(modelId: string) {
+  if (modelId.startsWith("meta-models/")) {
+    return baseten()(modelId);
+  }
+  return muse()(modelId);
 }
 
 export function headFailArmed(): boolean {
