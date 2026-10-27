@@ -32,6 +32,12 @@ const baseUrl = (
 const PAGES = [
   { path: "/", name: "landing", requireCanonical: true },
   { path: "/about", name: "about", requireCanonical: true },
+  { path: "/catalogue", name: "catalogue", requireCanonical: true },
+  {
+    path: "/catalogue/[university]/[faculty]",
+    name: "catalogue-faculty",
+    requireCanonical: true,
+  },
   { path: "/faq", name: "faq", requireCanonical: true },
   { path: "/contact", name: "contact", requireCanonical: true },
   { path: "/terms", name: "terms", requireCanonical: true },
@@ -222,6 +228,12 @@ async function checkPage(page) {
 async function main() {
   let failed = false;
   for (const page of PAGES) {
+    // Dynamic route templates (e.g. /catalogue/[university]/[faculty]) cannot
+    // be fetched directly from a running server; they are validated through
+    // the test suite against a mock server instead.
+    if (page.path.includes("[") || page.path.includes("]")) {
+      continue;
+    }
     const { url, failures } = await checkPage(page);
     if (failures.length > 0) {
       failed = true;

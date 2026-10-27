@@ -142,3 +142,26 @@ export function websiteSchemaData() {
     url: SITE_URL,
   };
 }
+
+/** Course structured data for catalogue faculty pages. */
+export function courseSchemaData(opts: {
+  courseTitle: string;
+  courseCode: string;
+  providerName: string;
+  providerUrl: string;
+  description?: string;
+}) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Course",
+    name: opts.courseTitle,
+    courseCode: opts.courseCode,
+    provider: {
+      "@type": "Organization",
+      name: opts.providerName,
+      url: opts.providerUrl,
+    },
+    ...(opts.description ? { description: opts.description } : {}),
+    url: `${SITE_URL}/catalogue`,
+  };
+}

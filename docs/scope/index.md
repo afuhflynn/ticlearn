@@ -42,7 +42,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 16 | Onboarding | Slice 1 | done |
 | 17 | Pricing page | Slice 1 | done |
 | 36 | Technical SEO foundation | Slice 1 | done |
-| 37 | Public course and faculty catalogue | Slice 1 | planned |
+| 37 | Public course and faculty catalogue | Slice 1 | in-progress |
 | 38 | Public guides and study content | Slice 1 | planned |
 | 39 | GEO and AI answer readiness | Slice 1 | planned |
 | 40 | Metadata and sharing cards | Slice 1 | planned |

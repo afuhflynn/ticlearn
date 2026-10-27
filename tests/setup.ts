@@ -136,6 +136,18 @@ vi.mock("@/lib/prisma", () => ({
       })),
       groupBy: vi.fn(async () => []),
     },
+    university: {
+      findMany: vi.fn(async () => []),
+      findUnique: vi.fn(async () => null),
+    },
+    faculty: {
+      findMany: vi.fn(async () => []),
+      findUnique: vi.fn(async () => null),
+    },
+    course: {
+      findMany: vi.fn(async () => []),
+      findUnique: vi.fn(async () => null),
+    },
     $transaction: vi.fn(async (fn: any) => fn({})),
   },
 }));

@@ -53,8 +53,9 @@ function routeOf(file: string): string {
   return segments.length === 0 ? "/" : `/${segments.join("/")}`;
 }
 
-function sitemapRoutes(): string[] {
-  return sitemap()
+async function sitemapRoutes(): Promise<string[]> {
+  const entries = await sitemap();
+  return entries
     .map((entry) =>
       entry.url.startsWith(SITE_URL)
         ? entry.url.slice(SITE_URL.length) || "/"
@@ -88,8 +89,8 @@ describe("the public page set (AC-4)", () => {
     expect(PUBLIC_PAGE_FILES.length).toBeGreaterThanOrEqual(10);
   });
 
-  it("has every public page in the sitemap", () => {
-    const published = sitemapRoutes();
+  it("has every public page in the sitemap", async () => {
+    const published = await sitemapRoutes();
 
     for (const route of PUBLIC_ROUTES) {
       expect(published, `${route} is missing from the sitemap`).toContain(
@@ -98,10 +99,10 @@ describe("the public page set (AC-4)", () => {
     }
   });
 
-  it("publishes the public page set and nothing else", () => {
+  it("publishes the public page set and nothing else", async () => {
     // Both directions matter: a path with no page behind it is a 404 a crawler
     // will index, and a page with no path is a page search never reaches.
-    expect(sitemapRoutes()).toEqual(PUBLIC_ROUTES);
+    expect(await sitemapRoutes()).toEqual(PUBLIC_ROUTES);
   });
 });
 

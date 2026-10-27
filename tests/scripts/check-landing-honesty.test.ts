@@ -105,8 +105,8 @@ async function runGate(
 }
 
 describe("the gate passes an honest public set (AC-8)", () => {
-  it("reads the ten pages it fetches from its own list", () => {
-    expect(GATE_PATHS).toHaveLength(10);
+  it("reads the twelve pages it fetches from its own list", () => {
+    expect(GATE_PATHS).toHaveLength(12);
   });
 
   it("passes when every page carries its metadata and says nothing it must not", async () => {

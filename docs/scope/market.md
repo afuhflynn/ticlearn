@@ -91,10 +91,18 @@ Today no page emits a social image, so every share into a WhatsApp group, which 
 
 (basis: research/seo-and-rendering.md §1 and §3 · eight competitors ship zero structured data, so it is uncontested ground, and the WhatsApp share image is the single highest return fix in the set)
 
-### 37. Public course and faculty catalogue · needs a decision · GA
+### 37. Public course and faculty catalogue · GA
 This is the thing that wins the market. There is no university, faculty, department or course model in the schema today, everything hangs off a school level, and without it there is nothing for a student or a search engine to land on. The competitor ranked first for the main query has one page, no sitemap, no canonicals and no internal links. The market is winnable on structure alone.
 **Done when:** a public indexable page exists for each university, each faculty, each department and each course, each names its parent in the chain and links sideways to its siblings, each is reachable from the sitemap and from internal links, each prerenders or caches rather than rendering per request, and the chain matches the taxonomy in feature 5.
-- [ ] Design it (spec): `/solution-architect public course and faculty catalogue`
+- [x] Design it (spec): `/solution-architect public course and faculty catalogue` · spec [0023](../specs/0023-public-course-and-faculty-catalogue.md)
+- [x] Build it: /feature-build public course and faculty catalogue
+  - [x] Create Prisma migration for University, Faculty, and Course models, seed initial data (satisfies AC-1)
+  - [x] Build public catalogue index and detail pages under app/(marketing)/catalogue/ (satisfies AC-2, AC-3)
+  - [x] Add dynamic metadata, JSON-LD structured data, and sitemap integration (satisfies AC-4, AC-5)
+- [ ] Verify it: /verify-release public course and faculty catalogue
+- [ ] Test it: /test-engineer public course and faculty catalogue
+- [ ] Review it (fresh model): /peer-review public course and faculty catalogue
+- [ ] Document it: /tech-writer public course and faculty catalogue
 
 (basis: research/seo-and-rendering.md §2 and §8 · no search volume data is available at Cameroon level for any tool, so the strategy is deliberately built on structure and internal linking rather than on guessed keyword volume)
 
