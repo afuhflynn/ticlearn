@@ -21,6 +21,8 @@ export const metadata = publicPageMetadata({
   path: "/catalogue",
 });
 
+export const dynamic = "force-dynamic";
+
 export default async function CataloguePage() {
   const universities = await prisma.university.findMany({
     orderBy: { name: "asc" },

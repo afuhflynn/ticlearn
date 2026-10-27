@@ -16,21 +16,7 @@ export const metadata = publicPageMetadata({
   path: "/catalogue/[university]/[faculty]",
 });
 
-export async function generateStaticParams() {
-  const faculties = await prisma.faculty.findMany({
-    select: {
-      slug: true,
-      university: {
-        select: { slug: true },
-      },
-    },
-  });
-
-  return faculties.map((faculty) => ({
-    university: faculty.university.slug,
-    faculty: faculty.slug,
-  }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function FacultyPage({
   params,
