@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { AllowanceNotice } from "@/components/chat/allowance-notice";
+import { ChatAllowanceHint } from "@/components/chat/chat-allowance-hint";
 import { useUsage } from "@/hooks";
 import { useCreateConversation } from "@/hooks/useChat";
 import { useSession } from "@/lib/auth-client";
@@ -35,6 +36,12 @@ export function ChatLanding({
     chatDailyUsage !== null &&
     chatDailyUsage.limit !== -1 &&
     chatDailyUsage.remaining <= 0;
+
+  const lowAllowance =
+    chatDailyUsage !== null &&
+    chatDailyUsage.limit !== -1 &&
+    chatDailyUsage.remaining > 0 &&
+    chatDailyUsage.remaining <= 2;
 
   const startConversation = async (submission: ChatComposerSubmission) => {
     if (!submission.text.trim() && submission.files.length === 0) return;
@@ -72,12 +79,20 @@ export function ChatLanding({
           {spentAllowance ? (
             <AllowanceNotice resetsAt={chatDailyUsage?.resetsAt} />
           ) : (
-            <ChatComposer
-              draftKey="new"
-              onSubmit={startConversation}
-              prefill={prefill}
-              status="ready"
-            />
+            <div className="space-y-2">
+              {lowAllowance && chatDailyUsage ? (
+                <ChatAllowanceHint
+                  remaining={chatDailyUsage.remaining}
+                  resetsAt={chatDailyUsage.resetsAt}
+                />
+              ) : null}
+              <ChatComposer
+                draftKey="new"
+                onSubmit={startConversation}
+                prefill={prefill}
+                status="ready"
+              />
+            </div>
           )}
 
           <StarterRows

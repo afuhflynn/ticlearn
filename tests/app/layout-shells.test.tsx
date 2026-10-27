@@ -56,10 +56,6 @@ vi.mock("@/components/chat/chat-sidebar", () => ({
   ChatSidebar: () => <div>chat sidebar</div>,
 }));
 
-vi.mock("@/components/chat/chat-header", () => ({
-  ChatHeader: () => <div>chat header</div>,
-}));
-
 type LayoutModule = {
   default: (props: { children: React.ReactNode }) => React.ReactElement;
   metadata?: { robots?: { index?: boolean; follow?: boolean } };

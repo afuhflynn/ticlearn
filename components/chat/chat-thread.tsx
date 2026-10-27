@@ -12,6 +12,7 @@ import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AllowanceNotice } from "@/components/chat/allowance-notice";
+import { ChatAllowanceHint } from "@/components/chat/chat-allowance-hint";
 import { CHAT_QUIZ_PREFILL } from "@/components/chat/constants";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -297,6 +298,12 @@ function ConversationSession({
     chatDailyUsage.limit !== -1 &&
     chatDailyUsage.remaining <= 0;
 
+  const lowAllowance =
+    chatDailyUsage !== null &&
+    chatDailyUsage.limit !== -1 &&
+    chatDailyUsage.remaining > 0 &&
+    chatDailyUsage.remaining <= 2;
+
   return (
     <div className="flex h-full flex-col">
       <div className="flex min-h-0 flex-1 flex-col bg-gradient-to-b from-background via-background to-muted/20">
@@ -333,14 +340,22 @@ function ConversationSession({
           {spentAllowance ? (
             <AllowanceNotice resetsAt={chatDailyUsage?.resetsAt} />
           ) : (
-            <ChatComposer
-              draftKey={conversationId}
-              onSubmit={handleSend}
-              onStop={() => chat.stop()}
-              prefill={prefill}
-              restore={restore}
-              status={status}
-            />
+            <div className="space-y-2">
+              {lowAllowance && chatDailyUsage ? (
+                <ChatAllowanceHint
+                  remaining={chatDailyUsage.remaining}
+                  resetsAt={chatDailyUsage.resetsAt}
+                />
+              ) : null}
+              <ChatComposer
+                draftKey={conversationId}
+                onSubmit={handleSend}
+                onStop={() => chat.stop()}
+                prefill={prefill}
+                restore={restore}
+                status={status}
+              />
+            </div>
           )}
         </div>
       </div>

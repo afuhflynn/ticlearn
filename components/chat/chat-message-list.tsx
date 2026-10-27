@@ -432,7 +432,7 @@ function MessageBody({
           );
         }
         return (
-          // biome-ignore lint/suspicious/noBlankTarget: an answer link the app does not own must not navigate the thread away.
+          // biome-ignore lint/security/noBlankTarget: an answer link the app does not own must not navigate the thread away.
           <a
             className={prose}
             href={href}

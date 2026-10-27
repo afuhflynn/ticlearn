@@ -26,7 +26,6 @@
     "app/api/ai/chat/route.ts",
     "app/not-found.tsx",
     "components/chat/chat-message-list.tsx",
-    "components/chat/chat-sidebar.tsx",
     "components/layout/MarketingFooter.tsx"
   ],
   "hand-rolled-control": [
@@ -35,7 +34,6 @@
     "app/(auth)/verify-email/verify-email-form.tsx",
     "app/(dashboard)/settings/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",
-    "components/chat/chat-sidebar.tsx",
     "components/chat/chat-thread.tsx"
   ]
 }

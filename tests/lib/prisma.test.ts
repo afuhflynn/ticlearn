@@ -44,8 +44,13 @@ describe("the Postgres pool bounds (spec 0012 AC-15)", () => {
     expect(poolConfigs[0]?.idleTimeoutMillis).toBe(10_000);
   });
 
-  it("gives up on a connection after five seconds instead of waiting forever", () => {
-    expect(poolConfigs[0]?.connectionTimeoutMillis).toBe(5_000);
+  it("gives up on a connection after thirty seconds instead of waiting forever", () => {
+    // AC-15 asked for a bound, not a number. Five seconds was in fact no
+    // bound: it cut the first request after a Neon auto-suspend, because
+    // waking the compute takes 10–30 seconds. The lib comment carries the
+    // rationale; thirty seconds stays inside it and still cannot hang a
+    // request forever.
+    expect(poolConfigs[0]?.connectionTimeoutMillis).toBe(30_000);
   });
 
   it("bounds the query itself, so a hung read cannot outlive the gate", () => {

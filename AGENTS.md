@@ -505,6 +505,66 @@ Credits arrive with the plan instead of behind a separate purchase, every plan s
 - `lib/dashboard-data.ts`, `hooks/useDashboard.ts`, `lib/api-client.ts`
 <!-- END:plans-credits-and-student-pages -->
 
+<!-- BEGIN:chat-shell-rework -->
+
+# Chat shell rework (ChatGPT-shaped sidebar) - Implementation Summary
+
+## Goal
+Make the chat page read like the reference: a slim icon rail when the sidebar
+is collapsed, one brand block that becomes the toggle on hover, a search
+modal instead of an inline filter, an account row at the bottom, no top bar,
+and usage awareness living on the composer instead of a sidebar card.
+
+## What changed
+- `components/chat/chat-sidebar.tsx` collapses to `collapsible="icon"` now
+  (the rail survives closing; before, `offcanvas` left nothing but floating
+  header icons). The header brand is the Tip logo turning into the sidebar
+  toggle on hover in the rail, with the real shortcut (Ctrl/⌘ B) in the
+  tooltip. New chat is a labelled row; conversation rows use
+  `SidebarMenuAction` (title truncates into its reserved `pr-8`, actions
+  reveal on hover, always visible under `md`).
+- The inline "Search chats" input died. `components/chat/chat-search.tsx`
+  holds a `CommandDialog` over conversations grouped by
+  `lib/chat/conversations.ts` (`groupConversationsByRecency` is the shared
+  grouping for sidebar and modal). Two triggers: `ChatSearchRow` in the
+  sidebar, `ChatSearchButton` beside the toggle.
+- `components/chat/chat-header.tsx` is deleted. `app/chat/layout.tsx` renders
+  no top bar; only a fixed mobile drawer trigger floats top-left (same
+  pattern as the dashboard's mobile trigger).
+- `components/chat/chat-account-row.tsx` is the sidebar footer: avatar + name
+  + plan label (from `planCatalog` via `usePlan`), a bottom-opening menu
+  (Subscription, Settings, Sign out), and for FREE students an offer pill
+  that names the Semester Pass from the catalogue. The rail shows the
+  avatar only.
+- "Daily chat usage" card deleted (`chat-usage-card.tsx` gone entirely). The
+  count lives on the composer: `components/chat/chat-allowance-hint.tsx`
+  prints "N messages left today · resets at HH:MM" while one or two remain,
+  and the spent block (`AllowanceNotice`) is the final block.
+
+## Gotchas in this area
+- **Radix `ScrollArea` cannot host the conversation list.** Its viewport
+  grows table-style, so long titles expanded past the sidebar edge with no
+  ellipsis and the hover menu sat beyond reach. The list is a plain
+  `overflow-y-auto` flex child now; truncation needs a width that does not
+  grow.
+- **`SidebarMenuButton`'s `tooltip` prop only shows while collapsed** — put
+  walkthrough labels there for rail rows, not a second Tooltip wrapper.
+- **The collapsed brand swap is two branch renders, not CSS.** `BrandBlock`
+  reads `state` and `isMobile` from `useSidebar` and renders either the full
+  brand or the hover-swap logo; nested group-hover variants were not
+  trusted to compose with `group-data-[collapsible=icon]`.
+- **`ChatUsageCard` and `ChatHeader` are deleted, not retired.** Everything
+  they carried has a new owner; nothing imports them.
+- **The prisma pool timeout test now remembers 30s**, not 5s (see
+  `tests/lib/prisma.test.ts`).
+
+## Relevant files
+- `components/chat/chat-sidebar.tsx`, `chat-account-row.tsx`, `chat-search.tsx`, `chat-allowance-hint.tsx`
+- `components/chat/chat-thread.tsx`, `chat-landing.tsx` (hint above the composer)
+- `app/chat/layout.tsx`, `lib/chat/conversations.ts`
+- `tests/app/layout-shells.test.tsx` (no ChatHeader mock), `tests/lib/prisma.test.ts`
+<!-- END:chat-shell-rework -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 
