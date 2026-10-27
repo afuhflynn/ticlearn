@@ -19,7 +19,7 @@ spec ../specs/0025-hackathon-baseline-public-repo/index.md
 - [ ] Build it: /feature-build hackathon baseline and public repository safety
    - [x] Set up branch from main and record starting SHA in HACKATHON.md — satisfies AC-1
    - [x] Run gitleaks secret scan on main and hackathon branch — satisfies AC-2
-   - [ ] Verify HACKATHON.md completeness and commit — satisfies AC-3
+   - [x] Verify HACKATHON.md completeness and commit — satisfies AC-3
    - [ ] Make repository public on GitHub — satisfies AC-4
 
 ### 49. Provider aware model routing for Meta and Baseten · Hackathon · planned · needs a decision · Prototype
