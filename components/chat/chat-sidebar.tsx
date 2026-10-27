@@ -59,7 +59,6 @@ import {
 } from "@/components/ui/tooltip";
 import {
   useChatConversations,
-  useCreateConversation,
   useDeleteConversation,
   useUpdateConversation,
 } from "@/hooks/useChat";
@@ -96,21 +95,11 @@ export function ChatSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { conversations, isPending } = useChatConversations();
-  const createConversation = useCreateConversation();
   const updateConversation = useUpdateConversation();
   const deleteConversation = useDeleteConversation();
   const [searchQuery, setSearchQuery] = useState("");
   const [renameTarget, setRenameTarget] = useState<Conversation | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
-
-  const handleCreateConversation = async () => {
-    try {
-      const result = await createConversation.mutateAsync({});
-      router.push(`/chat/${result.conversation.id}`);
-    } catch {
-      toast.error("Failed to create conversation");
-    }
-  };
 
   const openRenameDialog = (conversation: Conversation) => {
     setRenameTarget(conversation);
@@ -198,13 +187,17 @@ export function ChatSidebar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
+                    asChild
                     className="size-8"
-                    onClick={handleCreateConversation}
                     size="icon"
                     variant="ghost"
                   >
-                    <SquarePen className="size-4" />
-                    <span className="sr-only">New chat</span>
+                    {/* New chat is a route, not a row: nothing is created
+                        until the student sends the first message. */}
+                    <Link href="/chat">
+                      <SquarePen className="size-4" />
+                      <span className="sr-only">New chat</span>
+                    </Link>
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>

@@ -562,6 +562,9 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
 
       return {
         quizId: quiz.id,
+        // The ready-made destination goes with the result, so the model links
+        // to the real page instead of improvising one.
+        url: `/quizzes/${quiz.id}`,
         title: quiz.title,
         questionCount: quiz.questionCount,
         isPublic: quiz.isPublic,
