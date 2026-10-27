@@ -49,6 +49,7 @@ export function FilePreview({
   const [broken, setBroken] = useState(false);
   const [docBroken, setDocBroken] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [loaded, setLoaded] = useState(false);
   const name = file.filename || "Attachment";
   const isImage = isImageFile(file.mediaType);
   const isMessage = variant === "message";
@@ -83,19 +84,19 @@ export function FilePreview({
     );
   }
 
-  const imageTile = "size-16 rounded-[var(--radius-md)]";
-  const messageImageTile = "size-40 rounded-xl";
+  // A sent image draws the ChatGPT-style tile: one compact square per file,
+  // sitting in a row of its own outside the bubble, with a pulsing dot while
+  // the bytes are still arriving.
+  const tileClass = isMessage
+    ? "relative size-24 rounded-xl"
+    : "size-16 rounded-[var(--radius-md)]";
 
   return (
     <>
       <Button
         className={cn(
           "shrink-0 overflow-hidden p-0 text-muted-foreground",
-          isImage
-            ? isMessage
-              ? messageImageTile
-              : imageTile
-            : "size-16 rounded-[var(--radius-md)]",
+          tileClass,
           className,
         )}
         onClick={() => setOpen(true)}
@@ -104,15 +105,26 @@ export function FilePreview({
       >
         <span className="sr-only">Preview {name}</span>
         {isImage && file.url ? (
-          // biome-ignore lint/performance/noImgElement: chat files come from arbitrary Blob and legacy origins that next/image cannot preconfigure.
-          <img
-            alt=""
-            className="size-full object-cover"
-            height={isMessage ? 160 : 64}
-            onError={() => setBroken(true)}
-            src={file.url}
-            width={isMessage ? 160 : 64}
-          />
+          <>
+            {/* biome-ignore lint/performance/noImgElement: chat files come from arbitrary Blob and legacy origins that next/image cannot preconfigure. */}
+            <img
+              alt=""
+              className={cn(
+                "size-full object-cover transition-opacity motion-reduce:transition-none",
+                loaded ? "opacity-100" : "opacity-0",
+              )}
+              height={isMessage ? 96 : 64}
+              onLoad={() => setLoaded(true)}
+              onError={() => setBroken(true)}
+              src={file.url}
+              width={isMessage ? 96 : 64}
+            />
+            {isMessage && !loaded ? (
+              <span className="absolute inset-0 grid place-items-center">
+                <span className="size-2.5 animate-pulse rounded-full bg-muted-foreground/70" />
+              </span>
+            ) : null}
+          </>
         ) : (
           <span
             className={cn(
@@ -120,7 +132,7 @@ export function FilePreview({
               meta.tile,
             )}
           >
-            <meta.Icon className="size-6" />
+            <meta.Icon className={cn(isMessage ? "size-9" : "size-6")} />
           </span>
         )}
       </Button>
