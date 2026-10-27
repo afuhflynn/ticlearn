@@ -12,7 +12,7 @@ import { RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { AllowanceNotice } from "@/components/chat/allowance-notice";
-import { CHAT_QUIZ_PREFILL, TIP_NAME } from "@/components/chat/constants";
+import { CHAT_QUIZ_PREFILL } from "@/components/chat/constants";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useUsage } from "@/hooks";
@@ -28,6 +28,7 @@ import {
 } from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
 import { consumePendingChatMessage } from "./pending-message";
+import { StarterCards } from "./starter-cards";
 import { suggestionsFromParts } from "./suggested-replies";
 
 type ChatMessageRecord = {
@@ -309,10 +310,11 @@ function ConversationSession({
           className="min-h-0 flex-1"
           durationMs={durationMs}
           emptyState={
-            <div className="px-4 py-10 text-center text-muted-foreground">
-              This conversation is empty. Ask {TIP_NAME} anything to get
-              started.
-            </div>
+            <StarterCards
+              onStart={(prompt) =>
+                setPrefill({ text: prompt, nonce: Date.now() })
+              }
+            />
           }
           messages={messages}
           onEditSubmit={handleEditSubmit}

@@ -13,7 +13,8 @@ import {
   type ChatComposerPrefill,
   type ChatComposerSubmission,
 } from "./chat-composer";
-import { CHAT_STARTERS, TIP_NAME } from "./constants";
+import { StarterCards } from "./starter-cards";
+import { TIP_NAME } from "./constants";
 import { storePendingChatMessage } from "./pending-message";
 
 export function ChatLanding({
@@ -87,23 +88,11 @@ export function ChatLanding({
             />
           )}
 
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-            {CHAT_STARTERS.map((starter) => (
-              <button
-                className="flex min-h-24 flex-col items-start gap-1.5 rounded-[var(--radius)] border bg-card p-4 text-left transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                key={starter.title}
-                onClick={() =>
-                  setPrefill({ text: starter.prompt, nonce: Date.now() })
-                }
-                type="button"
-              >
-                <span className="text-sm font-semibold">{starter.title}</span>
-                <span className="line-clamp-3 text-xs leading-relaxed text-muted-foreground">
-                  {starter.prompt}
-                </span>
-              </button>
-            ))}
-          </div>
+          <StarterCards
+            onStart={(prompt) =>
+              setPrefill({ text: prompt, nonce: Date.now() })
+            }
+          />
         </div>
       </div>
     </div>
