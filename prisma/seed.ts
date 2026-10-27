@@ -348,11 +348,247 @@ async function seedDemoAccount() {
   );
 }
 
+const CATALOGUE = [
+  {
+    university: "University of Yaounde I",
+    slug: "university-of-yaounde-i",
+    description:
+      "Cameroon's flagship public university in the capital, Yaounde.",
+    faculties: [
+      { name: "Faculty of Science", slug: "faculty-of-science" },
+      { name: "Faculty of Arts", slug: "faculty-of-arts" },
+      {
+        name: "Faculty of Engineering and Technology",
+        slug: "faculty-of-engineering-and-technology",
+      },
+    ],
+  },
+  {
+    university: "University of Buea",
+    slug: "university-of-buea",
+    description:
+      "English speaking university in the Southwest region, at the foot of Mount Cameroon.",
+    faculties: [
+      { name: "Faculty of Science", slug: "faculty-of-science" },
+      {
+        name: "Faculty of Engineering and Technology",
+        slug: "faculty-of-engineering-and-technology",
+      },
+      { name: "Faculty of Education", slug: "faculty-of-education" },
+    ],
+  },
+  {
+    university: "University of Douala",
+    slug: "university-of-douala",
+    description: "Major university in Cameroon's economic capital, Douala.",
+    faculties: [
+      { name: "Faculty of Science", slug: "faculty-of-science" },
+      {
+        name: "Faculty of Medicine and Pharmaceutical Sciences",
+        slug: "faculty-of-medicine-and-pharmaceutical-sciences",
+      },
+      {
+        name: "Faculty of Engineering and Technology",
+        slug: "faculty-of-engineering-and-technology",
+      },
+    ],
+  },
+  {
+    university: "University of Dschang",
+    slug: "university-of-dschang",
+    description:
+      "University in the West region, known for agriculture and social sciences.",
+    faculties: [
+      {
+        name: "Faculty of Agronomy and Agricultural Sciences",
+        slug: "faculty-of-agronomy-and-agricultural-sciences",
+      },
+      { name: "Faculty of Science", slug: "faculty-of-science" },
+      {
+        name: "Faculty of Social and Management Sciences",
+        slug: "faculty-of-social-and-management-sciences",
+      },
+    ],
+  },
+  {
+    university: "University of Bamenda",
+    slug: "university-of-bamenda",
+    description: "University in the Northwest region, Bamenda.",
+    faculties: [
+      { name: "Faculty of Education", slug: "faculty-of-education" },
+      { name: "Faculty of Science", slug: "faculty-of-science" },
+      { name: "Faculty of Arts", slug: "faculty-of-arts" },
+    ],
+  },
+  {
+    university: "University of Maroua",
+    slug: "university-of-maroua",
+    description: "University in the Far North region, Maroua.",
+    faculties: [
+      { name: "Faculty of Science", slug: "faculty-of-science" },
+      { name: "Faculty of Arts", slug: "faculty-of-arts" },
+      { name: "Faculty of Medicine", slug: "faculty-of-medicine" },
+    ],
+  },
+] as const;
+
+const COURSES: Array<{
+  facultySlug: string;
+  title: string;
+  code: string;
+  credits: number;
+}> = [
+  {
+    facultySlug: "faculty-of-science",
+    title: "Introduction to Computer Science",
+    code: "CSC 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-science",
+    title: "Calculus I",
+    code: "MAT 101",
+    credits: 4,
+  },
+  {
+    facultySlug: "faculty-of-science",
+    title: "General Physics I",
+    code: "PHY 101",
+    credits: 4,
+  },
+  {
+    facultySlug: "faculty-of-engineering-and-technology",
+    title: "Engineering Drawing",
+    code: "ENG 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-engineering-and-technology",
+    title: "Basic Electrical Engineering",
+    code: "EEE 101",
+    credits: 4,
+  },
+  {
+    facultySlug: "faculty-of-medicine-and-pharmaceutical-sciences",
+    title: "Human Anatomy",
+    code: "MED 101",
+    credits: 5,
+  },
+  {
+    facultySlug: "faculty-of-medicine-and-pharmaceutical-sciences",
+    title: "Physiology",
+    code: "MED 102",
+    credits: 5,
+  },
+  {
+    facultySlug: "faculty-of-agronomy-and-agricultural-sciences",
+    title: "Crop Production",
+    code: "AGR 101",
+    credits: 4,
+  },
+  {
+    facultySlug: "faculty-of-agronomy-and-agricultural-sciences",
+    title: "Animal Husbandry",
+    code: "AGR 102",
+    credits: 4,
+  },
+  {
+    facultySlug: "faculty-of-social-and-management-sciences",
+    title: "Principles of Economics",
+    code: "ECO 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-social-and-management-sciences",
+    title: "Introduction to Management",
+    code: "MGT 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-education",
+    title: "Foundations of Education",
+    code: "EDU 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-education",
+    title: "Educational Psychology",
+    code: "EDU 102",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-arts",
+    title: "English Language I",
+    code: "ENG 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-arts",
+    title: "Introduction to Literature",
+    code: "LIT 101",
+    credits: 3,
+  },
+  {
+    facultySlug: "faculty-of-medicine",
+    title: "Medical Terminology",
+    code: "MED 100",
+    credits: 3,
+  },
+];
+
+async function seedCatalogue() {
+  console.log("Seeding catalogue...");
+  for (const uni of CATALOGUE) {
+    const university = await prisma.university.upsert({
+      where: { slug: uni.slug },
+      update: {},
+      create: {
+        id: `uni-${uni.slug}`,
+        name: uni.university,
+        slug: uni.slug,
+        description: uni.description,
+      },
+    });
+
+    for (const fac of uni.faculties) {
+      let faculty = await prisma.faculty.findFirst({
+        where: { universityId: university.id, slug: fac.slug },
+      });
+      if (!faculty) {
+        faculty = await prisma.faculty.create({
+          data: {
+            id: `fac-${uni.slug}-${fac.slug}`,
+            universityId: university.id,
+            name: fac.name,
+            slug: fac.slug,
+          },
+        });
+      }
+
+      for (const course of COURSES.filter((c) => c.facultySlug === fac.slug)) {
+        await prisma.course.upsert({
+          where: { id: `crs-${uni.slug}-${fac.slug}-${course.code}` },
+          update: {},
+          create: {
+            id: `crs-${uni.slug}-${fac.slug}-${course.code}`,
+            facultyId: faculty.id,
+            title: course.title,
+            code: course.code,
+            credits: course.credits,
+          },
+        });
+      }
+    }
+  }
+  console.log("Catalogue seeded.");
+}
+
 async function main() {
   // Level of study is a plain string on the user, constrained to Year 1
   // through Year 4 in application code, so there is no level table and
   // nothing academic beyond the demo material below.
   await ensurePlatformSettings();
+  await seedCatalogue();
   if (DEMO_SEEDED) {
     await seedDemoAccount();
   } else {

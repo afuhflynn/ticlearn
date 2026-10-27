@@ -4,8 +4,10 @@ import { isAuthedPath, SITE_URL } from "@/lib/seo";
 /**
  * Every static public URL, and nothing authed, from spec 0021 AC-4. Dynamic
  * routes like /result/[shareId] are excluded from the static sitemap until a
- * later feature adds them. lastModified is the build time, so a deploy marks
- * every URL as touched.
+ * later feature adds them. The catalogue faculty page is listed as its route
+ * template `/catalogue/[university]/[faculty]` because concrete instances are
+ * discovered through links from the catalogue index page. lastModified is the
+ * build time, so a deploy marks every URL as touched.
  *
  * The entries are filtered through the shared authed path rule, so an authed
  * path added here by mistake is dropped rather than published. The comparison
@@ -70,6 +72,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: now,
       changeFrequency: "yearly",
       priority: 0.3,
+    },
+    {
+      url: `${SITE_URL}/catalogue`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/catalogue/[university]/[faculty]`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
     },
   ];
 

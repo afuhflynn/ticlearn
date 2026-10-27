@@ -814,3 +814,53 @@ model EmailSuppression {
   @@index([email])
   @@map("email_suppression")
 }
+
+// ===========================================
+// Public Catalogue
+// ===========================================
+
+model University {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique @map("slug")
+  description String?  @db.Text @map("description")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  faculties Faculty[]
+
+  @@index([slug])
+  @@map("universities")
+}
+
+model Faculty {
+  id          String   @id @default(cuid())
+  universityId String  @map("university_id")
+  name        String
+  slug        String   @map("slug")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  university University @relation(fields: [universityId], references: [id], onDelete: Cascade)
+  courses    Course[]
+
+  @@unique([universityId, slug])
+  @@index([universityId])
+  @@map("faculties")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  facultyId   String   @map("faculty_id")
+  title       String
+  code        String   @map("code")
+  description String?  @db.Text @map("description")
+  credits     Int      @default(0) @map("credits")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  faculty Faculty @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+
+  @@index([facultyId])
+  @@map("courses")
+}
