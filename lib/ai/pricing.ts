@@ -40,9 +40,25 @@ export const MODEL_PRICES: Record<string, ModelPrice> = {
     inputPerMillion: 0.0,
     outputPerMillion: 0.0,
   },
+  // Hackathon models served through Meta Model API and Baseten. Promotional
+  // credits cover these calls, so list prices are zero until live pricing is
+  // confirmed.
+  "muse-spark-1.3": {
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
+  },
+  "meta-models/muse-spark-open-1026": {
+    inputPerMillion: 0.0,
+    outputPerMillion: 0.0,
+  },
 };
 
 export const DEFAULT_USD_TO_XAF_RATE = 650;
+
+/** Flat per-call XAF rate for Meta and Baseten usage math until live pricing
+ *  is confirmed. Promotional credits cover hackathon calls; this is an
+ *  accounting rate, not a student charge. */
+export const MUSE_COST_PER_CALL_XAF = 25;
 
 /** Env overrides the stored default so a deploy can move the rate without a migration. */
 function envRate(): number {

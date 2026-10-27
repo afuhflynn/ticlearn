@@ -13,12 +13,15 @@ import {
   CHAIN_DEADLINE_MS,
   CHAIN_STREAM_DEADLINE_MS,
   chainModel,
+  chainMuse,
   headFailArmed,
   isFailFastError,
   isTransportError,
+  MUSE_PER_LEG_TIMEOUT_MS,
   perAttemptBudget,
   withDeadline,
 } from "./chain";
+import { DEFAULT_USD_TO_XAF_RATE, MUSE_COST_PER_CALL_XAF } from "./pricing";
 import { getTaskConfig, resolveChain } from "./registry";
 import { logUsage, usageFromResult } from "./usage";
 
@@ -212,7 +215,18 @@ async function runGenerate<T>(
   opts: GenerateOptions<T>,
   coldStart: boolean,
 ): Promise<{ object: T; modelId: string }> {
+  const config = getTaskConfig(opts.task);
   const chain = resolveChain(opts.task);
+
+  // Muse task: try Meta or Baseten first, then fall through to OpenRouter.
+  if (config.provider === "meta" || config.provider === "baseten") {
+    try {
+      return await runGenerateMuse(opts, chain[0], coldStart);
+    } catch (_museError) {
+      // Muse failed or is not configured; fall through to OpenRouter chain.
+    }
+  }
+
   const { runnable } = await splitChain(chain);
   if (runnable.length === 0) {
     await logUsage({
@@ -311,6 +325,50 @@ async function runGenerate<T>(
     coldStart,
   });
   throw friendlyDown(opts.task, modelErrors);
+}
+
+/**
+ * Single Muse call with a per-leg timeout. No breaker, no chain walk: one
+ * model, one attempt. On any failure the error propagates so runGenerate can
+ * fall through to the OpenRouter chain.
+ */
+async function runGenerateMuse<T>(
+  opts: GenerateOptions<T>,
+  modelId: string,
+  coldStart: boolean,
+): Promise<{ object: T; modelId: string }> {
+  const started = Date.now();
+  const params = callParams(opts.modelOptions);
+  const result = await withDeadline(MUSE_PER_LEG_TIMEOUT_MS, (signal) =>
+    generateObject({
+      model: chainMuse(modelId),
+      schema: opts.schema,
+      prompt: opts.prompt,
+      messages: opts.messages as never,
+      system: opts.system,
+      timeout: MUSE_PER_LEG_TIMEOUT_MS,
+      maxRetries: 0,
+      abortSignal: signal,
+      temperature: params.temperature,
+      maxOutputTokens: params.maxOutputTokens,
+      ...params.rest,
+    }),
+  );
+  const parsed = usageFromResult(result as { usage?: unknown }, modelId);
+  const rate = DEFAULT_USD_TO_XAF_RATE;
+  const costUsd = MUSE_COST_PER_CALL_XAF / rate;
+  await logUsage({
+    userId: opts.userId ?? null,
+    task: opts.task,
+    modelId,
+    promptTokens: parsed.promptTokens,
+    completionTokens: parsed.completionTokens,
+    costUsd,
+    latencyMs: Date.now() - started,
+    promptRef: opts.promptRef,
+    coldStart,
+  });
+  return { object: result.object, modelId };
 }
 
 function logPromptUse(task: string, ref?: PromptRef): void {

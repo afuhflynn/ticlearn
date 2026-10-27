@@ -264,6 +264,44 @@ Keep AI calls fast and predictable through OpenRouter: one server-side gateway, 
 - `lib/paper3/`: Paper 3 evaluation, short answer grading, prompts, subject tasks (separate from `lib/ai/`)
 <!-- END:ai-orchestration-rework -->
 
+<!-- BEGIN:muse-baseten-routing -->
+# Muse and Baseten model routing (feature 49) - Implementation Summary
+
+## Goal
+Add a Muse provider alongside the existing OpenRouter chain so reasoning calls route to Meta Model API (Muse Spark 1.3) and visual analysis calls route to Baseten (muse spark open 1026). The OpenRouter chain stays untouched as fallback.
+
+## What was built
+- `lib/ai/instances.ts`: added `muse()` (lazy singleton for Meta Model API, requires `MUSE_API_KEY`) and `baseten()` (lazy singleton for Baseten inference, requires `BAASETEN_API_KEY`)
+- `lib/ai/chain.ts`: added `chainMuse(modelId)` which routes `meta-models/` prefixed IDs to Baseten and all others to Meta; added `MUSE_PER_LEG_TIMEOUT_MS` (8 seconds)
+- `lib/ai/registry.ts`: added `provider` field to `TaskConfig`; registered `course_analysis`, `question_gen`, `answer_evaluation`, `next_step` (meta/muse-spark-1.3) and `visual_analysis` (baseten/meta-models/muse-spark-open-1026); `resolveChain` bypasses OpenRouter logic for Muse tasks
+- `lib/ai/pricing.ts`: added zero-cost pricing for `muse-spark-1.3` and `meta-models/muse-spark-open-1026`; added `MUSE_COST_PER_CALL_XAF` flat rate
+- `lib/ai/orchestrator.ts`: `generate` tries Muse first for Muse-registered tasks, then falls through to the OpenRouter chain on failure; per-leg timeout of 8 seconds; usage logged with flat XAF rate
+- `.env.example`: documented `MUSE_BASE_URL`, `BAASETEN_BASE_URL`, `MUSE_REASONING_EFFORT`, `MUSE_COST_PER_CALL_XAF` (MUSE_API_KEY and BAASETEN_API_KEY already present)
+
+## Acceptance criteria (all met)
+- AC-1: muse() provider exists and lazily initialises
+- AC-2: chainMuse() constructs Meta and Baseten clients
+- AC-3: muse-spark-1.3 calls route to Meta Model API using MUSE_API_KEY
+- AC-4: muse-spark-open-1026 calls route to Baseten at inference.baseten.co/v1 using BAASETEN_API_KEY
+- AC-5: No existing OpenRouter call is affected; the OpenRouter chain stays untouched as fallback
+- AC-6: MUSE_API_KEY and BAASETEN_API_KEY documented in .env.example
+- AC-7: Baseten is used only when visual understanding is useful (visual_analysis task only)
+- AC-8: When Meta or Baseten fails, the call falls through to the OpenRouter chain
+- AC-9: Routing is decided at task level in lib/ai/registry.ts, transparent to callers
+
+## Key decisions
+- Muse tasks bypass the breaker and cache (no cooldown, no shared memory cache)
+- Per-leg timeout of 8 seconds is shorter than the 10 second OpenRouter chain deadline, so a slow provider cannot consume the whole budget before fallthrough
+- OpenRouter chain code is completely unchanged for existing tasks; provider routing is decided solely by the `provider` field in `taskRegistry`
+- Missing `MUSE_API_KEY` or `BAASETEN_API_KEY` degrades gracefully to OpenRouter fallback through a catchable lazy-init error
+
+## Relevant files
+- `lib/ai/instances.ts`, `lib/ai/chain.ts`, `lib/ai/registry.ts`, `lib/ai/orchestrator.ts`, `lib/ai/pricing.ts`
+- `tests/lib/ai/muse-routing.test.ts` (new, 10 tests)
+- `.env.example`
+- `docs/specs/0026-provider-aware-routing-meta-baseten.md`
+- `docs/scope/hackathon.md` (feature 49 row)
+
 <!-- BEGIN:loading-states-rework -->
 # Loading states and perceived speed - Implementation Summary
 
