@@ -25,6 +25,12 @@ import { FilePreview } from "@/components/chat/file-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useSession } from "@/lib/auth-client";
 import { cn, formatFileSize } from "@/lib/utils";
 
@@ -534,16 +540,25 @@ export function ChatComposer({
             ref={inputRef}
             type="file"
           />
-          <Button
-            className="size-11 shrink-0"
-            disabled={disabled}
-            onClick={() => inputRef.current?.click()}
-            type="button"
-            variant="ghost"
-          >
-            <PlusIcon className="size-5" />
-            <span className="sr-only">Attach files</span>
-          </Button>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  className="size-11 shrink-0"
+                  disabled={disabled}
+                  onClick={() => inputRef.current?.click()}
+                  type="button"
+                  variant="ghost"
+                >
+                  <PlusIcon className="size-5" />
+                  <span className="sr-only">Attach files</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Attach files</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <label className="sr-only" htmlFor="chat-message-input">
             Message {TIP_NAME}
@@ -563,23 +578,41 @@ export function ChatComposer({
           />
 
           {streaming ? (
-            <Button
-              className="size-11 shrink-0"
-              onClick={() => onStop?.()}
-              type="button"
-            >
-              <SquareIcon className="size-4" />
-              <span className="sr-only">Stop answering</span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="size-11 shrink-0"
+                    onClick={() => onStop?.()}
+                    type="button"
+                  >
+                    <SquareIcon className="size-4" />
+                    <span className="sr-only">Stop answering</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Stop answering</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           ) : (
-            <Button
-              className="size-11 shrink-0"
-              disabled={!canSend}
-              type="submit"
-            >
-              <SendIcon className="size-4" />
-              <span className="sr-only">Send message</span>
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    className="size-11 shrink-0"
+                    disabled={!canSend}
+                    type="submit"
+                  >
+                    <SendIcon className="size-4" />
+                    <span className="sr-only">Send message</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Send message</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </form>
