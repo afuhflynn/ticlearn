@@ -207,7 +207,10 @@ export function ChatSidebar() {
   );
 
   return (
-    <>
+    // One provider over the whole sidebar tree: the `tooltip` on a
+    // SidebarMenuButton rides the primitive's own Tooltip, which owns no
+    // provider, and /chat's static prerender crashes without one here.
+    <TooltipProvider>
       {/* The rail survives closing: collapsible="icon" keeps a slim column
           with the brand, new chat and search as icons, like ChatGPT. */}
       <Sidebar collapsible="icon" variant="sidebar">
@@ -414,6 +417,6 @@ export function ChatSidebar() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </TooltipProvider>
   );
 }
