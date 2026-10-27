@@ -47,3 +47,17 @@ Students need to see and steer what the agent can do. Research found ChatGPT's t
 - [ ] Design it (spec): `/solution-architect tool controls and course skills`
 
 (basis: research/chat-experience.md §4 and §14 · we take the three state picker from ChatGPT and skip the skills marketplace vocabulary, which teardowns show confuses casual users, in favour of one visible correctable line)
+
+### 47. Chat interface redesign · in-progress
+The chat surface is restyled to a clean modern look inspired by the reference screenshots while keeping TiCLearn's own theming. The thread becomes a centred reading column with plain answers and only the student's message as a bubble. The composer grows, stops, previews files and shows per-file upload progress. Four starter cards greet a fresh chat, and two or three suggested questions appear under the newest answer. A question can be edited in place. No spinner is a loading state anywhere on the page. Attachments still upload straight to Vercel Blob through a short lived token route, and Tip still works with or without an uploaded note. This is a fresh spec (0024) separate from 0020, which described the behaviour surface already built. Lands as one Tracer Bullet slice through the chat page and its components.
+**Done when:** a fresh chat shows four starter cards that fill the composer; answers render as plain text in a centred column capped at 48rem with only the student's message as a bubble; the activity line shows human step labels and expands on tap; the composer grows, stops and shows per-file upload progress; attachments preview on tap and remove individually; a question edits in place and removes later turns; the daily allowance spent state shows a reset time line; no spinner appears as a loading state anywhere on the chat page.
+- [x] Design it (spec): `/solution-architect chat interface redesign` · spec [0024](../specs/0024-chat-interface-redesign.md)
+- [x] Build it: `/feature-build chat interface redesign` · code in components/chat/
+   - [x] Message shell, activity line and composer restyle (AC-2, AC-3, AC-4, AC-5, AC-10, AC-11, AC-14)
+   - [x] Blob upload path, attachment previews and per-file progress (AC-6, AC-15)
+   - [x] Long paste conversion, draft persistence and the allowance notice (AC-7, AC-8, AC-13)
+   - [x] Starter cards, suggested questions and in-place edit (AC-1, AC-9, AC-12)
+- [ ] Verify it: `/verify-release chat interface redesign`
+- [ ] Test it: `/test-engineer chat interface redesign`
+
+(basis: spec 0024 · restyle only, no data model or endpoint change; behaviour surface carried over from spec 0020)

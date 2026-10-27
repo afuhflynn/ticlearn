@@ -35,8 +35,8 @@
     "app/(auth)/verify-email/verify-email-form.tsx",
     "app/(dashboard)/settings/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",
-    "components/chat/chat-landing.tsx",
     "components/chat/chat-sidebar.tsx",
-    "components/chat/chat-thread.tsx"
+    "components/chat/chat-thread.tsx",
+    "components/chat/starter-cards.tsx"
   ]
 }
