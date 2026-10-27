@@ -130,24 +130,48 @@ async function saveMessage(input: {
   id?: string;
   stoppedAt?: Date;
 }) {
-  const msg = await prisma.chatMessage.create({
-    data: {
-      ...(input.id ? { id: input.id } : {}),
-      conversationId: input.conversationId,
-      userId: input.userId,
-      role: input.role,
-      content: input.content,
-      parts: input.parts as never,
-      ...(input.stoppedAt ? { stoppedAt: input.stoppedAt } : {}),
-    },
-  });
+  try {
+    const msg = await prisma.chatMessage.create({
+      data: {
+        ...(input.id ? { id: input.id } : {}),
+        conversationId: input.conversationId,
+        userId: input.userId,
+        role: input.role,
+        content: input.content,
+        parts: input.parts as never,
+        ...(input.stoppedAt ? { stoppedAt: input.stoppedAt } : {}),
+      },
+    });
 
-  await prisma.chatConversation.update({
-    where: { id: input.conversationId },
-    data: { updatedAt: new Date() },
-  });
+    await prisma.chatConversation.update({
+      where: { id: input.conversationId },
+      data: { updatedAt: new Date() },
+    });
 
-  return msg;
+    return msg;
+  } catch (error) {
+    // A client retry after a network error may resend the same message id.
+    // If the message already exists, return it instead of failing the turn
+    // with a P2002 unique constraint violation.
+    if (
+      input.id &&
+      error instanceof Error &&
+      'code' in error &&
+      (error as { code?: string }).code === 'P2002'
+    ) {
+      const existing = await prisma.chatMessage.findUnique({
+        where: { id: input.id },
+      });
+      if (existing && existing.conversationId === input.conversationId) {
+        await prisma.chatConversation.update({
+          where: { id: input.conversationId },
+          data: { updatedAt: new Date() },
+        });
+        return existing;
+      }
+    }
+    throw error;
+  }
 }
 
 type ConversationNote = {
