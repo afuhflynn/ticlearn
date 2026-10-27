@@ -1,13 +1,13 @@
 "use client";
 
 import {
-  CalendarRange,
   BookOpen,
+  CalendarRange,
   ClipboardList,
   FileSearch,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { CHAT_STARTERS } from "@/components/chat/constants";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 /**

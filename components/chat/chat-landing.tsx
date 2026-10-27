@@ -13,8 +13,8 @@ import {
   type ChatComposerPrefill,
   type ChatComposerSubmission,
 } from "./chat-composer";
-import { StarterRows } from "./starter-rows";
 import { storePendingChatMessage } from "./pending-message";
+import { StarterRows } from "./starter-rows";
 
 export function ChatLanding({
   noteId,

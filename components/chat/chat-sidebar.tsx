@@ -6,8 +6,8 @@ import {
   Gauge,
   MoreHorizontal,
   Pencil,
-  SquarePen,
   Search,
+  SquarePen,
   Trash2,
   UploadCloud,
 } from "lucide-react";
