@@ -12,6 +12,7 @@ import {
 import {
   type ChangeEvent,
   type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
   useCallback,
@@ -36,6 +37,12 @@ import { cn, formatFileSize } from "@/lib/utils";
 
 /** Pastes longer than this become a text attachment instead of a wall of text. */
 export const LONG_PASTE_THRESHOLD = 6000;
+
+/**
+ * One message carries at most this many attachments, files and pastes counted
+ * together. The chat route rejects anything over it.
+ */
+export const MAX_FILES_PER_MESSAGE = 6;
 
 /** Every attachment input maps to one of these ceilings. */
 const MB = 1024 * 1024;
@@ -435,7 +442,17 @@ export function ChatComposer({
       const files = Array.from(incoming);
       const accepted: ComposerAttachment[] = [];
 
+      // Files and pastes share one cap, read at add time so two additions in
+      // the same tick cannot both slip under it.
+      let slotsLeft = Math.max(0, MAX_FILES_PER_MESSAGE - attachments.length);
+
       for (const file of files) {
+        if (slotsLeft <= 0) {
+          setNotice(
+            `You can attach up to ${MAX_FILES_PER_MESSAGE} files per message.`,
+          );
+          break;
+        }
         if (!isAcceptedType(file.type)) {
           setNotice("Only images, PDF, DOCX and text files can be attached.");
           continue;
@@ -458,31 +475,42 @@ export function ChatComposer({
           status: "uploading",
           source: "file",
         });
+        slotsLeft -= 1;
       }
 
       if (accepted.length === 0) return;
       setAttachments((current) => [...current, ...accepted]);
       for (const item of accepted) void startUpload(item);
     },
-    [startUpload],
+    [attachments.length, startUpload],
   );
 
-  const addPasteAttachment = useCallback((pasted: string) => {
-    setAttachments((current) => [
-      ...current,
-      {
-        id: crypto.randomUUID(),
-        name: "pasted-text.txt",
-        mediaType: "text/plain",
-        size: new TextEncoder().encode(pasted).length,
-        url: textAsDataUrl(pasted),
-        progress: 100,
-        status: "uploaded",
-        textContent: pasted,
-        source: "paste",
-      },
-    ]);
-  }, []);
+  const addPasteAttachment = useCallback(
+    (pasted: string): boolean => {
+      if (attachments.length >= MAX_FILES_PER_MESSAGE) {
+        setNotice(
+          `You can attach up to ${MAX_FILES_PER_MESSAGE} files per message.`,
+        );
+        return false;
+      }
+      setAttachments((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          name: "pasted-text.txt",
+          mediaType: "text/plain",
+          size: new TextEncoder().encode(pasted).length,
+          url: textAsDataUrl(pasted),
+          progress: 100,
+          status: "uploaded",
+          textContent: pasted,
+          source: "paste",
+        },
+      ]);
+      return true;
+    },
+    [attachments.length],
+  );
 
   const revokeObjectUrl = useCallback((item: ComposerAttachment) => {
     if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
@@ -600,10 +628,11 @@ export function ChatComposer({
       if (text.length + pasted.length <= LONG_PASTE_THRESHOLD) return;
 
       event.preventDefault();
-      addPasteAttachment(pasted);
-      setNotice(
-        `That paste was ${pasted.length.toLocaleString("en-US")} characters, so it is attached as a text file.`,
-      );
+      if (addPasteAttachment(pasted)) {
+        setNotice(
+          `That paste was ${pasted.length.toLocaleString("en-US")} characters, so it is attached as a text file.`,
+        );
+      }
     },
     [addFiles, addPasteAttachment, text.length],
   );
@@ -612,6 +641,38 @@ export function ChatComposer({
     (event: ChangeEvent<HTMLInputElement>) => {
       if (event.target.files) addFiles(event.target.files);
       event.target.value = "";
+    },
+    [addFiles],
+  );
+
+  // Dropping files anywhere on the card reads like attaching them there.
+  const [dragActive, setDragActive] = useState(false);
+
+  const handleDragOver = useCallback((event: DragEvent<HTMLFormElement>) => {
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    setDragActive(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: DragEvent<HTMLFormElement>) => {
+    // Moving between the card's own children fires leave; only a real exit
+    // clears the highlight.
+    if (
+      event.relatedTarget &&
+      event.currentTarget.contains(event.relatedTarget as Node)
+    ) {
+      return;
+    }
+    setDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (event: DragEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setDragActive(false);
+      if (event.dataTransfer.files.length > 0) {
+        addFiles(event.dataTransfer.files);
+      }
     },
     [addFiles],
   );
@@ -637,7 +698,13 @@ export function ChatComposer({
       ) : null}
 
       <form
-        className="rounded-[var(--radius)] border bg-card p-2 shadow-sm focus-within:border-ring"
+        className={cn(
+          "rounded-[var(--radius)] border bg-card p-2 shadow-sm focus-within:border-ring",
+          dragActive && "border-ring bg-accent/40",
+        )}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onSubmit={handleSubmit}
       >
         {attachments.length > 0 ? (

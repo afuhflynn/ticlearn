@@ -36,6 +36,22 @@ const MAX_REQUEST_BYTES = 64 * 1024;
 const MAX_PART_CHARS = 8000;
 
 /**
+ * The composer cap, mirrored here so a hand built request cannot carry an
+ * unbounded pile of files past the client.
+ */
+const MAX_FILE_PARTS = 6;
+
+const FILE_MEDIA_PREFIXES = ["image/"];
+const FILE_MEDIA_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+]);
+
+/**
  * What the model is told when no note is attached to the turn. The prompt
  * declares this slot, so it has to say something honest rather than break.
  */
@@ -206,6 +222,47 @@ function isToolPart(part: unknown): boolean {
   if (!part || typeof part !== "object") return false;
   const type = (part as { type?: unknown }).type;
   return typeof type === "string" && type.startsWith("tool-");
+}
+
+/**
+ * Files travel as parts on the turn being sent. Only the newest user message
+ * is checked with the strict cap: older messages were validated when they were
+ * first sent, and an edit or retry of one must keep working with whatever URL
+ * host its own era used.
+ */
+export function validateFileParts(messages: UIMessage[]): string | null {
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (!lastUser || !Array.isArray(lastUser.parts)) return null;
+
+  let fileCount = 0;
+  for (const part of lastUser.parts) {
+    if (!part || typeof part !== "object") continue;
+    const type = (part as { type?: unknown }).type;
+    if (type !== "file") continue;
+
+    fileCount += 1;
+    if (fileCount > MAX_FILE_PARTS) {
+      return `Too many files in one message (max ${MAX_FILE_PARTS})`;
+    }
+
+    const mediaType = (part as { mediaType?: unknown }).mediaType;
+    if (
+      typeof mediaType !== "string" ||
+      (!FILE_MEDIA_PREFIXES.some((prefix) => mediaType.startsWith(prefix)) &&
+        !FILE_MEDIA_TYPES.has(mediaType))
+    ) {
+      return "This file type is not supported";
+    }
+
+    const url = (part as { url?: unknown }).url;
+    if (
+      typeof url !== "string" ||
+      !(url.startsWith("https://") || url.startsWith("data:text/plain"))
+    ) {
+      return "An attachment URL is not allowed";
+    }
+  }
+  return null;
 }
 
 function cleanParts(message: UIMessage): UIMessage {
@@ -394,6 +451,11 @@ export async function POST(req: Request) {
           }
         }
       }
+    }
+
+    const fileError = validateFileParts(messages);
+    if (fileError) {
+      return NextResponse.json({ error: fileError }, { status: 400 });
     }
 
     const userId = session.user.id;
