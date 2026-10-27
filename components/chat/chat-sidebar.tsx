@@ -5,7 +5,6 @@ import {
   Copy,
   Gauge,
   MoreHorizontal,
-  PanelLeft,
   Pencil,
   SquarePen,
   Trash2,
@@ -15,10 +14,11 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { ComponentProps } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { ChatAccountRow } from "@/components/chat/chat-account-row";
-import { ChatSearchRow } from "@/components/chat/chat-search";
+import { ChatSearchButton, ChatSearchRow } from "@/components/chat/chat-search";
 import { TIP_NAME } from "@/components/chat/constants";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,6 +52,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -82,71 +83,97 @@ const workspaceLinks = [
 ];
 
 /**
- * The brand block. Expanded it reads logo and name; in the collapsed rail the
- * name drops and the logo swaps to the sidebar toggle on hover, with the real
- * keyboard shortcut in the tooltip.
+ * Ctrl on Windows and Linux, ⌘ on Apple. Null until the client has run,
+ * because a server-side platform check disagrees with a Mac browser and tears.
  */
-function BrandBlock() {
-  const { isMobile, state, toggleSidebar } = useSidebar();
-  const [shortcutPrefix, setShortcutPrefix] = useState<string | null>(null);
+function useShortcutPrefix() {
+  const [prefix, setPrefix] = useState<string | null>(null);
 
-  // The shortcut label waits for the client, because the platform check on
-  // the server would disagree with a Mac browser and tear on hydration.
   useEffect(() => {
-    setShortcutPrefix(
-      /mac|iphone|ipad/i.test(navigator.userAgent) ? "⌘" : "Ctrl",
-    );
+    setPrefix(/mac|iphone|ipad/i.test(navigator.userAgent) ? "⌘" : "Ctrl");
   }, []);
 
-  const logo = (
-    <Image
-      alt={`${TIP_NAME} logo`}
-      className="size-7"
-      height={28}
-      src="/icons/favicon-32x32.png"
-      width={28}
-    />
-  );
+  return prefix;
+}
 
-  if (isMobile || state !== "collapsed") {
+/** The sidebar toggle with our real shortcut (not ChatGPT's) in the tooltip. */
+function SidebarToggleTip({
+  className,
+  side = "top",
+}: {
+  className?: string;
+  side?: ComponentProps<typeof TooltipContent>["side"];
+}) {
+  const prefix = useShortcutPrefix();
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <SidebarTrigger className={className} />
+      </TooltipTrigger>
+      <TooltipContent side={side}>
+        <p>Toggle sidebar</p>
+        {prefix && (
+          <KbdGroup>
+            <Kbd>{prefix}</Kbd>
+            <Kbd>B</Kbd>
+          </KbdGroup>
+        )}
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+/**
+ * The header, branching on the sidebar state instead of composing the two
+ * shapes with group-* variants (nested hovers did not compose with
+ * group-data-[collapsible=icon]). Expanded: brand left, search and toggle
+ * right, ChatGPT-style. Collapsed rail: hovering the logo hides it
+ * completely and shows only the toggle, and the reverse on hover out.
+ */
+function ChatBrandHeader() {
+  const { isMobile, state } = useSidebar();
+  const rail = !isMobile && state === "collapsed";
+
+  if (rail) {
     return (
-      <Link
-        className="flex items-center gap-2 px-1.5 py-0.5 text-sm font-semibold tracking-tight"
-        href="/dashboard"
-      >
-        {logo}
-        {TIP_NAME}
-      </Link>
+      <div className="flex justify-center">
+        <div className="group/logo relative flex size-8 items-center justify-center">
+          <Image
+            alt={`${TIP_NAME} logo`}
+            className="size-7 transition-opacity group-hover/logo:opacity-0 group-focus-within/logo:opacity-0"
+            height={28}
+            src="/icons/favicon-32x32.png"
+            width={28}
+          />
+          <SidebarToggleTip
+            className="pointer-events-none absolute inset-0 size-8 rounded-lg bg-sidebar opacity-0 transition-opacity group-hover/logo:pointer-events-auto group-hover/logo:opacity-100 group-focus-within/logo:pointer-events-auto group-focus-within/logo:opacity-100 [&_svg]:size-4"
+            side="right"
+          />
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="group/logo relative flex size-8 items-center justify-center">
-      {logo}
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              className="pointer-events-none absolute inset-0 size-8 rounded-lg opacity-0 transition-opacity group-hover/logo:pointer-events-auto group-hover/logo:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100"
-              onClick={toggleSidebar}
-              size="icon"
-              variant="ghost"
-            >
-              <PanelLeft className="size-4" />
-              <span className="sr-only">Toggle sidebar</span>
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent side="right">
-            <p>Toggle sidebar</p>
-            {shortcutPrefix && (
-              <KbdGroup>
-                <Kbd>{shortcutPrefix}</Kbd>
-                <Kbd>B</Kbd>
-              </KbdGroup>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
+    <div className="flex items-center justify-between">
+      <Link
+        className="flex items-center gap-2 px-1 py-0.5 text-sm font-semibold tracking-tight"
+        href="/dashboard"
+      >
+        <Image
+          alt={`${TIP_NAME} logo`}
+          className="size-7"
+          height={28}
+          src="/icons/favicon-32x32.png"
+          width={28}
+        />
+        {TIP_NAME}
+      </Link>
+      <div className="flex items-center gap-0.5">
+        <ChatSearchButton className="size-7" />
+        <SidebarToggleTip />
+      </div>
     </div>
   );
 }
@@ -154,6 +181,8 @@ function BrandBlock() {
 export function ChatSidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const { isMobile, state } = useSidebar();
+  const rail = !isMobile && state === "collapsed";
   const { conversations, isPending } = useChatConversations();
   const updateConversation = useUpdateConversation();
   const deleteConversation = useDeleteConversation();
@@ -215,9 +244,7 @@ export function ChatSidebar() {
           with the brand, new chat and search as icons, like ChatGPT. */}
       <Sidebar collapsible="icon" variant="sidebar">
         <SidebarHeader className="p-2 pb-1.5">
-          <div className="group-data-[collapsible=icon]:flex group-data-[collapsible=icon]:justify-center">
-            <BrandBlock />
-          </div>
+          <ChatBrandHeader />
         </SidebarHeader>
 
         <SidebarContent>
@@ -243,7 +270,9 @@ export function ChatSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
 
-                <ChatSearchRow />
+                {/* Search rides the header while expanded (the button beside
+                    the toggle); the row is the collapsed rail's icon form. */}
+                {rail ? <ChatSearchRow /> : null}
 
                 {workspaceLinks.map((item) => (
                   <SidebarMenuItem key={item.href}>

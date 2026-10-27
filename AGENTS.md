@@ -549,17 +549,29 @@ and usage awareness living on the composer instead of a sidebar card.
   grow.
 - **`SidebarMenuButton`'s `tooltip` prop only shows while collapsed** — put
   walkthrough labels there for rail rows, not a second Tooltip wrapper.
-- **The collapsed brand swap is two branch renders, not CSS.** `BrandBlock`
-  reads `state` and `isMobile` from `useSidebar` and renders either the full
-  brand or the hover-swap logo; nested group-hover variants were not
-  trusted to compose with `group-data-[collapsible=icon]`.
-- **`ChatUsageCard` and `ChatHeader` are deleted, not retired.** Everything
-  they carried has a new owner; nothing imports them.
+- **The collapsed brand swap is two branch renders, not CSS.** The header
+  (`ChatBrandHeader`) reads `state` and `isMobile` from `useSidebar` and
+  renders either the rail hover-swap logo or the expanded brand row; nested
+  group-hover variants were not trusted to compose with
+  `group-data-[collapsible=icon]`. In the rail the toggle button is opaque
+  (`bg-sidebar`) and the logo gets `group-hover/logo:opacity-0`, so each
+  hides the other completely. Expanded, the header is brand left with
+  search + toggle right, and the content search row renders only in the
+  rail so search is never in two places.
+- **`CommandDialog` must mount a `<Command>` root.** Our
+  `components/ui/command.tsx` wraps its children in one; cmdk pieces
+  (`CommandInput`, `CommandList`, …) read the store through context, and
+  without the root `useCommandState` hit `undefined.subscribe` and crashed
+  the search dialog. Putting pieces inside a bare `DialogContent` is
+  invalid; mount the root or the consumer carries it.
+- **`ChatUsageCard`, `ChatHeader` and `BrandBlock` are deleted, not
+  retired.** Everything they carried has a new owner; nothing imports them.
 - **The prisma pool timeout test now remembers 30s**, not 5s (see
   `tests/lib/prisma.test.ts`).
 
 ## Relevant files
 - `components/chat/chat-sidebar.tsx`, `chat-account-row.tsx`, `chat-search.tsx`, `chat-allowance-hint.tsx`
+- `components/ui/command.tsx` (the `<Command>` root inside `CommandDialog`)
 - `components/chat/chat-thread.tsx`, `chat-landing.tsx` (hint above the composer)
 - `app/chat/layout.tsx`, `lib/chat/conversations.ts`
 - `tests/app/layout-shells.test.tsx` (no ChatHeader mock), `tests/lib/prisma.test.ts`

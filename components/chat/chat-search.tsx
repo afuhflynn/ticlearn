@@ -26,6 +26,7 @@ import {
   groupConversationsByRecency,
 } from "@/lib/chat/conversations";
 import { placeholderKeys } from "@/lib/placeholder-keys";
+import { cn } from "@/lib/utils";
 
 /**
  * ChatGPT-placed search: an icon in the top bar beside the sidebar toggle on
@@ -116,8 +117,8 @@ export function ChatSearchRow() {
   );
 }
 
-/** The top bar trigger beside the sidebar toggle while the sidebar is expanded. */
-export function ChatSearchButton() {
+/** The trigger beside the sidebar toggle while the sidebar is expanded. */
+export function ChatSearchButton({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -126,7 +127,7 @@ export function ChatSearchButton() {
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              className="size-9"
+              className={cn("size-9", className)}
               onClick={() => setOpen(true)}
               size="icon"
               variant="ghost"
