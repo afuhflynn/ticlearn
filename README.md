@@ -37,7 +37,7 @@
 | Database | PostgreSQL + Prisma 7 ORM |
 | Styling | Tailwind CSS 4 + shadcn/ui + Framer Motion |
 | State | TanStack React Query + Zustand (client state) |
-| AI | AI SDK via OpenRouter, open weight model chains per task |
+| AI | AI SDK via OpenRouter (existing chain) + Meta Model API (Muse Spark 1.3 direct) + Baseten (Muse Spark Open for visual analysis) |
 | File Upload | UploadThing |
 | Payments | Fapshi API (MTN MoMo / Orange Money) |
 | Background Jobs | Inngest |
@@ -129,6 +129,8 @@ See [`.env.example`](./.env.example) for the complete list with setup instructio
 | `SENTRY_ORG` | Error Tracking | Sentry organization slug |
 | `SENTRY_PROJECT` | Error Tracking | Sentry project slug |
 | `TAVILY_API_KEY` | Search | Tavily search API key |
+| `MUSE_API_KEY` | AI (hackathon) | Meta Model API key for Muse Spark 1.3 (get from https://dev.meta.ai) |
+| `BAASETEN_API_KEY` | AI (hackathon) | Baseten API key for Muse Spark Open visual analysis (get from https://app.baseten.co) |
 
 ## Project Structure
 
@@ -250,6 +252,10 @@ pnpm format   # Auto-format all files
 3. Make your changes
 4. Run `pnpm lint` and `pnpm build` before committing
 5. Submit a pull request
+
+## Meta Global AI Developer Hackathon
+
+See [`HACKATHON.md`](./HACKATHON.md) for what was built during the hackathon (October 26 to November 4, 2026), which Meta models are used and for what, how Baseten credits power the visual analysis experiment, and the three minute demo paths. The OpenRouter chain remains unchanged as the fallback for existing features.
 
 ---
 

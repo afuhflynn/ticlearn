@@ -70,6 +70,7 @@ There are tests. Vitest 4 is configured in `vitest.config.ts` and 64 test files 
 - [app/api/AGENTS.md](app/api/AGENTS.md): route handler conventions, auth checks, plan limits, webhooks
 - [prisma/AGENTS.md](prisma/AGENTS.md): schema layout, the two parallel mock families, migrations, seeding
 - [docs/nuqs-setup.md](docs/nuqs-setup.md): the nuqs adapter and the Suspense boundary, per route group
+- [HACKATHON.md](HACKATHON.md): Meta Global AI Developer Hackathon build record — pre-existing vs new work, Meta model usage, Baseten visual analysis, demo paths
 
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know

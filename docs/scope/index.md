@@ -65,6 +65,12 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 43 | Affiliate invites for partners | Slice 5 | planned |
 | 45 | Dashboard subscription page reconciliation | Slice 5 | planned |
 | 33 | Mobile responsiveness and device quality | Cross cutting | planned |
+| 48 | Hackathon baseline and public repository safety | Hackathon | in-progress |
+| 49 | Provider aware model routing for Meta and Baseten | Hackathon | planned |
+| 50 | Visual course page analysis | Hackathon | planned |
+| 51 | Grounded question generation from course material | Hackathon | planned |
+| 52 | Targeted retry and progress update | Hackathon | planned |
+| 53 | Hackathon demo and submission | Hackathon | planned |
 
 ## Epics
 
@@ -78,6 +84,7 @@ Each epic is one file with its own feature sections.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
 - **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
 - **[Commerce](commerce.md)** · 7 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites, conversion analytics and the in app subscription page.
+- **[Hackathon](hackathon.md)** · 6 features, Hackathon · the Meta Global AI Developer Hackathon build: provider routing to Meta and Baseten, visual course page analysis, grounded question generation, targeted retry and progress, demo and submission.
 
 ## Phasing in one line each
 
@@ -87,6 +94,7 @@ Each epic is one file with its own feature sections.
 - **Slice 3, notes and quizzes** · the student uploads their own notes and turns them into practice. This is the killer loop the product is built around.
 - **Slice 4, exams** · dropped. Timed practice with AI grading is not coming; study is notes, quizzes and the tutor.
 - **Slice 5, money** · the semester pass, mobile money, and a free tier designed to convert.
+- **Hackathon, nine days** · the Meta Global AI Developer Hackathon build from October 26 to November 4. Provider routing to Meta and Baseten, visual course page analysis, grounded question generation, targeted retry and progress, demo and submission by November 4 at 9 PM Eastern.
 
 ## Deferred
 
