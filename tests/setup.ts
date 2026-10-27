@@ -4,6 +4,7 @@ import { vi } from "vitest";
 // The AI layer refuses to build a provider without a key. Tests never make a
 // real call, so a placeholder keeps that guard honest instead of stubbed out.
 process.env.OPENROUTER_API_KEY ??= "test-openrouter-key";
+process.env.MUSE_API_KEY ??= "test-muse-key";
 
 Object.defineProperty(globalThis, "crypto", {
   value: {

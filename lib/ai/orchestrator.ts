@@ -32,16 +32,7 @@ import { logUsage, usageFromResult } from "./usage";
  * because it has no streaming endpoint; OpenRouter provides real-time streaming
  * as the fallback.
  */
-const MUSE_PRIMARY_TASKS = new Set([
-  "summarize",
-  "grading",
-  "quiz_gen",
-]);
-
-/** Stream-capable tasks that try Muse first, then fall through to OpenRouter. */
-const MUSE_PRIMARY_STREAM_TASKS = new Set<string>([]);
-
-/** The Muse model ID used as the primary attempt. */
+/** The Muse model ID used as the primary attempt for chat. */
 const MUSE_PRIMARY_MODEL = "muse-spark-1.3";
 
 /** Identity of the prompt file behind a call. Traces cache keys and logs. */
@@ -241,17 +232,6 @@ async function runGenerate<T>(
   if (config.provider === "meta" || config.provider === "baseten") {
     try {
       return await runGenerateMuse(opts, chain[0], coldStart);
-    } catch (_museError) {
-      // Muse failed or is not configured; fall through to OpenRouter chain.
-    }
-  }
-
-  // Muse-primary tasks (registered as OpenRouter tasks) try Muse first, then
-  // fall through to the OpenRouter chain. This keeps OpenRouter models as the
-  // fallback chain so a Muse failure never leaves the student without AI.
-  if (MUSE_PRIMARY_TASKS.has(opts.task)) {
-    try {
-      return await runGenerateMuse(opts, MUSE_PRIMARY_MODEL, coldStart);
     } catch (_museError) {
       // Muse failed or is not configured; fall through to OpenRouter chain.
     }
@@ -508,19 +488,21 @@ type StreamChatResult = {
 export async function streamChat(opts: StreamChatOptions): Promise<StreamChatResult> {
   logPromptUse(opts.task, opts.promptRef);
   const cold = noteColdStart();
-  const multimodal = hasImageParts(opts.messages);
-  const chain = resolveChain(opts.task, { multimodal });
 
-  // Muse-primary stream task: try Muse first (buffered single-chunk response),
-  // then fall through to OpenRouter streaming which provides real-time tokens.
-  if (MUSE_PRIMARY_STREAM_TASKS.has(opts.task)) {
+  // Muse-only for chat: no OpenRouter fallback. Muse buffers the whole
+  // response, so there are no mid-stream cutoffs or partial answers.
+  if (opts.task === "fast_chat") {
     try {
       return await runGenerateMuseStream(opts, MUSE_PRIMARY_MODEL, cold);
     } catch (_museError) {
-      // Muse failed or is not configured; fall through to OpenRouter chain.
+      throw friendlyDown(opts.task, [
+        { model: MUSE_PRIMARY_MODEL, error: errorMessage(_museError) },
+      ]);
     }
   }
 
+  const multimodal = hasImageParts(opts.messages);
+  const chain = resolveChain(opts.task, { multimodal });
   const { runnable } = await splitChain(chain);
   const tried: Array<{ model: string; error: string }> = [];
   let lastError: unknown = null;
