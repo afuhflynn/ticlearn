@@ -253,10 +253,11 @@ Keep AI calls fast and predictable through OpenRouter: one server-side gateway, 
 
 ## Relevant Files
 - `lib/ai/instances.ts`: lazy OpenRouter-compatible provider
-- `lib/ai/chain.ts`: model IDs, deadlines, classification and model construction
+- `lib/ai/chain.ts`: model IDs, deadlines, classification and model construction. `CHAIN_STREAM_DEADLINE_MS` reduced to 45s (was 120s) to stay under Vercel's 60s function timeout; each stream attempt capped at 15s so one slow model cannot consume the whole budget. `CHAIN_DEADLINE_MS` is 30s for non-streaming calls.
 - `lib/ai/breaker.ts`: health and cooldown state
-- `lib/ai/orchestrator.ts`: generate, streamChat, text generation and fallback walks
-- `lib/ai/registry.ts`: task names and cache TTLs. `provider` field decides OpenRouter vs Muse/Baseten for registry-registered tasks (`course_analysis`, `question_gen`, `answer_evaluation`, `next_step` → meta; `visual_analysis` → baseten). Additionally, `lib/ai/orchestrator.ts` tries Muse Spark 1.3 first for `summarize`, `grading`, `quiz_gen` (non-streaming `generate`) and `fast_chat` (streaming `streamChat`), with OpenRouter as the failure-resistant fallback chain. If Muse is down, unconfigured, or fails, OpenRouter models take over seamlessly.
+- `lib/ai/orchestrator.ts`: generate, streamChat, text generation and fallback walks. `streamChat` uses OpenRouter models first for `fast_chat` (Muse buffers the whole response and adds latency — OpenRouter streams tokens in real-time). Muse stays primary for `summarize`, `grading`, `quiz_gen` (non-streaming `generate`). Per-attempt deadline wrapping prevents a single slow model from poisoning the whole Vercel budget.
+- `lib/ai/registry.ts`: task names and cache TTLs. `provider` field decides OpenRouter vs Muse/Baseten for registry-registered tasks (`course_analysis`, `question_gen`, `answer_evaluation`, `next_step` → meta; `visual_analysis` → baseten). `summarize`, `grading`, `quiz_gen` try Muse Spark 1.3 first via orchestrator logic, with OpenRouter fallback.
+- `prompts/chat/chat_system.md` (v6): user name used sparingly (greeting/wrap-up, not every response); platform links only when the student actually needs to navigate somewhere (quiz, note, page), not dropped gratuitously since they're already on the site.
 - `lib/ai/cache.ts`: in-memory sha256 cache
 - `lib/ai/index.ts`: extraction, summarization, quiz and exam generation, grading helpers
 - `lib/ai/tools.ts`: chat tool definitions (web search, notes, quizzes, progress, createQuiz)

@@ -21,7 +21,7 @@ export const CHAIN_DEADLINE_MS = 30_000;
  * (`stopWhen: stepCountIs(5)`), so a total equal to the object path cap would
  * truncate real answers mid sentence.
  */
-export const CHAIN_STREAM_DEADLINE_MS = 120_000;
+export const CHAIN_STREAM_DEADLINE_MS = 45_000;
 /**
  * Per-leg timeout for a Muse (Meta or Baseten) call. Shorter than the shared
  * OpenRouter chain deadline so a slow provider cannot consume the whole budget

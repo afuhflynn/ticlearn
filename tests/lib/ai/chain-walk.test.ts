@@ -443,11 +443,11 @@ describe("streamChat (covers: AC-6)", () => {
     expect(vi.mocked(streamText).mock.calls[0][0].maxRetries).toBe(0);
   });
 
-  it("gives a stream a longer budget than the object path, since chat runs tool steps", async () => {
+  it("gives each stream attempt a real slice of time, capped so one slow model cannot consume the whole budget", async () => {
     await streamChat({ task: "fast_chat", messages: [] });
     const call = vi.mocked(streamText).mock.calls[0][0];
-    expect(call.timeout).toBe(CHAIN_STREAM_DEADLINE_MS);
-    expect(call.timeout).toBeGreaterThan(CHAIN_DEADLINE_MS);
+    expect(call.timeout).toBeLessThanOrEqual(CHAIN_STREAM_DEADLINE_MS);
+    expect(call.timeout).toBeLessThanOrEqual(15000);
   });
 
   it("applies the same output cap default to a stream", async () => {

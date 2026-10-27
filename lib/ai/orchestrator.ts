@@ -39,7 +39,7 @@ const MUSE_PRIMARY_TASKS = new Set([
 ]);
 
 /** Stream-capable tasks that try Muse first, then fall through to OpenRouter. */
-const MUSE_PRIMARY_STREAM_TASKS = new Set(["fast_chat"]);
+const MUSE_PRIMARY_STREAM_TASKS = new Set<string>([]);
 
 /** The Muse model ID used as the primary attempt. */
 const MUSE_PRIMARY_MODEL = "muse-spark-1.3";
@@ -549,12 +549,15 @@ export async function streamChat(opts: StreamChatOptions): Promise<StreamChatRes
       const started = Date.now();
       const streamParams = callParams(opts.modelOptions);
       let streamError: unknown = null;
+      const remainingMs = CHAIN_STREAM_DEADLINE_MS - (Date.now() - started);
+      if (remainingMs <= 500) break;
+      const attemptBudget = Math.max(2000, Math.min(remainingMs, 15000));
       const result = streamText({
         model: chainModel(modelId),
         system: opts.system,
         messages: opts.messages as never,
         tools: opts.tools as never,
-        timeout: CHAIN_STREAM_DEADLINE_MS,
+        timeout: attemptBudget,
         maxRetries: 0,
         temperature: streamParams.temperature,
         maxOutputTokens: streamParams.maxOutputTokens,
@@ -597,8 +600,12 @@ export async function streamChat(opts: StreamChatOptions): Promise<StreamChatRes
 
       // streamText returns before the provider is called, so a fault can only
       // surface while the stream is read. Peek the first text delta: a model
-      // that cannot produce one fails here, before we commit to it.
-      const firstTextStream = await probeFirstToken(result);
+      // that cannot produce one fails here, before we commit to it. Wrap the
+      // probe in the attempt deadline so a slow model cannot consume the whole
+      // Vercel budget before we fall through to the next model.
+      const firstTextStream = await withDeadline(attemptBudget, () =>
+        probeFirstToken(result),
+      );
       if (streamError) throw streamError;
       if (!firstTextStream) {
         throw new Error("stream ended before first token");
