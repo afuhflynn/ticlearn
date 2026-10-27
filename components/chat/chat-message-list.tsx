@@ -8,6 +8,7 @@ import {
   RefreshCwIcon,
   SparklesIcon,
 } from "lucide-react";
+import Link from "next/link";
 import {
   type ComponentProps,
   useEffect,
@@ -411,6 +412,8 @@ function MessageBody({
   const isAssistant = message.role === "assistant";
 
   // The caret lives at the end of the last paragraph while tokens arrive.
+  // A link the model gives the student navigates like the app's own links:
+  // inside the app through the router, outside in a new tab.
   const components = useMemo(
     () => ({
       p: ({ children, ...props }: ComponentProps<"p">) => (
@@ -419,6 +422,28 @@ function MessageBody({
           {isStreaming ? <StreamingCaret /> : null}
         </p>
       ),
+      a: ({ children, href, ...props }: ComponentProps<"a">) => {
+        const prose = "font-medium underline underline-offset-2";
+        if (href?.startsWith("/")) {
+          return (
+            <Link className={prose} href={href} {...props}>
+              {children}
+            </Link>
+          );
+        }
+        return (
+          // biome-ignore lint/suspicious/noBlankTarget: an answer link the app does not own must not navigate the thread away.
+          <a
+            className={prose}
+            href={href}
+            rel="noreferrer"
+            target="_blank"
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      },
     }),
     [isStreaming],
   );
