@@ -85,20 +85,15 @@ export function AppSidebar() {
 
   const NavContent = () => (
     <>
-      <SidebarHeader className="border-b px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
-                {userInitial}
-              </AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold leading-tight">
-                Hi, {userName.split(" ")[0]}
-              </p>
-            </div>
-          </div>
+      {/* Sidebar header: avatar only (no "Hi, name" line). The account row
+          at the bottom of the sidebar carries the name and plan. */}
+      <SidebarHeader className="p-2 pb-1.5">
+        <div className="flex items-center justify-center">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary text-primary-foreground text-sm font-semibold">
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
         </div>
       </SidebarHeader>
 
