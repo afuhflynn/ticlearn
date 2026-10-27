@@ -28,7 +28,7 @@ import {
 } from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
 import { consumePendingChatMessage } from "./pending-message";
-import { StarterCards } from "./starter-cards";
+import { StarterRows } from "./starter-rows";
 import { suggestionsFromParts } from "./suggested-replies";
 
 type ChatMessageRecord = {
@@ -310,7 +310,7 @@ function ConversationSession({
           className="min-h-0 flex-1"
           durationMs={durationMs}
           emptyState={
-            <StarterCards
+            <StarterRows
               onStart={(prompt) =>
                 setPrefill({ text: prompt, nonce: Date.now() })
               }

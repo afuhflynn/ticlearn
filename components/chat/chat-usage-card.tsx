@@ -56,7 +56,7 @@ export function ChatUsageCard({
   return (
     <div
       className={cn(
-        "rounded-lg border bg-muted/40 p-3 text-sm",
+        "rounded-[var(--radius)] bg-accent/50 p-3 text-sm",
         compact && "p-2 text-xs",
         className,
       )}
