@@ -191,6 +191,20 @@
   /* The dim a region takes while it refreshes. The value lives under :root
      and .dark, this only exposes it. */
   --opacity-content-dim: var(--content-dim-opacity);
+
+  /* Chat attachment file types. One mid-tone ink and one soft wash per
+     family, tuned to read on both themes, so a file card needs no dark:
+     variant. The name stays off the palette list on purpose. */
+  --color-att-pdf: oklch(0.58 0.21 27);
+  --color-att-pdf-soft: oklch(0.58 0.21 27 / 0.13);
+  --color-att-word: oklch(0.55 0.17 255);
+  --color-att-word-soft: oklch(0.55 0.17 255 / 0.13);
+  --color-att-sheet: oklch(0.58 0.14 155);
+  --color-att-sheet-soft: oklch(0.58 0.14 155 / 0.13);
+  --color-att-code: oklch(0.62 0.14 70);
+  --color-att-code-soft: oklch(0.62 0.14 70 / 0.13);
+  --color-att-plain: oklch(0.55 0.05 250);
+  --color-att-plain-soft: oklch(0.55 0.05 250 / 0.13);
 }
 
 @layer base {

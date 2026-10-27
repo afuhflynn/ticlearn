@@ -31,17 +31,17 @@ import {
 import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
 import { ActivityBlock } from "@/components/chat/activity-block";
 import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
-import { FilePreview } from "@/components/chat/file-preview";
+import { FilePreview, isImageFile } from "@/components/chat/file-preview";
 import { SuggestedReplies } from "@/components/chat/suggested-replies";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { cn } from "@/lib/utils";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
 
@@ -89,6 +89,7 @@ function MessageFileParts({ parts }: { parts: UIMessage["parts"] }) {
             mediaType: part.mediaType,
           }}
           key={`${part.url}-${part.filename ?? "file"}`}
+          variant={isImageFile(part.mediaType) ? "message" : "chip"}
         />
       ))}
     </div>

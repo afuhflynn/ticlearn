@@ -3,7 +3,6 @@
 import { upload } from "@vercel/blob/client";
 import type { FileUIPart } from "ai";
 import {
-  PaperclipIcon,
   PlusIcon,
   RotateCwIcon,
   SendIcon,
@@ -21,7 +20,7 @@ import {
   useState,
 } from "react";
 import { CHAT_CAPABILITY_LINE, TIP_NAME } from "@/components/chat/constants";
-import { FilePreview } from "@/components/chat/file-preview";
+import { isImageFile } from "@/components/chat/file-preview";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -32,6 +31,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useSession } from "@/lib/auth-client";
+import { chatFileMetaFor } from "@/lib/chat/file-meta";
 import { cn, formatFileSize } from "@/lib/utils";
 
 /** Pastes longer than this become a text attachment instead of a wall of text. */
@@ -93,12 +93,23 @@ type ComposerAttachment = {
   size: number;
   url?: string;
   file?: File;
+  /** A local preview for an image, ready before the upload answers. */
+  objectUrl?: string;
   progress: number;
   status: "uploading" | "uploaded" | "failed";
   error?: string;
   textContent?: string;
   source: "file" | "paste";
 };
+
+/** A local preview costs one object URL, and jsdom has none to give. */
+function localPreviewFor(file: File): string | undefined {
+  try {
+    return URL.createObjectURL(file);
+  } catch {
+    return undefined;
+  }
+}
 
 export type ChatComposerSubmission = {
   text: string;
@@ -120,6 +131,165 @@ export type ChatComposerRestore = {
 };
 
 type ChatStatus = "submitted" | "streaming" | "ready" | "error";
+
+/** The stroke circle of the upload ring, drawn on a 36 by 36 view box. */
+const RING_CIRCUMFERENCE = 2 * Math.PI * 15.5;
+
+function ImageAttachmentTile({
+  item,
+  onRemove,
+  onRetry,
+}: {
+  item: ComposerAttachment;
+  onRemove: (id: string) => void;
+  onRetry: (item: ComposerAttachment) => void;
+}) {
+  return (
+    <div className="group relative">
+      <div className="relative size-[84px] overflow-hidden rounded-xl border bg-muted">
+        {/* biome-ignore lint/performance/noImgElement: chat files come from arbitrary Blob and local preview origins that next/image cannot preconfigure. */}
+        <img
+          alt={item.name}
+          className={cn(
+            "size-full object-cover",
+            item.status === "uploading" && "scale-110 blur-[6px]",
+            item.status === "failed" && "opacity-60",
+          )}
+          src={item.objectUrl ?? item.url}
+        />
+        {item.status === "uploading" ? (
+          <div className="absolute inset-0 grid place-items-center bg-background/40">
+            {/* The ring moves with real upload progress; nothing spins. */}
+            <svg className="size-9 text-foreground" viewBox="0 0 36 36">
+              <title>Upload progress</title>
+              <circle
+                className="stroke-foreground/25"
+                cx="18"
+                cy="18"
+                fill="none"
+                r="15.5"
+                strokeWidth="3"
+              />
+              <circle
+                className="stroke-foreground"
+                cx="18"
+                cy="18"
+                fill="none"
+                r="15.5"
+                strokeDasharray={RING_CIRCUMFERENCE}
+                strokeDashoffset={
+                  RING_CIRCUMFERENCE * (1 - item.progress / 100)
+                }
+                strokeLinecap="round"
+                strokeWidth="3"
+                transform="rotate(-90 18 18)"
+              />
+            </svg>
+          </div>
+        ) : null}
+      </div>
+      {item.status === "failed" && item.source === "file" ? (
+        <Button
+          className="absolute left-1/2 top-1/2 size-8 -translate-x-1/2 -translate-y-1/2 rounded-full p-0"
+          onClick={() => onRetry(item)}
+          type="button"
+          variant="outline"
+        >
+          <RotateCwIcon className="size-4" />
+          <span className="sr-only">Retry {item.name}</span>
+        </Button>
+      ) : null}
+      <Button
+        className="absolute -right-1.5 -top-1.5 size-6 rounded-full border bg-background p-0 shadow-sm"
+        onClick={() => onRemove(item.id)}
+        type="button"
+        variant="outline"
+      >
+        <XIcon className="size-3.5" />
+        <span className="sr-only">Remove {item.name}</span>
+      </Button>
+      <span className="sr-only">
+        {item.status === "uploading"
+          ? `Uploading ${item.name} · ${item.progress}%`
+          : item.status === "failed"
+            ? (item.error ?? `${item.name} failed`)
+            : `${item.name} attached`}
+      </span>
+    </div>
+  );
+}
+
+function DocumentAttachmentTile({
+  item,
+  onRemove,
+  onRetry,
+  onShowPaste,
+}: {
+  item: ComposerAttachment;
+  onRemove: (id: string) => void;
+  onRetry: (item: ComposerAttachment) => void;
+  onShowPaste: (item: ComposerAttachment) => void;
+}) {
+  const meta = chatFileMetaFor(item.mediaType);
+  const uploading = item.status === "uploading";
+  const fileFailed = item.status === "failed" && item.source === "file";
+  return (
+    <div className="flex w-56 max-w-full items-center gap-2 rounded-xl border p-1.5 pr-1">
+      <span
+        className={cn(
+          "flex size-9 shrink-0 items-center justify-center rounded-lg",
+          meta.tile,
+        )}
+      >
+        <meta.Icon className="size-4" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium">{item.name}</p>
+        <p className="text-xs text-muted-foreground">
+          {formatFileSize(item.size)}
+          {uploading
+            ? ` · ${item.progress}%`
+            : item.status === "failed"
+              ? " · failed"
+              : ""}
+        </p>
+        {item.source === "paste" ? (
+          <Button
+            className="h-auto px-0 text-left text-xs font-normal"
+            onClick={() => onShowPaste(item)}
+            type="button"
+            variant="link"
+          >
+            Show in text field
+          </Button>
+        ) : null}
+        {item.status === "failed" && item.error ? (
+          <p className="truncate text-xs text-destructive">{item.error}</p>
+        ) : null}
+      </div>
+      {fileFailed ? (
+        <Button
+          className="size-7 shrink-0"
+          onClick={() => onRetry(item)}
+          type="button"
+          variant="ghost"
+        >
+          <RotateCwIcon className="size-4" />
+          <span className="sr-only">Retry {item.name}</span>
+        </Button>
+      ) : null}
+      <Button
+        className="size-7 shrink-0"
+        onClick={() => onRemove(item.id)}
+        type="button"
+        variant="ghost"
+      >
+        <XIcon className="size-4" />
+        <span className="sr-only">Remove {item.name}</span>
+      </Button>
+    </div>
+  );
+}
 
 export function ChatComposer({
   disabled,
@@ -283,6 +453,7 @@ export function ChatComposer({
           mediaType: file.type,
           size: file.size,
           file,
+          objectUrl: isImageFile(file.type) ? localPreviewFor(file) : undefined,
           progress: 0,
           status: "uploading",
           source: "file",
@@ -313,9 +484,20 @@ export function ChatComposer({
     ]);
   }, []);
 
-  const removeAttachment = useCallback((id: string) => {
-    setAttachments((current) => current.filter((item) => item.id !== id));
+  const revokeObjectUrl = useCallback((item: ComposerAttachment) => {
+    if (item.objectUrl) URL.revokeObjectURL(item.objectUrl);
   }, []);
+
+  const removeAttachment = useCallback(
+    (id: string) => {
+      setAttachments((current) => {
+        const leaving = current.find((item) => item.id === id);
+        if (leaving) revokeObjectUrl(leaving);
+        return current.filter((item) => item.id !== id);
+      });
+    },
+    [revokeObjectUrl],
+  );
 
   const showPasteInTextField = useCallback((item: ComposerAttachment) => {
     setText((current) => `${current}${item.textContent ?? ""}`);
@@ -369,6 +551,7 @@ export function ChatComposer({
       // on screen is the message that was sent. A rejected send puts its text
       // back through the restore prop.
       setText("");
+      for (const item of attachments) revokeObjectUrl(item);
       setAttachments([]);
       setNotice(null);
       setShowAllAttachments(false);
@@ -380,7 +563,16 @@ export function ChatComposer({
 
       void onSubmit(submission);
     },
-    [attachments, canSend, draftStorageKey, onStop, onSubmit, streaming, text],
+    [
+      attachments,
+      canSend,
+      draftStorageKey,
+      onStop,
+      onSubmit,
+      revokeObjectUrl,
+      streaming,
+      text,
+    ],
   );
 
   const handleKeyDown = useCallback(
@@ -435,88 +627,6 @@ export function ChatComposer({
 
   return (
     <div className={cn("w-full", className)}>
-      {attachments.length > 0 ? (
-        <div className="mb-2 flex flex-wrap items-start gap-2">
-          {visibleAttachments.map((item) => (
-            <div
-              className="flex max-w-full items-center gap-2 rounded-[var(--radius-md)] border bg-muted/30 p-1.5"
-              key={item.id}
-            >
-              {item.url ? (
-                <FilePreview
-                  file={{
-                    url: item.url,
-                    filename: item.name,
-                    mediaType: item.mediaType,
-                    size: item.size,
-                    textContent: item.textContent,
-                  }}
-                />
-              ) : (
-                <span className="flex size-16 shrink-0 items-center justify-center rounded-[var(--radius-md)] border bg-muted text-muted-foreground">
-                  <PaperclipIcon className="size-5" />
-                </span>
-              )}
-              <div className="min-w-0 max-w-40">
-                <p className="truncate text-xs font-medium">{item.name}</p>
-                <p className="text-xs text-muted-foreground">
-                  {formatFileSize(item.size)}
-                  {item.status === "uploading"
-                    ? ` · ${item.progress}%`
-                    : item.status === "failed"
-                      ? " · failed"
-                      : ""}
-                </p>
-                {item.error ? (
-                  <p className="text-xs text-destructive">{item.error}</p>
-                ) : null}
-                {item.source === "paste" ? (
-                  <Button
-                    className="mt-1 h-auto px-0 text-left text-xs font-normal"
-                    onClick={() => showPasteInTextField(item)}
-                    type="button"
-                    variant="link"
-                  >
-                    Show in text field
-                  </Button>
-                ) : null}
-              </div>
-              {item.status === "failed" && item.source === "file" ? (
-                <Button
-                  className="size-11 shrink-0"
-                  onClick={() => retryAttachment(item)}
-                  type="button"
-                  variant="ghost"
-                >
-                  <RotateCwIcon className="size-4" />
-                  <span className="sr-only">Retry {item.name}</span>
-                </Button>
-              ) : null}
-              <Button
-                className="size-11 shrink-0"
-                onClick={() => removeAttachment(item.id)}
-                type="button"
-                variant="ghost"
-              >
-                <XIcon className="size-4" />
-                <span className="sr-only">Remove {item.name}</span>
-              </Button>
-            </div>
-          ))}
-          {hiddenCount > 0 ? (
-            <Button
-              className="h-16 min-w-11 px-3 text-xs"
-              onClick={() => setShowAllAttachments(true)}
-              type="button"
-              variant="outline"
-            >
-              +{hiddenCount}
-              <span className="sr-only"> more attachments</span>
-            </Button>
-          ) : null}
-        </div>
-      ) : null}
-
       {notice ? (
         <p className="mb-2 text-xs text-muted-foreground">
           {notice}
@@ -530,6 +640,39 @@ export function ChatComposer({
         className="rounded-[var(--radius)] border bg-card p-2 shadow-sm focus-within:border-ring"
         onSubmit={handleSubmit}
       >
+        {attachments.length > 0 ? (
+          <div className="mb-2 flex flex-wrap items-start gap-2">
+            {visibleAttachments.map((item) =>
+              isImageFile(item.mediaType) ? (
+                <ImageAttachmentTile
+                  item={item}
+                  key={item.id}
+                  onRemove={removeAttachment}
+                  onRetry={retryAttachment}
+                />
+              ) : (
+                <DocumentAttachmentTile
+                  item={item}
+                  key={item.id}
+                  onRemove={removeAttachment}
+                  onRetry={retryAttachment}
+                  onShowPaste={showPasteInTextField}
+                />
+              ),
+            )}
+            {hiddenCount > 0 ? (
+              <Button
+                className="size-[84px] min-w-11 px-3 text-xs"
+                onClick={() => setShowAllAttachments(true)}
+                type="button"
+                variant="outline"
+              >
+                +{hiddenCount}
+                <span className="sr-only"> more attachments</span>
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
         <div className="flex items-end gap-1">
           <Input
             accept={CHAT_ACCEPT}

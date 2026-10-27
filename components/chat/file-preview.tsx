@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  FileTextIcon,
-  ImageOffIcon,
-  PaperclipIcon,
-  ZoomInIcon,
-  ZoomOutIcon,
-} from "lucide-react";
+import { ImageOffIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,6 +16,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { chatFileMetaFor } from "@/lib/chat/file-meta";
 import { cn, formatFileSize } from "@/lib/utils";
 
 export type PreviewableFile = {
@@ -37,15 +32,18 @@ export function isImageFile(mediaType: string): boolean {
 }
 
 /**
- * A 64 pixel attachment with a preview on tap. Images open a lightbox with
- * zoom, documents open a sheet. Nothing opens a new tab.
+ * An attachment that previews on tap. Images open a lightbox with zoom,
+ * documents open a sheet. Nothing opens a new tab. A chip is the small 64
+ * pixel square; a message draws a sent image at the sending size.
  */
 export function FilePreview({
   file,
   className,
+  variant = "chip",
 }: {
   file: PreviewableFile;
   className?: string;
+  variant?: "chip" | "message";
 }) {
   const [open, setOpen] = useState(false);
   const [broken, setBroken] = useState(false);
@@ -53,6 +51,8 @@ export function FilePreview({
   const [zoom, setZoom] = useState(1);
   const name = file.filename || "Attachment";
   const isImage = isImageFile(file.mediaType);
+  const isMessage = variant === "message";
+  const meta = chatFileMetaFor(file.mediaType);
 
   useEffect(() => {
     if (!open || isImage || file.textContent) return;
@@ -83,11 +83,19 @@ export function FilePreview({
     );
   }
 
+  const imageTile = "size-16 rounded-[var(--radius-md)]";
+  const messageImageTile = "size-40 rounded-xl";
+
   return (
     <>
       <Button
         className={cn(
-          "size-16 shrink-0 overflow-hidden p-0 text-muted-foreground",
+          "shrink-0 overflow-hidden p-0 text-muted-foreground",
+          isImage
+            ? isMessage
+              ? messageImageTile
+              : imageTile
+            : "size-16 rounded-[var(--radius-md)]",
           className,
         )}
         onClick={() => setOpen(true)}
@@ -100,15 +108,20 @@ export function FilePreview({
           <img
             alt=""
             className="size-full object-cover"
-            height={64}
+            height={isMessage ? 160 : 64}
             onError={() => setBroken(true)}
             src={file.url}
-            width={64}
+            width={isMessage ? 160 : 64}
           />
-        ) : file.mediaType === "application/pdf" ? (
-          <FileTextIcon className="size-6" />
         ) : (
-          <PaperclipIcon className="size-6" />
+          <span
+            className={cn(
+              "flex size-full items-center justify-center bg-inherit",
+              meta.tile,
+            )}
+          >
+            <meta.Icon className="size-6" />
+          </span>
         )}
       </Button>
 

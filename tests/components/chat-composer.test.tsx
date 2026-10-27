@@ -223,9 +223,12 @@ describe("attachments (covers: AC-7, AC-9)", () => {
 
     await user.upload(fileInput(), [imageFile()]);
 
-    expect(await screen.findByText("paper.png")).toBeInTheDocument();
+    expect(
+      await screen.findByRole("img", { name: "paper.png" }),
+    ).toBeInTheDocument();
     await waitFor(() => expect(uploadMock).toHaveBeenCalledOnce());
-    await waitFor(() => expect(screen.getByText("2.0 KB")).toBeInTheDocument());
+    // An image tile carries no printed name, the way ChatGPT draws it.
+    expect(screen.queryByText("paper.png")).not.toBeInTheDocument();
     expect(screen.getByText("1 attachment.")).toBeInTheDocument();
 
     await user.type(box(), "Look at this");
@@ -242,6 +245,20 @@ describe("attachments (covers: AC-7, AC-9)", () => {
     ]);
   });
 
+  it("prints the name and size of a document attachment", async () => {
+    const user = userEvent.setup();
+    renderComposer();
+
+    await user.upload(fileInput(), [
+      new File(["x".repeat(2048)], "physics.pdf", {
+        type: "application/pdf",
+      }),
+    ]);
+
+    expect(await screen.findByText("physics.pdf")).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText("2.0 KB")).toBeInTheDocument());
+  });
+
   it("removes one attachment on its own and updates the count", async () => {
     const user = userEvent.setup();
     renderComposer();
@@ -250,13 +267,15 @@ describe("attachments (covers: AC-7, AC-9)", () => {
       imageFile("page-1.png"),
       imageFile("page-2.png"),
     ]);
-    await screen.findByText("page-1.png");
+    await screen.findByRole("img", { name: "page-1.png" });
     expect(screen.getByText("2 attachments.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Remove page-1.png" }));
 
-    expect(screen.queryByText("page-1.png")).not.toBeInTheDocument();
-    expect(screen.getByText("page-2.png")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: "page-1.png" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "page-2.png" })).toBeInTheDocument();
     expect(screen.getByText("1 attachment.")).toBeInTheDocument();
   });
 
@@ -270,15 +289,17 @@ describe("attachments (covers: AC-7, AC-9)", () => {
         imageFile(`page-${index + 1}.png`),
       ),
     );
-    await screen.findByText("page-1.png");
+    await screen.findByRole("img", { name: "page-1.png" });
 
-    expect(screen.queryByText("page-4.png")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("img", { name: "page-4.png" }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText("5 attachments.")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /more attachments/ }));
 
-    expect(screen.getByText("page-4.png")).toBeInTheDocument();
-    expect(screen.getByText("page-5.png")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "page-4.png" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "page-5.png" })).toBeInTheDocument();
   });
 
   it("blocks send after a failed upload and recovers on retry", async () => {
