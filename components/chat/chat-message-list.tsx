@@ -31,7 +31,7 @@ import {
 import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
 import { ActivityBlock } from "@/components/chat/activity-block";
 import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
-import { FilePreview, isImageFile } from "@/components/chat/file-preview";
+import { FilePreview } from "@/components/chat/file-preview";
 import { SuggestedReplies } from "@/components/chat/suggested-replies";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,7 +65,14 @@ function messageText(message: UIMessage): string {
     .join("\n");
 }
 
-function MessageFileParts({ parts }: { parts: UIMessage["parts"] }) {
+function MessageFileParts({
+  parts,
+  side,
+}: {
+  parts: UIMessage["parts"];
+  /** Which edge the tiles hug; the student's row hugs the right. */
+  side?: "start" | "end";
+}) {
   const fileParts = parts.filter(
     (
       part,
@@ -80,7 +87,15 @@ function MessageFileParts({ parts }: { parts: UIMessage["parts"] }) {
   if (fileParts.length === 0) return null;
 
   return (
-    <div className="mb-1 flex flex-wrap gap-2">
+    // The row hugs one edge outside the bubble, the way ChatGPT hangs a
+    // thumbnail above its own message. Tiles wrap, so many files stay in
+    // same-size squares instead of one growing card.
+    <div
+      className={cn(
+        "mb-0.5 flex w-full flex-wrap gap-2",
+        side === "end" ? "justify-end" : "justify-start",
+      )}
+    >
       {fileParts.map((part) => (
         <FilePreview
           file={{
@@ -89,7 +104,7 @@ function MessageFileParts({ parts }: { parts: UIMessage["parts"] }) {
             mediaType: part.mediaType,
           }}
           key={`${part.url}-${part.filename ?? "file"}`}
-          variant={isImageFile(part.mediaType) ? "message" : "chip"}
+          variant="message"
         />
       ))}
     </div>
@@ -448,7 +463,9 @@ function MessageBody({
   if (editing) {
     return (
       <>
-        <MessageFileParts parts={message.parts} />
+        {message.parts.some((part) => part.type === "file" && "url" in part) ? (
+          <MessageFileParts parts={message.parts} side="end" />
+        ) : null}
         <QuestionEditor
           message={message}
           onCancel={() => onEditCancel?.()}
@@ -460,12 +477,12 @@ function MessageBody({
 
   return (
     <>
-      <MessageContent>
-        <MessageFileParts parts={message.parts} />
-        {normalizedText.trim() ? (
+      <MessageFileParts parts={message.parts} side="end" />
+      {normalizedText.trim() ? (
+        <MessageContent>
           <p className="whitespace-pre-wrap break-words">{normalizedText}</p>
-        ) : null}
-      </MessageContent>
+        </MessageContent>
+      ) : null}
       <QuestionActions canEdit={canEdit} message={message} onEdit={onEdit} />
     </>
   );
