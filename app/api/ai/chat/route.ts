@@ -661,9 +661,9 @@ export async function POST(req: Request) {
 
     const { nextResetAt, windowStart } = getChatResetWindow();
 
-    // Five independent reads in one pass. They were in sequence, which meant
-    // five round trips before the student saw a first token.
-    const [conversation, subscription, settings, chatsToday, levelRow] =
+    // Four independent reads in one pass. They were in sequence, which meant
+    // round trips before the student saw a first token.
+    const [conversation, subscription, settings, chatsToday] =
       await Promise.all([
         prisma.chatConversation.findFirst({
           where: { id: conversationId, userId },
@@ -692,10 +692,6 @@ export async function POST(req: Request) {
             role: "user",
             createdAt: { gte: windowStart, lt: nextResetAt },
           },
-        }),
-        prisma.user.findUnique({
-          where: { id: userId },
-          select: { levelOfStudy: true },
         }),
       ]);
 
@@ -904,8 +900,6 @@ export async function POST(req: Request) {
     // app no longer holds a number to put in it.
     const profileContext = "";
 
-    const studentLevel = levelRow?.levelOfStudy?.trim();
-
     // A note belongs to the student who owns it, so a conversation that points
     // at someone else's note reads as no note at all.
     const attachedNote =
@@ -918,9 +912,6 @@ export async function POST(req: Request) {
       "chat_system",
       {
         userName: session.user.name,
-        studentLevel:
-          studentLevel ||
-          "not on file yet, so start from the plain definition and offer depth when they ask",
         noteContext: noteContextFor(attachedNote),
         profileContext,
         appUrl: process.env.NEXT_PUBLIC_APP_URL ?? "",
