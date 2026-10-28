@@ -5,6 +5,20 @@ vi.mock("@/lib/ai/orchestrator", () => ({
   generateCritical: vi.fn(),
   generateTextCritical: vi.fn(),
   generateTextWithFallback: vi.fn(),
+  OrchestratorError: class OrchestratorError extends Error {
+    task: string;
+    modelErrors: Array<{ model: string; error: string }>;
+    constructor(
+      message: string,
+      task: string,
+      modelErrors: Array<{ model: string; error: string }>,
+    ) {
+      super(message);
+      this.name = "OrchestratorError";
+      this.task = task;
+      this.modelErrors = modelErrors;
+    }
+  },
 }));
 
 vi.mock("mammoth", () => ({

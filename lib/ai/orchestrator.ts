@@ -39,6 +39,12 @@ import { logUsage, usageFromResult } from "./usage";
  * because it has no streaming endpoint; OpenRouter provides real-time streaming
  * as the fallback.
  */
+/** Non-streaming tasks that try Muse Spark 1.3 first, then fall through to
+ * the OpenRouter chain. quiz_gen is here because OpenRouter free models are
+ * flaky for long structured outputs; grading and summarize stay on OpenRouter.
+ */
+const MUSE_PRIMARY_TASKS = new Set(["quiz_gen"]);
+
 /** The Muse model ID used as the primary attempt for chat. */
 const MUSE_PRIMARY_MODEL = "muse-spark-1.3";
 
@@ -239,6 +245,17 @@ async function runGenerate<T>(
   if (config.provider === "meta" || config.provider === "baseten") {
     try {
       return await runGenerateMuse(opts, chain[0], coldStart);
+    } catch (_museError) {
+      // Muse failed or is not configured; fall through to OpenRouter chain.
+    }
+  }
+
+  // Muse-primary tasks try Muse first, then fall through to the OpenRouter
+  // chain. This keeps OpenRouter models as the fallback chain so a Muse
+  // failure never leaves the student without AI.
+  if (MUSE_PRIMARY_TASKS.has(opts.task)) {
+    try {
+      return await runGenerateMuse(opts, MUSE_PRIMARY_MODEL, coldStart);
     } catch (_museError) {
       // Muse failed or is not configured; fall through to OpenRouter chain.
     }

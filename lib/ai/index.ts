@@ -12,6 +12,7 @@ import {
   generate,
   generateCritical,
   generateTextCritical,
+  OrchestratorError,
 } from "@/lib/ai/orchestrator";
 import { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import { getPrompt, promptCallFields } from "@/lib/prompts/loader";
@@ -534,7 +535,16 @@ export async function generateQuizFromNote(
   } catch (error) {
     // Never swallow the cause: the Inngest job reports "AI returned no
     // questions" and retries, and it needs the real reason in the logs.
-    console.error("[AI] Quiz generation failed:", error);
+    // An OrchestratorError carries the per-model breakdown; log it so a
+    // dead chain names which models failed and how.
+    if (error instanceof OrchestratorError) {
+      console.error("[AI] Quiz generation failed:", {
+        task: error.task,
+        modelErrors: error.modelErrors,
+      });
+    } else {
+      console.error("[AI] Quiz generation failed:", error);
+    }
     throw new Error(
       `Quiz generation failed: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },

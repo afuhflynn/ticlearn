@@ -272,6 +272,27 @@ describe("generate output cap (covers: AC-1)", () => {
   });
 });
 
+describe("quiz_gen Muse-first routing (covers: quiz resilience)", () => {
+  it("tries Muse before touching the OpenRouter chain", async () => {
+    const result = await generate({ task: "quiz_gen", schema, prompt: "hi" });
+
+    expect(result.modelId).toBe("muse-spark-1.3");
+    expect(generateObject).toHaveBeenCalledTimes(1);
+    expect(breaker.splitChain).not.toHaveBeenCalled();
+  });
+
+  it("falls through to OpenRouter when Muse fails", async () => {
+    vi.mocked(generateObject)
+      .mockRejectedValueOnce(new Error("Muse down"))
+      .mockResolvedValueOnce({ object: { ok: true } } as never);
+
+    const result = await generate({ task: "quiz_gen", schema, prompt: "hi" });
+
+    expect(result.modelId).toBe("google/gemini-3.7-flash");
+    expect(generateObject).toHaveBeenCalledTimes(2);
+  });
+});
+
 describe("generate caching (covers: AC-1)", () => {
   it("serves the second identical call from cache without touching a model", async () => {
     const opts = {
@@ -289,7 +310,7 @@ describe("generate caching (covers: AC-1)", () => {
 
   it("checks the cache before walking the chain, so a hit costs nothing", async () => {
     const opts = {
-      task: "quiz_gen",
+      task: "grading",
       schema,
       prompt: "cached",
       cacheTtlMs: 60_000,
