@@ -1,5 +1,6 @@
 "use client";
 
+import { code } from "@streamdown/code";
 import { createMathPlugin } from "@streamdown/math";
 import type { FileUIPart, UIMessage } from "ai";
 import {
@@ -24,6 +25,18 @@ import "katex/dist/katex.min.css";
 import { normalizeMathNotation } from "@/lib/math-format";
 
 const mathPlugin = createMathPlugin({ singleDollarTextMath: true });
+
+/**
+ * Streamdown and @streamdown/code bundle sibling copies of the shiki
+ * types, so the prebuilt plugin is structurally right but nominally
+ * foreign to the `plugins` prop. One cast at this boundary; re-check it
+ * whenever either package upgrades. Runtime wiring is proved by
+ * tests/components/message-response.test.tsx.
+ */
+type StreamdownPlugins = NonNullable<
+  ComponentProps<typeof Streamdown>["plugins"]
+>;
+const codePlugin = code as unknown as StreamdownPlugins["code"];
 
 export type MessageProps = HTMLAttributes<HTMLDivElement> & {
   from: UIMessage["role"];
@@ -308,13 +321,24 @@ export const MessageBranchPage = ({
   );
 };
 
-export type MessageResponseProps = ComponentProps<typeof Streamdown>;
+export type MessageResponseProps = ComponentProps<typeof Streamdown> & {
+  /** True while the answer's tokens are still arriving. Streaming mode
+    tolerates half-written markdown (an unclosed fence, a lone `$$`); static
+    mode parses the finished answer as a complete document. */
+  isStreaming?: boolean;
+};
 
 export const MessageResponse = memo(
-  ({ className, children, ...props }: MessageResponseProps) => (
+  ({
+    className,
+    children,
+    isStreaming = false,
+    ...props
+  }: MessageResponseProps) => (
     <Streamdown
-      mode="static"
-      plugins={{ math: mathPlugin }}
+      mode={isStreaming ? "streaming" : "static"}
+      isAnimating={isStreaming}
+      plugins={{ math: mathPlugin, code: codePlugin }}
       className={cn(
         "size-full max-w-none wrap-break-word text-sm leading-7 [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
         "[&_h1]:mt-6 [&_h1]:mb-3 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:tracking-tight",
@@ -346,7 +370,8 @@ export const MessageResponse = memo(
   ),
   (prevProps, nextProps) =>
     prevProps.children === nextProps.children &&
-    prevProps.components === nextProps.components,
+    prevProps.components === nextProps.components &&
+    prevProps.isStreaming === nextProps.isStreaming,
 );
 
 MessageResponse.displayName = "MessageResponse";

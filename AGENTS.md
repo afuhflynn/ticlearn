@@ -450,6 +450,11 @@ Rebuild the chat around one reading column and one activity line, make the compo
 - `components/ui/live-region.tsx`, `components/ai-elements/{conversation,message,streaming-caret}.tsx`
 - `prompts/chat/chat_system.md`, `prompts/tools/create_quiz.md`, `prompts/tools/suggest_replies.md`
 - `tests/components/chat-composer.test.tsx`, `tests/components/chat-activity-block.test.tsx`, `tests/components/chat-message-list.test.tsx`, `tests/components/file-preview.test.tsx`, `tests/components/live-region.test.tsx`, `tests/components/suggested-replies.test.tsx`, `tests/lib/ai/suggestions.test.ts`
+
+## Rendering follow-ups (no spec)
+- `MessageResponse` streams in `streaming` mode while tokens flow (`isStreaming` → `mode` + `isAnimating`), static once landed. Plugins: `@streamdown/math` (single-dollar) plus `@streamdown/code` (Shiki github-light/dark, one documented cast at the boundary). Tailwind v4 needs the three `@source` lines in `app/globals.css` or plugin controls ship unstyled. Bold/italic arrive as `data-streamdown` spans, not `strong`/`em`.
+- `chat_system.md` HOW YOU FORMAT: blank line per idea, real lists, one display equation per block, never a bare duplicate; emoji rationed (v9); no year-of-study anywhere (v8).
+- Shared `components/math-markdown.tsx` renders all non-chat AI output (quizzes, attempts, notes, upload cards) with normalize + remark-math + rehype-katex; the normalizer guards `$5`-style prices from becoming math.
 <!-- END:chat-interface-rebuild -->
 
 <!-- BEGIN:chat-polish -->

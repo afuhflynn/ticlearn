@@ -459,7 +459,7 @@ function MessageBody({
 
         {normalizedText.trim() ? (
           <div className="chat-answer w-full text-sm leading-7">
-            <MessageResponse components={components}>
+            <MessageResponse components={components} isStreaming={isStreaming}>
               {normalizedText}
             </MessageResponse>
           </div>
