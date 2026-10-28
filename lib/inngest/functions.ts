@@ -180,6 +180,11 @@ export const generateQuiz = inngest.createFunction(
     triggers: {
       event: "quiz/generate",
     },
+    // A transient model outage must not strand a quiz in ERROR: throwing lets
+    // the job retry with backoff, and a retry that succeeds overwrites ERROR
+    // with READY. The credit debit is keyed on quizId, so retries never
+    // double-charge.
+    retries: 3,
   },
   async ({ event }) => {
     const {
@@ -240,7 +245,7 @@ export const generateQuiz = inngest.createFunction(
           where: { id: quizId },
           data: { status: "ERROR" },
         });
-        return { success: false, error: "AI returned no questions" };
+        throw new Error("AI returned no questions");
       }
 
       console.log(
@@ -297,7 +302,7 @@ export const generateQuiz = inngest.createFunction(
         data: { status: "ERROR" },
       });
 
-      return { success: false, error: "Quiz generation failed" };
+      throw error;
     }
   },
 );

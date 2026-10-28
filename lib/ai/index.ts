@@ -31,6 +31,13 @@ const generatedQuestionSchema = z.object({
   explanation: z.string().min(1),
 });
 
+/**
+ * Tokens budgeted per question when scaling the model output cap. A question
+ * with four options plus an explanation runs ~150-250 tokens; 250 leaves
+ * headroom so the JSON never truncates mid-array for large quizzes.
+ */
+export const QUIZ_TOKENS_PER_QUESTION = 250;
+
 export async function extractTextFromPDF(
   uploadthingKey: string,
   language: string = "eng",
@@ -493,12 +500,25 @@ export async function generateQuizFromNote(
     questions: z.array(generatedQuestionSchema),
   });
 
+  // A question with four options plus an explanation runs ~150-250 tokens.
+  // The prompt file cap fits ~10 questions; without scaling, a larger request
+  // truncates mid-JSON, schema validation fails fast, and the whole quiz dies.
+  const fields = promptCallFields(settings);
+  const scaledMaxOutputTokens = Math.max(
+    fields.modelOptions.maxOutputTokens,
+    options.questionCount * QUIZ_TOKENS_PER_QUESTION,
+  );
+
   try {
     const { object, fromCache } = await generateCritical({
       task: "quiz_gen",
       schema,
       prompt,
-      ...promptCallFields(settings),
+      ...fields,
+      modelOptions: {
+        ...fields.modelOptions,
+        maxOutputTokens: scaledMaxOutputTokens,
+      },
       userId,
     });
 
@@ -512,8 +532,13 @@ export async function generateQuizFromNote(
 
     return { questions, fromCache };
   } catch (error) {
+    // Never swallow the cause: the Inngest job reports "AI returned no
+    // questions" and retries, and it needs the real reason in the logs.
     console.error("[AI] Quiz generation failed:", error);
-    return { questions: [], fromCache: false };
+    throw new Error(
+      `Quiz generation failed: ${error instanceof Error ? error.message : String(error)}`,
+      { cause: error },
+    );
   }
 }
 
