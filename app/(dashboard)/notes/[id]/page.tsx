@@ -14,6 +14,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,9 +174,12 @@ export default function NoteDetailPage() {
           </div>
 
           {note.summary ? (
-            <p className="max-w-4xl text-sm text-muted-foreground">
-              {note.summary}
-            </p>
+            <div className="max-w-4xl text-sm text-muted-foreground">
+              <MathMarkdown
+                content={note.summary}
+                className="text-muted-foreground"
+              />
+            </div>
           ) : null}
         </div>
 
@@ -275,9 +279,14 @@ export default function NoteDetailPage() {
                   <h2 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
                     Summary
                   </h2>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {note.summary || "Summary will appear after processing."}
-                  </p>
+                  <div className="text-sm leading-6 text-muted-foreground">
+                    <MathMarkdown
+                      content={
+                        note.summary || "Summary will appear after processing."
+                      }
+                      className="text-muted-foreground"
+                    />
+                  </div>
                 </div>
 
                 <Separator />
@@ -289,7 +298,12 @@ export default function NoteDetailPage() {
                   {note.keyPoints?.length ? (
                     <ul className="space-y-2 list-disc pl-5 text-sm leading-6 text-muted-foreground">
                       {note.keyPoints.map((point) => (
-                        <li key={point}>{point}</li>
+                        <li key={point}>
+                          <MathMarkdown
+                            content={point}
+                            className="text-muted-foreground"
+                          />
+                        </li>
                       ))}
                     </ul>
                   ) : (

@@ -65,3 +65,6 @@ mprocs.log
 
 # runtime process ids written by local dev tooling
 *.pid
+
+# firecrawl research cache (web scrapes, local only)
+.firecrawl/

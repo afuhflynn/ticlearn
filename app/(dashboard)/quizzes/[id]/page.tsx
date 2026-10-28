@@ -10,10 +10,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import rehypeKatex from "rehype-katex";
-import remarkMath from "remark-math";
-import "katex/dist/katex.min.css";
-import ReactMarkdown from "react-markdown";
+import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -93,16 +90,6 @@ function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
   return `${minutes}:${seconds.toString().padStart(2, "0")}`;
-}
-
-function MathMarkdown({ content }: { content: string }) {
-  return (
-    <div className="max-w-full break-words [&_*]:break-words">
-      <ReactMarkdown remarkPlugins={[remarkMath]} rehypePlugins={[rehypeKatex]}>
-        {content}
-      </ReactMarkdown>
-    </div>
-  );
 }
 
 export default function QuizPlayerPage() {
@@ -523,14 +510,11 @@ export default function QuizPlayerPage() {
                     <div>
                       <p className="mb-1 text-sm font-medium">Explanation</p>
                       <div className="overflow-x-auto rounded-lg bg-muted p-3 text-sm text-muted-foreground">
-                        <div className="max-w-full break-words [&_*]:break-words">
-                          <ReactMarkdown
-                            remarkPlugins={[remarkMath]}
-                            rehypePlugins={[rehypeKatex]}
-                          >
-                            {answer?.explanation || "No explanation available."}
-                          </ReactMarkdown>
-                        </div>
+                        <MathMarkdown
+                          content={
+                            answer?.explanation || "No explanation available."
+                          }
+                        />
                       </div>
                     </div>
                   </CardContent>

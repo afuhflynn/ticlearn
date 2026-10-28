@@ -3,12 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import rehypeKatex from "rehype-katex";
-import remarkMath from "remark-math";
-import { useQuizAttempt } from "@/hooks";
-import { useSession } from "@/lib/auth-client";
-import "katex/dist/katex.min.css";
-import ReactMarkdown from "react-markdown";
+import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,6 +13,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useQuizAttempt } from "@/hooks";
+import { useSession } from "@/lib/auth-client";
 import { AttemptSkeleton } from "../../student-skeletons";
 
 type AttemptAnswer = {
@@ -144,7 +141,12 @@ export default function AttemptDetailPage() {
                   {answer.isCorrect ? "Correct" : "Incorrect"}
                 </Badge>
               </div>
-              <CardDescription>{answer.question}</CardDescription>
+              <CardDescription>
+                <MathMarkdown
+                  content={answer.question}
+                  className="text-sm text-muted-foreground leading-7"
+                />
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
@@ -171,9 +173,9 @@ export default function AttemptDetailPage() {
                 <div>
                   <p className="text-sm font-medium mb-1">Correct answer</p>
                   <div className="p-3 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950">
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      {answer.correctAnswer}
-                    </p>
+                    <div className="text-green-700 dark:text-green-300">
+                      <MathMarkdown content={answer.correctAnswer} />
+                    </div>
                   </div>
                 </div>
               )}
@@ -181,21 +183,18 @@ export default function AttemptDetailPage() {
                 <div>
                   <p className="text-sm font-medium mb-1">Correct answer</p>
                   <div className="p-3 rounded-lg border bg-green-50 border-green-200 dark:bg-green-950">
-                    <p className="text-sm text-green-700 dark:text-green-300">
-                      {answer.correctAnswer}
-                    </p>
+                    <div className="text-green-700 dark:text-green-300">
+                      <MathMarkdown content={answer.correctAnswer} />
+                    </div>
                   </div>
                 </div>
               )}
               <div>
                 <p className="text-sm font-medium mb-1">Explanation</p>
-                <div className="p-3 rounded-lg bg-muted text-sm text-muted-foreground space-y-1">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkMath]}
-                    rehypePlugins={[rehypeKatex]}
-                  >
-                    {answer.explanation || "No explanation available."}
-                  </ReactMarkdown>
+                <div className="p-3 rounded-lg bg-muted text-muted-foreground space-y-1">
+                  <MathMarkdown
+                    content={answer.explanation || "No explanation available."}
+                  />
                 </div>
               </div>
             </CardContent>

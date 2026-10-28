@@ -20,6 +20,7 @@ import { useSearchParams } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -652,9 +653,12 @@ function UploadContent() {
                         </div>
 
                         {note.summary ? (
-                          <p className="line-clamp-3 text-sm text-muted-foreground">
-                            {note.summary}
-                          </p>
+                          <div className="line-clamp-3 text-sm text-muted-foreground">
+                            <MathMarkdown
+                              content={note.summary}
+                              className="text-muted-foreground"
+                            />
+                          </div>
                         ) : (
                           <p className="text-sm text-muted-foreground">
                             {note.status === "READY"

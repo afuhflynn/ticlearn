@@ -1,7 +1,7 @@
 ---
 name: study_brief
 model: deepseek/deepseek-v4.1-flash
-version: 1
+version: 2
 heat: 0.4
 cap: 2048
 cacheSpanMs: 2592000000
@@ -19,6 +19,7 @@ Requirements:
 - keyPoints: 3-6 concrete learning points written as complete sentences
 - stay faithful to the source material
 - avoid generic filler like "general overview"
+- math, physics, chemistry, and every other symbolic subject renders as typeset math on the note page: wrap every formula, equation, and symbolic expression in the summary and key points in `$...$` inline or `$$...$$` display delimiters with real LaTeX inside (`\frac{}{}`, `^`, `_`, `\sum`, `\sqrt{}`, `\text{}` for words). Never emit bare LaTeX or ASCII math with no delimiters. Never use `\ce` (not installed — chemistry goes as `$\mathrm{H_2SO_4}$`).
 
 Notes:
 {{excerpt}}

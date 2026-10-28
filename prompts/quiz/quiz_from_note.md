@@ -1,7 +1,7 @@
 ---
 name: quiz_from_note
 model: deepseek/deepseek-v4.1-flash
-version: 1
+version: 2
 heat: 0.4
 cap: 2048
 cacheSpanMs: 1209600000
@@ -33,6 +33,7 @@ You are an educational quiz generator. Generate {{questionCount}} quiz questions
   - correctAnswer must always be a string
   - explanation must always be a non-empty string
   - Stay faithful to the note content
+  - Math, physics, chemistry, and every other symbolic subject renders as typeset math on the quiz page: wrap every formula, equation, and symbolic expression in `$...$` inline (for example `$P(n,r) = \frac{n!}{(n-r)!}$`) or `$$...$$` on its own lines for display equations. Never emit bare LaTeX or ASCII math with no delimiters. Inside math use real LaTeX (`\frac{}{}`, `^`, `_`, `\sum`, `\sqrt{}`, `\lambda`, `\text{}` for words). Never use `\ce` (not installed — chemistry goes as `$\mathrm{H_2SO_4}$`).
 
   Study Notes:
   {{noteExcerpt}}{{truncatedSuffix}}

@@ -331,6 +331,10 @@ export const MessageResponse = memo(
         "[&_pre]:my-4 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:bg-muted/60 [&_pre]:p-3",
         "[&_code]:rounded [&_code]:bg-muted/60 [&_code]:px-1 [&_code]:py-0.5 [&_code]:text-[0.9em]",
         "[&_pre_code]:bg-transparent [&_pre_code]:p-0",
+        // Display equations scroll sideways instead of breaking the layout.
+        // Long derivations in physics and chemistry overflow a 360px phone,
+        // so the equation scrolls under the finger while the prose stays put.
+        "[&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1",
         className,
       )}
       {...props}

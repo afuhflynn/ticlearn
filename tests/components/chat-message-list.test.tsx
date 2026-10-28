@@ -127,6 +127,37 @@ describe("ChatMessageList", () => {
       "Explain the chain rule with an example",
     );
   });
+
+  it("typesets delimited math through KaTeX instead of flat text", () => {
+    render(
+      <ChatMessageList
+        messages={[
+          message("user", "What is the permutation formula?"),
+          message(
+            "assistant",
+            "The count is $P(n,r) = \\frac{n!}{(n-r)!}$ for ordered picks.",
+          ),
+        ]}
+        status="ready"
+      />,
+    );
+
+    expect(document.querySelector(".katex")).toBeInTheDocument();
+  });
+
+  it("leaves bare undelimited math as plain text, by design", () => {
+    render(
+      <ChatMessageList
+        messages={[
+          message("user", "What is the permutation formula?"),
+          message("assistant", "The count is P(n,r) = n! / (n-r)! ordered."),
+        ]}
+        status="ready"
+      />,
+    );
+
+    expect(document.querySelector(".katex")).not.toBeInTheDocument();
+  });
 });
 
 describe("editing a question in place (covers: AC-22)", () => {
