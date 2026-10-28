@@ -10,11 +10,15 @@ import {
 } from "@/lib/ai/orchestrator";
 import { clearMemory } from "@/lib/cache";
 
-vi.mock("ai", () => ({
-  generateObject: vi.fn(),
-  generateText: vi.fn(),
-  streamText: vi.fn(),
-}));
+vi.mock("ai", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("ai")>();
+  return {
+    ...actual,
+    generateObject: vi.fn(),
+    generateText: vi.fn(),
+    streamText: vi.fn(),
+  };
+});
 
 vi.mock("@/lib/ai/breaker", () => ({
   splitChain: vi.fn(async () => ({
@@ -419,11 +423,35 @@ describe("streamChat (covers: AC-6)", () => {
     expect(text).toBe("hello");
   });
 
-  it("returns a defined stream result", async () => {
+  it("emits a valid UIMessage stream the chat client can parse", async () => {
+    const onFinish = vi.fn();
     const result = await streamChat({ task: "fast_chat", messages: [] });
-    expect(result).toBeDefined();
-    expect(result.textStream).toBeDefined();
-    expect(result.toUIMessageStreamResponse).toBeDefined();
+    const response = result.toUIMessageStreamResponse({ onFinish });
+    const body = await response.text();
+    const chunks = body
+      .split("\n")
+      .filter((line) => line.startsWith("data: "))
+      .map((line) => line.slice("data: ".length))
+      .filter((payload) => payload !== "[DONE]")
+      .map((payload) => JSON.parse(payload) as { type: string });
+
+    const types = chunks.map((chunk) => chunk.type);
+    expect(types).toContain("start");
+    expect(types).toContain("text-start");
+    expect(types).toContain("text-delta");
+    expect(types).toContain("text-end");
+    expect(types).toContain("finish");
+    for (const chunk of chunks) {
+      expect(chunk.type).not.toBe("text");
+    }
+    expect(
+      chunks.some(
+        (chunk) =>
+          chunk.type === "text-delta" &&
+          (chunk as { delta?: string }).delta === "hello",
+      ),
+    ).toBe(true);
+    expect(onFinish).toHaveBeenCalledTimes(1);
   });
 
   it("never asks the SDK to retry a single generate attempt", async () => {

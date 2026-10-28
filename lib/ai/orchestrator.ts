@@ -1,4 +1,11 @@
-import { generateObject, generateText, streamText, type UIMessage } from "ai";
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  generateObject,
+  generateText,
+  streamText,
+  type UIMessage,
+} from "ai";
 import type { z } from "zod";
 import { type CacheKeyInput, withCache } from "@/lib/cache";
 import { noteColdStart } from "@/lib/cache/cold-start";
@@ -410,6 +417,9 @@ async function runGenerateMuseStream(
   );
 
   const text = typeof result.text === "string" ? result.text : "";
+  if (!text.trim()) {
+    throw new Error("Muse returned an empty response");
+  }
   const parsed = usageFromResult(result as { usage?: unknown }, modelId);
   const rate = DEFAULT_USD_TO_XAF_RATE;
   const costUsd = MUSE_COST_PER_CALL_XAF / rate;
@@ -438,26 +448,29 @@ async function runGenerateMuseStream(
   return {
     textStream,
     toUIMessageStreamResponse: (handlers) => {
-      const encoder = new TextEncoder();
-      const body = new ReadableStream({
-        start(controller) {
-          controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify({ type: "text", delta: text })}\n\n`),
-          );
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-          controller.close();
+      const { onError, onFinish, originalMessages } = handlers;
+      const stream = createUIMessageStream({
+        originalMessages: originalMessages as UIMessage[] | undefined,
+        onError,
+        onFinish: onFinish
+          ? (event) => {
+              onFinish({
+                finishReason: event.finishReason ?? "stop",
+                isAborted: event.isAborted ?? false,
+                responseMessage: event.responseMessage ?? responseMessage,
+              });
+            }
+          : undefined,
+        execute: ({ writer }) => {
+          writer.write({ type: "start", messageId: responseMessage.id });
+          const textId = crypto.randomUUID();
+          writer.write({ type: "text-start", id: textId });
+          writer.write({ type: "text-delta", id: textId, delta: text });
+          writer.write({ type: "text-end", id: textId });
+          writer.write({ type: "finish" });
         },
       });
-      if (handlers.onFinish) {
-        handlers.onFinish({
-          finishReason: "stop",
-          isAborted: false,
-          responseMessage,
-        });
-      }
-      return new Response(body, {
-        headers: { "content-type": "text/event-stream" },
-      });
+      return createUIMessageStreamResponse({ stream });
     },
   };
 }
