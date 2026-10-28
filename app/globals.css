@@ -2,8 +2,8 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-// Streamdown renders its controls (code copy buttons, caret) from classes
-// inside node_modules, which Tailwind v4 does not scan by default.
+/* Streamdown renders its controls (code copy buttons, caret) from classes
+   inside node_modules, which Tailwind v4 does not scan by default. */
 @source "../node_modules/streamdown/dist/*.js";
 @source "../node_modules/@streamdown/code/dist/*.js";
 @source "../node_modules/@streamdown/math/dist/*.js";
