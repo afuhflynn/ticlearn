@@ -95,6 +95,9 @@ importers:
       '@vercel/blob':
         specifier: ^2.8.2
         version: 2.8.2
+      '@webprodigies/flute':
+        specifier: ^0.1.2
+        version: 0.1.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@xyflow/react':
         specifier: ^12.10.2
         version: 12.10.2(@types/react@19.2.14)(immer@11.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -4362,6 +4365,14 @@ packages:
   '@vitest/utils@4.1.4':
     resolution: {integrity: sha512-13QMT+eysM5uVGa1rG4kegGYNp6cnQcsTc67ELFbhNLQO+vgsygtYJx2khvdt4gVQqSSpC/KT5FZZxUpP3Oatw==}
 
+  '@webprodigies/flute@0.1.2':
+    resolution: {integrity: sha512-wTEh+r/WDu9gC12BApYDpN3OZOjk6WHeWVzdOT4+YEfQFYunfKkD5pxH9Gh8btxg5H3qDLdTHXzW53VScjnLsA==}
+    engines: {node: '>=22.12.0'}
+    hasBin: true
+    peerDependencies:
+      react: '>=18.2.0 <20'
+      react-dom: '>=18.2.0 <20'
+
   '@xmldom/xmldom@0.8.12':
     resolution: {integrity: sha512-9k/gHF6n/pAi/9tqr3m3aqkuiNosYTurLLUtc7xQ9sxB/wm7WPygCv8GYa6mS0fLJEHhqMC1ATYhz++U/lRHqg==}
     engines: {node: '>=10.0.0'}
@@ -5512,6 +5523,11 @@ packages:
   fs-extra@11.3.4:
     resolution: {integrity: sha512-CTXd6rk/M3/ULNQj8FBqBWHYBVYybQ3VPBw0xGKFe3tuH7ytT6ACnvzpIQ3UZtB8yvUKC2cXn1a+x+5EVQLovA==}
     engines: {node: '>=14.14'}
+
+  fsevents@2.3.2:
+    resolution: {integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==}
+    engines: {node: ^8.16.0 || ^10.6.0 || >=11.0.0}
+    os: [darwin]
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -6886,9 +6902,19 @@ packages:
   pkg-types@2.3.0:
     resolution: {integrity: sha512-SIqCzDRg0s9npO5XQ3tNZioRY1uK06lA41ynBC1YmFTmnY6FjUjVt6s4LoADmwoig1qqD0oK8h1p/8mlMx8Oig==}
 
+  playwright-core@1.58.2:
+    resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   playwright-core@1.64.0:
     resolution: {integrity: sha512-T9r+MZkTECl2+oUcZ26YgZzTrYidTsIhYYkJix+6iDOymOb1FB2RLLSOxRGnZGv5DStt+aduIVbt+E8WygXYpg==}
     engines: {node: '>=20'}
+    hasBin: true
+
+  playwright@1.58.2:
+    resolution: {integrity: sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==}
+    engines: {node: '>=18'}
     hasBin: true
 
   playwright@1.64.0:
@@ -7074,6 +7100,15 @@ packages:
     peerDependencies:
       react: ^18.0 || ^19.0 || ^19.0.0-rc
       react-dom: ^18.0 || ^19.0 || ^19.0.0-rc
+
+  react-error-boundary@6.1.5:
+    resolution: {integrity: sha512-l2nk+KhgM6e79tAiHEs3tXTdiTW4ARniKYMQN+cLY5vQFpDOkxuXKIC4uIwYuIKoMpFQ6jEbQz9wBArUmq7GWA==}
+    peerDependencies:
+      '@types/react': ^18.0.0 || ^19.0.0
+      react: ^18.0.0 || ^19.0.0
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   react-hook-form@7.70.0:
     resolution: {integrity: sha512-COOMajS4FI3Wuwrs3GPpi/Jeef/5W1DRR84Yl5/ShlT3dKVFUfoGiEZ/QE6Uw8P4T2/CLJdcTVYKvWBMQTEpvw==}
@@ -12292,6 +12327,18 @@ snapshots:
       convert-source-map: 2.0.0
       tinyrainbow: 3.1.0
 
+  '@webprodigies/flute@0.1.2(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
+      react-error-boundary: 6.1.5(@types/react@19.2.14)(react@19.2.4)
+      typescript: 5.9.3
+      zod: 4.3.6
+    optionalDependencies:
+      playwright: 1.58.2
+    transitivePeerDependencies:
+      - '@types/react'
+
   '@xmldom/xmldom@0.8.12': {}
 
   '@xyflow/react@12.10.2(@types/react@19.2.14)(immer@11.1.4)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
@@ -13440,6 +13487,9 @@ snapshots:
       graceful-fs: 4.2.11
       jsonfile: 6.2.0
       universalify: 2.0.1
+
+  fsevents@2.3.2:
+    optional: true
 
   fsevents@2.3.3:
     optional: true
@@ -15059,7 +15109,17 @@ snapshots:
       exsolve: 1.0.8
       pathe: 2.0.3
 
+  playwright-core@1.58.2:
+    optional: true
+
   playwright-core@1.64.0: {}
+
+  playwright@1.58.2:
+    dependencies:
+      playwright-core: 1.58.2
+    optionalDependencies:
+      fsevents: 2.3.2
+    optional: true
 
   playwright@1.64.0:
     dependencies:
@@ -15326,6 +15386,12 @@ snapshots:
       - bufferutil
       - supports-color
       - utf-8-validate
+
+  react-error-boundary@6.1.5(@types/react@19.2.14)(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+    optionalDependencies:
+      '@types/react': 19.2.14
 
   react-hook-form@7.70.0(react@19.2.4):
     dependencies:
