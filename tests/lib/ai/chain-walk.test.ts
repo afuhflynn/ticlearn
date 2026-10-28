@@ -431,10 +431,10 @@ describe("streamChat (covers: AC-6)", () => {
     expect(vi.mocked(generateText).mock.calls[0][0].maxRetries).toBe(0);
   });
 
-  it("applies an attempt deadline capped at 15s", async () => {
+  it("applies an attempt deadline capped at 30s for Muse", async () => {
     await streamChat({ task: "fast_chat", messages: [] });
     const call = vi.mocked(generateText).mock.calls[0][0];
-    expect(call.timeout).toBeLessThanOrEqual(15000);
+    expect(call.timeout).toBeLessThanOrEqual(30000);
     expect(call.timeout).toBeGreaterThanOrEqual(2000);
   });
 
