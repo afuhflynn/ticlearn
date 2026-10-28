@@ -1,11 +1,4 @@
-import {
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-  generateObject,
-  generateText,
-  streamText,
-  type UIMessage,
-} from "ai";
+import { generateObject, generateText, streamText, type UIMessage } from "ai";
 import type { z } from "zod";
 import { type CacheKeyInput, withCache } from "@/lib/cache";
 import { noteColdStart } from "@/lib/cache/cold-start";
@@ -406,90 +399,80 @@ async function runGenerateMuse<T>(
 }
 
 /**
- * Single Muse text generation for streaming tasks. Muse has no streaming
- * endpoint, so the complete response is buffered and emitted as a single
- * chunk. On any failure the error propagates so streamChat can fall through
- * to the OpenRouter chain (which provides real-time streaming).
+ * Streaming chat over Muse (Meta Model API). Unlike the old buffered
+ * `generateText` path, this uses `streamText` so tokens flow in real time,
+ * tool steps stream through `stopWhen`, and the activity line updates while
+ * the model works. A model that cannot produce a first token fails here,
+ * before we commit to it, so the caller can fall through to OpenRouter.
  */
-async function runGenerateMuseStream(
+async function runMuseStreamChat(
   opts: StreamChatOptions,
-  modelId: string,
   coldStart: boolean,
 ): Promise<StreamChatResult> {
   const started = Date.now();
   const streamParams = callParams(opts.modelOptions);
-  const result = await withDeadline(MUSE_PER_LEG_TIMEOUT_MS, (signal) =>
-    generateText({
-      model: chainMuse(modelId),
-      system: opts.system,
-      messages: opts.messages as never,
-      tools: opts.tools as never,
-      timeout: MUSE_PER_LEG_TIMEOUT_MS,
-      maxRetries: 0,
-      abortSignal: signal,
-      temperature: streamParams.temperature,
-      maxOutputTokens: streamParams.maxOutputTokens,
-      ...streamParams.rest,
-    }),
-  );
-
-  const text = typeof result.text === "string" ? result.text : "";
-  if (!text.trim()) {
-    throw new Error("Muse returned an empty response");
-  }
-  const parsed = usageFromResult(result as { usage?: unknown }, modelId);
-  const rate = DEFAULT_USD_TO_XAF_RATE;
-  const costUsd = MUSE_COST_PER_CALL_XAF / rate;
-  await logUsage({
-    userId: opts.userId ?? null,
-    task: opts.task,
-    modelId,
-    promptTokens: parsed.promptTokens,
-    completionTokens: parsed.completionTokens,
-    costUsd,
-    latencyMs: Date.now() - started,
-    promptRef: opts.promptRef,
-    coldStart,
-  }).catch(() => {});
-
-  const textStream = (async function* () {
-    yield text;
-  })();
-
-  const responseMessage: UIMessage = {
-    id: crypto.randomUUID(),
-    role: "assistant",
-    parts: [{ type: "text", text }],
-  };
-
-  return {
-    textStream,
-    toUIMessageStreamResponse: (handlers) => {
-      const { onError, onFinish, originalMessages } = handlers;
-      const stream = createUIMessageStream({
-        originalMessages: originalMessages as UIMessage[] | undefined,
-        onError,
-        onFinish: onFinish
-          ? (event) => {
-              onFinish({
-                finishReason: event.finishReason ?? "stop",
-                isAborted: event.isAborted ?? false,
-                responseMessage: event.responseMessage ?? responseMessage,
-              });
-            }
-          : undefined,
-        execute: ({ writer }) => {
-          writer.write({ type: "start", messageId: responseMessage.id });
-          const textId = crypto.randomUUID();
-          writer.write({ type: "text-start", id: textId });
-          writer.write({ type: "text-delta", id: textId, delta: text });
-          writer.write({ type: "text-end", id: textId });
-          writer.write({ type: "finish" });
-        },
+  let streamError: unknown = null;
+  const result = streamText({
+    model: chainMuse(MUSE_PRIMARY_MODEL),
+    system: opts.system,
+    messages: opts.messages as never,
+    tools: opts.tools as never,
+    timeout: MUSE_PER_LEG_TIMEOUT_MS,
+    maxRetries: 0,
+    temperature: streamParams.temperature,
+    maxOutputTokens: streamParams.maxOutputTokens,
+    ...streamParams.rest,
+    onError: ({ error }) => {
+      streamError = error;
+      void logUsage({
+        userId: opts.userId ?? null,
+        task: opts.task,
+        modelId: MUSE_PRIMARY_MODEL,
+        promptTokens: 0,
+        completionTokens: 0,
+        costUsd: 0,
+        latencyMs: Date.now() - started,
+        errorCode: "stream_error",
+        promptRef: opts.promptRef,
+        coldStart,
       });
-      return createUIMessageStreamResponse({ stream });
     },
-  };
+    onFinish: (finish) => {
+      const parsed = usageFromResult(
+        finish as { usage?: unknown },
+        MUSE_PRIMARY_MODEL,
+      );
+      const rate = DEFAULT_USD_TO_XAF_RATE;
+      const costUsd = MUSE_COST_PER_CALL_XAF / rate;
+      void logUsage({
+        userId: opts.userId ?? null,
+        task: opts.task,
+        modelId: MUSE_PRIMARY_MODEL,
+        promptTokens: parsed.promptTokens,
+        completionTokens: parsed.completionTokens,
+        costUsd,
+        latencyMs: Date.now() - started,
+        promptRef: opts.promptRef,
+        coldStart,
+      });
+      opts.onFinish?.({ text: finish.text, usage: finish.usage });
+    },
+  });
+
+  const firstTextStream = await withDeadline(MUSE_PER_LEG_TIMEOUT_MS, () =>
+    probeFirstToken(result),
+  );
+  if (streamError) throw streamError;
+  if (!firstTextStream) {
+    throw new Error("Muse stream ended before first token");
+  }
+
+  return new Proxy(result, {
+    get(target, property, receiver) {
+      if (property === "textStream") return firstTextStream;
+      return Reflect.get(target, property, receiver);
+    },
+  });
 }
 
 function logPromptUse(task: string, ref?: PromptRef): void {
@@ -504,30 +487,33 @@ type StreamChatResult = {
   textStream: AsyncIterable<string>;
   toUIMessageStreamResponse: (handlers: {
     onError?: (err: unknown) => string;
-    onFinish?: (
-      result: {
-        finishReason?: string;
-        isAborted?: boolean;
-        responseMessage: UIMessage;
-      },
-    ) => void;
+    onFinish?: (result: {
+      finishReason?: string;
+      isAborted?: boolean;
+      responseMessage: UIMessage;
+    }) => void;
     [key: string]: unknown;
   }) => Response;
 };
 
-export async function streamChat(opts: StreamChatOptions): Promise<StreamChatResult> {
+export async function streamChat(
+  opts: StreamChatOptions,
+): Promise<StreamChatResult> {
   logPromptUse(opts.task, opts.promptRef);
   const cold = noteColdStart();
 
-  // Muse-only for chat: no OpenRouter fallback. Muse buffers the whole
-  // response, so there are no mid-stream cutoffs or partial answers.
+  // Chat is Muse-first with OpenRouter fallback. Muse streams in real time
+  // through the OpenAI-compatible endpoint; when it cannot produce a first
+  // token (down, slow, tool rejection) the walk continues on the OpenRouter
+  // chain below instead of failing the student's turn.
   if (opts.task === "fast_chat") {
     try {
-      return await runGenerateMuseStream(opts, MUSE_PRIMARY_MODEL, cold);
-    } catch (_museError) {
-      throw friendlyDown(opts.task, [
-        { model: MUSE_PRIMARY_MODEL, error: errorMessage(_museError) },
-      ]);
+      return await runMuseStreamChat(opts, cold);
+    } catch (museError) {
+      console.warn("[chain] Muse chat failed, falling through to OpenRouter:", {
+        error: errorMessage(museError),
+      });
+      // Fall through to the OpenRouter chain below.
     }
   }
 

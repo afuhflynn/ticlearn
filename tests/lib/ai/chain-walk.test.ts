@@ -424,16 +424,19 @@ describe("generateTextWithFallback (covers: AC-1)", () => {
 
 describe("streamChat (covers: AC-6)", () => {
   beforeEach(() => {
-    vi.mocked(generateText).mockResolvedValue({ text: "hello" } as never);
+    vi.mocked(streamText).mockReturnValue(
+      lazyStream({ chunks: ["hel", "lo"] }),
+    );
   });
 
-  it("uses Muse only for fast_chat, no OpenRouter fallback", async () => {
+  it("tries Muse first for fast_chat before touching the OpenRouter chain", async () => {
     await streamChat({ task: "fast_chat", messages: [] });
-    expect(generateText).toHaveBeenCalledTimes(1);
-    expect(streamText).not.toHaveBeenCalled();
+    expect(streamText).toHaveBeenCalledTimes(1);
+    expect(generateText).not.toHaveBeenCalled();
+    expect(breaker.splitChain).not.toHaveBeenCalled();
   });
 
-  it("buffers the Muse response as a single stream chunk", async () => {
+  it("streams the Muse response chunks through", async () => {
     const result = await streamChat({ task: "fast_chat", messages: [] });
     let text = "";
     for await (const chunk of (
@@ -444,94 +447,62 @@ describe("streamChat (covers: AC-6)", () => {
     expect(text).toBe("hello");
   });
 
-  it("emits a valid UIMessage stream the chat client can parse", async () => {
-    const onFinish = vi.fn();
-    const result = await streamChat({ task: "fast_chat", messages: [] });
-    const response = result.toUIMessageStreamResponse({ onFinish });
-    const body = await response.text();
-    const chunks = body
-      .split("\n")
-      .filter((line) => line.startsWith("data: "))
-      .map((line) => line.slice("data: ".length))
-      .filter((payload) => payload !== "[DONE]")
-      .map((payload) => JSON.parse(payload) as { type: string });
-
-    const types = chunks.map((chunk) => chunk.type);
-    expect(types).toContain("start");
-    expect(types).toContain("text-start");
-    expect(types).toContain("text-delta");
-    expect(types).toContain("text-end");
-    expect(types).toContain("finish");
-    for (const chunk of chunks) {
-      expect(chunk.type).not.toBe("text");
-    }
-    expect(
-      chunks.some(
-        (chunk) =>
-          chunk.type === "text-delta" &&
-          (chunk as { delta?: string }).delta === "hello",
-      ),
-    ).toBe(true);
-    expect(onFinish).toHaveBeenCalledTimes(1);
-  });
-
-  it("never asks the SDK to retry a single generate attempt", async () => {
+  it("never asks the SDK to retry a single stream attempt", async () => {
     await streamChat({ task: "fast_chat", messages: [] });
-    expect(vi.mocked(generateText).mock.calls[0][0].maxRetries).toBe(0);
+    expect(vi.mocked(streamText).mock.calls[0][0].maxRetries).toBe(0);
   });
 
   it("applies an attempt deadline capped at 30s for Muse", async () => {
     await streamChat({ task: "fast_chat", messages: [] });
-    const call = vi.mocked(generateText).mock.calls[0][0];
+    const call = vi.mocked(streamText).mock.calls[0][0];
     expect(call.timeout).toBeLessThanOrEqual(30000);
     expect(call.timeout).toBeGreaterThanOrEqual(2000);
   });
 
-  it("applies the same output cap default to Muse generate", async () => {
+  it("applies the same output cap default to Muse stream", async () => {
     await streamChat({ task: "fast_chat", messages: [] });
-    expect(vi.mocked(generateText).mock.calls[0][0].maxOutputTokens).toBe(
-      2048,
-    );
+    expect(vi.mocked(streamText).mock.calls[0][0].maxOutputTokens).toBe(2048);
   });
 
-  it("throws friendlyDown when Muse fails", async () => {
-    vi.mocked(generateText).mockRejectedValueOnce(
-      new Error("Muse provider unavailable"),
-    );
+  it("falls through to OpenRouter when Muse cannot produce a first token", async () => {
+    vi.mocked(streamText)
+      .mockReturnValueOnce(lazyStream({ chunks: [] }))
+      .mockReturnValue(lazyStream({ chunks: ["fallback"] }));
+    const result = await streamChat({ task: "fast_chat", messages: [] });
+    let text = "";
+    for await (const chunk of (
+      result as unknown as { textStream: AsyncIterable<string> }
+    ).textStream) {
+      text += chunk;
+    }
+    expect(text).toBe("fallback");
+    expect(vi.mocked(streamText).mock.calls.length).toBeGreaterThan(1);
+  });
+
+  it("throws friendlyDown only when Muse and every OpenRouter model fail", async () => {
+    vi.mocked(streamText).mockReturnValue(lazyStream({ chunks: [] }));
 
     await expect(
       streamChat({ task: "fast_chat", messages: [] }),
     ).rejects.toThrow("briefly unavailable");
   });
 
-  it("does not call OpenRouter streamText when Muse fails", async () => {
-    vi.mocked(generateText).mockRejectedValueOnce(
-      new Error("Muse provider unavailable"),
-    );
-
-    await expect(
-      streamChat({ task: "fast_chat", messages: [] }),
-    ).rejects.toThrow();
-
-    expect(streamText).not.toHaveBeenCalled();
-  });
-
-  it("keeps a student supplied output cap on Muse generate", async () => {
+  it("keeps a student supplied output cap on Muse stream", async () => {
     await streamChat({
       task: "fast_chat",
       messages: [],
       modelOptions: { temperature: 0.2, maxOutputTokens: 900 },
     });
 
-    const call = vi.mocked(generateText).mock.calls[0][0];
+    const call = vi.mocked(streamText).mock.calls[0][0];
     expect(call.maxOutputTokens).toBe(900);
     expect(call.temperature).toBe(0.2);
   });
 
-  it("passes tools through to Muse generate", async () => {
+  it("passes tools through to Muse stream", async () => {
     const tools = { searchNotes: {} };
     await streamChat({ task: "fast_chat", messages: [], tools });
 
-    expect(vi.mocked(generateText).mock.calls[0][0].tools).toBe(tools);
+    expect(vi.mocked(streamText).mock.calls[0][0].tools).toBe(tools);
   });
 });

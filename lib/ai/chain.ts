@@ -23,11 +23,10 @@ export const CHAIN_DEADLINE_MS = 30_000;
  */
 export const CHAIN_STREAM_DEADLINE_MS = 45_000;
 /**
- * Per-leg timeout for a Muse (Meta or Baseten) call. Muse buffers the whole
- * response (no streaming), so it needs enough time to finish before the
- * deadline aborts it. For chat (Muse-only, no OpenRouter fallback) this is
- * the entire budget Muse gets — set it high enough that a real answer can
- * complete.
+ * Per-leg timeout for a Muse (Meta or Baseten) call. Chat streams through
+ * `streamText`, so this is the budget for the first token, not the whole
+ * answer; a slow prefill falls through to OpenRouter instead of holding the
+ * student's turn hostage. Non-streaming Muse calls share the same budget.
  */
 export const MUSE_PER_LEG_TIMEOUT_MS = 30_000;
 export const TRIP_THRESHOLD = 3;

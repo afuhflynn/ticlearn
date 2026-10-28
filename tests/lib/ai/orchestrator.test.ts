@@ -222,6 +222,38 @@ describe("orchestrator task registry guard", () => {
   });
 });
 
+describe("streamChat Muse-first fallback", () => {
+  it("falls through to OpenRouter when Muse cannot produce a first token", async () => {
+    let calls = 0;
+    vi.mocked(streamText).mockImplementation(() => {
+      calls += 1;
+      if (calls === 1) {
+        return {
+          textStream: {
+            // eslint-disable-next-line require-yield
+            async *[Symbol.asyncIterator]() {},
+          },
+        } as never;
+      }
+      return {
+        textStream: {
+          // eslint-disable-next-line require-yield
+          async *[Symbol.asyncIterator]() {
+            yield "fallback answer";
+          },
+        },
+      } as never;
+    });
+    const result = await streamChat({
+      task: "fast_chat",
+      messages: [],
+      promptRef: ref,
+    });
+    expect(result).toBeDefined();
+    expect(calls).toBeGreaterThan(1);
+  });
+});
+
 describe("orchestrator cold start tracking", () => {
   it("counts every request toward warm up, not just cache hits", async () => {
     await generate({
@@ -282,14 +314,33 @@ describe("orchestrator cold start tracking", () => {
   });
 
   it("streamChat calls noteColdStart once per request", async () => {
-    vi.mocked(generateText).mockResolvedValue({ text: "hi" } as never);
+    vi.mocked(streamText).mockReturnValue({
+      textStream: {
+        // eslint-disable-next-line require-yield
+        async *[Symbol.asyncIterator]() {
+          yield "hi";
+        },
+      },
+    } as never);
     await streamChat({ task: "fast_chat", messages: [], promptRef: ref });
     expect(noteColdStart).toHaveBeenCalledTimes(1);
   });
 
   it("streamChat passes coldStart to logUsage on finish", async () => {
     vi.mocked(noteColdStart).mockReturnValue(true);
-    vi.mocked(generateText).mockResolvedValue({ text: "hi" } as never);
+    vi.mocked(streamText).mockImplementation(((opts: {
+      onFinish?: (finish: { text: string; usage: unknown }) => void;
+    }) => {
+      opts?.onFinish?.({ text: "hi", usage: {} });
+      return {
+        textStream: {
+          // eslint-disable-next-line require-yield
+          async *[Symbol.asyncIterator]() {
+            yield "hi";
+          },
+        },
+      };
+    }) as never);
     await streamChat({ task: "fast_chat", messages: [], promptRef: ref });
     const finishCalls = vi
       .mocked(logUsage)

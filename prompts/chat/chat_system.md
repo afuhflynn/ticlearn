@@ -3,7 +3,7 @@ name: chat_system
 model: openai/gpt-oss-120b
 version: 6
 heat: 0.4
-cap: 4096
+cap: 8000
 cacheSpanMs: 604800000
 needsTools: true
 needsImages: false

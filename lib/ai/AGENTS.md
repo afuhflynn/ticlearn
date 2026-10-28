@@ -29,7 +29,7 @@ Everything that talks to a model lives in `lib/ai/`. OpenRouter is the single ga
 - Do not add Muse model IDs to the OpenRouter chain. Muse calls are a separate provider path with no fallback to OpenRouter within the Muse path; the orchestrator handles fallthrough separately.
 - A new AI call needs a task registered in `registry.ts` first. `getTaskConfig` throws on an unknown name, which surfaces the mistake at the call site. Tasks can carry an optional `provider` field (`"openrouter"`, `"meta"`, or `"baseten"`; defaults to `"openrouter"`) that decides which client serves the call.
 - Never cache grading. Set `cacheTtlMs: 0` for `grading`, `paper3_eval`, and Muse hackathon tasks `answer_evaluation` and `next_step` so a user's answer is always marked fresh.
-- `streamChat` is the only streaming entry point. Chat routes call it from `app/api/ai/chat/route.ts`. Muse study loop tasks use `generate` (non-streaming structured output) unless a task specifically needs streaming.
+- `streamChat` is the only streaming entry point. Chat routes call it from `app/api/ai/chat/route.ts`. It tries Muse (`muse-spark-1.3`) first with real token streaming, then falls through to the OpenRouter chain when Muse cannot produce a first token. Muse study loop tasks use `generate` (non-streaming structured output) unless a task specifically needs streaming.
 - AI output that reaches the UI goes through `lib/math-format.ts` so KaTeX delimiters render. Skip this and LaTeX shows as raw text.
 
 ## Muse provider conventions (hackathon)
@@ -38,9 +38,9 @@ Everything that talks to a model lives in `lib/ai/`. OpenRouter is the single ga
 - `baseten()` in `lib/ai/instances.ts` is a lazy singleton for Baseten inference. It requires `BAASETEN_API_KEY`. Uses `BAASETEN_BASE_URL` (defaults to `https://inference.baseten.co/v1`).
 - `chainMuse(modelId)` in `lib/ai/chain.ts` routes by model ID prefix: `meta-models/` goes to Baseten, everything else goes to Meta via `muse()`.
 - Hackathon tasks (`course_analysis`, `question_gen`, `answer_evaluation`, `next_step`) are registered with `provider: "meta"` and `chain: ["muse-spark-1.3"]`. The visual analysis task (`visual_analysis`) uses `provider: "baseten"` and `chain: ["meta-models/muse-spark-open-1026"]`.
-- Muse calls bypass the breaker and cache. They go straight to Meta/Baseten with a per-leg timeout of 8 seconds. On failure, `generate` falls through to the OpenRouter chain.
-- Muse calls never fall through to OpenRouter within the Muse path itself, but the orchestrator's `generate` catches Muse failures and retries through the OpenRouter chain.
-- Hackathon tasks use `generate` (non-streaming structured output). Streaming and tool-calling tasks stay on OpenRouter.
+- Muse calls bypass the breaker and cache. Chat streams through `streamText` with a 30 second first-token budget; non-streaming Muse calls share the same per-leg timeout. On failure, `generate` and `streamChat` fall through to the OpenRouter chain.
+- Muse calls never fall through to OpenRouter within the Muse path itself, but the orchestrator catches Muse failures and retries through the OpenRouter chain — for both `generate` and `streamChat` (`fast_chat` is Muse-first, OpenRouter-second).
+- Hackathon tasks use `generate` (non-streaming structured output). Chat (`fast_chat`) streams with tools on Muse first, OpenRouter as fallback.
 - Hackathon inference costs are logged separately from student credit deductions in `lib/ai/usage.ts`. Promotional Meta and Baseten credits pay for experiments; student credit spend is unaffected.
 - `MUSE_COST_PER_CALL_XAF` in `lib/ai/pricing.ts` is the flat per-call XAF rate used for Muse usage accounting until live pricing is confirmed.
 
