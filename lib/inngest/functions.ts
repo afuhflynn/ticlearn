@@ -186,7 +186,7 @@ export const generateQuiz = inngest.createFunction(
     // double-charge.
     retries: 3,
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const {
       noteId,
       quizId,
@@ -220,18 +220,57 @@ export const generateQuiz = inngest.createFunction(
         `[Inngest] Note extracted text length: ${note.extractedText.length} chars`,
       );
 
-      const { generateQuizFromNote } = await import("@/lib/ai");
+      const { generateQuizFromNote, QUIZ_BATCH_SIZE } =
+        await import("@/lib/ai");
       console.log(`[Inngest] Calling AI to generate quiz...`);
 
-      const { questions: generatedQuestions, fromCache } =
-        await generateQuizFromNote(
-          note.extractedText,
-          {
-            questionCount: questionCount || 10,
-            questionTypes: questionTypes || "MIXED",
-          },
-          note.userId,
+      const totalQuestions = questionCount || 10;
+      const resolvedTypes = questionTypes || "MIXED";
+      // One model call cannot reliably emit a 50-100 question quiz: the
+      // output cap truncates mid-JSON (schema fail-fast kills the walk) and
+      // providers reject very large max_tokens outright. Batches of 15 stay
+      // inside both limits, and each batch runs as its own step so a long
+      // quiz never hits a single invocation's timeout. The batchLabel keeps
+      // each batch's prompt (and cache key) distinct.
+      const batchCount = Math.ceil(totalQuestions / QUIZ_BATCH_SIZE);
+      const extractedText: string = note.extractedText;
+      type BatchQuestions = Awaited<
+        ReturnType<typeof generateQuizFromNote>
+      >["questions"];
+      let generatedQuestions: BatchQuestions = [];
+      let fromCache = true;
+      for (let batch = 0; batch < batchCount; batch += 1) {
+        const batchSize = Math.min(
+          QUIZ_BATCH_SIZE,
+          totalQuestions - batch * QUIZ_BATCH_SIZE,
         );
+        const batchLabel =
+          batchCount > 1
+            ? `Part ${batch + 1} of ${batchCount}: write ${batchSize} questions that are distinct from the other parts of this quiz (do not repeat questions across parts).`
+            : undefined;
+        const produced = await step.run(
+          `generate-batch-${batch + 1}`,
+          async () => {
+            const result = await generateQuizFromNote(
+              extractedText,
+              {
+                questionCount: batchSize,
+                questionTypes: resolvedTypes,
+                batchLabel,
+              },
+              note.userId,
+            );
+            if (result.questions.length === 0) {
+              throw new Error(
+                `Quiz batch ${batch + 1} of ${batchCount} returned no questions`,
+              );
+            }
+            return result;
+          },
+        );
+        generatedQuestions = generatedQuestions.concat(produced.questions);
+        fromCache = fromCache && produced.fromCache;
+      }
 
       console.log(
         `[Inngest] AI returned ${generatedQuestions.length} questions`,

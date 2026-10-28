@@ -39,6 +39,15 @@ const generatedQuestionSchema = z.object({
  */
 export const QUIZ_TOKENS_PER_QUESTION = 250;
 
+/**
+ * Questions generated per Inngest step. A 50-100 question quiz cannot come
+ * from one model call: the output cap would truncate mid-JSON and providers
+ * reject very large max_tokens outright. Batches of 15 stay inside both
+ * limits, and each batch is its own step so a long quiz never hits a single
+ * invocation's timeout.
+ */
+export const QUIZ_BATCH_SIZE = 15;
+
 export async function extractTextFromPDF(
   uploadthingKey: string,
   language: string = "eng",
@@ -469,6 +478,12 @@ export async function generateQuizFromNote(
   options: {
     questionCount: number;
     questionTypes: "MCQ" | "OPEN" | "MIXED";
+    /**
+     * Labels one part of a larger batched quiz (e.g. "Part 2 of 4"). It is
+     * prepended to the prompt so batches differ from each other: identical
+     * prompts would share a cache key and return identical questions.
+     */
+    batchLabel?: string;
   },
   userId?: string | null,
 ): Promise<{
@@ -487,15 +502,25 @@ export async function generateQuizFromNote(
         ? "Generate only Multiple Choice Questions (MCQ)."
         : "Generate only Open-ended questions.";
 
-  const { text: prompt, settings } = await getPrompt("quiz", "quiz_from_note", {
-    questionCount: options.questionCount,
-    questionTypeText,
-    noteExcerpt: noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT),
-    truncatedSuffix:
-      noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT
-        ? " ... (content truncated)"
-        : "",
-  });
+  const { text: promptBody, settings } = await getPrompt(
+    "quiz",
+    "quiz_from_note",
+    {
+      questionCount: options.questionCount,
+      questionTypeText,
+      noteExcerpt: noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT),
+      truncatedSuffix:
+        noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT
+          ? " ... (content truncated)"
+          : "",
+    },
+  );
+
+  // A batch label keeps batched parts distinct in the shared cache. Without
+  // it, every batch would send the same prompt and receive the same questions.
+  const prompt = options.batchLabel
+    ? `${options.batchLabel}\n\n${promptBody}`
+    : promptBody;
 
   const schema = z.object({
     questions: z.array(generatedQuestionSchema),
@@ -533,18 +558,24 @@ export async function generateQuizFromNote(
 
     return { questions, fromCache };
   } catch (error) {
-    // Never swallow the cause: the Inngest job reports "AI returned no
-    // questions" and retries, and it needs the real reason in the logs.
-    // An OrchestratorError carries the per-model breakdown; log it so a
-    // dead chain names which models failed and how.
+    // Never swallow the cause: the Inngest job reports the failure and
+    // retries, and it needs the real reason in the logs. An OrchestratorError
+    // carries the per-model breakdown — flatten it into the message too,
+    // because the serialized `cause` does not always survive the trip to the
+    // Inngest dashboard.
     if (error instanceof OrchestratorError) {
+      const detail = error.modelErrors
+        .map((m) => `${m.model} (${m.error})`)
+        .join(" | ");
       console.error("[AI] Quiz generation failed:", {
         task: error.task,
         modelErrors: error.modelErrors,
       });
-    } else {
-      console.error("[AI] Quiz generation failed:", error);
+      throw new Error(`Quiz generation failed [${error.task}: ${detail}]`, {
+        cause: error,
+      });
     }
+    console.error("[AI] Quiz generation failed:", error);
     throw new Error(
       `Quiz generation failed: ${error instanceof Error ? error.message : String(error)}`,
       { cause: error },

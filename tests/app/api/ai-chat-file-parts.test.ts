@@ -1,6 +1,11 @@
 import type { UIMessage } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { validateFileParts } from "@/app/api/ai/chat/route";
+import {
+  chatDocAttachments,
+  documentTextForChatTurn,
+  enrichLatestUserMessage,
+  validateFileParts,
+} from "@/app/api/ai/chat/route";
 
 /**
  * The chat route is the last wall between a hand built request and the model.
@@ -122,5 +127,145 @@ describe("validateFileParts", () => {
     } as unknown as UIMessage);
 
     expect(validateFileParts(history)).toBeNull();
+  });
+});
+
+describe("chatDocAttachments", () => {
+  it("picks document https parts and ignores images and pastes", () => {
+    const parts = [
+      {
+        type: "file",
+        mediaType:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename: "notes.docx",
+        url: "https://x.public.blob.vercel-storage.com/chat/u/notes.docx",
+      },
+      { type: "file", mediaType: "image/png", url: BLOB_URL },
+      { type: "file", mediaType: "text/plain", url: PASTE_URL },
+      { type: "text", text: "hello" },
+    ] as unknown as UIMessage["parts"];
+
+    const docs = chatDocAttachments(parts);
+    expect(docs).toHaveLength(1);
+    expect(docs[0]?.filename).toBe("notes.docx");
+  });
+
+  it("returns nothing when there are no document attachments", () => {
+    const parts = [
+      { type: "file", mediaType: "image/png", url: BLOB_URL },
+      { type: "text", text: "hello" },
+    ] as unknown as UIMessage["parts"];
+
+    expect(chatDocAttachments(parts)).toEqual([]);
+  });
+});
+
+describe("enrichLatestUserMessage", () => {
+  const docxPart = {
+    type: "file",
+    mediaType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    filename: "notes.docx",
+    url: "https://x.public.blob.vercel-storage.com/chat/u/notes.docx",
+  };
+
+  function thread(): UIMessage[] {
+    return [
+      {
+        id: "m-0",
+        role: "user",
+        parts: [{ type: "text", text: "first" }],
+      } as unknown as UIMessage,
+      {
+        id: "m-1",
+        role: "user",
+        parts: [
+          docxPart,
+          {
+            type: "file",
+            mediaType: "image/png",
+            url: BLOB_URL,
+          },
+          { type: "text", text: "Explain this" },
+        ],
+      } as unknown as UIMessage,
+    ];
+  }
+
+  it("returns the thread untouched when there are no documents", () => {
+    const all = thread();
+    expect(enrichLatestUserMessage(all, "", 0)).toBe(all);
+  });
+
+  it("drops document file parts and appends the extracted text on the newest user message", () => {
+    const enriched = enrichLatestUserMessage(
+      thread(),
+      "extracted doc text",
+      1,
+    );
+
+    expect(enriched).toHaveLength(2);
+    // The older turn is untouched.
+    expect(enriched[0]?.parts).toHaveLength(1);
+    const parts = enriched[1]?.parts as unknown[];
+    // Image stays, docx goes, extracted text lands last.
+    expect(parts).toHaveLength(3);
+    expect(parts.some((part) => (part as { type?: string }).type === "file" && (part as { mediaType?: string }).mediaType === "image/png")).toBe(true);
+    expect(parts.some((part) => (part as { type?: string }).type === "file" && (part as { mediaType?: string }).mediaType?.includes("wordprocessingml"))).toBe(false);
+    expect(parts.at(-1)).toMatchObject({
+      type: "text",
+      text: "extracted doc text",
+    });
+  });
+});
+
+describe("documentTextForChatTurn", () => {
+  const textPart = {
+    type: "file",
+    mediaType: "text/plain",
+    filename: "pasted.txt",
+    url: "https://x.public.blob.vercel-storage.com/chat/u/pasted.txt",
+  } as unknown;
+
+  it("inlines a readable text attachment", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        arrayBuffer: async () =>
+          new TextEncoder().encode("The mitochondria is the powerhouse.").buffer,
+      })),
+    );
+
+    const { text, docFileCount } = await documentTextForChatTurn([textPart] as never);
+
+    expect(docFileCount).toBe(1);
+    expect(text).toContain("pasted.txt");
+    expect(text).toContain("The mitochondria is the powerhouse.");
+    vi.unstubAllGlobals();
+  });
+
+  it("falls back to an honest note instead of failing the turn", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("network down");
+      }),
+    );
+
+    const { text, docFileCount } = await documentTextForChatTurn([textPart] as never);
+
+    expect(docFileCount).toBe(1);
+    expect(text).toContain("could not be read");
+    vi.unstubAllGlobals();
+  });
+
+  it("does nothing when there are no document attachments", async () => {
+    const { text, docFileCount } = await documentTextForChatTurn([
+      { type: "text", text: "hi" },
+    ] as never);
+
+    expect(text).toBe("");
+    expect(docFileCount).toBe(0);
   });
 });

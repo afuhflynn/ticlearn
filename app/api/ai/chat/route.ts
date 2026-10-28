@@ -52,6 +52,26 @@ const FILE_MEDIA_TYPES = new Set([
 ]);
 
 /**
+ * Document types that are read into text before the model call. The chat
+ * model cannot open raw document file parts and rejects them (a fast 400),
+ * so PDF, Word and text attachments travel as extracted text while images
+ * keep flowing as file parts.
+ */
+const DOC_TEXT_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain",
+  "text/markdown",
+  "text/csv",
+  "application/json",
+]);
+
+/** Characters of extracted document text kept per file for one turn. */
+const CHAT_DOC_CHARS_PER_FILE = 12_000;
+/** Total extracted document text kept for one turn. */
+const CHAT_DOC_CHARS_TOTAL = 24_000;
+
+/**
  * What the model is told when no note is attached to the turn. The prompt
  * declares this slot, so it has to say something honest rather than break.
  */
@@ -305,6 +325,160 @@ function cleanParts(message: UIMessage): UIMessage {
  */
 function settleStoppedParts(parts: UIMessage["parts"]): UIMessage["parts"] {
   return parts.filter((part) => !isToolPart(part) || isFinishedToolPart(part));
+}
+
+type ChatDocAttachment = {
+  filename: string;
+  mediaType: string;
+  url: string;
+};
+
+export function chatDocAttachments(
+  parts: UIMessage["parts"],
+): ChatDocAttachment[] {  if (!Array.isArray(parts)) return [];
+  const docs: ChatDocAttachment[] = [];
+  for (const part of parts) {
+    if (!part || typeof part !== "object") continue;
+    if ((part as { type?: unknown }).type !== "file") continue;
+    const mediaType = (part as { mediaType?: unknown }).mediaType;
+    const url = (part as { url?: unknown }).url;
+    if (typeof mediaType !== "string" || typeof url !== "string") continue;
+    if (!DOC_TEXT_TYPES.has(mediaType)) continue;
+    if (!url.startsWith("https://")) continue;
+    const filename = (part as { filename?: unknown }).filename;
+    docs.push({
+      filename: typeof filename === "string" ? filename : "attachment",
+      mediaType,
+      url,
+    });
+  }
+  return docs;
+}
+
+async function extractPdfTextFromBytes(data: Uint8Array): Promise<string> {
+  const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
+  const doc = await getDocument({
+    data,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+  }).promise;
+  const pages: string[] = [];
+  for (let pageNumber = 1; pageNumber <= doc.numPages; pageNumber += 1) {
+    const page = await doc.getPage(pageNumber);
+    const content = await page.getTextContent();
+    pages.push(
+      content.items.map((item) => ("str" in item ? item.str : "")).join(" "),
+    );
+  }
+  return pages.join("\n");
+}
+
+/**
+ * Reads document attachments into text for the model call. Each file is
+ * fetched and parsed independently; a file that cannot be read is skipped
+ * with a warning instead of failing the turn. Returns the text to append to
+ * the turn plus how many document files were on it.
+ */
+export async function documentTextForChatTurn(
+  parts: UIMessage["parts"],
+): Promise<{ text: string; docFileCount: number }> {
+  const docs = chatDocAttachments(parts);
+  if (docs.length === 0) return { text: "", docFileCount: 0 };
+
+  let remaining = CHAT_DOC_CHARS_TOTAL;
+  const sections: string[] = [];
+  await Promise.all(
+    docs.map(async (doc) => {
+      if (remaining <= 0) return;
+      try {
+        const fetched = await fetch(doc.url, {
+          signal: AbortSignal.timeout(20_000),
+        });
+        if (!fetched.ok) {
+          throw new Error(`Attachment fetch failed: ${fetched.status}`);
+        }
+        const bytes = new Uint8Array(await fetched.arrayBuffer());
+        let raw: string;
+        if (doc.mediaType === "application/pdf") {
+          raw = await extractPdfTextFromBytes(bytes);
+        } else if (
+          doc.mediaType ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        ) {
+          const mammoth = (await import("mammoth")).default;
+          raw = (await mammoth.extractRawText({ buffer: Buffer.from(bytes) }))
+            .value;
+        } else {
+          raw = new TextDecoder().decode(bytes);
+        }
+        const cleaned = raw
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, Math.min(CHAT_DOC_CHARS_PER_FILE, remaining));
+        if (cleaned) {
+          remaining -= cleaned.length;
+          sections.push(
+            `[Attached file "${doc.filename}" — extracted text:]\n${cleaned}`,
+          );
+        }
+      } catch (error) {
+        console.warn(
+          `[CHAT] Could not read attached document ${doc.filename}:`,
+          error,
+        );
+      }
+    }),
+  );
+
+  if (sections.length === 0) {
+    const names = docs.map((doc) => doc.filename).join(", ");
+    return {
+      text: `[Note: the attached document(s) (${names}) could not be read. Answer from the typed question, and say the attachment could not be opened if it matters.]`,
+      docFileCount: docs.length,
+    };
+  }
+  return { text: sections.join("\n\n"), docFileCount: docs.length };
+}
+
+/**
+ * Builds the model-bound copy of the thread: document file parts are dropped
+ * (the model rejects them) and the extracted text travels as a text part on
+ * the newest user message instead. The saved thread keeps the original file
+ * parts, so attachments still render in the UI and reloads keep working.
+ */
+export function enrichLatestUserMessage(
+  all: UIMessage[],
+  docText: string,
+  docFileCount: number,
+): UIMessage[] {
+  if (docFileCount === 0) return all;
+  const index = all.reduce(
+    (found, message, i) => (message.role === "user" ? i : found),
+    -1,
+  );
+  if (index === -1) return all;
+  const target = all[index];
+  const parts = Array.isArray(target.parts) ? target.parts : [];
+  const kept = parts.filter(
+    (part) =>
+      !(
+        part &&
+        typeof part === "object" &&
+        (part as { type?: unknown }).type === "file" &&
+        typeof (part as { mediaType?: unknown }).mediaType === "string" &&
+        DOC_TEXT_TYPES.has((part as { mediaType: string }).mediaType)
+      ),
+  );
+  const next =
+    docText.length > 0
+      ? [...kept, { type: "text", text: docText } as never]
+      : kept;
+  if (next.length === parts.length && docText.length === 0) return all;
+  return [
+    ...all.slice(0, index),
+    { ...target, parts: next },
+    ...all.slice(index + 1),
+  ];
 }
 
 /** Every row written after one message, in writing order. */
@@ -754,7 +928,19 @@ export async function POST(req: Request) {
       { tools: true },
     );
 
-    const modelMessages = await convertToModelMessages(trimForModel(messages));
+    // Document attachments (PDF, Word, text) are read here and inlined as
+    // text: the chat model cannot open raw document file parts and rejects
+    // them, so sending them through fails the turn in ~2s. Images keep
+    // flowing as file parts. The saved thread is untouched.
+    const { text: docContextText, docFileCount } =
+      await documentTextForChatTurn(
+        Array.isArray(latestUserMessage.parts) ? latestUserMessage.parts : [],
+      );
+    const modelMessages = await convertToModelMessages(
+      trimForModel(
+        enrichLatestUserMessage(messages, docContextText, docFileCount),
+      ),
+    );
 
     const tools = createChatTools({ userId: session.user.id });
 
