@@ -125,14 +125,41 @@ export const processNote = inngest.createFunction(
         where: { id: noteId },
         data: { processingStage: "SUMMARIZING" },
       });
-      const summaryResult = await summarizeText(extractedText, note.userId);
+      // A summary failure must never strand the note in ERROR. The quiz reads
+      // extractedText, not the brief, so degrade to a slice of the text and
+      // keep the note moving toward READY.
+      let summaryResult: {
+        summary: string;
+        topics: string[];
+        keyPoints: string[];
+      };
+      try {
+        summaryResult = await summarizeText(extractedText, note.userId);
+      } catch (summaryError) {
+        console.warn(
+          "[Inngest] Summary failed, degrading to text slice:",
+          summaryError instanceof Error ? summaryError.message : summaryError,
+        );
+        summaryResult = {
+          summary: extractedText.slice(0, 500),
+          topics: [],
+          keyPoints: [],
+        };
+      }
 
       console.log("[Inngest] Attaching topics to the note...");
       await prisma.note.update({
         where: { id: noteId },
         data: { processingStage: "INDEXING" },
       });
-      await attachTopicsToNote(noteId, summaryResult.topics);
+      try {
+        await attachTopicsToNote(noteId, summaryResult.topics);
+      } catch (topicsError) {
+        console.warn(
+          "[Inngest] Topic attach failed, continuing without topics:",
+          topicsError instanceof Error ? topicsError.message : topicsError,
+        );
+      }
 
       console.log("[Inngest] Updating note in database...");
       await prisma.note.update({

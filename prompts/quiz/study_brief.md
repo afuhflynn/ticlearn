@@ -3,7 +3,7 @@ name: study_brief
 model: deepseek/deepseek-v4.1-flash
 version: 2
 heat: 0.4
-cap: 2048
+cap: 4096
 cacheSpanMs: 2592000000
 needsTools: false
 needsImages: false
