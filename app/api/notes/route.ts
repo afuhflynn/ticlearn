@@ -104,6 +104,12 @@ export async function POST(req: Request) {
         data: { noteId: note.id },
       });
 
+      // Kick off the visual course page analysis pipeline (spec 0027).
+      await inngest.send({
+        name: "note/uploaded",
+        data: { noteId: note.id },
+      });
+
       const queuedNote = await prisma.note.update({
         where: { id: note.id },
         data: { status: "PROCESSING" },

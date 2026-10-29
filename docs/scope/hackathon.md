@@ -37,13 +37,22 @@ spec ../specs/0026-provider-aware-routing-meta-baseten.md
   - [x] Add usage writing and per-leg timeout fallback to OpenRouter (covers AC-2, AC-4, AC-5, AC-7, AC-8, AC-9)
   - [x] Verify streaming, tool calls, and the OpenRouter chain alternative; add tests (covers AC-3, AC-4, AC-5)
 
-### 50. Visual course page analysis · Hackathon · planned · needs a decision · Prototype
+### 50. Visual course page analysis · Hackathon · in-progress · Prototype
 
 Render a single PDF page to an image and send it to Baseten Muse Spark Open (meta-models/muse-spark-open-1026) for visual interpretation of diagrams, charts, and tables. Only send pages when visual understanding is useful, not every page automatically.
 
 **Done when:** one diagram page can be uploaded and analysed reliably, visual analysis feeds into question generation, Baseten credits cover the cost not student credits.
 
-- [ ] Design it (spec): /solution-architect visual course page analysis
+spec ../specs/0027-visual-course-page-analysis/index.md
+
+- [x] Design it (spec): /solution-architect visual course page analysis
+
+- [x] Build it: /feature-build visual course page analysis
+  - [x] Add Page and VisualAnalysis models to the Prisma schema plus migration (AC-3)
+  - [x] Add pdf.js page render and low-resolution non-text-ratio scan helpers (AC-1 AC-2 AC-8)
+  - [x] Create Inngest job visual-analysis/process with idempotent re-scan, Baseten call, and failed-page isolation (AC-1 AC-2 AC-6 AC-8)
+  - [x] Route Baseten cost through lib/ai/usage.ts as promotional credit and build owner-only GET /api/visual-analysis/[noteId] (AC-5 AC-7)
+  - [x] Add tests for happy path, failure skip, and owner-only authorization (all ACs)
 
 ### 51. Grounded question generation from course material · Hackathon · planned · Prototype
 

@@ -67,7 +67,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 33 | Mobile responsiveness and device quality | Cross cutting | planned |
 | 48 | Hackathon baseline and public repository safety | Hackathon | in-progress |
 | 49 | Provider aware model routing for Meta and Baseten | Hackathon | in-progress |
-| 50 | Visual course page analysis | Hackathon | planned |
+| 50 | Visual course page analysis | Hackathon | in-progress |
 | 51 | Grounded question generation from course material | Hackathon | planned |
 | 52 | Targeted retry and progress update | Hackathon | planned |
 | 53 | Hackathon demo and submission | Hackathon | planned |
