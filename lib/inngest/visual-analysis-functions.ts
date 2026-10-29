@@ -3,7 +3,11 @@ import { generateObject } from "ai";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
 import { chainMuse } from "@/lib/ai/chain";
-import { type PageScanResult, scanPages } from "@/lib/ai/page-scan";
+import {
+  type PageScanResult,
+  scanPages,
+  toVisualTypeEnum,
+} from "@/lib/ai/page-scan";
 import { MUSE_COST_PER_CALL_XAF } from "@/lib/ai/pricing";
 import { logUsage } from "@/lib/ai/usage";
 import { inngest } from "@/lib/inngest/client";
@@ -52,7 +56,11 @@ async function storePageImage(
 async function analyseVisualPage(
   pageImageUrl: string,
   pageNumber: number,
-): Promise<{ visualType: string; description: string; confidence: number }> {
+): Promise<{
+  visualType: "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER";
+  description: string;
+  confidence: number;
+}> {
   const { text: prompt, settings } = await getPrompt(
     "ingest",
     "visual_analysis",
@@ -76,7 +84,7 @@ async function analyseVisualPage(
     maxOutputTokens: settings.cap,
   });
   return {
-    visualType: result.object.visualType,
+    visualType: toVisualTypeEnum(result.object.visualType),
     description: result.object.description,
     confidence: result.object.confidence,
   };
@@ -106,8 +114,24 @@ export const visualAnalysisProcess = inngest.createFunction(
     });
 
     if (!note) {
-      console.error(`[Visual Analysis] Note not found: ${noteId}`);
-      return { success: false, error: "Note not found" };
+      throw new Error(`[Visual Analysis] Note not found: ${noteId}`);
+    }
+
+    // Only PDFs have pages to scan. Images and Word notes skip the
+    // pipeline with a successful result instead of failing on fetch.
+    if (note.fileType !== "PDF") {
+      console.log(
+        `[Visual Analysis] Skipping non-PDF note ${noteId} (${note.fileType})`,
+      );
+      return {
+        success: true,
+        noteId,
+        skipped: true as const,
+        scanned: 0,
+        visual: 0,
+        analysed: 0,
+        failed: 0,
+      };
     }
 
     // Idempotent re-scan: only process pages that have not been analysed yet.
@@ -122,8 +146,7 @@ export const visualAnalysisProcess = inngest.createFunction(
     );
 
     if (!note.uploadthingKey) {
-      console.error(`[Visual Analysis] Note has no file: ${noteId}`);
-      return { success: false, error: "Note has no file to scan" };
+      throw new Error(`[Visual Analysis] Note has no file: ${noteId}`);
     }
 
     let pdfBytes: Uint8Array;
@@ -134,7 +157,7 @@ export const visualAnalysisProcess = inngest.createFunction(
         `[Visual Analysis] Failed to fetch PDF for note ${noteId}:`,
         error,
       );
-      return { success: false, error: "Could not fetch the note PDF" };
+      throw new Error(`Could not fetch the note PDF for ${noteId}`);
     }
 
     let scanResults: PageScanResult[];
@@ -142,7 +165,7 @@ export const visualAnalysisProcess = inngest.createFunction(
       scanResults = await scanPages(pdfBytes);
     } catch (error) {
       console.error(`[Visual Analysis] Scan failed for note ${noteId}:`, error);
-      return { success: false, error: "Page scan failed" };
+      throw new Error(`Page scan failed for note ${noteId}`);
     }
 
     let scanned = 0;
@@ -158,15 +181,43 @@ export const visualAnalysisProcess = inngest.createFunction(
       scanned += 1;
       if (result.hasVisual) visualCount += 1;
 
-      // Create the page row for every scanned page.
-      const page = await prisma.page.create({
-        data: {
+      // Upsert on the unique note plus page number pair. A crashed run can
+      // leave an unfinished row behind; recreating it would violate the
+      // constraint, so reuse the row and refresh only the scan verdict.
+      const page = await prisma.page.upsert({
+        where: { noteId_pageNumber: { noteId, pageNumber: result.pageNumber } },
+        create: {
           noteId,
           pageNumber: result.pageNumber,
           hasVisual: result.hasVisual,
           analysedAt: null,
         },
+        update: { hasVisual: result.hasVisual },
       });
+
+      // A page that failed to render is recorded as failed and skipped.
+      const imageBuffer = result.pageImageBuffer;
+      if (result.scanError || !imageBuffer) {
+        console.error(
+          `[Visual Analysis] Render failed page ${result.pageNumber}:`,
+          result.scanError ?? "empty image",
+        );
+        await prisma.visualAnalysis.create({
+          data: {
+            pageId: page.id,
+            visualType: "OTHER",
+            description: `Page ${result.pageNumber} could not be rendered for analysis.`,
+            confidence: null,
+            status: "FAILED",
+          },
+        });
+        await prisma.page.update({
+          where: { id: page.id },
+          data: { analysedAt: new Date() },
+        });
+        failedCount += 1;
+        continue;
+      }
 
       // Only visual pages go to Baseten (AC-4, AC-8).
       if (!result.hasVisual) {
@@ -182,7 +233,7 @@ export const visualAnalysisProcess = inngest.createFunction(
         pageImageUrl = await storePageImage(
           noteId,
           result.pageNumber,
-          result.pageImageBuffer,
+          imageBuffer,
         );
       } catch (error) {
         console.error(
@@ -206,7 +257,7 @@ export const visualAnalysisProcess = inngest.createFunction(
         continue;
       }
 
-      let visualType: string;
+      let visualType: "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER";
       let description: string;
       let confidence: number | null;
       let pageFailed = false;
@@ -234,14 +285,10 @@ export const visualAnalysisProcess = inngest.createFunction(
       await prisma.visualAnalysis.create({
         data: {
           pageId: page.id,
-          visualType: visualType as
-            | "DIAGRAM"
-            | "CHART"
-            | "TABLE"
-            | "ILLUSTRATION"
-            | "OTHER",
+          visualType,
           description,
           confidence,
+          basetenCostXaf: pageFailed ? null : MUSE_COST_PER_CALL_XAF,
           status: pageFailed ? "FAILED" : "COMPLETED",
         },
       });
@@ -261,7 +308,7 @@ export const visualAnalysisProcess = inngest.createFunction(
 
       await prisma.page.update({
         where: { id: page.id },
-        data: { analysedAt: new Date() },
+        data: { pageImageUrl, analysedAt: new Date() },
       });
     }
 

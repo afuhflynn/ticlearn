@@ -10,6 +10,6 @@ _Steps derived from spec 0027 acceptance criteria. `/verify-release` runs these;
 - [ ] `curl GET /api/visual-analysis/[noteId]` as a different signed-in user → 404, no page data leaked        → AC-7
 - [ ] `curl GET /api/visual-analysis/[noteId]` with no session → 401        → AC-7
 - [ ] Query `ai_usage_events` for `task = 'visual_analysis'` → one row per visual page with `modelId = 'meta-models/muse-spark-open-1026'`, flat XAF cost, no student debit        → AC-5
-- [ ] `pnpm test --run tests/lib/ai/page-scan.test.ts tests/app/api/visual-analysis.test.ts` → all 6 tests pass        → all ACs
+- [ ] `pnpm test --run tests/lib/ai/page-scan.test.ts tests/app/api/visual-analysis.test.ts` → all tests pass. Automated: AC-1 scan detection and AC-7 owner auth. Rendering half of AC-2. Manual: AC-3 through AC-6 and AC-8 need a live upload        → AC-1 AC-2 AC-7
 ## Acceptance-criteria coverage
 - AC-1 covered by step upload PDF with diagram page · AC-2 covered by step Blob URL plus model call · AC-3 covered by step stored result with page number · AC-4 covered by step text page never sent · AC-5 covered by steps no credit change plus usage row check · AC-6 covered by step forced page failure · AC-7 covered by steps owner 200, stranger 404, anonymous 401 · AC-8 covered by step scan gates Baseten call

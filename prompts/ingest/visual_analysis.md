@@ -19,7 +19,7 @@ Return JSON only, with exactly these fields:
 - confidence: a number from 0 to 1, how sure you are about the visualType
 
 Rules:
-- If the page is text only, set visualType to "other" and give an empty description.
+- If the page is text only, set visualType to "other" and write one short sentence saying the page holds text only.
 - Describe what you actually see, not what the page might mean.
 - Keep the description to one or two sentences.
 - If you cannot tell, set confidence lower and describe what little is visible.

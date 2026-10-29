@@ -34,6 +34,10 @@ const MODEL_ALLOWLIST = [
   "x-ai/grok-4.7",
   "gemini-2.5-flash",
   "openrouter/fusion",
+  // Hackathon models served through Meta Model API and Baseten (spec 0026).
+  // These match MODEL_ALLOWLIST in lib/ai/registry.ts.
+  "muse-spark-1.3",
+  "meta-models/muse-spark-open-1026",
 ];
 
 let failures = 0;

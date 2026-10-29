@@ -15,7 +15,29 @@ export const PAGE_RENDER_LONG_EDGE_PX = 1024;
 export interface PageScanResult {
   pageNumber: number;
   hasVisual: boolean;
-  pageImageBuffer: Buffer;
+  pageImageBuffer: Buffer | null;
+  /** Set when this page could not be rendered. Buffer is null and the page counts as failed. */
+  scanError: string | null;
+}
+
+/** Baseten answers visual types in lowercase; the Prisma enum is uppercase.
+ *  A cast alone would pass the lowercase value to the database and fail,
+ *  so map it here. Unknown values fall back to OTHER. */
+export function toVisualTypeEnum(
+  value: string,
+): "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER" {
+  switch (value.toLowerCase()) {
+    case "diagram":
+      return "DIAGRAM";
+    case "chart":
+      return "CHART";
+    case "table":
+      return "TABLE";
+    case "illustration":
+      return "ILLUSTRATION";
+    default:
+      return "OTHER";
+  }
 }
 
 /** Render one already-opened PDF page to a PNG buffer and test it for visual content. */
@@ -46,7 +68,7 @@ async function scanPageFromPdf(
       scaled.height,
     );
 
-    return { pageNumber, hasVisual, pageImageBuffer };
+    return { pageNumber, hasVisual, pageImageBuffer, scanError: null };
   } finally {
     page.cleanup();
   }
@@ -87,7 +109,20 @@ export async function scanPages(
   try {
     const results: PageScanResult[] = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      results.push(await scanPageFromPdf(pdf, pageNumber));
+      try {
+        results.push(await scanPageFromPdf(pdf, pageNumber));
+      } catch (error) {
+        // One bad page must not strand the rest of the note. The job
+        // records this page as failed and continues with the next one.
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(`[page-scan] Render failed page ${pageNumber}:`, reason);
+        results.push({
+          pageNumber,
+          hasVisual: false,
+          pageImageBuffer: null,
+          scanError: reason,
+        });
+      }
     }
     return results;
   } finally {
