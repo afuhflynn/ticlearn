@@ -6,6 +6,7 @@ export const generatedQuestionSchema = z.object({
   options: z.array(z.string()),
   correctAnswer: z.string().min(1),
   explanation: z.string().min(1),
+  sourcePages: z.array(z.number().int().min(1)).optional().default([]),
 });
 
 export const quizSchema = z.object({
@@ -35,6 +36,13 @@ export function normalizeGeneratedQuestions(
         correctAnswer: question.correctAnswer.trim(),
         explanation: question.explanation.trim(),
         options: question.options.map((o) => o.trim()).filter(Boolean),
+        sourcePages: Array.from(
+          new Set(
+            (question.sourcePages ?? [])
+              .map((n) => Math.floor(Number(n)))
+              .filter((n) => Number.isFinite(n) && n >= 1),
+          ),
+        ).slice(0, 10),
       };
       if (normalized.type === "MCQ" && normalized.options.length !== 4)
         return null;

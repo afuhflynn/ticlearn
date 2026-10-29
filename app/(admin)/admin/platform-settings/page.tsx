@@ -20,6 +20,8 @@ import { AdminSettingsSkeleton } from "../admin-skeleton";
 type PlatformSettings = {
   creditCostQuizGeneration: number;
   creditCostPracticeQuestion: number;
+  creditCostGroundedQuestion: number;
+  creditCostPageLookup: number;
   creditCostAiTutorMessage: number;
   creditCostWebSearch: number;
   creditCostMultiplierStarter: number;
@@ -220,6 +222,8 @@ export default function AdminPlatformSettingsPage() {
             [
               ["creditCostQuizGeneration", "Quiz generation"],
               ["creditCostPracticeQuestion", "Practice — per question"],
+              ["creditCostGroundedQuestion", "Grounded — per question"],
+              ["creditCostPageLookup", "Page lookup — per useful lookup"],
               ["creditCostAiTutorMessage", "AI tutor — per message"],
               ["creditCostWebSearch", "Web search — per search or page read"],
             ] as const

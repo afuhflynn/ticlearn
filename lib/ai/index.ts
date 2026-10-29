@@ -30,6 +30,7 @@ const generatedQuestionSchema = z.object({
   options: z.array(z.string()),
   correctAnswer: z.string().min(1),
   explanation: z.string().min(1),
+  sourcePages: z.array(z.number().int().min(1)).optional().default([]),
 });
 
 /**
@@ -484,6 +485,8 @@ export async function generateQuizFromNote(
      * prompts would share a cache key and return identical questions.
      */
     batchLabel?: string;
+    grounded?: boolean;
+    pageContext?: string;
   },
   userId?: string | null,
 ): Promise<{
@@ -502,18 +505,27 @@ export async function generateQuizFromNote(
         ? "Generate only Multiple Choice Questions (MCQ)."
         : "Generate only Open-ended questions.";
 
+  const useGrounded = options.grounded === true;
+  const promptName = useGrounded ? "grounded_from_note" : "quiz_from_note";
+  const baseVars: Record<string, string | number> = {
+    questionCount: options.questionCount,
+    questionTypeText,
+    noteExcerpt: noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT),
+    truncatedSuffix:
+      noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT
+        ? " ... (content truncated)"
+        : "",
+  };
   const { text: promptBody, settings } = await getPrompt(
     "quiz",
-    "quiz_from_note",
-    {
-      questionCount: options.questionCount,
-      questionTypeText,
-      noteExcerpt: noteContent.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT),
-      truncatedSuffix:
-        noteContent.length > MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT
-          ? " ... (content truncated)"
-          : "",
-    },
+    promptName,
+    useGrounded
+      ? {
+          ...baseVars,
+          pageContext:
+            options.pageContext ?? "No analyzed pages for this note.",
+        }
+      : baseVars,
   );
 
   // A batch label keeps batched parts distinct in the shared cache. Without
