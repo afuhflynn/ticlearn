@@ -7,7 +7,10 @@ import {
 import Tesseract from "tesseract.js";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
-import { MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT } from "@/constants";
+import {
+  MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT,
+  MAX_CHARACTERS_FOR_SUMMARY_CONTEXT,
+} from "@/constants";
 import {
   generate,
   generateCritical,
@@ -448,7 +451,7 @@ export async function summarizeText(
     keyPoints: z.array(z.string().min(1)).min(3).max(6),
   });
 
-  const excerpt = content.slice(0, MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT);
+  const excerpt = content.slice(0, MAX_CHARACTERS_FOR_SUMMARY_CONTEXT);
 
   const { text: prompt, settings } = await getPrompt("quiz", "study_brief", {
     excerpt,

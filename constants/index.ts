@@ -108,6 +108,15 @@ export const FAQ_ITEMS: FAQItem[] = [
 export const MAX_CHARACTERS_FOR_QUIZ_NOTE_CONTEXT = 999_999;
 
 /**
+ * Summarisation input cap. The quiz excerpt above can approach a million
+ * characters, which is roughly 200k+ tokens: the model burns its whole output
+ * budget on reasoning and returns no object (AI_NoObjectGeneratedError with
+ * finishReason length). The brief only needs the opening stretch, so cap it
+ * here instead of reusing the quiz constant.
+ */
+export const MAX_CHARACTERS_FOR_SUMMARY_CONTEXT = 15_000;
+
+/**
  * The one authored date both legal pages render, from spec 0016 AC-12. A
  * shared authored string rather than a rendered clock, so the two pages can
  * never drift and the value is set deliberately when the policies change.
