@@ -60,14 +60,16 @@ Use Muse Spark 1.3 through Meta Model API to generate structured questions with 
 
 **Done when:** a student uploads a course page, TiCLearn extracts concepts with page references, generates answerable questions grounded in that material, and stores source links with each question.
 
-spec ../specs/0028-page-referenced-answers.md
+spec ../specs/0028-page-referenced-answers/index.md
 
 - [x] Design it (spec): /solution-architect grounded question generation from course material
 
-- [ ] Build it: /feature-build grounded question generation from course material
-  - [ ] Migration, grounded prompt, generation with stored page refs (AC-1 AC-2 AC-4 AC-6)
-  - [ ] Grounded flag on the quiz route with per question cost and text only degrade (AC-4 AC-5)
-  - [ ] Page tag on the question card, admin prices, tests (AC-2 AC-4)
+- [x] Build it: /feature-build grounded question generation from course material
+  - [x] Migration, grounded prompt, generation with stored page refs (AC-1 AC-2 AC-4 AC-6)
+  - [x] Grounded flag on the quiz route with per question cost and text only degrade (AC-4 AC-5)
+  - [x] Page tag on the question card, admin prices, tests (AC-2 AC-4)
+
+  code in lib/grounded-pages.ts, lib/ai/index.ts, app/api/quizzes/generate/route.ts, lib/inngest/functions.ts, app/(dashboard)/quizzes/[id]/page.tsx
 
 ### 52. Targeted retry and progress update · Hackathon · planned · Prototype
 
@@ -91,7 +93,7 @@ The chat tutor answers show me the page number from the conversation note stored
 
 **Done when:** a student asks which page covers a topic and Tip names the page number from their note, debiting one lookup price only when pages come back.
 
-spec ../specs/0028-page-referenced-answers.md
+spec ../specs/0028-page-referenced-answers/index.md
 
 - [x] Design it (spec): covered in spec 0028 alongside feature 51
 

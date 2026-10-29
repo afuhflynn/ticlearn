@@ -19,6 +19,7 @@ const generateQuizSchema = z.object({
   timed: z.boolean().optional(),
   timeLimit: z.number().int().min(1).max(180).nullable().optional(),
   isPublic: z.boolean().optional(),
+  grounded: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -31,8 +32,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { noteId, questionCount, questionTypes, timed, timeLimit, isPublic } =
-      generateQuizSchema.parse(await req.json());
+    const {
+      noteId,
+      questionCount,
+      questionTypes,
+      timed,
+      timeLimit,
+      isPublic,
+      grounded,
+    } = generateQuizSchema.parse(await req.json());
 
     if (!noteId) {
       return NextResponse.json(
@@ -82,11 +90,12 @@ export async function POST(req: Request) {
     const settings = await getPlatformSettings();
     const wantsDebit = quizCreditsRequired(settings);
     const planValue = plan === "FREE" ? null : plan;
-    const quizCost = getEffectiveCreditCost(
-      settings.creditCostQuizGeneration,
-      planValue,
-      settings,
-    );
+    const resolvedQuestionCount = questionCount || 10;
+    const isGrounded = grounded === true;
+    const baseCost = isGrounded
+      ? settings.creditCostGroundedQuestion * resolvedQuestionCount
+      : settings.creditCostQuizGeneration;
+    const quizCost = getEffectiveCreditCost(baseCost, planValue, settings);
 
     if (wantsDebit) {
       const balance = await getUserCreditBalance(session.user.id);
@@ -102,7 +111,6 @@ export async function POST(req: Request) {
       }
     }
 
-    const resolvedQuestionCount = questionCount || 10;
     const resolvedQuestionTypes = questionTypes || "MIXED";
 
     const quiz = await prisma.quiz.create({
@@ -131,6 +139,7 @@ export async function POST(req: Request) {
           quizCost,
           userId: session.user.id,
           noteTitle: note.title,
+          grounded: isGrounded,
         },
       });
     } catch (inngestError) {

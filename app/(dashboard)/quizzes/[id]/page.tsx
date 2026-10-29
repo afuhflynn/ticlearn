@@ -36,6 +36,7 @@ type QuizQuestion = {
   correctAnswer: string;
   explanation?: string | null;
   order: number;
+  sourcePages?: number[];
 };
 
 type QuizResponse = {
@@ -545,9 +546,17 @@ export default function QuizPlayerPage() {
                 <CardTitle className="min-w-0 text-lg sm:text-xl">
                   Question {currentIndex + 1}
                 </CardTitle>
-                <Badge variant="outline" className="shrink-0">
-                  {currentQuestion.type}
-                </Badge>
+                <div className="flex shrink-0 flex-wrap items-center gap-2">
+                  <Badge variant="outline">{currentQuestion.type}</Badge>
+                  {currentQuestion.sourcePages &&
+                  currentQuestion.sourcePages.length > 0 ? (
+                    <Badge variant="secondary">
+                      {currentQuestion.sourcePages.length === 1
+                        ? `Page ${currentQuestion.sourcePages[0]}`
+                        : `Pages ${currentQuestion.sourcePages.join(", ")}`}
+                    </Badge>
+                  ) : null}
+                </div>
               </div>
               <CardDescription className="break-words text-base text-foreground">
                 <MathMarkdown content={currentQuestion.question} />

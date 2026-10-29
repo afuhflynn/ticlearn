@@ -256,6 +256,7 @@ model QuizQuestion {
   correctAnswer  String              @map("correct_answer") @db.Text
   explanation    String?             @db.Text
   order          Int
+  sourcePages    Int[]               @default([]) @map("source_pages")
   quiz           Quiz                @relation(fields: [quizId], references: [id], onDelete: Cascade)
   attemptAnswers QuizAttemptAnswer[]
 
@@ -637,6 +638,8 @@ model PlatformSettings {
 
   creditCostQuizGeneration    Int @default(50) @map("credit_cost_quiz_generation")
   creditCostPracticeQuestion  Int @default(5) @map("credit_cost_practice_question")
+  creditCostGroundedQuestion  Int @default(5) @map("credit_cost_grounded_question")
+  creditCostPageLookup        Int @default(1) @map("credit_cost_page_lookup")
   creditCostAiTutorMessage    Int @default(5) @map("credit_cost_ai_tutor_message")
   /// Credit charged for one useful web search or page read (spec 0022).
   creditCostWebSearch         Int @default(1) @map("credit_cost_web_search")
@@ -795,6 +798,7 @@ enum CreditType {
   BONUS // Admin or promotional bonuses
   CREDIT_PURCHASE // Credits purchased via Mobile Money (pay-as-you-go)
   WEB_SEARCH // Spending credits on one useful web search or page read
+  PAGE_LOOKUP // Spending credits on one useful note page lookup
 }
 
 enum CreditPurchaseStatus {

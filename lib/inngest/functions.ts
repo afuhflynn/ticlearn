@@ -196,7 +196,18 @@ export const generateQuiz = inngest.createFunction(
       quizCost,
       userId,
       noteTitle,
-    } = event.data;
+      grounded,
+    } = event.data as {
+      noteId: string;
+      quizId: string;
+      questionCount: number;
+      questionTypes: "MCQ" | "OPEN" | "MIXED";
+      wantsDebit: boolean;
+      quizCost: number;
+      userId: string;
+      noteTitle: string;
+      grounded?: boolean;
+    };
     console.log(
       `[Inngest] Generating quiz for note: ${noteId}, quiz: ${quizId}`,
     );
@@ -220,12 +231,29 @@ export const generateQuiz = inngest.createFunction(
         `[Inngest] Note extracted text length: ${note.extractedText.length} chars`,
       );
 
-      const { generateQuizFromNote, QUIZ_BATCH_SIZE } =
-        await import("@/lib/ai");
+      const { generateQuizFromNote, QUIZ_BATCH_SIZE } = await import(
+        "@/lib/ai"
+      );
+      const { formatPageContext, getGroundedPageInputs } = await import(
+        "@/lib/grounded-pages"
+      );
       console.log(`[Inngest] Calling AI to generate quiz...`);
 
       const totalQuestions = questionCount || 10;
       const resolvedTypes = questionTypes || "MIXED";
+      const isGrounded = grounded === true;
+      let pageContext = "No analyzed pages for this note.";
+      if (isGrounded) {
+        try {
+          const inputs = await getGroundedPageInputs(noteId);
+          pageContext = formatPageContext(inputs);
+        } catch (pageError) {
+          console.warn(
+            "[Inngest] Grounded page read failed, degrading to text only:",
+            pageError,
+          );
+        }
+      }
       // One model call cannot reliably emit a 50-100 question quiz: the
       // output cap truncates mid-JSON (schema fail-fast kills the walk) and
       // providers reject very large max_tokens outright. Batches of 15 stay
@@ -257,6 +285,8 @@ export const generateQuiz = inngest.createFunction(
                 questionCount: batchSize,
                 questionTypes: resolvedTypes,
                 batchLabel,
+                grounded: isGrounded,
+                pageContext: isGrounded ? pageContext : undefined,
               },
               note.userId,
             );
@@ -304,6 +334,10 @@ export const generateQuiz = inngest.createFunction(
               options: q.type === "MCQ" ? q.options : [],
               correctAnswer: q.correctAnswer,
               explanation: q.explanation,
+              sourcePages:
+                "sourcePages" in q && Array.isArray(q.sourcePages)
+                  ? q.sourcePages
+                  : [],
               order: index,
             })),
           },
