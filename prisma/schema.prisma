@@ -177,11 +177,47 @@ model Note {
   quizzes           Quiz[]
   topicNotes        TopicNote[]
   chatConversations ChatConversation[]
+  pages             Page[]
 
   @@index([userId])
   @@index([userId, createdAt])
   @@index([status])
   @@map("notes")
+}
+
+// One row per PDF page of an uploaded note. Used by the visual course page
+// analysis pipeline (spec 0027) to track which pages contain diagrams, charts,
+// tables or illustrations, and to store each page's visual analysis result.
+model Page {
+  id        String   @id @default(cuid()) @map("page_id")
+  noteId    String   @map("note_id")
+  pageNumber Int     @map("page_number")
+  pageImageUrl String? @map("page_image_url")
+  hasVisual Boolean  @default(false) @map("has_visual")
+  analysedAt DateTime? @map("analysed_at")
+  note      Note     @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  analyses  VisualAnalysis[]
+
+  @@unique([noteId, pageNumber])
+  @@index([noteId])
+  @@map("pages")
+}
+
+// One visual analysis result per page. One active analysis per page
+// (status pending, completed or failed; no re-analysis without a new row).
+model VisualAnalysis {
+  id             String              @id @default(cuid()) @map("visual_analysis_id")
+  pageId         String              @map("page_id")
+  visualType     VisualType        @map("visual_type")
+  description    String              @db.Text @map("description")
+  confidence     Float?              @map("confidence")
+  basetenCostXaf Int?                @map("baseten_cost_xaf")
+  status         VisualAnalysisStatus @default(PENDING) @map("status")
+  createdAt      DateTime           @default(now()) @map("created_at")
+  page           Page               @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([pageId])
+  @@map("visual_analyses")
 }
 
 model Quiz {
@@ -483,6 +519,20 @@ enum NoteProcessingStage {
   EXTRACTING
   SUMMARIZING
   INDEXING
+}
+
+enum VisualType {
+  DIAGRAM
+  CHART
+  TABLE
+  ILLUSTRATION
+  OTHER
+}
+
+enum VisualAnalysisStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
 enum QuizStatus {

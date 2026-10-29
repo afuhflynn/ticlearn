@@ -1,3 +1,4 @@
+import { del } from "@vercel/blob";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -95,6 +96,27 @@ export async function DELETE(
         console.error("UploadThing delete error:", fileDeleteError);
         return NextResponse.json(
           { error: "Failed to delete the uploaded file" },
+          { status: 502 },
+        );
+      }
+    }
+
+    // Page images rendered for visual analysis live in Blob, outside the
+    // Prisma cascade, so delete them before the note row goes.
+    const pages = await prisma.page.findMany({
+      where: { noteId: id },
+      select: { pageImageUrl: true },
+    });
+    const pageImageUrls = pages
+      .map((page) => page.pageImageUrl)
+      .filter((url): url is string => Boolean(url));
+    if (pageImageUrls.length > 0) {
+      try {
+        await del(pageImageUrls);
+      } catch (blobDeleteError) {
+        console.error("Blob page image delete error:", blobDeleteError);
+        return NextResponse.json(
+          { error: "Failed to delete the note page images" },
           { status: 502 },
         );
       }

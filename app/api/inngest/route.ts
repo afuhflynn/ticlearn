@@ -19,6 +19,7 @@ import {
   processNote,
 } from "@/lib/inngest/functions";
 import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
+import { visualAnalysisProcess } from "@/lib/inngest/visual-analysis-functions";
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
@@ -38,5 +39,6 @@ export const { GET, POST, PUT } = serve({
     generateAdminReport,
     dispatchEngagementCampaigns,
     pruneAppCache,
+    visualAnalysisProcess,
   ],
 });

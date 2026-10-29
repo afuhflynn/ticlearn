@@ -37,21 +37,37 @@ spec ../specs/0026-provider-aware-routing-meta-baseten.md
   - [x] Add usage writing and per-leg timeout fallback to OpenRouter (covers AC-2, AC-4, AC-5, AC-7, AC-8, AC-9)
   - [x] Verify streaming, tool calls, and the OpenRouter chain alternative; add tests (covers AC-3, AC-4, AC-5)
 
-### 50. Visual course page analysis · Hackathon · planned · needs a decision · Prototype
+### 50. Visual course page analysis · Hackathon · in-progress · Prototype
 
 Render a single PDF page to an image and send it to Baseten Muse Spark Open (meta-models/muse-spark-open-1026) for visual interpretation of diagrams, charts, and tables. Only send pages when visual understanding is useful, not every page automatically.
 
 **Done when:** one diagram page can be uploaded and analysed reliably, visual analysis feeds into question generation, Baseten credits cover the cost not student credits.
 
-- [ ] Design it (spec): /solution-architect visual course page analysis
+spec ../specs/0027-visual-course-page-analysis/index.md
 
-### 51. Grounded question generation from course material · Hackathon · planned · Prototype
+- [x] Design it (spec): /solution-architect visual course page analysis
+
+- [x] Build it: /feature-build visual course page analysis
+  - [x] Add Page and VisualAnalysis models to the Prisma schema plus migration (AC-3)
+  - [x] Add pdf.js page render and low-resolution non-text-ratio scan helpers (AC-1 AC-2 AC-8)
+  - [x] Create Inngest job visual-analysis/process with idempotent re-scan, Baseten call, and failed-page isolation (AC-1 AC-2 AC-6 AC-8)
+  - [x] Route Baseten cost through lib/ai/usage.ts as promotional credit and build owner-only GET /api/visual-analysis/[noteId] (AC-5 AC-7)
+  - [x] Add tests for happy path, failure skip, and owner-only authorization (all ACs)
+
+### 51. Grounded question generation from course material · Hackathon · in-progress · Prototype
 
 Use Muse Spark 1.3 through Meta Model API to generate structured questions with answer keys, rubrics, concept tags, and source page references from uploaded course material. Preserve source traceability.
 
 **Done when:** a student uploads a course page, TiCLearn extracts concepts with page references, generates answerable questions grounded in that material, and stores source links with each question.
 
-- [ ] Design it (spec): /solution-architect grounded question generation from course material
+spec ../specs/0028-page-referenced-answers.md
+
+- [x] Design it (spec): /solution-architect grounded question generation from course material
+
+- [ ] Build it: /feature-build grounded question generation from course material
+  - [ ] Migration, grounded prompt, generation with stored page refs (AC-1 AC-2 AC-4 AC-6)
+  - [ ] Grounded flag on the quiz route with per question cost and text only degrade (AC-4 AC-5)
+  - [ ] Page tag on the question card, admin prices, tests (AC-2 AC-4)
 
 ### 52. Targeted retry and progress update · Hackathon · planned · Prototype
 
@@ -68,3 +84,17 @@ Record a three minute demo showing upload → concept mapping → question → w
 **Done when:** demo recorded, repository public, submission complete, HACKATHON.md updated with evaluation results and demo paths.
 
 - [ ] Design it (spec): /solution-architect hackathon demo and submission
+
+### 54. Chat page lookup · Hackathon · in-progress · Prototype · from spec 0028
+
+The chat tutor answers show me the page number from the conversation note stored pages, citing page numbers from real data instead of guessing.
+
+**Done when:** a student asks which page covers a topic and Tip names the page number from their note, debiting one lookup price only when pages come back.
+
+spec ../specs/0028-page-referenced-answers.md
+
+- [x] Design it (spec): covered in spec 0028 alongside feature 51
+
+- [ ] Build it: /feature-build chat page lookup
+  - [ ] getNotePages tool with owner scoped reads, pending shape, per useful call debit (AC-3 AC-4 AC-5 AC-7)
+  - [ ] Page citation line in the chat system prompt (AC-3)

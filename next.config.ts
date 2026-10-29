@@ -4,7 +4,10 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   reactCompiler: true,
   allowedDevOrigins: ["10.202.255.83"],
-  serverExternalPackages: ["tesseract.js"],
+  // Native-heavy packages Turbopack cannot bundle. tesseract.js does OCR in
+  // the note pipeline; @napi-rs/canvas renders PDF pages for the visual
+  // course page analysis scan (spec 0027).
+  serverExternalPackages: ["tesseract.js", "@napi-rs/canvas"],
   async headers() {
     return [
       {
