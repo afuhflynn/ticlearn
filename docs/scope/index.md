@@ -72,6 +72,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 52 | Targeted retry and progress update | Hackathon | in-progress |
 | 53 | Hackathon demo and submission | Hackathon | planned |
 | 54 | Chat page lookup | Hackathon | in-progress |
+| 55 | Visual output in chat and quizzes | Hackathon | in-progress |
 
 ## Epics
 
@@ -85,7 +86,7 @@ Each epic is one file with its own feature sections.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
 - **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
 - **[Commerce](commerce.md)** · 7 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites, conversion analytics and the in app subscription page.
-- **[Hackathon](hackathon.md)** · 6 features, Hackathon · the Meta Global AI Developer Hackathon build: provider routing to Meta and Baseten, visual course page analysis, grounded question generation, targeted retry and progress, demo and submission.
+- **[Hackathon](hackathon.md)** · 7 features, Hackathon · the Meta Global AI Developer Hackathon build: provider routing to Meta and Baseten, visual course page analysis, grounded question generation, targeted retry and progress, demo and submission.
 
 ## Phasing in one line each
 
@@ -108,6 +109,8 @@ Out of scope for the current build pass, kept so the plan stays honest. Each is 
 - **Community and affiliate pages** · exist today and were carried over. Both are built around secondary school content and need rethinking or removal alongside the pivot. needs a decision
 - **Price sensitivity survey** · the research found no Cameroonian student willingness to pay study. A short survey in the first weeks of the launch would replace every inferred price with a real one. no
 - **A Redis or Upstash cache backend** · deferred by choice for now, until the shared table has produced a real hit rate. The trigger is already decided in spec 0010: move when the p95 cache read crosses 30 ms, when hit volume passes roughly a million reads a month, or when we want Redis for a second job such as rate limiting or presence. The store sits behind `lib/cache/`, so the swap is one file and a dependency. no
+- **Visual draw pricing** · price drawn diagrams with a tunable when prototype ends; free with a per key daily cap until then. from spec 0030. no
+- **Share card art** · render visuals on public share cards once public access rules exist; row 55 stays text only in v1. from spec 0030. needs a decision
 
 ## Research
 
