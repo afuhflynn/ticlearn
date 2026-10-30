@@ -107,5 +107,7 @@ spec ../specs/0028-page-referenced-answers/index.md
 - [x] Design it (spec): covered in spec 0028 alongside feature 51
 
 - [ ] Build it: /feature-build chat page lookup
-  - [ ] getNotePages tool with owner scoped reads, pending shape, per useful call debit (AC-3 AC-4 AC-5 AC-7)
-  - [ ] Page citation line in the chat system prompt (AC-3)
+  - [x] getNotePages tool with owner scoped reads, pending shape, per useful call debit (AC-3 AC-4 AC-5 AC-7)
+  - [x] Page citation line in the chat system prompt (AC-3)
+
+  code in lib/ai/tools.ts, prompts/tools/get_note_pages.md, prompts/chat/chat_system.md, lib/chat/activity-labels.ts, app/api/ai/chat/route.ts

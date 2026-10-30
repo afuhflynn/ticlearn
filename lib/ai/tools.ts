@@ -19,6 +19,7 @@ import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
+import { getGroundedPageInputs } from "@/lib/grounded-pages";
 import { prisma } from "@/lib/prisma";
 import { getToolDescription } from "@/lib/prompts/loader";
 import { runReadPage, runWebSearch } from "@/lib/web-search";
@@ -30,6 +31,7 @@ import {
 
 type ToolFactoryOptions = {
   userId: string;
+  conversationId?: string;
 };
 
 const notePreviewSelect = {
@@ -57,7 +59,7 @@ const quizPreviewSelect = {
   updatedAt: true,
 } as const;
 
-export function createChatTools({ userId }: ToolFactoryOptions) {
+export function createChatTools({ userId, conversationId }: ToolFactoryOptions) {
   const policyContext = createToolPolicyContext(userId);
 
   // Per request, not per conversation. A five step agent turn must not multiply
@@ -577,6 +579,106 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
     },
   });
 
+  const getNotePagesTool = tool({
+    description: getToolDescription("get_note_pages"),
+    inputSchema: z.object({}),
+    execute: async (
+      _args,
+      options?: { toolCallId?: string },
+    ) => {
+      if (!conversationId) {
+        throw new Error(
+          "This conversation has no note attached. Answer from the typed question instead.",
+        );
+      }
+
+      const conversation = await prisma.chatConversation.findFirst({
+        where: { id: conversationId, userId },
+        select: { noteId: true },
+      });
+      const noteId = conversation?.noteId;
+      if (!noteId) {
+        throw new Error(
+          "This conversation has no note attached. Answer from the typed question instead.",
+        );
+      }
+
+      const note = await prisma.note.findFirst({
+        where: { id: noteId, userId },
+        select: { id: true, title: true },
+      });
+      if (!note) {
+        throw new Error("Note not found.");
+      }
+
+      const inputs = await getGroundedPageInputs(note.id);
+      if (inputs.length === 0) {
+        const [pageCount, pendingCount] = await Promise.all([
+          prisma.page.count({ where: { noteId: note.id } }),
+          prisma.visualAnalysis.count({
+            where: {
+              page: { noteId: note.id },
+              status: { in: ["PENDING"] },
+            },
+          }),
+        ]);
+        return {
+          pages: [],
+          scanPending: pageCount === 0 || pendingCount > 0,
+          noteTitle: note.title,
+        };
+      }
+
+      const subscription = await prisma.subscription.findFirst({
+        where: { userId },
+        orderBy: { createdAt: "desc" },
+      });
+      const plan = resolvePlan(subscription);
+      const settings = await getPlatformSettings();
+      const planValue = plan === "FREE" ? null : plan;
+      const lookupCost = getEffectiveCreditCost(
+        settings.creditCostPageLookup,
+        planValue,
+        settings,
+      );
+
+      // No balance pre-check here: spendCredits enforces the balance itself
+      // and answers an already debited call id without charging again, so a
+      // retry always reaches that idempotent path.
+      if (lookupCost > 0) {
+        const toolCallId =
+          typeof options?.toolCallId === "string"
+            ? options.toolCallId
+            : undefined;
+        try {
+          await spendCredits({
+            userId,
+            amount: lookupCost,
+            type: "PAGE_LOOKUP",
+            description: `Page lookup in note: ${note.title}`,
+            referenceId: toolCallId
+              ? `pagelookup:${toolCallId}`
+              : undefined,
+          });
+        } catch (err) {
+          console.error("[getNotePages] Credit debit failed:", err);
+          throw err;
+        }
+      }
+
+      return {
+        pages: inputs.map((page) => ({
+          pageNumber: page.pageNumber,
+          visualType: page.visualType,
+          description: page.description,
+          confidence: page.confidence,
+        })),
+        scanPending: false,
+        noteTitle: note.title,
+      };
+    },
+  });
+
   const suggestRepliesTool = tool({
     description: getToolDescription("suggest_replies"),
     inputSchema: z.object({
@@ -639,6 +741,11 @@ export function createChatTools({ userId }: ToolFactoryOptions) {
     createQuiz: wrapTool(
       createQuizTool,
       CREATE_QUIZ_TOOL_POLICIES,
+      policyContext,
+    ),
+    getNotePages: wrapTool(
+      getNotePagesTool,
+      DEFAULT_CHAT_TOOL_POLICIES,
       policyContext,
     ),
     // No policy applies: the tool touches no user data, only the model's own

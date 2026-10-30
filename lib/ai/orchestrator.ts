@@ -902,17 +902,38 @@ export async function agent(opts: AgentOptions): Promise<AgentResult> {
         } as never);
 
         // Execute each tool and append results
-        const toolFns = opts.tools as Record<
-          string,
-          (args: unknown) => Promise<unknown>
-        >;
         for (const toolCall of toolCalls) {
           let toolResult: unknown;
           try {
-            const fn = toolFns[toolCall.name];
-            toolResult = fn
-              ? await fn(toolCall.args)
-              : { error: `Unknown tool: ${toolCall.name}` };
+            const entry = (opts.tools as Record<string, unknown>)[
+              toolCall.name
+            ];
+            if (typeof entry === "function") {
+              toolResult = await (
+                entry as (
+                  args: unknown,
+                  opts: unknown,
+                ) => Promise<unknown>
+              )(toolCall.args, { toolCallId: toolCall.id });
+            } else if (
+              entry !== null &&
+              typeof entry === "object" &&
+              typeof (entry as { execute?: unknown }).execute ===
+                "function"
+            ) {
+              // SDK style tools carry their own execute and expect the call
+              // id beside the args, so idempotent tools debit only once.
+              toolResult = await (
+                entry as {
+                  execute: (
+                    args: unknown,
+                    opts: unknown,
+                  ) => Promise<unknown>;
+                }
+              ).execute(toolCall.args, { toolCallId: toolCall.id });
+            } else {
+              toolResult = { error: `Unknown tool: ${toolCall.name}` };
+            }
           } catch (toolError) {
             toolResult = {
               error:
