@@ -71,13 +71,22 @@ spec ../specs/0028-page-referenced-answers/index.md
 
   code in lib/grounded-pages.ts, lib/ai/index.ts, app/api/quizzes/generate/route.ts, lib/inngest/functions.ts, app/(dashboard)/quizzes/[id]/page.tsx
 
-### 52. Targeted retry and progress update · Hackathon · planned · Prototype
+### 52. Targeted retry and progress update · Hackathon · in-progress · Prototype
 
 When a student answers wrong, use Muse Spark 1.3 to explain the misconception with source-backed evidence and generate a different follow-up exercise testing the same concept. Save attempts and update the existing progress record.
 
 **Done when:** a wrong answer leads to grounded feedback, a targeted retry exercise is offered, completing the retry updates the student's progress or weakest topic record.
 
-- [ ] Design it (spec): /solution-architect targeted retry and progress update
+- [x] Design it (spec): /solution-architect targeted retry and progress update
+
+spec ../specs/0029-targeted-retry-progress-update/index.md
+
+- [ ] Build it: /feature-build targeted retry and progress update
+  - [x] Storage plus prompt plus generation helper with fallback and timeouts (covers AC-1, AC-2, AC-5)
+  - [x] Two routes plus owner only read with cap and usage log (covers AC-1, AC-4, AC-6)
+  - [x] Review panel plus submit with metadata update plus tests (covers AC-1, AC-2, AC-3)
+
+  code in app/api/retries, components/retries/retry-panel.tsx, lib/retries, prompts/retry/explain_and_retry.md
 
 ### 53. Hackathon demo and submission · Hackathon · planned · Prototype
 

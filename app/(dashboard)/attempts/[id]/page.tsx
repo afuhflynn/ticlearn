@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { MathMarkdown } from "@/components/math-markdown";
+import { RetryPanel } from "@/components/retries/retry-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -197,6 +198,7 @@ export default function AttemptDetailPage() {
                   />
                 </div>
               </div>
+              {!answer.isCorrect ? <RetryPanel answerId={answer.id} /> : null}
             </CardContent>
           </Card>
         ))}

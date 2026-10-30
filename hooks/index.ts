@@ -55,6 +55,7 @@ export {
   useQuizzes,
   useSubmitQuizAttempt,
 } from "./useQuizzes";
+export { useCreateRetry, useRetry, useSubmitRetry } from "./useRetries";
 export { useCheckLimit, useUsage } from "./useUsage";
 export { useUserSearch } from "./useUserSearch";
 export { useUserStats } from "./useUserStats";

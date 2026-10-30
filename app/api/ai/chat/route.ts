@@ -176,8 +176,8 @@ async function saveMessage(input: {
     if (
       input.id &&
       error instanceof Error &&
-      'code' in error &&
-      (error as { code?: string }).code === 'P2002'
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
     ) {
       const existing = await prisma.chatMessage.findUnique({
         where: { id: input.id },
@@ -335,7 +335,8 @@ type ChatDocAttachment = {
 
 export function chatDocAttachments(
   parts: UIMessage["parts"],
-): ChatDocAttachment[] {  if (!Array.isArray(parts)) return [];
+): ChatDocAttachment[] {
+  if (!Array.isArray(parts)) return [];
   const docs: ChatDocAttachment[] = [];
   for (const part of parts) {
     if (!part || typeof part !== "object") continue;
