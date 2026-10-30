@@ -109,3 +109,21 @@ spec ../specs/0028-page-referenced-answers/index.md
 - [ ] Build it: /feature-build chat page lookup
   - [ ] getNotePages tool with owner scoped reads, pending shape, per useful call debit (AC-3 AC-4 AC-5 AC-7)
   - [ ] Page citation line in the chat system prompt (AC-3)
+
+### 55. Visual output in chat and quizzes · Hackathon · in-progress
+
+Students see the visuals where they study instead of reading about them. First the saved page art from their notes appears in chat and quiz review, then the model draws fresh diagrams inline for the idea at hand. This stays separate from feature 54, which cites page numbers as text only.
+**Done when:** a student who asks about a diagram sees the saved page image in chat, a quiz review shows the page art beside the related question, and the model can draw a fresh labeled diagram inline that renders on a small phone.
+
+spec ../specs/0030-visual-output-chat-quizzes/index.md
+
+- [x] Design it (spec): /solution-architect visual output in chat and quizzes
+
+- [ ] Build it: /feature-build visual output in chat and quizzes
+  - [ ] Artifact storage plus draw prompt plus generation helper (covers AC-4, AC-5, AC-6)
+  - [ ] Generate plus unified read endpoints with owner checks plus cap plus usage log (covers AC-1, AC-4, AC-5, AC-6)
+  - [ ] Chat art card with zoom plus skeleton plus retry (covers AC-1, AC-7)
+  - [ ] Quiz plus notes placement with read time resolve (covers AC-2, AC-3, AC-7)
+  - [ ] Tests for happy path plus fallback plus foreign 404 plus cap (covers all ACs)
+- [ ] Verify it: /verify-release visual output in chat and quizzes
+- [ ] Test it: /test-engineer visual output in chat and quizzes
