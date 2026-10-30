@@ -185,12 +185,13 @@ describe("getNotePages useful lookup (AC-3 AC-4)", () => {
 
   it("blocks with a plain message when the balance cannot cover the lookup", async () => {
     vi.mocked(getGroundedPageInputs).mockResolvedValue(INPUTS);
-    vi.mocked(getUserCreditBalance).mockResolvedValue(0);
+    vi.mocked(spendCredits).mockRejectedValue(
+      new Error("Insufficient credits. Need 1, have 0."),
+    );
 
     await expect(
       tool()({}, { toolCallId: "t-broke", messages: [] }),
     ).rejects.toThrow("Insufficient credits");
-    expect(spendCredits).not.toHaveBeenCalled();
   });
 });
 

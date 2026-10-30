@@ -642,15 +642,9 @@ export function createChatTools({ userId, conversationId }: ToolFactoryOptions) 
         settings,
       );
 
-      if (lookupCost > 0) {
-        const balance = await getUserCreditBalance(userId);
-        if (balance < lookupCost) {
-          throw new Error(
-            `Insufficient credits. Need ${lookupCost} credits to look up page numbers.`,
-          );
-        }
-      }
-
+      // No balance pre-check here: spendCredits enforces the balance itself
+      // and answers an already debited call id without charging again, so a
+      // retry always reaches that idempotent path.
       if (lookupCost > 0) {
         const toolCallId =
           typeof options?.toolCallId === "string"
