@@ -13,6 +13,7 @@ export const queryKeys = {
   quizzes: ["quizzes"] as const,
   quiz: (id: string) => ["quizzes", id] as const,
   quizAttempts: (quizId: string) => ["quizzes", quizId, "attempts"] as const,
+  retry: (answerId: string) => ["retries", answerId] as const,
 
   // User Stats
   userStats: ["user-stats"] as const,

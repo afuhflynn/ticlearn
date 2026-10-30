@@ -140,6 +140,14 @@ export const api = {
         apiRequest<{ quiz: Quiz }>(`/quizzes/${id}`, { method: "GET" }),
     },
 
+    retries: {
+      getByAnswer: (answerId: string) =>
+        apiRequest<{ retry: unknown }>(
+          `/retries?answerId=${encodeURIComponent(answerId)}`,
+          { method: "GET" },
+        ),
+    },
+
     usage: () => apiRequest<UsageData>("/usage", { method: "GET" }),
 
     credits: () =>
@@ -320,6 +328,19 @@ export const api = {
         apiRequest<{ attempts: unknown[] }>(
           `/quizzes/attempts/recent${limit ? `?limit=${limit}` : ""}`,
           { method: "GET" },
+        ),
+    },
+
+    retries: {
+      create: (answerId: string) =>
+        apiRequest<{ retry: unknown }>("/retries", {
+          method: "POST",
+          body: { answerId },
+        }),
+      submit: (id: string, userAnswer: string) =>
+        apiRequest<{ isCorrect: boolean; correctAnswer: string }>(
+          `/retries/${id}/submit`,
+          { method: "POST", body: { userAnswer } },
         ),
     },
 

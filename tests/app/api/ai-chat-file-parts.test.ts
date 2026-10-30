@@ -198,11 +198,7 @@ describe("enrichLatestUserMessage", () => {
   });
 
   it("drops document file parts and appends the extracted text on the newest user message", () => {
-    const enriched = enrichLatestUserMessage(
-      thread(),
-      "extracted doc text",
-      1,
-    );
+    const enriched = enrichLatestUserMessage(thread(), "extracted doc text", 1);
 
     expect(enriched).toHaveLength(2);
     // The older turn is untouched.
@@ -210,8 +206,22 @@ describe("enrichLatestUserMessage", () => {
     const parts = enriched[1]?.parts as unknown[];
     // Image stays, docx goes, extracted text lands last.
     expect(parts).toHaveLength(3);
-    expect(parts.some((part) => (part as { type?: string }).type === "file" && (part as { mediaType?: string }).mediaType === "image/png")).toBe(true);
-    expect(parts.some((part) => (part as { type?: string }).type === "file" && (part as { mediaType?: string }).mediaType?.includes("wordprocessingml"))).toBe(false);
+    expect(
+      parts.some(
+        (part) =>
+          (part as { type?: string }).type === "file" &&
+          (part as { mediaType?: string }).mediaType === "image/png",
+      ),
+    ).toBe(true);
+    expect(
+      parts.some(
+        (part) =>
+          (part as { type?: string }).type === "file" &&
+          (part as { mediaType?: string }).mediaType?.includes(
+            "wordprocessingml",
+          ),
+      ),
+    ).toBe(false);
     expect(parts.at(-1)).toMatchObject({
       type: "text",
       text: "extracted doc text",
@@ -233,11 +243,14 @@ describe("documentTextForChatTurn", () => {
       vi.fn(async () => ({
         ok: true,
         arrayBuffer: async () =>
-          new TextEncoder().encode("The mitochondria is the powerhouse.").buffer,
+          new TextEncoder().encode("The mitochondria is the powerhouse.")
+            .buffer,
       })),
     );
 
-    const { text, docFileCount } = await documentTextForChatTurn([textPart] as never);
+    const { text, docFileCount } = await documentTextForChatTurn([
+      textPart,
+    ] as never);
 
     expect(docFileCount).toBe(1);
     expect(text).toContain("pasted.txt");
@@ -253,7 +266,9 @@ describe("documentTextForChatTurn", () => {
       }),
     );
 
-    const { text, docFileCount } = await documentTextForChatTurn([textPart] as never);
+    const { text, docFileCount } = await documentTextForChatTurn([
+      textPart,
+    ] as never);
 
     expect(docFileCount).toBe(1);
     expect(text).toContain("could not be read");

@@ -56,6 +56,7 @@ model User {
   notes                Note[]
   quizzes              Quiz[]
   quizAttempts         QuizAttempt[]
+  quizRetries          QuizRetry[]
   userStats            UserStats[]
   subscriptions        Subscription[]
   ratings              Rating[]
@@ -238,6 +239,7 @@ model Quiz {
   note          Note?          @relation(fields: [noteId], references: [id], onDelete: Cascade)
   questions     QuizQuestion[]
   attempts      QuizAttempt[]
+  retries       QuizRetry[]
 
   @@index([userId])
   @@index([userId, createdAt])
@@ -279,6 +281,7 @@ model QuizAttempt {
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   quiz           Quiz?               @relation(fields: [quizId], references: [id], onDelete: SetNull)
   answers        QuizAttemptAnswer[]
+  retries        QuizRetry[]
 
   @@index([userId])
   @@index([userId, completedAt])
@@ -300,10 +303,45 @@ model QuizAttemptAnswer {
   explanation   String?       @db.Text
   attempt       QuizAttempt   @relation(fields: [attemptId], references: [id], onDelete: Cascade)
   quizQuestion  QuizQuestion? @relation(fields: [questionId], references: [id], onDelete: SetNull)
+  retries       QuizRetry[]   @relation("AnswerRetries")
 
   @@index([attemptId])
   @@index([questionId])
   @@map("quiz_attempt_answers")
+}
+
+model QuizRetry {
+  id                 String            @id @default(cuid())
+  userId             String            @map("user_id")
+  attemptId          String            @map("attempt_id")
+  answerId           String            @map("answer_id")
+  quizId             String            @map("quiz_id")
+  questionId         String?           @map("question_id")
+  concept            String            @map("concept") @db.VarChar(80)
+  sourcePages        Int[]             @default([]) @map("source_pages")
+  sourceExcerpt      String?           @map("source_excerpt") @db.Text
+  feedbackMd         String?           @map("feedback_md") @db.Text
+  retryQuestion      String            @map("retry_question") @db.Text
+  retryOptions       String[]          @map("retry_options")
+  retryCorrectAnswer String            @map("retry_correct_answer") @db.Text
+  status             String            @default("pending") @map("status") @db.VarChar(20)
+  isCorrect          Boolean?          @map("is_correct")
+  userAnswer         String?           @map("user_answer") @db.Text
+  model              String            @map("model")
+  latencyMs          Int?              @map("latency_ms")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  completedAt        DateTime?         @map("completed_at")
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempt            QuizAttempt       @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+  answer             QuizAttemptAnswer @relation("AnswerRetries", fields: [answerId], references: [id], onDelete: Cascade)
+  quiz               Quiz              @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([attemptId])
+  @@index([answerId, createdAt])
+  @@index([quizId])
+  @@index([status])
+  @@map("quiz_retries")
 }
 
 model UserStats {

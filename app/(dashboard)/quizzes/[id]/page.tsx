@@ -11,6 +11,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MathMarkdown } from "@/components/math-markdown";
+import { RetryPanel } from "@/components/retries/retry-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,6 +52,7 @@ type QuizResponse = {
 };
 
 type AttemptAnswer = {
+  id?: string;
   questionId: string;
   question: string;
   userAnswer: string;
@@ -518,6 +520,9 @@ export default function QuizPlayerPage() {
                         />
                       </div>
                     </div>
+                    {!answer?.isCorrect && answer?.id ? (
+                      <RetryPanel answerId={answer.id} />
+                    ) : null}
                   </CardContent>
                 </Card>
               );
