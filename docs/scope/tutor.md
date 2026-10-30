@@ -61,3 +61,27 @@ The chat surface is restyled to a clean modern look inspired by the reference sc
 - [ ] Test it: `/test-engineer chat interface redesign`
 
 (basis: spec 0024 · restyle only, no data model or endpoint change; behaviour surface carried over from spec 0020)
+
+### 56. Quiz practice inside chat · in-progress
+
+Tip runs the whole quiz inside the conversation instead of sending the student away: it asks setup questions (topic, count, timed or not) with tappable options, renders one question at a time with selectable options or typed answers, times the attempt when timed, marks each answer as it lands, updates attempts plus retakes, and gives full correction at the end. When a quiz needs the full page (long diagrams, careful review), Tip says so and links the separate UI instead. Retrieval first: the student answers in their own words before Tip explains, so practice proves learning instead of handing over answers. This is not the dropped standalone exam runner (features 26, 27); it lives and dies inside the chat thread.
+**Done when:** a student can say setup a quiz in chat, answer setup questions by tap or text, practice timed or untimed with the clock tracked and enforced, see auto marking plus running score plus updated attempts and retakes, get full correction at completion, and hear a clear handoff when the separate quiz page fits better.
+
+spec ../specs/0031-quiz-practice-inside-chat/index.md
+
+- [x] Design it (spec): /solution-architect quiz practice inside chat
+
+- [ ] Build it: /feature-build quiz practice inside chat
+  - [ ] Migration plus setup flow through reused reply chips (covers AC-1, AC-3, AC-4, AC-8)
+  - [ ] Runner card with rebuild from thread (covers AC-2, AC-5)
+  - [ ] Submit plus mark plus correction plus reprompt (covers AC-3, AC-6)
+  - [ ] Handoff plus caps parity wiring (covers AC-7, AC-8)
+  - [ ] Tests for happy path plus reload plus foreign 404 plus caps (covers all ACs)
+- [ ] Verify it: /verify-release quiz practice inside chat
+- [ ] Test it: /test-engineer quiz practice inside chat
+
+### 57. Tutor voice and citation habit · Slice 2 · planned · needs a decision
+
+Tip reads like a teacher, not a search result. It names the note once per topic, then teaches without repeating from your notes chapter X on every turn, keeping citations short (a page tag or a short quote only where proof matters). Groundedness stays: claims still trace to the note, but the trace stops interrupting the lesson. This revisits the quote plus name rule in the chat prompt and its overlap with the page citation work in feature 54.
+**Done when:** a revision chat names the note once, then teaches across turns with no repeated from your notes preamble, citations appear only as short page tags or quotes where proof matters, and answers still trace to note content when checked.
+- [ ] Design it (spec): /solution-architect tutor voice and citation habit
