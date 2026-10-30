@@ -139,12 +139,22 @@ export function perAttemptBudget(totalMs: number, remaining: number): number {
 export async function withDeadline<T>(
   ms: number,
   run: (signal: AbortSignal) => Promise<T>,
+  outer?: AbortSignal,
 ): Promise<T> {
   const controller = new AbortController();
+  const onOuterAbort = () => controller.abort(outer?.reason);
+  if (outer) {
+    if (outer.aborted) {
+      controller.abort(outer.reason);
+    } else {
+      outer.addEventListener("abort", onOuterAbort, { once: true });
+    }
+  }
   const timer = setTimeout(() => controller.abort(), ms);
   try {
     return await run(controller.signal);
   } finally {
     clearTimeout(timer);
+    outer?.removeEventListener("abort", onOuterAbort);
   }
 }
