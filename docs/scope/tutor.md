@@ -80,8 +80,14 @@ spec ../specs/0031-quiz-practice-inside-chat/index.md
 - [ ] Verify it: /verify-release quiz practice inside chat
 - [x] Test it: /test-engineer quiz practice inside chat
 
-### 57. Tutor voice and citation habit · Slice 2 · planned · needs a decision
+### 57. Tutor voice and citation habit · Slice 2 · in-progress
 
 Tip reads like a teacher, not a search result. It names the note once per topic, then teaches without repeating from your notes chapter X on every turn, keeping citations short (a page tag or a short quote only where proof matters). Groundedness stays: claims still trace to the note, but the trace stops interrupting the lesson. This revisits the quote plus name rule in the chat prompt and its overlap with the page citation work in feature 54.
 **Done when:** a revision chat names the note once, then teaches across turns with no repeated from your notes preamble, citations appear only as short page tags or quotes where proof matters, and answers still trace to note content when checked.
-- [ ] Design it (spec): /solution-architect tutor voice and citation habit
+- [x] Design it (spec): /solution-architect tutor voice and citation habit · spec ../specs/0032-tutor-voice-citation-habit/index.md
+- [x] Build it: /feature-build tutor voice and citation habit
+  - [x] Chat prompt to version 14 plus examples in the voice examples file (covers AC-1, AC-2, AC-3, AC-5, AC-7)
+  - [x] Chat voice tests for naming, preamble, quote, and page source (covers AC-1, AC-2, AC-4, AC-7)
+  - [x] Quiz correction parity plus thin evidence pivot plus lint and suite (covers AC-5, AC-6) · code in prompts/chat/chat_system.md, prompts/chat/voice_examples.md, prompts/grade/, prompts/retry/, tests/prompts/tutor-voice.test.ts
+- [ ] Verify it: /verify-release tutor voice and citation habit
+- [ ] Test it: /test-engineer tutor voice and citation habit

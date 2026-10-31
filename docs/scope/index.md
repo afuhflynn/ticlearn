@@ -51,7 +51,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 20 | Tool controls and course skills | Slice 2 | planned |
 | 47 | Chat interface redesign | Slice 2 | in-progress |
 | 56 | Quiz practice inside chat | Slice 2 | in-progress |
-| 57 | Tutor voice and citation habit | Slice 2 | planned |
+| 57 | Tutor voice and citation habit | Slice 2 | in-progress |
 | 21 | Note upload experience | Slice 3 | planned |
 | 22 | Storage move to Neon object storage | Slice 3 | planned |
 | 23 | Quiz generation flow | Slice 3 | planned |
