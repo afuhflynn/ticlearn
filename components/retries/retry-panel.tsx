@@ -8,7 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateRetry, useRetry, useSubmitRetry } from "@/hooks";
 
-export function RetryPanel({ answerId }: { answerId: string }) {
+export function RetryPanel({
+  answerId,
+  showArt = true,
+}: {
+  answerId: string;
+  /** False on the quiz results page, which already shows its own QuizArt. */
+  showArt?: boolean;
+}) {
   // The pick belongs to one retry row. Keying it by retry id keeps a choice
   // made on an older retry (or on another answer's panel) from leaking into
   // the current one after a refetch or a fresh create.
@@ -134,7 +141,7 @@ export function RetryPanel({ answerId }: { answerId: string }) {
             <p className="break-words">{retry.sourceExcerpt.slice(0, 600)}</p>
           </div>
         ) : null}
-        <QuizArt answerId={answerId} concept={retry.concept} />
+        {showArt ? <QuizArt answerId={answerId} concept={retry.concept} /> : null}
         <div>
           <p className="mb-2 text-sm font-medium">
             <MathMarkdown content={retry.retryQuestion} />

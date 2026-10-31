@@ -715,9 +715,19 @@ export function createChatTools({ userId, conversationId }: ToolFactoryOptions) 
       const clean = concept.trim().slice(0, 160);
       let context = "";
       let resolvedNoteId: string | null = null;
-      if (noteId) {
+      // The model may omit the note; fall back to the conversation's note
+      // so drawings stay grounded and linked, exactly like getNotePages.
+      let effectiveNoteId = noteId ?? null;
+      if (!effectiveNoteId && conversationId) {
+        const conversation = await prisma.chatConversation.findFirst({
+          where: { id: conversationId, userId },
+          select: { noteId: true },
+        });
+        effectiveNoteId = conversation?.noteId ?? null;
+      }
+      if (effectiveNoteId) {
         const note = await prisma.note.findFirst({
-          where: { id: noteId, userId },
+          where: { id: effectiveNoteId, userId },
           select: { id: true, summary: true, keyPoints: true },
         });
         if (!note) return { ok: false, reason: "missing" };

@@ -97,9 +97,10 @@ describe("GET /api/artifacts (spec 0030)", () => {
   it("returns scans plus drawn rows in read order for the owner (covers: AC-1, AC-3)", async () => {
     session();
     noteFindFirst.mockResolvedValue({ id: "note-1" });
+    // The read filters null images in the query, so the mock returns only
+    // what the database would: image pages in page order.
     pageFindMany.mockResolvedValue([
       { pageNumber: 1, pageImageUrl: "/demo/p1.svg", hasVisual: true },
-      { pageNumber: 2, pageImageUrl: null, hasVisual: false },
       { pageNumber: 3, pageImageUrl: "/demo/p3.svg", hasVisual: true },
     ]);
     pageCount.mockResolvedValue(3);
@@ -135,6 +136,12 @@ describe("GET /api/artifacts (spec 0030)", () => {
       format: "mermaid",
       sourcePage: 1,
     });
+    // Null-image pages never reach the read: the filter lives in the query.
+    expect(pageFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { noteId: "note-1", pageImageUrl: { not: null } },
+      }),
+    );
   });
 
   it("returns drawn retry art for the owner answer (covers: AC-2)", async () => {

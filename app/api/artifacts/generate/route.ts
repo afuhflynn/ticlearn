@@ -38,6 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
   }
+  let groundedContext = context;
   if (noteId) {
     const note = await prisma.note.findFirst({
       where: { id: noteId, userId },
@@ -46,6 +47,12 @@ export async function POST(req: Request) {
     if (!note) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
+    // Ground the draw in the note itself; fall back to caller context.
+    const noteContext = [note.summary ?? "", note.extractedText ?? ""]
+      .join("\n")
+      .trim()
+      .slice(0, 4000);
+    if (noteContext) groundedContext = noteContext;
   }
 
   const result = await generateVisualArtifact({
@@ -53,7 +60,7 @@ export async function POST(req: Request) {
     answerId: answerId ?? null,
     noteId: noteId ?? null,
     concept,
-    context,
+    context: groundedContext,
   });
   if (!result.ok) {
     const status = result.reason === "cap" ? 429 : 200;

@@ -76,17 +76,29 @@ export function QuizArt({
           Plus {overflow} more page{overflow === 1 ? "" : "s"} in your note.
         </p>
       ) : null}
+      {answerQuery.isError ? (
+        <ArtNotice
+          message="Saved drawings could not load."
+          onRetry={() => answerQuery.refetch()}
+        />
+      ) : null}
       {answerQuery.data
         ? retryArt.map((d) => (
             <ArtCard
               key={d.id}
               item={d}
               caption={d.altText}
-              onRetry={concept ? onDraw : undefined}
+              onRetry={!limited && concept ? onDraw : undefined}
               retryLabel="Draw again"
             />
           ))
         : null}
+      {limited && retryArt.length > 0 ? (
+        <ArtNotice
+          message="Daily draw limit reached for this idea."
+          limit
+        />
+      ) : null}
       {concept &&
       answerId &&
       retryArt.length === 0 &&

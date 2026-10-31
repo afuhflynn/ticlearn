@@ -532,7 +532,7 @@ export default function QuizPlayerPage() {
                       concept={question.question.slice(0, 80)}
                     />
                     {!answer?.isCorrect && answer?.id ? (
-                      <RetryPanel answerId={answer.id} />
+                      <RetryPanel answerId={answer.id} showArt={false} />
                     ) : null}
                   </CardContent>
                 </Card>

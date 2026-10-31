@@ -29,7 +29,14 @@ export async function GET(req: Request) {
     }
     const drawn = await readArtForAnswer(session.user.id, answerId as string);
     return NextResponse.json({ answerId, drawn });
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  } catch (error) {
+    if (error instanceof Error && error.message === "missing") {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    console.error("[artifacts] read failed:", error);
+    return NextResponse.json(
+      { error: "Failed to load figures." },
+      { status: 500 },
+    );
   }
 }

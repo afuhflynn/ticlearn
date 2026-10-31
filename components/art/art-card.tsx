@@ -23,7 +23,13 @@ function sanitizeSvgForRender(raw: string): string {
   return DOMPurify.sanitize(raw, { USE_PROFILES: { svg: true } });
 }
 
-function DrawnFigure({ item }: { item: Extract<ArtItem, { kind: "drawn" }> }) {
+function DrawnFigure({
+  item,
+  idSuffix,
+}: {
+  item: Extract<ArtItem, { kind: "drawn" }>;
+  idSuffix?: string;
+}) {
   const hostRef = useRef<HTMLDivElement>(null);
   const [rendered, setRendered] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -47,7 +53,10 @@ function DrawnFigure({ item }: { item: Extract<ArtItem, { kind: "drawn" }> }) {
           htmlLabels: false,
         });
         if (!alive || !hostRef.current) return;
-        const renderId = `art-${item.id}`.replace(/[^a-zA-Z0-9-_]/g, "-");
+        const renderId = `art-${item.id}${idSuffix ? `-${idSuffix}` : ""}`.replace(
+          /[^a-zA-Z0-9-_]/g,
+          "-",
+        );
         const { svg } = await mermaid.render(renderId, item.payload);
         if (!alive || !hostRef.current) return;
         // Sanitized after render per spec; the svg string never lands raw.
@@ -127,6 +136,11 @@ function ZoomedArt({ item }: { item: ArtItem }) {
         />
       </div>
     );
+  }
+  if (item.format === "mermaid") {
+    // The zoom dialog renders the diagram, not the raw source, with its
+    // own render id so it never collides with the inline figure.
+    return <DrawnFigure item={item} idSuffix="zoom" />;
   }
   return <pre className="whitespace-pre-wrap text-sm">{item.payload}</pre>;
 }

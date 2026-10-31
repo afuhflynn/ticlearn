@@ -104,7 +104,13 @@ export function NoteArt({ noteId }: { noteId: string }) {
         <Input
           id={inputId}
           value={concept}
-          onChange={(e) => setConcept(e.target.value)}
+          onChange={(e) => {
+            setConcept(e.target.value);
+            // A new idea gets a fresh cap check; never strand the student
+            // behind the previous idea's limit line.
+            setLimited(false);
+            setNotice(null);
+          }}
           placeholder="Name one idea to draw, for example field lines"
           maxLength={160}
         />

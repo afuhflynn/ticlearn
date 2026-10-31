@@ -80,7 +80,7 @@ Reasoning and options: see rationale.md.
 Owner only throughout. Every run call checks session plus note and attempt ownership exactly like the page routes. No shared threads, no public run reads. No new personal data. Study content the student already owns.
 
 **Configuration required**:
-No new env vars, no new providers, no new deps. Two nullable columns via migration (source, conversationId).
+No new env vars, no new providers, no new deps. Three nullable columns via migration (source, conversationId, clientRunId; clientRunId unique).
 
 **Critical test scenarios**:
 - Happy path: setup by tap, answer run with mixed right and wrong, per answer marks, submit writes attempt rows with source chat, full correction plus retakes update, verifies **AC-1**, **AC-2**, **AC-3**.
@@ -92,7 +92,7 @@ No new env vars, no new providers, no new deps. Two nullable columns via migrati
 
 Tracer Bullet: a thin thread through setup plus one question plus submit first, then marking depth, then hardening.
 
-1. Migration for `QuizAttempt.source` plus `conversationId` (both nullable, no backfill), satisfies **AC-3**.
+1. Migration for `QuizAttempt.source` plus `conversationId` plus `clientRunId` (all nullable, `clientRunId` unique, no backfill), satisfies **AC-3**.
 2. Chat setup flow (setup questions through reused reply chips, generate input shape as page, no timed option in v1), satisfies **AC-1**, **AC-4**, **AC-8**.
 3. Question runner card (lettered tappable cards accepting typed letters, text box for open, progress plus running score) with rebuild from thread on reload, satisfies **AC-2**, **AC-5**.
 4. Answer submit plus per answer mark plus end correction plus attempts and retakes write (existing endpoints, same shapes), with one reprompt on unclear input, satisfies **AC-3**, **AC-6**.

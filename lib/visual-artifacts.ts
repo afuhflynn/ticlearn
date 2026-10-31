@@ -83,9 +83,16 @@ async function countDrawsForKey(
     });
   }
   const concept = (key.concept ?? "").trim().toLowerCase().slice(0, 160);
-  if (!key.noteId || !concept) return 0;
+  if (!concept) return 0;
+  // Note-free draws count too, matched by user plus concept with a null
+  // note, so a chat with no note in play cannot draw without limit.
   return prisma.visualArtifact.count({
-    where: { userId, noteId: key.noteId, concept, createdAt: { gte, lt } },
+    where: {
+      userId,
+      noteId: key.noteId ?? null,
+      concept,
+      createdAt: { gte, lt },
+    },
   });
 }
 
@@ -151,6 +158,17 @@ export async function generateVisualArtifact(input: {
       payload = sanitizeSvgMarkup(object.payload);
     } else {
       payload = sanitizeMermaidSource(object.payload);
+      if (payload) {
+        // Regex-clean is not parse-clean: confirm with Mermaid's own
+        // parser before storing, so an unrenderable diagram never lands.
+        try {
+          const { default: mermaid } = await import("mermaid");
+          mermaid.initialize({ startOnLoad: false });
+          await mermaid.parse(payload);
+        } catch {
+          payload = null;
+        }
+      }
     }
     if (!payload) {
       await logUsage({
@@ -236,22 +254,19 @@ export async function readArtForNote(
   });
   if (!note) throw new Error("missing");
   const pages = await prisma.page.findMany({
-    where: { noteId },
+    where: { noteId, pageImageUrl: { not: null } },
     orderBy: { pageNumber: "asc" },
-    take: VISUAL_SCANS_PER_NOTE_CAP + 1,
+    take: VISUAL_SCANS_PER_NOTE_CAP,
     select: { pageNumber: true, pageImageUrl: true, hasVisual: true },
   });
   const total = await prisma.page.count({ where: { noteId } });
-  const scans: UnifiedArtItem[] = pages
-    .filter((p) => p.pageImageUrl)
-    .slice(0, VISUAL_SCANS_PER_NOTE_CAP)
-    .map((p) => ({
-      kind: "scan" as const,
-      pageNumber: p.pageNumber,
-      imageUrl: p.pageImageUrl as string,
-      altText: `Page ${p.pageNumber} figure from your note`,
-      total,
-    }));
+  const scans: UnifiedArtItem[] = pages.map((p) => ({
+    kind: "scan" as const,
+    pageNumber: p.pageNumber,
+    imageUrl: p.pageImageUrl as string,
+    altText: `Page ${p.pageNumber} figure from your note`,
+    total,
+  }));
   const drawnRows = await prisma.visualArtifact.findMany({
     where: { userId, noteId },
     orderBy: [{ sourcePage: "asc" }, { createdAt: "asc" }],
