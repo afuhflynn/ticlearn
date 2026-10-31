@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { retryOutputSchema } from "@/lib/retries/generate";
+import { feedbackRevealsKey, retryOutputSchema } from "@/lib/retries/generate";
 import { mergeWeakArea, parseWeakAreas } from "@/lib/retries/weak-areas";
 
 describe("targeted retry progress update", () => {
@@ -13,6 +13,47 @@ describe("targeted retry progress update", () => {
       retryCorrectAnswer: "Anaphase",
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it("rejects duplicate options while keeping four distinct entries valid", () => {
+    const base = {
+      concept: "Mitosis",
+      sourcePages: [] as number[],
+      feedbackMd: "Review the stages.",
+      retryQuestion: "Fresh?",
+      retryCorrectAnswer: "Anaphase",
+    };
+    expect(
+      retryOutputSchema.safeParse({
+        ...base,
+        retryOptions: ["Anaphase", "Anaphase", "Metaphase", "Telophase"],
+      }).success,
+    ).toBe(false);
+    expect(
+      retryOutputSchema.safeParse({
+        ...base,
+        retryOptions: ["Prophase", "Metaphase", "Anaphase", "Telophase"],
+      }).success,
+    ).toBe(true);
+  });
+
+  it("flags reveal phrasing but not an honest mention of the key", () => {
+    expect(
+      feedbackRevealsKey(
+        "The correct answer is Anaphase, when sisters separate.",
+        "Anaphase",
+      ),
+    ).toBe(true);
+    expect(
+      feedbackRevealsKey("You should have chosen Anaphase here.", "Anaphase"),
+    ).toBe(true);
+    expect(
+      feedbackRevealsKey(
+        "Anaphase pulls the sisters apart while metaphase lines them up.",
+        "Anaphase",
+      ),
+    ).toBe(false);
+    expect(feedbackRevealsKey("Review the stages.", "Anaphase")).toBe(false);
   });
 
   it("rejects a key that is not one of the options at the route layer", () => {

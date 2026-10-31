@@ -220,6 +220,7 @@ function noteContextFor(note: ConversationNote | null): string {
       ? `Excerpt (first 4000 characters):\n${note.extractedText.slice(0, 4000)}`
       : "",
     `Call getNoteContext with noteId "${note.id}" to read any part beyond the excerpt.`,
+    `Call getNotePages to read the stored page numbers before naming any page (p. N).`,
   ].filter(Boolean);
 
   return lines.join("\n\n");
@@ -934,7 +935,10 @@ export async function POST(req: Request) {
       ),
     );
 
-    const tools = createChatTools({ userId: session.user.id });
+    const tools = createChatTools({
+      userId: session.user.id,
+      conversationId,
+    });
 
     const agentMode = body.agentMode === true;
 

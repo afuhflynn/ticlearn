@@ -107,25 +107,7 @@ spec ../specs/0028-page-referenced-answers/index.md
 - [x] Design it (spec): covered in spec 0028 alongside feature 51
 
 - [ ] Build it: /feature-build chat page lookup
-  - [ ] getNotePages tool with owner scoped reads, pending shape, per useful call debit (AC-3 AC-4 AC-5 AC-7)
-  - [ ] Page citation line in the chat system prompt (AC-3)
+  - [x] getNotePages tool with owner scoped reads, pending shape, per useful call debit (AC-3 AC-4 AC-5 AC-7)
+  - [x] Page citation line in the chat system prompt (AC-3)
 
-### 55. Visual output in chat and quizzes · Hackathon · in-progress
-
-Students see the visuals where they study instead of reading about them. First the saved page art from their notes appears in chat and quiz review, then the model draws fresh diagrams inline for the idea at hand. This stays separate from feature 54, which cites page numbers as text only.
-**Done when:** a student who asks about a diagram sees the saved page image in chat, a quiz review shows the page art beside the related question, and the model can draw a fresh labeled diagram inline that renders on a small phone.
-
-spec ../specs/0030-visual-output-chat-quizzes/index.md
-
-- [x] Design it (spec): /solution-architect visual output in chat and quizzes
-
-- [ ] Build it: /feature-build visual output in chat and quizzes
-  - [x] Artifact storage plus draw prompt plus generation helper (covers AC-4, AC-5, AC-6)
-  - [x] Generate plus unified read endpoints with owner checks plus cap plus usage log (covers AC-1, AC-4, AC-5, AC-6)
-  - [x] Chat art card with zoom plus skeleton plus retry (covers AC-1, AC-7)
-  - [x] Quiz plus notes placement with read time resolve (covers AC-2, AC-3, AC-7)
-  - [x] Tests for happy path plus fallback plus foreign 404 plus cap (covers all ACs)
-
-  code in lib/visual-artifacts.ts, app/api/artifacts, components/art, components/chat/chat-art.tsx, hooks/useArtifacts.ts
-- [ ] Verify it: /verify-release visual output in chat and quizzes
-- [x] Test it: /test-engineer visual output in chat and quizzes
+  code in lib/ai/tools.ts, prompts/tools/get_note_pages.md, prompts/chat/chat_system.md, lib/chat/activity-labels.ts, app/api/ai/chat/route.ts

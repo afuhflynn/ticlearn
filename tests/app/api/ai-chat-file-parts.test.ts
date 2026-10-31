@@ -4,8 +4,15 @@ import {
   chatDocAttachments,
   documentTextForChatTurn,
   enrichLatestUserMessage,
+  POST,
   validateFileParts,
 } from "@/app/api/ai/chat/route";
+import { auth } from "@/lib/auth";
+import { streamChat } from "@/lib/ai/orchestrator";
+import { createChatTools } from "@/lib/ai/tools";
+import { inngest } from "@/lib/inngest/client";
+import { prisma } from "@/lib/prisma";
+import { getPrompt } from "@/lib/prompts/loader";
 
 /**
  * The chat route is the last wall between a hand built request and the model.
@@ -282,5 +289,87 @@ describe("documentTextForChatTurn", () => {
 
     expect(text).toBe("");
     expect(docFileCount).toBe(0);
+  });
+});
+
+describe("POST conversation scoping (AC-7)", () => {
+  const db = prisma as unknown as Record<string, Record<string, unknown>>;
+
+  function userMessage(): UIMessage {
+    return {
+      id: "m-1",
+      role: "user",
+      parts: [{ type: "text", text: "Which page covers photosynthesis?" }],
+    } as unknown as UIMessage;
+  }
+
+  function postRequest(conversationId: string | null) {
+    const url =
+      conversationId === null
+        ? "http://localhost/api/ai/chat"
+        : `http://localhost/api/ai/chat?conversationId=${conversationId}`;
+    return new Request(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ messages: [userMessage()] }),
+    });
+  }
+
+  beforeEach(() => {
+    db.chatConversation = {
+      findFirst: vi.fn(async () => ({
+        id: "conv-1",
+        title: "New Chat",
+        _count: { messages: 1 },
+        note: {
+          id: "note-1",
+          userId: "u-1",
+          title: "Biology",
+          summary: null,
+          keyPoints: [],
+          extractedText: null,
+        },
+      })),
+      update: vi.fn(async () => ({})),
+    };
+    db.subscription = { findFirst: vi.fn(async () => null) };
+    db.chatMessage = {
+      count: vi.fn(async () => 0),
+      findMany: vi.fn(async () => []),
+      findFirst: vi.fn(async () => null),
+      create: vi.fn(async () => ({ id: "m-1" })),
+    };
+    vi.mocked(auth.api.getSession).mockResolvedValue({
+      user: { id: "u-1", name: "A" },
+    } as never);
+    vi.mocked(getPrompt).mockResolvedValue({
+      text: "system",
+      settings: { heat: 0.4, cap: 8000 },
+    } as never);
+    vi.mocked(streamChat).mockResolvedValue({
+      toUIMessageStreamResponse: () =>
+        new Response("data: done\n\n", {
+          headers: { "content-type": "text/event-stream" },
+        }),
+    } as never);
+    vi.mocked(createChatTools).mockReturnValue({} as never);
+    vi.mocked(inngest.send).mockResolvedValue(undefined as never);
+  });
+
+  it("hands the conversation id to the tool factory, so page lookups stay scoped", async () => {
+    const response = await POST(postRequest("conv-1"));
+
+    expect(response.status).toBe(200);
+    expect(createChatTools).toHaveBeenCalledWith({
+      userId: "u-1",
+      conversationId: "conv-1",
+    });
+  });
+
+  it("still requires a conversation id before any tool is built", async () => {
+    const response = await POST(postRequest(null));
+
+    expect(response.status).toBe(400);
+    expect(createChatTools).not.toHaveBeenCalled();
   });
 });

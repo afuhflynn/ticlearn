@@ -1,10 +1,10 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { logUsage } from "@/lib/ai/usage";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateRetryContent } from "@/lib/retries/generate";
-import { logUsage } from "@/lib/ai/usage";
 
 const bodySchema = z.object({
   answerId: z.string().min(1),
@@ -51,47 +51,115 @@ export async function POST(req: Request) {
       );
     }
 
-    const dayAgo = new Date(Date.now() - DAY_MS);
-    const createsToday = await prisma.quizRetry.count({
-      where: { answerId, createdAt: { gte: dayAgo } },
+    // A completed retry is terminal. A new pending row must never replace the
+    // scored result, so block here before the pending check and the cap.
+    const completed = await prisma.quizRetry.findFirst({
+      where: { answerId, status: "completed", userId },
+      select: { id: true },
     });
-    if (createsToday >= DAILY_CAP) {
-      return NextResponse.json(
-        { error: "Daily retry limit reached for this answer." },
-        { status: 429 },
-      );
-    }
-
-    const active = await prisma.quizRetry.findFirst({
-      where: { answerId, status: "pending", userId },
-      orderBy: { createdAt: "desc" },
-    });
-    if (active && !isExpiredPending(active.createdAt)) {
+    if (completed) {
       return NextResponse.json(
         {
-          error: "A retry is already waiting for this answer.",
-          retryId: active.id,
+          error: "This answer already has a scored retry.",
+          retryId: completed.id,
         },
         { status: 409 },
       );
     }
 
+    // The attempt must carry its own quiz. A null quizId falls back to no
+    // quiz at all: the old lookup let `undefined` match any quiz the student
+    // owns and linked the retry to the wrong one.
     const attempt = answer.attempt;
-    const quiz = await prisma.quiz.findFirst({
-      where: { id: attempt.quizId ?? undefined, userId },
-      include: { note: true },
-    });
-    const resolvedQuizId = attempt.quizId ?? quiz?.id;
-    if (!resolvedQuizId) {
+    if (!attempt.quizId) {
       return NextResponse.json(
         { error: "This attempt has no quiz to link the retry to." },
         { status: 400 },
       );
     }
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: attempt.quizId, userId },
+      include: { note: true },
+    });
+    if (!quiz) {
+      return NextResponse.json(
+        { error: "This attempt has no quiz to link the retry to." },
+        { status: 400 },
+      );
+    }
+    const resolvedQuizId = quiz.id;
+    const dayAgo = new Date(Date.now() - DAY_MS);
+
+    // Reserve the retry slot inside one transaction: lock the parent answer
+    // row, count that answer's retries for the day, and insert the reserved
+    // row before any generation runs. Concurrent POSTs serialize on the lock,
+    // so they cannot each pass the cap or each trigger generation for an
+    // unreserved slot. Generation updates the reserved row afterward.
+    let reserved: { id: string };
+    try {
+      reserved = await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT "id" FROM "quiz_attempt_answers" WHERE "id" = ${answer.id} FOR UPDATE`;
+        const createsToday = await tx.quizRetry.count({
+          where: { answerId, createdAt: { gte: dayAgo } },
+        });
+        if (createsToday >= DAILY_CAP) {
+          throw new Error("retry-daily-cap");
+        }
+        const active = await tx.quizRetry.findFirst({
+          where: { answerId, status: "pending", userId },
+          orderBy: { createdAt: "desc" },
+        });
+        if (active && !isExpiredPending(active.createdAt)) {
+          throw new Error(`retry-active:${active.id}`);
+        }
+        return await tx.quizRetry.create({
+          data: {
+            userId,
+            attemptId: attempt.id,
+            answerId: answer.id,
+            quizId: resolvedQuizId,
+            questionId: answer.questionId,
+            concept: "Retry",
+            sourcePages: [],
+            sourceExcerpt: null,
+            feedbackMd: null,
+            retryQuestion: "",
+            retryOptions: [],
+            retryCorrectAnswer: "",
+            status: "pending",
+            model: "reserving",
+          },
+          select: { id: true },
+        });
+      });
+    } catch (txError) {
+      if (txError instanceof Error && txError.message === "retry-daily-cap") {
+        return NextResponse.json(
+          { error: "Daily retry limit reached for this answer." },
+          { status: 429 },
+        );
+      }
+      if (
+        txError instanceof Error &&
+        txError.message.startsWith("retry-active:")
+      ) {
+        return NextResponse.json(
+          {
+            error: "A retry is already waiting for this answer.",
+            retryId: txError.message.slice("retry-active:".length),
+          },
+          { status: 409 },
+        );
+      }
+      throw txError;
+    }
 
     const questionPages = answer.quizQuestion?.sourcePages ?? [];
     let noteExcerpt = "";
     let pageContext = "No analyzed pages for this note.";
+    // Pages whose descriptions actually reach the model. The model may only
+    // cite included pages, so this stays empty when page data is missing.
+    let validPages = new Set<number>();
     if (quiz?.note?.extractedText) {
       noteExcerpt = quiz.note.extractedText.slice(0, 6000);
     }
@@ -107,28 +175,40 @@ export async function POST(req: Request) {
           },
         },
       });
+      // Missed-question pages carry the misconception, so they go first and
+      // survive truncation ahead of unrelated pages. Sort is stable, so page
+      // order is preserved inside each group.
+      const missed = new Set(questionPages);
       const described = pages
         .filter((page) => page.analyses.length > 0)
-        .map(
-          (page) =>
-            `Page ${page.pageNumber}: ${page.analyses[0].description.slice(0, 400)}`,
+        .map((page) => ({
+          pageNumber: page.pageNumber,
+          line: `Page ${page.pageNumber}: ${page.analyses[0].description.slice(0, 400)}`,
+        }))
+        .sort(
+          (a, b) =>
+            Number(missed.has(b.pageNumber)) - Number(missed.has(a.pageNumber)),
         );
-      if (described.length > 0) {
-        pageContext = described.join("\n").slice(0, 4000);
+      // Fill whole lines up to the character limit and remember exactly which
+      // pages made it in. Citations below may only reference included pages,
+      // never pages dropped by truncation.
+      const lines: string[] = [];
+      let used = 0;
+      const includedPages: number[] = [];
+      for (const entry of described) {
+        const cost = (lines.length > 0 ? 1 : 0) + entry.line.length;
+        if (used + cost > 4000) break;
+        lines.push(entry.line);
+        used += cost;
+        includedPages.push(entry.pageNumber);
       }
+      if (lines.length > 0) {
+        pageContext = lines.join("\n");
+      }
+      validPages = new Set(includedPages);
     }
 
-    let notePageNumbers: number[] = [];
-    if (quiz?.noteId) {
-      const notePages = await prisma.page.findMany({
-        where: { noteId: quiz.noteId },
-        select: { pageNumber: true },
-      });
-      notePageNumbers = notePages.map((page) => page.pageNumber);
-    }
-    const validPages = new Set([...questionPages, ...notePageNumbers]);
-
-    let generated;
+    let generated: Awaited<ReturnType<typeof generateRetryContent>>;
     const started = Date.now();
     try {
       generated = await generateRetryContent({
@@ -142,7 +222,7 @@ export async function POST(req: Request) {
         pageContext,
         userId,
       });
-    } catch (error) {
+    } catch {
       await logUsage({
         userId,
         task: "retry_explain",
@@ -150,15 +230,13 @@ export async function POST(req: Request) {
         latencyMs: Date.now() - started,
         errorCode: "all_failed",
       });
-      const failed = await prisma.quizRetry.create({
+      // Generation (or output validation, including a leaked key in the
+      // feedback) failed: mark the reserved slot failed so the review page
+      // shows a plain retry control. The reserved row already counts toward
+      // the daily cap.
+      const failed = await prisma.quizRetry.update({
+        where: { id: reserved.id },
         data: {
-          userId,
-          attemptId: attempt.id,
-          answerId: answer.id,
-          quizId: resolvedQuizId,
-          questionId: answer.questionId,
-          concept: "Retry",
-          sourcePages: [],
           sourceExcerpt: noteExcerpt.slice(0, 6000) || null,
           feedbackMd: null,
           retryQuestion: "Retry generation failed. Try again.",
@@ -185,13 +263,9 @@ export async function POST(req: Request) {
       validPages.has(page),
     );
 
-    const retry = await prisma.quizRetry.create({
+    const retry = await prisma.quizRetry.update({
+      where: { id: reserved.id },
       data: {
-        userId,
-        attemptId: attempt.id,
-        answerId: answer.id,
-        quizId: resolvedQuizId,
-        questionId: answer.questionId,
         concept: generated.output.concept,
         sourcePages,
         sourceExcerpt: noteExcerpt.slice(0, 6000) || null,

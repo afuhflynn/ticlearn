@@ -2,6 +2,7 @@ import { generateObject, generateText, streamText } from "ai";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import {
+  agent,
   generate,
   generateCritical,
   generateTextCritical,
@@ -361,5 +362,52 @@ describe("orchestrator cold start tracking", () => {
     await generateTextWithFallback({ task: "fast_chat", prompt: "hi" });
     const call = vi.mocked(logUsage).mock.calls.at(-1)?.[0];
     expect(call?.coldStart).toBe(true);
+  });
+});
+
+describe("agent tool loop hands the call id to each tool", () => {
+  function toolTurn(id: string) {
+    return {
+      text: "",
+      toolCalls: [{ name: "lookup", args: {}, id }],
+    };
+  }
+
+  it("passes toolCallId to SDK style execute, so idempotent tools debit once", async () => {
+    const execute = vi.fn(async () => ({ pages: [] }));
+    vi.mocked(generateText)
+      .mockResolvedValueOnce(toolTurn("call-1") as never)
+      .mockResolvedValueOnce({ text: "final" } as never);
+
+    const result = await agent({
+      task: "agent_reason",
+      tools: { lookup: { execute } } as never,
+      messages: [],
+      maxSteps: 5,
+      userId: "u-1",
+    });
+
+    expect(result.text).toBe("final");
+    expect(execute).toHaveBeenCalledTimes(1);
+    expect(execute).toHaveBeenCalledWith({}, { toolCallId: "call-1" });
+  });
+
+  it("answers unknown tools without running anything", async () => {
+    vi.mocked(generateText)
+      .mockResolvedValueOnce({
+        text: "",
+        toolCalls: [{ name: "missing", args: {}, id: "call-9" }],
+      } as never)
+      .mockResolvedValueOnce({ text: "done" } as never);
+
+    const result = await agent({
+      task: "agent_reason",
+      tools: {},
+      messages: [],
+      maxSteps: 5,
+      userId: "u-1",
+    });
+
+    expect(result.text).toBe("done");
   });
 });

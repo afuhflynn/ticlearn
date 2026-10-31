@@ -41,6 +41,15 @@ const MUSE_PRIMARY_TASKS = new Set(["quiz_gen"]);
 /** The Muse model ID used as the primary attempt for chat. */
 const MUSE_PRIMARY_MODEL = "muse-spark-1.3";
 
+/**
+ * OpenRouter catalog IDs for the bare Muse registry IDs. The Meta leg keeps
+ * the bare ID; only the OpenRouter fallback walk uses the catalog form, so a
+ * bare ID never reaches `chainModel` (which would reject it as unknown).
+ */
+const MUSE_OPENROUTER_FALLBACK_IDS: Record<string, string> = {
+  "muse-spark-1.3": "meta/muse-spark-1.3",
+};
+
 /** Identity of the prompt file behind a call. Traces cache keys and logs. */
 export interface PromptRef {
   name: string;
@@ -59,6 +68,11 @@ export interface GenerateOptions<T> {
   cacheTtlMs?: number;
   promptRef?: PromptRef;
   userId?: string | null;
+  /** Per-call Muse leg budget. Defaults to MUSE_PER_LEG_TIMEOUT_MS. */
+  museLegTimeoutMs?: number;
+  /** Caller budget (e.g. a route-level total timeout). Aborting stops the
+   *  walk: no further fallback model is scheduled after an abort. */
+  signal?: AbortSignal;
 }
 
 export interface StreamChatOptions {
@@ -235,10 +249,15 @@ async function runGenerate<T>(
   const chain = resolveChain(opts.task);
 
   // Muse task: try Meta or Baseten first, then fall through to OpenRouter.
-  if (config.provider === "meta" || config.provider === "baseten") {
+  const isMuseTask =
+    config.provider === "meta" || config.provider === "baseten";
+  if (isMuseTask) {
     try {
       return await runGenerateMuse(opts, chain[0], coldStart);
     } catch (_museError) {
+      // A caller-aborted budget is a stop, not a transport failure: never
+      // schedule another model after the caller gave up.
+      if (opts.signal?.aborted) throw _museError;
       // Muse failed or is not configured; fall through to OpenRouter chain.
     }
   }
@@ -250,16 +269,23 @@ async function runGenerate<T>(
     try {
       return await runGenerateMuse(opts, MUSE_PRIMARY_MODEL, coldStart);
     } catch (_museError) {
+      if (opts.signal?.aborted) throw _museError;
       // Muse failed or is not configured; fall through to OpenRouter chain.
     }
   }
 
-  const { runnable } = await splitChain(chain);
+  // The Meta leg above keeps the bare registry ID. The fallback walk below
+  // goes through OpenRouter, where the bare ID is not a catalog ID, so map it
+  // before the breaker sees it. Non-Muse tasks already carry catalog IDs.
+  const fallbackChain = isMuseTask
+    ? chain.map((id) => MUSE_OPENROUTER_FALLBACK_IDS[id] ?? id)
+    : chain;
+  const { runnable } = await splitChain(fallbackChain);
   if (runnable.length === 0) {
     await logUsage({
       userId: opts.userId ?? null,
       task: opts.task,
-      modelId: chain[0] ?? "none",
+      modelId: fallbackChain[0] ?? "none",
       promptTokens: 0,
       completionTokens: 0,
       costUsd: 0,
@@ -278,6 +304,8 @@ async function runGenerate<T>(
 
   for (let index = 0; index < runnable.length; index += 1) {
     const modelId = runnable[index];
+    // The caller budget expired: stop scheduling fallback attempts.
+    if (opts.signal?.aborted) break;
     const remainingMs = deadlineAt - Date.now();
     if (remainingMs <= 500) break;
     const budget = perAttemptBudget(remainingMs, runnable.length - index);
@@ -290,20 +318,23 @@ async function runGenerate<T>(
         throw forced;
       }
       const params = callParams(opts.modelOptions);
-      const result = await withDeadline(budget, (signal) =>
-        generateObject({
-          model: chainModel(modelId),
-          schema: opts.schema,
-          prompt: opts.prompt,
-          messages: opts.messages as never,
-          system: opts.system,
-          timeout: budget,
-          maxRetries: 0,
-          abortSignal: signal,
-          temperature: params.temperature,
-          maxOutputTokens: params.maxOutputTokens,
-          ...params.rest,
-        }),
+      const result = await withDeadline(
+        budget,
+        (signal) =>
+          generateObject({
+            model: chainModel(modelId),
+            schema: opts.schema,
+            prompt: opts.prompt,
+            messages: opts.messages as never,
+            system: opts.system,
+            timeout: budget,
+            maxRetries: 0,
+            abortSignal: signal,
+            temperature: params.temperature,
+            maxOutputTokens: params.maxOutputTokens,
+            ...params.rest,
+          }),
+        opts.signal,
       );
       await recordSuccess(modelId);
       const parsed = usageFromResult(result as { usage?: unknown }, modelId);
@@ -342,7 +373,7 @@ async function runGenerate<T>(
   await logUsage({
     userId: opts.userId ?? null,
     task: opts.task,
-    modelId: runnable[0] ?? chain[0] ?? "none",
+    modelId: runnable[0] ?? fallbackChain[0] ?? "none",
     promptTokens: 0,
     completionTokens: 0,
     costUsd: 0,
@@ -357,7 +388,9 @@ async function runGenerate<T>(
 /**
  * Single Muse call with a per-leg timeout. No breaker, no chain walk: one
  * model, one attempt. On any failure the error propagates so runGenerate can
- * fall through to the OpenRouter chain.
+ * fall through to the OpenRouter chain. Callers may pass museLegTimeoutMs for
+ * a tighter per-call budget and signal for a caller-level total budget; an
+ * outer abort stops the walk instead of counting as a transport failure.
  */
 async function runGenerateMuse<T>(
   opts: GenerateOptions<T>,
@@ -365,21 +398,25 @@ async function runGenerateMuse<T>(
   coldStart: boolean,
 ): Promise<{ object: T; modelId: string }> {
   const started = Date.now();
+  const legBudget = opts.museLegTimeoutMs ?? MUSE_PER_LEG_TIMEOUT_MS;
   const params = callParams(opts.modelOptions);
-  const result = await withDeadline(MUSE_PER_LEG_TIMEOUT_MS, (signal) =>
-    generateObject({
-      model: chainMuse(modelId),
-      schema: opts.schema,
-      prompt: opts.prompt,
-      messages: opts.messages as never,
-      system: opts.system,
-      timeout: MUSE_PER_LEG_TIMEOUT_MS,
-      maxRetries: 0,
-      abortSignal: signal,
-      temperature: params.temperature,
-      maxOutputTokens: params.maxOutputTokens,
-      ...params.rest,
-    }),
+  const result = await withDeadline(
+    legBudget,
+    (signal) =>
+      generateObject({
+        model: chainMuse(modelId),
+        schema: opts.schema,
+        prompt: opts.prompt,
+        messages: opts.messages as never,
+        system: opts.system,
+        timeout: legBudget,
+        maxRetries: 0,
+        abortSignal: signal,
+        temperature: params.temperature,
+        maxOutputTokens: params.maxOutputTokens,
+        ...params.rest,
+      }),
+    opts.signal,
   );
   const parsed = usageFromResult(result as { usage?: unknown }, modelId);
   const rate = DEFAULT_USD_TO_XAF_RATE;
@@ -865,17 +902,38 @@ export async function agent(opts: AgentOptions): Promise<AgentResult> {
         } as never);
 
         // Execute each tool and append results
-        const toolFns = opts.tools as Record<
-          string,
-          (args: unknown) => Promise<unknown>
-        >;
         for (const toolCall of toolCalls) {
           let toolResult: unknown;
           try {
-            const fn = toolFns[toolCall.name];
-            toolResult = fn
-              ? await fn(toolCall.args)
-              : { error: `Unknown tool: ${toolCall.name}` };
+            const entry = (opts.tools as Record<string, unknown>)[
+              toolCall.name
+            ];
+            if (typeof entry === "function") {
+              toolResult = await (
+                entry as (
+                  args: unknown,
+                  opts: unknown,
+                ) => Promise<unknown>
+              )(toolCall.args, { toolCallId: toolCall.id });
+            } else if (
+              entry !== null &&
+              typeof entry === "object" &&
+              typeof (entry as { execute?: unknown }).execute ===
+                "function"
+            ) {
+              // SDK style tools carry their own execute and expect the call
+              // id beside the args, so idempotent tools debit only once.
+              toolResult = await (
+                entry as {
+                  execute: (
+                    args: unknown,
+                    opts: unknown,
+                  ) => Promise<unknown>;
+                }
+              ).execute(toolCall.args, { toolCallId: toolCall.id });
+            } else {
+              toolResult = { error: `Unknown tool: ${toolCall.name}` };
+            }
           } catch (toolError) {
             toolResult = {
               error:

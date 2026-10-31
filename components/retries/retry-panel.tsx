@@ -9,11 +9,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCreateRetry, useRetry, useSubmitRetry } from "@/hooks";
 
 export function RetryPanel({ answerId }: { answerId: string }) {
-  const [picked, setPicked] = useState<string | null>(null);
+  // The pick belongs to one retry row. Keying it by retry id keeps a choice
+  // made on an older retry (or on another answer's panel) from leaking into
+  // the current one after a refetch or a fresh create.
+  const [picked, setPicked] = useState<{
+    retryId: string;
+    option: string;
+  } | null>(null);
   const retryQuery = useRetry(answerId);
   const retry = retryQuery.data?.retry ?? null;
   const createMutation = useCreateRetry(answerId);
   const submitMutation = useSubmitRetry(answerId, retry?.id ?? "");
+  const activePick =
+    picked && picked.retryId === retry?.id ? picked.option : null;
 
   if (retryQuery.isPending) {
     return (
@@ -133,18 +141,28 @@ export function RetryPanel({ answerId }: { answerId: string }) {
           </p>
           <div className="space-y-2">
             {retry.retryOptions.map((option) => {
-              const selected = picked === option;
+              const selected = activePick === option;
               const revealed = completed;
               const isKey = retry.retryCorrectAnswer === option;
+              // After scoring the key reads default, a wrong pick reads
+              // destructive, and everything else stays outline. Before
+              // completion only the student's own pick is highlighted.
+              const variant = revealed
+                ? isKey
+                  ? "default"
+                  : selected
+                    ? "destructive"
+                    : "outline"
+                : selected
+                  ? "default"
+                  : "outline";
               return (
                 <Button
                   key={option}
-                  variant={
-                    selected || (revealed && isKey) ? "default" : "outline"
-                  }
+                  variant={variant}
                   className="h-auto w-full justify-start whitespace-normal p-3 text-left"
                   disabled={completed || submitMutation.isPending}
-                  onClick={() => setPicked(option)}
+                  onClick={() => setPicked({ retryId: retry.id, option })}
                 >
                   <span className="min-w-0 break-words text-left">
                     <MathMarkdown content={option} />
@@ -158,9 +176,9 @@ export function RetryPanel({ answerId }: { answerId: string }) {
           <div className="flex items-center gap-2">
             <Button
               size="sm"
-              disabled={!picked || submitMutation.isPending}
+              disabled={!activePick || submitMutation.isPending}
               onClick={() => {
-                if (picked) submitMutation.mutate(picked);
+                if (activePick) submitMutation.mutate(activePick);
               }}
             >
               {submitMutation.isPending ? "Checking..." : "Submit retry"}

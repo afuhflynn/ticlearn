@@ -44,4 +44,21 @@ describe("the student surface for web tools (AC-16)", () => {
     expect(isKnownToolName("webSearch")).toBe(true);
     expect(isKnownToolName("readPage")).toBe(true);
   });
+
+  it("reads a page lookup sentence that names no note id or provider (AC-3)", () => {
+    const label = toolLabelFromName("getNotePages", {});
+
+    expect(label).toBe("Reading page numbers from your note");
+    expect(label).not.toContain("getNotePages");
+  });
+
+  it("reads a plain failure sentence for a page lookup (AC-3)", () => {
+    expect(toolFailureFromName("getNotePages")).toBe(
+      "Couldn't read the page numbers. Answering without them.",
+    );
+  });
+
+  it("knows the page lookup tool, so it never falls back to Working (AC-3)", () => {
+    expect(isKnownToolName("getNotePages")).toBe(true);
+  });
 });

@@ -18,3 +18,14 @@ _Steps derived from spec 0028 acceptance criteria. `/verify-release` runs these;
 - AC-5 covered by step text only degrade with no Page rows
 - AC-6 covered by step Muse failure falls through to OpenRouter, failed pages excluded
 - AC-7 covered by step foreign note 404 and owner scoped reads
+## Chat page lookup (feature 54)
+- [ ] Ask Tip which page covers a topic in a conversation linked to a scanned note, confirm the answer cites a real page number from the tool result → AC-3
+- [ ] Ask in a conversation with no note, confirm a plain no note answer and no crash → AC-5
+- [x] Ask about a note with no Page rows, confirm no page named and no debit row → AC-4 AC-5
+- [x] Spend down below the lookup price and ask again, confirm the plain insufficient credits message → AC-4
+- [x] Confirm the tool takes no note id and a foreign note stays unreachable → AC-7
+## Acceptance-criteria coverage (feature 54)
+- AC-3 covered by step real page citation from the tool result
+- AC-4 covered by step useful lookup debit and insufficient credits message
+- AC-5 covered by step pending shape with no pages and no debit
+- AC-7 covered by step owner scoped conversation note read
