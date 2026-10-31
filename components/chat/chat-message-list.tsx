@@ -32,6 +32,7 @@ import {
 import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
 import { ActivityBlock } from "@/components/chat/activity-block";
 import { ChatArt } from "@/components/chat/chat-art";
+import { ChatQuiz } from "@/components/chat/chat-quiz";
 import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
 import { FilePreview } from "@/components/chat/file-preview";
 import { SuggestedReplies } from "@/components/chat/suggested-replies";
@@ -383,6 +384,7 @@ function MessageBody({
   durationMs,
   suggestions,
   noteId,
+  conversationId,
   onRetry,
   onRegenerate,
   onEdit,
@@ -400,6 +402,7 @@ function MessageBody({
   durationMs?: number | null;
   suggestions?: string[];
   noteId?: string | null;
+  conversationId?: string;
   onRetry?: (messageId?: string) => void;
   onRegenerate?: (messageId: string) => void;
   onEdit?: (message: UIMessage) => void;
@@ -470,6 +473,10 @@ function MessageBody({
 
         <ChatArt message={message} text={normalizedText} noteId={noteId} />
 
+        {conversationId ? (
+          <ChatQuiz conversationId={conversationId} message={message} />
+        ) : null}
+
         {stopped ? <StoppedLine onRetry={() => onRetry?.(message.id)} /> : null}
 
         {isNewestAssistant && suggestions && suggestions.length > 0 ? (
@@ -523,6 +530,7 @@ export function ChatMessageList({
   status,
   emptyState,
   noteId,
+  conversationId,
   onRetry,
   onRegenerate,
   onEdit,
@@ -538,6 +546,7 @@ export function ChatMessageList({
   status: ChatStatus;
   emptyState?: React.ReactNode;
   noteId?: string | null;
+  conversationId?: string;
   /** Sends the last question again through the same transport. */
   onRetry?: (messageId?: string) => void;
   onRegenerate?: (messageId: string) => void;
@@ -601,6 +610,7 @@ export function ChatMessageList({
               }
               message={message}
               noteId={noteId}
+              conversationId={conversationId}
               onEdit={handleEdit}
               onEditCancel={() => setEditingId(null)}
               onEditSubmit={handleEditSubmit}

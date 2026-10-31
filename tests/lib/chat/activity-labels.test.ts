@@ -61,4 +61,21 @@ describe("the student surface for web tools (AC-16)", () => {
   it("knows the page lookup tool, so it never falls back to Working (AC-3)", () => {
     expect(isKnownToolName("getNotePages")).toBe(true);
   });
+
+  it("reads a quiz start sentence that names no tool (spec 0031, AC-1)", () => {
+    const label = toolLabelFromName("startQuiz", {});
+
+    expect(label).toBe("Starting your quiz");
+    expect(label).not.toContain("startQuiz");
+  });
+
+  it("reads a plain failure sentence for a quiz start (spec 0031, AC-1)", () => {
+    expect(toolFailureFromName("startQuiz")).toBe(
+      "Couldn't start the quiz here. Ask again and I will set it up.",
+    );
+  });
+
+  it("knows the quiz start tool, so it never falls back to Working (spec 0031, AC-1)", () => {
+    expect(isKnownToolName("startQuiz")).toBe(true);
+  });
 });

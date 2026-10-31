@@ -35,5 +35,14 @@ _Steps derived from spec 0031 acceptance criteria. `/verify-release` runs these;
 ## Known gaps (not yet verifiable)
 - none (the review or print ask trigger now lives in the tutor prompt as chat_system v13; the live model check still needs keys)
 
+## Trigger bridge (startQuiz tool plus ChatQuiz card, landed after the first build)
+- [ ] Fresh chat, type a quiz ask naming a note topic → model asks at most one setup question, then the runner card mounts in setup phase with no free typed Q1 → AC-1
+- [ ] Complete the run from the mounted card → per answer marks, running score, full correction, attempt row written with source chat → AC-2, AC-3
+- [ ] Quiz ask with no note anywhere → runner empty state, no invented questions → AC-1
+- [ ] `pnpm vitest run tests/lib/ai/start-quiz.test.ts` → passed (surface, conversation note fallback, foreign note missing, empty mount) → AC-1, AC-7
+- [ ] `pnpm vitest run tests/components/chat-quiz.test.tsx` → passed (static plus dynamic part mount, missing notice, silent without parts) → AC-1, AC-2
+- [ ] `pnpm vitest run tests/prompts/quiz-in-chat.test.ts tests/prompts/tutor-voice.test.ts` → passed (v15 script, runner owns questions, trigger wording) → AC-1
+- [ ] `pnpm exec tsc --noEmit` → clean; `pnpm ui:check` → OK → all ACs
+
 ## Acceptance-criteria coverage
 - AC-1 covered by setup step · AC-2 covered by runner step (lettered cards, typed letters, progress plus running score) · AC-3 covered by mark/submit/correction/dedupe/source allowlist/retake run rotation steps · AC-4 covered by untimed step · AC-5 covered by snapshot reload plus deleted quiz plus submit clear plus retake steps and the snapshot helper command · AC-6 covered by reprompt step · AC-7 covered by owner checks plus visual handoff plus the tutor prompt review or print rule and its prompts check · AC-8 covered by caps parity step

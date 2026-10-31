@@ -332,6 +332,7 @@ function ConversationSession({
         ) : null}
         <ChatMessageList
           className="min-h-0 flex-1"
+          conversationId={conversationId}
           durationMs={durationMs}
           noteId={noteId}
           emptyState={

@@ -71,7 +71,7 @@ spec ../specs/0031-quiz-practice-inside-chat/index.md
 
 - [x] Design it (spec): /solution-architect quiz practice inside chat
 
-- [x] Build it: /feature-build quiz practice inside chat · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `app/api/quizzes/grade/route.ts`, `app/api/quizzes/attempts/route.ts`, `app/api/quizzes/generate/route.ts`, `hooks/useQuizzes.ts`, `lib/api-client.ts`, `prisma/migrations/20261031000000_add_quiz_attempt_chat_columns/`, `prompts/chat/chat_system.md`
+- [x] Build it: /feature-build quiz practice inside chat · code in `components/chat/quiz-runner.tsx`, `components/chat/chat-quiz.tsx`, `lib/chat/quiz-snapshot.ts`, `lib/ai/tools.ts` (`startQuiz`), `prompts/tools/start_quiz.md`, `lib/chat/activity-labels.ts`, `app/api/quizzes/grade/route.ts`, `app/api/quizzes/attempts/route.ts`, `app/api/quizzes/generate/route.ts`, `hooks/useQuizzes.ts`, `lib/api-client.ts`, `prisma/migrations/20261031000000_add_quiz_attempt_chat_columns/`, `prompts/chat/chat_system.md`
   - [x] Migration plus setup flow through reused reply chips (covers AC-1, AC-3, AC-4, AC-8)
   - [x] Runner card (covers AC-2: lettered cards plus typed letters with positional mapping; reload rebuild through the browser snapshot plus the active pointer, run state is ephemeral in sessionStorage, AC-5 built)
   - [x] Submit plus mark plus correction plus reprompt (covers AC-3, AC-6: one fixed reprompt, then the best guess is read aloud and scored; short open answers reprompt once, then grade anyway; attempts route allowlists the source hint and returns duplicate true on a repeated run id)
