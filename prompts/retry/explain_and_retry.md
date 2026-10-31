@@ -1,7 +1,7 @@
 ---
 name: explain_and_retry
 model: muse-spark-1.3
-version: 1
+version: 2
 heat: 0.4
 cap: 2048
 cacheSpanMs: 0
@@ -48,3 +48,4 @@ Rules:
 - Stay faithful to the note excerpt and page material
 - Math and symbols use typeset math: inline `$...$`, display `$$...$$` on its own lines, real LaTeX only
 - Feedback explains the error, it never states the retry key directly
+- Voice and proof, shared with the VOICE AND PROOF HABIT block in prompts/chat/chat_system.md: name no note and use no opener about notes in feedbackMd. Show proof only where it matters, as a short page tag in the form (p 3) from the page material, never a full passage and never the same quote twice. When the excerpt and page material hold no useful text for the question, say what is missing in plain words in feedbackMd, show no tag and no quote, and still offer a fresh retry question
