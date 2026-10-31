@@ -8,12 +8,17 @@ vi.mock("@/lib/grounded-pages", () => ({
   getGroundedPageInputs: vi.fn(),
 }));
 
+vi.mock("@/lib/inngest/client", () => ({
+  inngest: { send: vi.fn() },
+}));
+
 import {
   getEffectiveCreditCost,
   getUserCreditBalance,
   spendCredits,
 } from "@/lib/credits";
 import { getGroundedPageInputs } from "@/lib/grounded-pages";
+import { inngest } from "@/lib/inngest/client";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
 type Execute = (args: unknown, options: unknown) => Promise<unknown>;
@@ -79,7 +84,7 @@ describe("getNotePages tool description (AC-3)", () => {
     expect(description.toLowerCase()).not.toContain("meta");
   });
 
-  it("takes no model supplied id, so the model cannot steer it", () => {
+  it("takes only an optional note id, so steering stays owner checked", () => {
     const tools = createChatTools({
       userId: "user-1",
       conversationId: "conv-1",
@@ -88,7 +93,7 @@ describe("getNotePages tool description (AC-3)", () => {
       shape: Record<string, unknown>;
     };
 
-    expect(Object.keys(schema.shape)).toEqual([]);
+    expect(Object.keys(schema.shape)).toEqual(["noteId"]);
   });
 
   it("registers on the chat surface without breaking the old call shape", () => {
@@ -236,5 +241,206 @@ describe("getNotePages ownership (AC-7)", () => {
     ).rejects.toThrow("Note not found");
     expect(getGroundedPageInputs).not.toHaveBeenCalled();
     expect(spendCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe("page scan self heal (spec 0028, covers: AC-3, AC-5)", () => {
+  function noteMock(overrides: Record<string, unknown> = {}) {
+    dbMock("note", "findFirst").mockResolvedValue({
+      id: "note-1",
+      title: "English notes",
+      fileType: "PDF",
+      status: "READY",
+      ...overrides,
+    });
+  }
+
+  function counts(pageCount: number, pendingCount: number, totalCount: number) {
+    const mock = dbMock("page", "count");
+    mock.mockResolvedValue(pageCount);
+    const analyses = dbMock("visualAnalysis", "count") as unknown as {
+      mockResolvedValueOnce: (v: unknown) => void;
+      mockResolvedValue: (v: unknown) => void;
+    };
+    analyses.mockResolvedValueOnce(pendingCount);
+    analyses.mockResolvedValueOnce(totalCount);
+    analyses.mockResolvedValue(totalCount);
+  }
+
+  const send = () =>
+    vi.mocked(inngest.send) as unknown as {
+      mockResolvedValue: (v: unknown) => void;
+      mockRejectedValue: (e: unknown) => void;
+      mock: { calls: unknown[][] };
+    };
+
+  beforeEach(() => {
+    noteMock();
+    vi.mocked(getGroundedPageInputs).mockResolvedValue([]);
+  });
+
+  it("requeues the scan for a settled PDF with no page rows, and stays pending", async () => {
+    counts(0, 0, 0);
+    send().mockResolvedValue({ ids: ["evt-1"] });
+
+    const out = (await tool()({}, { toolCallId: "t-heal", messages: [] })) as {
+      pages: unknown[];
+      scanPending: boolean;
+      noteTitle: string;
+    };
+
+    expect(send().mock.calls).toEqual([
+      [{ name: "note/uploaded", data: { noteId: "note-1" } }],
+    ]);
+    expect(out).toEqual({
+      pages: [],
+      scanPending: true,
+      noteTitle: "English notes",
+    });
+    expect(spendCredits).not.toHaveBeenCalled();
+  });
+
+  it("requeues for an ERROR note too, since no pipe is in flight", async () => {
+    noteMock({ status: "ERROR" });
+    counts(0, 0, 0);
+    send().mockResolvedValue({ ids: ["evt-2"] });
+
+    await tool()({}, { toolCallId: "t-heal-error", messages: [] });
+
+    expect(send().mock.calls).toHaveLength(1);
+  });
+
+  it("leaves a PROCESSING note alone, its upload event may be in flight", async () => {
+    noteMock({ status: "PROCESSING" });
+    counts(0, 0, 0);
+
+    const out = (await tool()(
+      {},
+      { toolCallId: "t-processing", messages: [] },
+    )) as { scanPending: boolean };
+
+    expect(send().mock.calls).toHaveLength(0);
+    expect(out.scanPending).toBe(true);
+  });
+
+  it("leaves non PDF notes alone, they have no pages to scan", async () => {
+    noteMock({ fileType: "WORD" });
+    counts(0, 0, 0);
+
+    await tool()({}, { toolCallId: "t-word", messages: [] });
+
+    expect(send().mock.calls).toHaveLength(0);
+  });
+
+  it("never requeues a note the pipeline already touched", async () => {
+    counts(4, 0, 3);
+
+    await tool()({}, { toolCallId: "t-touched", messages: [] });
+
+    expect(send().mock.calls).toHaveLength(0);
+  });
+
+  it("still returns pending when the requeue send fails", async () => {
+    counts(0, 0, 0);
+    send().mockRejectedValue(new Error("Inngest down"));
+
+    const out = (await tool()(
+      {},
+      { toolCallId: "t-send-fail", messages: [] },
+    )) as { pages: unknown[]; scanPending: boolean };
+
+    expect(out).toEqual({
+      pages: [],
+      scanPending: true,
+      noteTitle: "English notes",
+    });
+    expect(spendCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe("getNotePages explicit note id (spec 0028, covers: AC-3, AC-7)", () => {
+  function noteMock(overrides: Record<string, unknown> = {}) {
+    dbMock("note", "findFirst").mockResolvedValue({
+      id: "note-9",
+      title: "Business law",
+      fileType: "PDF",
+      status: "READY",
+      ...overrides,
+    });
+  }
+
+  beforeEach(() => {
+    noteMock();
+    vi.mocked(getGroundedPageInputs).mockResolvedValue([
+      {
+        pageNumber: 4,
+        visualType: "TEXT",
+        description: "Formation steps.",
+        confidence: 0.9,
+      },
+    ]);
+  });
+
+  it("serves the search resolved note without an attached conversation note", async () => {
+    dbMock("chatConversation", "findFirst").mockResolvedValue(null);
+
+    const out = (await tool()(
+      { noteId: "note-9" },
+      { toolCallId: "t-explicit", messages: [] },
+    )) as { pages: { pageNumber: number }[]; scanPending: boolean };
+
+    expect(out.pages).toHaveLength(1);
+    expect(out.pages[0]?.pageNumber).toBe(4);
+    expect(out.scanPending).toBe(false);
+  });
+
+  it("works with no conversation at all when the id is supplied", async () => {
+    const tools = createChatTools({ userId: "user-1" });
+    const execute = tools.getNotePages.execute as unknown as Execute;
+
+    const out = (await execute(
+      { noteId: "note-9" },
+      { toolCallId: "t-noconv", messages: [] },
+    )) as { pages: { pageNumber: number }[] };
+
+    expect(out.pages).toHaveLength(1);
+  });
+
+  it("prefers the explicit id over the conversation note", async () => {
+    dbMock("chatConversation", "findFirst").mockResolvedValue({
+      noteId: "note-other",
+    } as never);
+    const noteFind = dbMock("note", "findFirst");
+
+    await tool()(
+      { noteId: "note-9" },
+      { toolCallId: "t-prefer", messages: [] },
+    );
+
+    expect(noteFind).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "note-9", userId: "user-1" } }),
+    );
+  });
+
+  it("reads a foreign id as not found and leaks nothing", async () => {
+    dbMock("note", "findFirst").mockResolvedValue(null);
+
+    await expect(
+      tool()(
+        { noteId: "note-foreign" },
+        { toolCallId: "t-foreign-id", messages: [] },
+      ),
+    ).rejects.toThrow("Note not found");
+    expect(spendCredits).not.toHaveBeenCalled();
+  });
+
+  it("still throws when neither an id nor a conversation note exists", async () => {
+    dbMock("chatConversation", "findFirst").mockResolvedValue({
+      noteId: null,
+    } as never);
+
+    await expect(
+      tool()({}, { toolCallId: "t-neither", messages: [] }),
+    ).rejects.toThrow("no note attached");
   });
 });
