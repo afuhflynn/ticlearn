@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { QuizArt } from "@/components/art/quiz-art";
 import { MathMarkdown } from "@/components/math-markdown";
 import { RetryPanel } from "@/components/retries/retry-panel";
 import { Badge } from "@/components/ui/badge";
@@ -105,6 +106,10 @@ export default function QuizPlayerPage() {
   const submitAttempt = useSubmitQuizAttempt();
 
   const quiz = data?.quiz as QuizResponse | undefined;
+  const quizNoteId =
+    (data?.quiz as unknown as { note?: { id?: string } | null })?.note?.id ??
+    (data?.quiz as unknown as { noteId?: string | null })?.noteId ??
+    null;
   const questions = quiz?.questions ?? [];
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -520,8 +525,14 @@ export default function QuizPlayerPage() {
                         />
                       </div>
                     </div>
+                    <QuizArt
+                      noteId={quizNoteId}
+                      sourcePages={question.sourcePages}
+                      answerId={answer?.id}
+                      concept={question.question.slice(0, 80)}
+                    />
                     {!answer?.isCorrect && answer?.id ? (
-                      <RetryPanel answerId={answer.id} />
+                      <RetryPanel answerId={answer.id} showArt={false} />
                     ) : null}
                   </CardContent>
                 </Card>

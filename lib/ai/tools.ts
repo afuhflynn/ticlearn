@@ -695,6 +695,58 @@ export function createChatTools({ userId, conversationId }: ToolFactoryOptions) 
     },
   });
 
+  const drawVisualTool = tool({
+    description: getToolDescription("draw_visual"),
+    inputSchema: z.object({
+      concept: z
+        .string()
+        .min(1)
+        .max(160)
+        .describe("The idea to draw, in plain words."),
+      noteId: z
+        .string()
+        .optional()
+        .describe("The note in play, when there is one."),
+    }),
+    execute: async ({ concept, noteId }) => {
+      // Server validated: ownership resolves through the caller id, the cap
+      // runs before the model call, invalid output degrades to text.
+      const { generateVisualArtifact } = await import("@/lib/visual-artifacts");
+      const clean = concept.trim().slice(0, 160);
+      let context = "";
+      let resolvedNoteId: string | null = null;
+      // The model may omit the note; fall back to the conversation's note
+      // so drawings stay grounded and linked, exactly like getNotePages.
+      let effectiveNoteId = noteId ?? null;
+      if (!effectiveNoteId && conversationId) {
+        const conversation = await prisma.chatConversation.findFirst({
+          where: { id: conversationId, userId },
+          select: { noteId: true },
+        });
+        effectiveNoteId = conversation?.noteId ?? null;
+      }
+      if (effectiveNoteId) {
+        const note = await prisma.note.findFirst({
+          where: { id: effectiveNoteId, userId },
+          select: { id: true, summary: true, keyPoints: true },
+        });
+        if (!note) return { ok: false, reason: "missing" };
+        resolvedNoteId = note.id;
+        context = [note.summary ?? "", (note.keyPoints ?? []).join("\n")]
+          .join("\n")
+          .slice(0, 4000);
+      }
+      const result = await generateVisualArtifact({
+        userId,
+        noteId: resolvedNoteId,
+        concept: clean,
+        context,
+      });
+      if (!result.ok) return result;
+      return { ...result, noteId: resolvedNoteId, concept: clean };
+    },
+  });
+
   return {
     webSearch: wrapTool(webSearchTool, WEB_SEARCH_TOOL_POLICIES, policyContext),
     readPage: wrapTool(readPageTool, READ_PAGE_TOOL_POLICIES, policyContext),
@@ -751,5 +803,10 @@ export function createChatTools({ userId, conversationId }: ToolFactoryOptions) 
     // No policy applies: the tool touches no user data, only the model's own
     // two or three sentences, which the sanitizer caps.
     suggestReplies: wrapTool(suggestRepliesTool, [], policyContext),
+    drawVisual: wrapTool(
+      drawVisualTool,
+      DEFAULT_CHAT_TOOL_POLICIES,
+      policyContext,
+    ),
   };
 }
