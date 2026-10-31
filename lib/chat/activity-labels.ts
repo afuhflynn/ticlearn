@@ -54,6 +54,7 @@ const LABELS: Record<string, LabelBuilder> = {
   getStudyProgress: () => "Checking your progress",
   getSubscriptionContext: () => "Checking your plan",
   createQuiz: () => "Setting up your practice",
+  startQuiz: () => "Starting your quiz",
   getNotePages: () => "Reading page numbers from your note",
   suggestReplies: () => "",
 };
@@ -71,6 +72,7 @@ const FAILURE_LABELS: Record<string, string> = {
   getStudyProgress: "Couldn't read your progress. Answering without it.",
   getSubscriptionContext: "Couldn't check your plan. Answering without it.",
   createQuiz: "Couldn't set up the practice. Answering without it.",
+  startQuiz: "Couldn't start the quiz here. Ask again and I will set it up.",
   getNotePages: "Couldn't read the page numbers. Answering without them.",
   suggestReplies: "Couldn't suggest what to ask next.",
 };

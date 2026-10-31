@@ -745,6 +745,48 @@ export function createChatTools({
     },
   });
 
+  const startQuizTool = tool({
+    description: getToolDescription("start_quiz"),
+    inputSchema: z.object({
+      noteId: z
+        .string()
+        .optional()
+        .describe("The note to quiz on. Omit it when no note is in play."),
+      noteTitle: z
+        .string()
+        .max(120)
+        .optional()
+        .describe("Note title shown on the runner card. Omit it with noteId."),
+    }),
+    execute: async ({ noteId, noteTitle }) => {
+      // Mounting the runner costs nothing; generation and grading debit
+      // downstream through the same endpoints and caps as the quiz page.
+      let resolvedNoteId: string | null = noteId ?? null;
+      let resolvedNoteTitle: string | null = noteTitle?.trim() || null;
+      if (!resolvedNoteId && conversationId) {
+        const conversation = await prisma.chatConversation.findFirst({
+          where: { id: conversationId, userId },
+          select: { noteId: true },
+        });
+        resolvedNoteId = conversation?.noteId ?? null;
+      }
+      if (resolvedNoteId) {
+        const note = await prisma.note.findFirst({
+          where: { id: resolvedNoteId, userId },
+          select: { id: true, title: true },
+        });
+        if (!note) return { ok: false as const, reason: "missing" as const };
+        resolvedNoteId = note.id;
+        resolvedNoteTitle = resolvedNoteTitle ?? note.title;
+      }
+      return {
+        ok: true as const,
+        noteId: resolvedNoteId,
+        noteTitle: resolvedNoteTitle,
+      };
+    },
+  });
+
   return {
     webSearch: wrapTool(webSearchTool, WEB_SEARCH_TOOL_POLICIES, policyContext),
     readPage: wrapTool(readPageTool, READ_PAGE_TOOL_POLICIES, policyContext),
@@ -803,6 +845,11 @@ export function createChatTools({
     suggestReplies: wrapTool(suggestRepliesTool, [], policyContext),
     drawVisual: wrapTool(
       drawVisualTool,
+      DEFAULT_CHAT_TOOL_POLICIES,
+      policyContext,
+    ),
+    startQuiz: wrapTool(
+      startQuizTool,
       DEFAULT_CHAT_TOOL_POLICIES,
       policyContext,
     ),
