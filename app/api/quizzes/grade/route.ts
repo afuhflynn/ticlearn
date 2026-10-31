@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { gradeOpenAnswer } from "@/lib/ai";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const gradeAnswerSchema = z.object({
   questionId: z.string().min(1),
@@ -26,17 +27,34 @@ export async function POST(req: Request) {
     const { questionId, question, type, userAnswer, correctAnswer } =
       gradeAnswerSchema.parse(await req.json());
 
+    const stored = await prisma.quizQuestion.findFirst({
+      where: { id: questionId },
+      include: { quiz: { select: { userId: true } } },
+    });
+    if (!stored || stored.quiz.userId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Question not found" },
+        { status: 404 },
+      );
+    }
+
+    const marksTotal = stored.marks ?? 1;
+    const schemeMd =
+      stored.markSchemeMd ??
+      `Correct answer earns ${marksTotal} mark${marksTotal === 1 ? "" : "s"}.`;
+    const examinerNote = stored.examinerNote ?? "";
+
     let isCorrect = false;
     let why = "";
+    let marksEarned = 0;
 
     if (type === "MCQ") {
       isCorrect = userAnswer.trim() === correctAnswer.trim();
+      marksEarned = isCorrect ? marksTotal : 0;
       why = isCorrect
         ? "That's correct."
         : `Not quite — the correct answer is ${correctAnswer}.`;
     } else {
-      // Open answers are graded by the model, the same task and cost as the
-      // quiz page submit. The student's answer always precedes the explanation.
       const feedback = await gradeOpenAnswer(
         question,
         userAnswer,
@@ -45,7 +63,18 @@ export async function POST(req: Request) {
       );
       const scoreMatch = feedback.match(/(\d{1,3})/);
       const aiScore = scoreMatch ? Number(scoreMatch[1]) : 0;
-      isCorrect = aiScore >= 70;
+      const safeScore = Math.min(100, Math.max(0, aiScore));
+      isCorrect = safeScore >= 70;
+      marksEarned = Math.min(
+        marksTotal,
+        Math.round((safeScore / 100) * marksTotal),
+      );
+      if (!isCorrect && marksEarned > marksTotal - 1 && marksTotal > 1) {
+        marksEarned = marksTotal - 1;
+      }
+      if (isCorrect && marksEarned < marksTotal && safeScore >= 95) {
+        marksEarned = marksTotal;
+      }
       why = isCorrect ? `That's right. ${feedback}` : `Not quite — ${feedback}`;
     }
 
@@ -53,6 +82,10 @@ export async function POST(req: Request) {
       questionId,
       isCorrect,
       why,
+      marksEarned,
+      marksTotal,
+      schemeMd,
+      examinerNote,
     });
   } catch (error) {
     console.error("Grade answer error:", error);

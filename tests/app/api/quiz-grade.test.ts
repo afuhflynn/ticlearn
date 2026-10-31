@@ -2,10 +2,21 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "@/app/api/quizzes/grade/route";
 import { gradeOpenAnswer } from "@/lib/ai";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 vi.mock("@/lib/ai", () => ({
   gradeOpenAnswer: vi.fn(),
 }));
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    quizQuestion: { findFirst: vi.fn() },
+  },
+}));
+
+const db = prisma as unknown as {
+  quizQuestion: { findFirst: ReturnType<typeof vi.fn> };
+};
 
 function signIn(user: { id: string } | null) {
   vi.mocked(auth.api.getSession).mockResolvedValue({ user } as never);
@@ -33,6 +44,17 @@ beforeEach(() => {
   vi.clearAllMocks();
   signIn({ id: "student-1" });
   vi.mocked(gradeOpenAnswer).mockResolvedValue("Score: 90. Good answer.");
+  db.quizQuestion.findFirst.mockImplementation(async (args: unknown) => {
+    const where = (args as { where?: { id?: string } }).where;
+    const id = where?.id ?? "question-1";
+    return {
+      id,
+      marks: 2,
+      markSchemeMd: "Point 1 earns 1 mark in your own words.",
+      examinerNote: "",
+      quiz: { userId: "student-1" },
+    };
+  });
 });
 
 describe("POST /api/quizzes/grade (covers: AC-3, AC-6, AC-7)", () => {
@@ -158,5 +180,27 @@ describe("POST /api/quizzes/grade (covers: AC-3, AC-6, AC-7)", () => {
     });
 
     expect(res.status).toBe(500);
+  });
+
+  it("reads a foreign question as not found (covers: AC-11)", async () => {
+    db.quizQuestion.findFirst.mockResolvedValueOnce({
+      id: "question-9",
+      marks: 1,
+      markSchemeMd: null,
+      examinerNote: null,
+      quiz: { userId: "other-student" },
+    });
+
+    const res = await grade({ ...mcqBase, userAnswer: "Paris" });
+
+    expect(res.status).toBe(404);
+  });
+
+  it("reads a missing question as not found (covers: AC-11)", async () => {
+    db.quizQuestion.findFirst.mockResolvedValueOnce(null);
+
+    const res = await grade({ ...mcqBase, userAnswer: "Paris" });
+
+    expect(res.status).toBe(404);
   });
 });

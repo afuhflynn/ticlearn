@@ -201,7 +201,7 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
     expect(screen.getAllByText("Your answer")).toHaveLength(3);
     expect(screen.getAllByText("Correct answer")).toHaveLength(1);
 
-    await user.click(screen.getByRole("button", { name: /retake quiz/i }));
+    await user.click(screen.getByRole("button", { name: /start over/i }));
     expect(
       await screen.findByText(/Question 1 of 3.*0 correct/),
     ).toBeInTheDocument();
@@ -230,6 +230,60 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
 
     expect(screen.getByRole("button", { name: "Start quiz" })).toBeDisabled();
     expect(generateMock).not.toHaveBeenCalled();
+  });
+
+  it("retries once with a smaller set on a length cutoff, then hands off with a link (covers: AC-10)", async () => {
+    const user = userEvent.setup();
+    generateMock.mockRejectedValueOnce(
+      new Error("Output truncated at length cutoff"),
+    );
+    render(
+      <QuizRunner
+        conversationId="conv-retry"
+        noteId="note-1"
+        noteTitle="Bio notes"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "10" }));
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 3.*0 correct/);
+
+    expect(generateMock).toHaveBeenCalledTimes(2);
+    expect(generateMock).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ questionCount: 10 }),
+    );
+    expect(generateMock).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ questionCount: 5 }),
+    );
+  });
+
+  it("links the full quiz page when the smaller retry also fails (covers: AC-10)", async () => {
+    const user = userEvent.setup();
+    generateMock.mockRejectedValueOnce(
+      new Error("Output truncated at length cutoff"),
+    );
+    generateMock.mockRejectedValueOnce(new Error("Output truncated again"));
+    render(
+      <QuizRunner
+        conversationId="conv-handoff"
+        noteId="note-1"
+        noteTitle="Bio notes"
+      />,
+    );
+
+    await user.click(screen.getByRole("button", { name: "10" }));
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    expect(
+      await screen.findByText(
+        "Full paper lives on the quiz page. Open it to continue.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open full quiz page" }),
+    ).toHaveAttribute("href", "/quizzes");
   });
 });
 
@@ -449,22 +503,20 @@ describe("QuizRunner low docked card (spec 0034)", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps spot plus answers across the Quiz and Flashcards toggle (covers: AC-8)", async () => {
+  it("stays quiz only with no flashcards toggle and no clock (covers: AC-12)", async () => {
     const user = userEvent.setup();
     await startQuiz(user);
 
     await user.click(screen.getByRole("button", { name: /four/i }));
     expect(await screen.findByText("That's correct.")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("tab", { name: "Flashcards" }));
     expect(
-      screen.queryByRole("button", { name: /four/i }),
+      screen.queryByRole("tab", { name: "Flashcards" }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("That's correct.")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("tab", { name: "Quiz" }));
-    expect(screen.getByRole("button", { name: /four/i })).toBeInTheDocument();
-    expect(screen.getByText(/Question 1 of 3.*1 correct/)).toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Quiz" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/clock|timer|countdown/i),
+    ).not.toBeInTheDocument();
   });
 
   it("reveals the hint from generate and hides the control when empty (covers: AC-7)", async () => {
@@ -496,9 +548,9 @@ describe("QuizRunner low docked card (spec 0034)", () => {
 
     const slot = document.getElementById("quiz-dock-slot");
     expect(slot).not.toBeNull();
-    expect(
-      slot?.contains(screen.getByText(/Question 1 of 3.*0 correct/)),
-    ).toBe(true);
+    expect(slot?.contains(screen.getByText(/Question 1 of 3.*0 correct/))).toBe(
+      true,
+    );
   });
 
   it("minimizes to a slim bar and restores the same spot (covers: AC-8)", async () => {

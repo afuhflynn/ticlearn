@@ -87,6 +87,8 @@ export async function POST(req: Request) {
     }
 
     let correctCount = 0;
+    let totalMarks = 0;
+    let marksEarned = 0;
     const attemptAnswers: Array<{
       questionId: string;
       question: string;
@@ -94,14 +96,23 @@ export async function POST(req: Request) {
       correctAnswer: string;
       isCorrect: boolean;
       explanation: string | null;
+      marksEarned: number;
+      marksTotal: number;
+      markSchemeMd: string | null;
     }> = [];
 
     for (const answer of answers) {
       const question = quiz.questions.find((q) => q.id === answer.questionId);
       if (!question) continue;
 
+      const marksTotal = (question as { marks?: number }).marks ?? 1;
+      const schemeMd =
+        (question as { markSchemeMd?: string | null }).markSchemeMd ?? null;
+      totalMarks += marksTotal;
+
       let isCorrect = false;
       let explanation = question.explanation;
+      let earned = 0;
 
       if (question.type === "OPEN") {
         const gradingResult = await gradeOpenAnswer(
@@ -113,11 +124,17 @@ export async function POST(req: Request) {
 
         const scoreMatch = gradingResult.match(/(\d{1,3})/);
         const aiScore = scoreMatch ? Number(scoreMatch[1]) : 0;
-        isCorrect = aiScore >= 70;
+        const safeScore = Math.min(100, Math.max(0, aiScore));
+        isCorrect = safeScore >= 70;
+        earned = Math.min(
+          marksTotal,
+          Math.round((safeScore / 100) * marksTotal),
+        );
         explanation =
           `${question.explanation ?? ""}\n\nAI feedback:\n${gradingResult}`.trim();
       } else {
         isCorrect = answer.answer === question.correctAnswer;
+        earned = isCorrect ? marksTotal : 0;
         if (!isCorrect) {
           const aiExplanation = await explainMCQAnswer(
             question.question,
@@ -132,6 +149,7 @@ export async function POST(req: Request) {
       }
 
       if (isCorrect) correctCount++;
+      marksEarned += earned;
 
       attemptAnswers.push({
         questionId: question.id,
@@ -140,10 +158,16 @@ export async function POST(req: Request) {
         correctAnswer: question.correctAnswer,
         isCorrect,
         explanation,
+        marksEarned: earned,
+        marksTotal,
+        markSchemeMd: schemeMd,
       });
     }
 
-    const score = Math.round((correctCount / quiz.questions.length) * 100);
+    const score =
+      totalMarks > 0
+        ? Math.round((marksEarned / totalMarks) * 100)
+        : Math.round((correctCount / quiz.questions.length) * 100);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const yesterday = new Date(today);
@@ -164,6 +188,8 @@ export async function POST(req: Request) {
           score,
           totalQuestions: quiz.questions.length,
           correctAnswers: correctCount,
+          totalMarks,
+          marksEarned,
           answers: {
             create: attemptAnswers,
           },

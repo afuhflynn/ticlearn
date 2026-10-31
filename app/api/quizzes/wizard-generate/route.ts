@@ -199,6 +199,9 @@ export async function POST(req: Request) {
           correctAnswer: q.correctAnswer,
           explanation: q.explanation ?? null,
           order: i + 1,
+          marks: (q as { marks?: number }).marks ?? (q.type === "OPEN" ? 2 : 1),
+          markSchemeMd: (q as { markSchemeMd?: string }).markSchemeMd ?? null,
+          examinerNote: (q as { examinerNote?: string }).examinerNote ?? null,
         })),
       });
       return created;
