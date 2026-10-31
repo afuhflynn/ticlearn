@@ -65,8 +65,8 @@ describe("summarizeText (covers: note processing NoObjectGenerated fix)", () => 
     const huge = "x".repeat(MAX_CHARACTERS_FOR_SUMMARY_CONTEXT + 5000);
     await summarizeText(huge);
 
-    const call = vi.mocked(orchestrator.generate).mock.calls[0][0];
-    expect(call.prompt.length).toBeLessThanOrEqual(
+    const call = vi.mocked(orchestrator.generate).mock.calls[0]?.[0];
+    expect(call?.prompt?.length).toBeLessThanOrEqual(
       MAX_CHARACTERS_FOR_SUMMARY_CONTEXT + 2000,
     );
   });
@@ -74,7 +74,7 @@ describe("summarizeText (covers: note processing NoObjectGenerated fix)", () => 
   it("requests a 4096 output cap so reasoning plus JSON fit", async () => {
     await summarizeText("Some note content.");
 
-    const call = vi.mocked(orchestrator.generate).mock.calls[0][0];
-    expect(call.modelOptions.maxOutputTokens).toBe(4096);
+    const call = vi.mocked(orchestrator.generate).mock.calls[0]?.[0];
+    expect(call?.modelOptions?.maxOutputTokens).toBe(4096);
   });
 });

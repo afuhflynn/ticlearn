@@ -71,14 +71,14 @@ spec ../specs/0031-quiz-practice-inside-chat/index.md
 
 - [x] Design it (spec): /solution-architect quiz practice inside chat
 
-- [ ] Build it: /feature-build quiz practice inside chat
-  - [ ] Migration plus setup flow through reused reply chips (covers AC-1, AC-3, AC-4, AC-8)
-  - [ ] Runner card with rebuild from thread (covers AC-2, AC-5)
-  - [ ] Submit plus mark plus correction plus reprompt (covers AC-3, AC-6)
-  - [ ] Handoff plus caps parity wiring (covers AC-7, AC-8)
-  - [ ] Tests for happy path plus reload plus foreign 404 plus caps (covers all ACs)
+- [x] Build it: /feature-build quiz practice inside chat · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `app/api/quizzes/grade/route.ts`, `app/api/quizzes/attempts/route.ts`, `app/api/quizzes/generate/route.ts`, `hooks/useQuizzes.ts`, `lib/api-client.ts`, `prisma/migrations/20261031000000_add_quiz_attempt_chat_columns/`, `prompts/chat/chat_system.md`
+  - [x] Migration plus setup flow through reused reply chips (covers AC-1, AC-3, AC-4, AC-8)
+  - [x] Runner card (covers AC-2: lettered cards plus typed letters with positional mapping; reload rebuild through the browser snapshot plus the active pointer, run state is ephemeral in sessionStorage, AC-5 built)
+  - [x] Submit plus mark plus correction plus reprompt (covers AC-3, AC-6: one fixed reprompt, then the best guess is read aloud and scored; short open answers reprompt once, then grade anyway; attempts route allowlists the source hint and returns duplicate true on a repeated run id)
+  - [x] Handoff plus caps parity wiring (covers AC-7, AC-8: attempts route checks quiz ownership with foreign ids reading as not found; runner shows the handoff card on 2 plus cited visuals with fixed copy and a link; tutor prompt hands the full quiz page link on a review or print ask via getUserQuizzes; caps parity locked by test)
+  - [x] Tests for happy path plus reload plus foreign 404 plus caps (covers all ACs) · API tests for submit, dedupe, grade, foreign 404, caps parity and the source allowlist; snapshot helper tests (8 passed); runner component tests for the happy path, the fixed reprompt, the note gate and the reload rebuild
 - [ ] Verify it: /verify-release quiz practice inside chat
-- [ ] Test it: /test-engineer quiz practice inside chat
+- [x] Test it: /test-engineer quiz practice inside chat
 
 ### 57. Tutor voice and citation habit · Slice 2 · planned · needs a decision
 

@@ -180,9 +180,7 @@ describe("ChatArt (spec 0030)", () => {
     );
 
     expect(screen.getAllByText("Draw failed.")).toHaveLength(2);
-    expect(
-      screen.getByRole("button", { name: "Retry" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
   it("shows a plain limit line with no retry when the cap is hit (covers: AC-6, AC-7)", () => {

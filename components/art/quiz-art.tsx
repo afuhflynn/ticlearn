@@ -94,10 +94,7 @@ export function QuizArt({
           ))
         : null}
       {limited && retryArt.length > 0 ? (
-        <ArtNotice
-          message="Daily draw limit reached for this idea."
-          limit
-        />
+        <ArtNotice message="Daily draw limit reached for this idea." limit />
       ) : null}
       {concept &&
       answerId &&

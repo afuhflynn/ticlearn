@@ -30,24 +30,33 @@ const starterIcons: Record<string, typeof FileSearch> = {
  */
 export function StarterRows({
   onStart,
+  onQuiz,
   className,
 }: {
   onStart: (prompt: string) => void;
+  /** The "Quiz me" starter activates the in-chat quiz runner instead. */
+  onQuiz?: () => void;
   className?: string;
 }) {
   return (
     <div className={cn("flex w-full flex-col gap-1", className)}>
       {CHAT_STARTERS.map((starter) => {
         const Icon = starterIcons[starter.title] ?? FileSearch;
+        const isQuiz = starter.title === "Quiz me";
         return (
           <Button
             className="h-auto min-h-11 w-full justify-start gap-3 rounded-[var(--radius)] px-3 py-2.5 text-sm font-normal"
             key={starter.title}
-            onClick={() => onStart(starter.prompt)}
+            onClick={isQuiz && onQuiz ? onQuiz : () => onStart(starter.prompt)}
             variant="ghost"
           >
             <Icon className="size-4 shrink-0 text-muted-foreground" />
             <span className="truncate">{starter.title}</span>
+            {isQuiz ? (
+              <span className="ml-auto text-xs text-muted-foreground">
+                in chat
+              </span>
+            ) : null}
           </Button>
         );
       })}

@@ -141,7 +141,9 @@ export function RetryPanel({
             <p className="break-words">{retry.sourceExcerpt.slice(0, 600)}</p>
           </div>
         ) : null}
-        {showArt ? <QuizArt answerId={answerId} concept={retry.concept} /> : null}
+        {showArt ? (
+          <QuizArt answerId={answerId} concept={retry.concept} />
+        ) : null}
         <div>
           <p className="mb-2 text-sm font-medium">
             <MathMarkdown content={retry.retryQuestion} />

@@ -57,7 +57,9 @@ function drawOutputsFromParts(
 function citedPages(text: string): number[] {
   const found = new Set<number>();
   // The chat prompt cites pages as (p. 3), so accept page, p., and pp.
-  for (const m of text.matchAll(/(?:^|[\s(])(?:p{1,2}\.?|pages?)\s+(\d{1,3})/gi)) {
+  for (const m of text.matchAll(
+    /(?:^|[\s(])(?:p{1,2}\.?|pages?)\s+(\d{1,3})/gi,
+  )) {
     const n = Number(m[1]);
     if (Number.isFinite(n) && n >= 1 && n <= 999) found.add(n);
   }

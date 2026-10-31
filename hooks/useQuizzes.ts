@@ -125,6 +125,9 @@ export function useSubmitQuizAttempt() {
     mutationFn: async (data: {
       quizId: string;
       answers: { questionId: string; answer: string }[];
+      source?: "page" | "chat";
+      conversationId?: string;
+      clientRunId?: string;
     }) => {
       const result = await api.mutations.quizzes.submitAttempt(data);
       return result;
