@@ -19,6 +19,7 @@ import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
+import { inngest } from "@/lib/inngest/client";
 import { getGroundedPageInputs } from "@/lib/grounded-pages";
 import { prisma } from "@/lib/prisma";
 import { getToolDescription } from "@/lib/prompts/loader";
@@ -584,28 +585,41 @@ export function createChatTools({
 
   const getNotePagesTool = tool({
     description: getToolDescription("get_note_pages"),
-    inputSchema: z.object({}),
-    execute: async (_args, options?: { toolCallId?: string }) => {
-      if (!conversationId) {
-        throw new Error(
-          "This conversation has no note attached. Answer from the typed question instead.",
-        );
-      }
-
-      const conversation = await prisma.chatConversation.findFirst({
-        where: { id: conversationId, userId },
-        select: { noteId: true },
-      });
-      const noteId = conversation?.noteId;
+    inputSchema: z.object({
+      noteId: z
+        .string()
+        .optional()
+        .describe(
+          "The note id from a search result already in context. Omit it to use the conversation note.",
+        ),
+    }),
+    execute: async (
+      { noteId: hintedNoteId },
+      options?: { toolCallId?: string },
+    ) => {
+      let noteId = hintedNoteId ?? null;
       if (!noteId) {
-        throw new Error(
-          "This conversation has no note attached. Answer from the typed question instead.",
-        );
+        if (!conversationId) {
+          throw new Error(
+            "This conversation has no note attached. Answer from the typed question instead.",
+          );
+        }
+
+        const conversation = await prisma.chatConversation.findFirst({
+          where: { id: conversationId, userId },
+          select: { noteId: true },
+        });
+        noteId = conversation?.noteId ?? null;
+        if (!noteId) {
+          throw new Error(
+            "This conversation has no note attached. Answer from the typed question instead.",
+          );
+        }
       }
 
       const note = await prisma.note.findFirst({
         where: { id: noteId, userId },
-        select: { id: true, title: true },
+        select: { id: true, title: true, fileType: true, status: true },
       });
       if (!note) {
         throw new Error("Note not found.");
@@ -613,7 +627,7 @@ export function createChatTools({
 
       const inputs = await getGroundedPageInputs(note.id);
       if (inputs.length === 0) {
-        const [pageCount, pendingCount] = await Promise.all([
+        const [pageCount, pendingCount, analysisCount] = await Promise.all([
           prisma.page.count({ where: { noteId: note.id } }),
           prisma.visualAnalysis.count({
             where: {
@@ -621,7 +635,35 @@ export function createChatTools({
               status: { in: ["PENDING"] },
             },
           }),
+          prisma.visualAnalysis.count({
+            where: { page: { noteId: note.id } },
+          }),
         ]);
+        // Self heal for notes the scan pipeline never touched: PDFs uploaded
+        // before the pipeline existed, seeded notes, or uploads sent while
+        // Inngest was down leave zero page rows behind. The job skips
+        // analysed pages, so re emitting is safe; PROCESSING notes are left
+        // alone because their upload event may still be in flight. A failed
+        // queue send never breaks the chat turn, the pending shape below
+        // already tells the model not to guess.
+        if (
+          note.fileType === "PDF" &&
+          pageCount === 0 &&
+          analysisCount === 0 &&
+          (note.status === "READY" || note.status === "ERROR")
+        ) {
+          try {
+            await inngest.send({
+              name: "note/uploaded",
+              data: { noteId: note.id },
+            });
+          } catch (error) {
+            console.warn(
+              "[getNotePages] Page scan requeue failed:",
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        }
         return {
           pages: [],
           scanPending: pageCount === 0 || pendingCount > 0,

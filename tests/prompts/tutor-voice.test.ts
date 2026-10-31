@@ -78,9 +78,9 @@ const BAD_REPEATING_THREAD = [
 ].join("\n\n");
 
 describe("tutor voice and citation habit", () => {
-  it("bumps the chat prompt to version 14 with the shared habit block", () => {
+  it("bumps the chat prompt to version 15 with the shared habit block", () => {
     const { settings, text } = loadPromptRaw("chat", "chat_system");
-    expect(settings.version).toBe(14);
+    expect(settings.version).toBe(15);
     expect(text).toContain("VOICE AND PROOF HABIT");
     expect(text).toMatch(/at most once per topic/i);
     expect(text).toContain("(p 3)");
