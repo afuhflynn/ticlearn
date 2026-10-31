@@ -5,20 +5,37 @@
  * snapshot with a plain message plus retry at the call site.
  */
 
-export const QUIZ_SNAPSHOT_VERSION = 1;
+export const QUIZ_SNAPSHOT_VERSION = 2;
 
 export type QuizMark = { isCorrect: boolean; why: string };
 
+export type WizardLevelChoice = "GCE" | "HND" | "PROF" | "MIXED";
+export type WizardDifficultyChoice = "STANDARD" | "HARD" | "MIXED";
+
+export type WizardState = {
+  topicText?: string;
+  noteId?: string | null;
+  noteTitle?: string | null;
+  levelChoice?: WizardLevelChoice;
+  formatChoice?: string;
+  count?: number;
+  difficulty?: WizardDifficultyChoice;
+  totalMarks?: number;
+  stepIndex?: number;
+  wizardDone?: boolean;
+  collapsed?: boolean;
+};
+
 export type QuizSnapshot = {
   version: number;
-  quizId: string;
+  quizId: string | null;
   answers: Record<string, string>;
   marks: Record<string, QuizMark>;
   currentIndex: number;
   count: number;
   clientRunId: string;
   updatedAt: number;
-};
+} & WizardState;
 
 function storage(): Storage | null {
   if (typeof window === "undefined") return null;
@@ -102,17 +119,32 @@ export function loadQuizSnapshot(
     const raw = store.getItem(snapshotKey(conversationId, runId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<QuizSnapshot>;
-    if (parsed.version !== QUIZ_SNAPSHOT_VERSION) return null;
-    if (!parsed.quizId || !parsed.clientRunId) return null;
+    if (parsed.version !== 1 && parsed.version !== QUIZ_SNAPSHOT_VERSION)
+      return null;
+    if (!parsed.clientRunId) return null;
+    const isWizardRun =
+      parsed.version === QUIZ_SNAPSHOT_VERSION &&
+      (parsed.stepIndex != null || parsed.wizardDone != null);
+    if (!parsed.quizId && !isWizardRun) return null;
     return {
       version: QUIZ_SNAPSHOT_VERSION,
-      quizId: parsed.quizId,
+      quizId: (parsed.quizId as string | null) ?? null,
       answers: parsed.answers ?? {},
       marks: parsed.marks ?? {},
       currentIndex: parsed.currentIndex ?? 0,
       count: parsed.count ?? 5,
       clientRunId: parsed.clientRunId,
       updatedAt: parsed.updatedAt ?? Date.now(),
+      topicText: parsed.topicText,
+      noteId: parsed.noteId,
+      noteTitle: parsed.noteTitle,
+      levelChoice: parsed.levelChoice,
+      formatChoice: parsed.formatChoice,
+      difficulty: parsed.difficulty,
+      totalMarks: parsed.totalMarks,
+      stepIndex: parsed.stepIndex ?? 1,
+      wizardDone: parsed.wizardDone ?? false,
+      collapsed: parsed.collapsed ?? false,
     };
   } catch {
     return null;

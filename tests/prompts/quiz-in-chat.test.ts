@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
-import { loadPromptRaw } from "@/lib/prompts/loader";
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { describe, expect, it } from "vitest";
+import { loadPromptRaw } from "@/lib/prompts/loader";
 
 const ROOT = process.cwd();
 
@@ -13,7 +13,7 @@ describe("in chat quiz script (spec 0031, covers: AC-1)", () => {
   it("bumps the chat prompt and names the runner trigger", () => {
     const { settings, text } = loadPromptRaw("chat", "chat_system");
 
-    expect(settings.version).toBe(15);
+    expect(settings.version).toBe(16);
     expect(text).toContain("IN CHAT QUIZ");
     expect(text).toContain("startQuiz");
   });
@@ -22,7 +22,7 @@ describe("in chat quiz script (spec 0031, covers: AC-1)", () => {
     const text = readPrompt("prompts/chat/chat_system.md");
 
     expect(text).toMatch(/never write your own questions/i);
-    expect(text).toMatch(/runner owns setup/i);
+    expect(text).toMatch(/wizard owns.*setup/i);
   });
 
   it("sends in thread practice to the runner and page practice to createQuiz", () => {

@@ -1,8 +1,9 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { QuizRunner } from "@/components/chat/quiz-runner";
+import { QuizSetupWizard } from "@/components/chat/quiz-setup-wizard";
 
 type QuizOutput = {
   ok?: boolean;
@@ -67,6 +68,8 @@ export function ChatQuiz({
     () => quizOutputsFromParts(message.parts),
     [message.parts],
   );
+  const [wizardQuizId, setWizardQuizId] = useState<string | null>(null);
+  const [wizardClosed, setWizardClosed] = useState(false);
   if (runs.length === 0) return null;
   const run = runs[0];
   if (!run) return null;
@@ -77,6 +80,36 @@ export function ChatQuiz({
           The quiz could not start on that note. Name the topic again and it
           will be set up.
         </p>
+      </div>
+    );
+  }
+  const stranglerOff =
+    process.env.NEXT_PUBLIC_TICLEARN_WIZARD_STRANGLER === "0" ||
+    process.env.NEXT_PUBLIC_TICLEARN_WIZARD_STRANGLER === "off";
+  if (!stranglerOff && !wizardClosed && !wizardQuizId) {
+    return (
+      <div className="w-full">
+        <span className="sr-only">Practice quiz</span>
+        <QuizSetupWizard
+          conversationId={conversationId}
+          noteId={run.output.noteId ?? null}
+          noteTitle={run.output.noteTitle ?? null}
+          onReady={(quizId) => setWizardQuizId(quizId)}
+          onClose={() => setWizardClosed(true)}
+        />
+      </div>
+    );
+  }
+  if (wizardQuizId) {
+    return (
+      <div className="w-full">
+        <span className="sr-only">Practice quiz</span>
+        <QuizRunner
+          conversationId={conversationId}
+          noteId={run.output.noteId ?? null}
+          noteTitle={run.output.noteTitle ?? null}
+          initialQuizId={wizardQuizId}
+        />
       </div>
     );
   }
