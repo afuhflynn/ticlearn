@@ -6,6 +6,7 @@ export const generatedQuestionSchema = z.object({
   options: z.array(z.string()),
   correctAnswer: z.string().min(1),
   explanation: z.string().min(1),
+  hint: z.string().max(200).optional().default(""),
   sourcePages: z.array(z.number().int().min(1)).optional().default([]),
 });
 
@@ -25,8 +26,11 @@ export const gradingSchema = z.object({
   missedPoints: z.array(z.string()),
 });
 
+/** The longest hint that still reads well inside the docked runner card. */
+export const HINT_MAX_CHARS = 140;
+
 export function normalizeGeneratedQuestions(
-  questions: z.infer<typeof generatedQuestionSchema>[],
+  questions: z.input<typeof generatedQuestionSchema>[],
 ) {
   return questions
     .map((question) => {
@@ -35,6 +39,7 @@ export function normalizeGeneratedQuestions(
         question: question.question.trim(),
         correctAnswer: question.correctAnswer.trim(),
         explanation: question.explanation.trim(),
+        hint: (question.hint ?? "").trim().slice(0, HINT_MAX_CHARS),
         options: question.options.map((o) => o.trim()).filter(Boolean),
         sourcePages: Array.from(
           new Set(

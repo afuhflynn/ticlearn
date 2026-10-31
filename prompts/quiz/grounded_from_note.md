@@ -29,7 +29,15 @@ You are an educational quiz generator. Generate {{questionCount}} quiz questions
   - options
   - correctAnswer
   - explanation
+  - hint
   - sourcePages
+
+  Rules:
+  - MCQ: Provide exactly 4 options in the options array
+  - OPEN: Provide an empty options array []
+  - correctAnswer must always be a string
+  - explanation must always be a non-empty string
+  - hint is a short nudge that points at the idea without giving away the answer, one short sentence, plain words, never the correct answer restated
 
   Rules:
   - MCQ: Provide exactly 4 options in the options array

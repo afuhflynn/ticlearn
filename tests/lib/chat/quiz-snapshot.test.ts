@@ -185,3 +185,42 @@ describe("quiz snapshot bad data (spec 0031, covers: AC-5)", () => {
     }
   });
 });
+
+describe("quiz snapshot v3 dock fields (spec 0034)", () => {
+  it("round trips mode plus hint open plus minimized", () => {
+    saveQuizSnapshot("conv-1", {
+      ...base,
+      mode: "flashcards",
+      hintOpen: { "q-1": true },
+      minimized: true,
+    });
+
+    const loaded = loadQuizSnapshot("conv-1", "run-1");
+    expect(loaded?.mode).toBe("flashcards");
+    expect(loaded?.hintOpen).toEqual({ "q-1": true });
+    expect(loaded?.minimized).toBe(true);
+  });
+
+  it("fills dock defaults when loading a genuine v1 snapshot", () => {
+    const raw = {
+      version: 1,
+      quizId: "quiz-1",
+      answers: { "q-1": "Paris" },
+      marks: {},
+      currentIndex: 0,
+      count: 5,
+      clientRunId: "run-1",
+      updatedAt: 123,
+    };
+    window.sessionStorage.setItem(
+      "ticlearn:quiz:run:conv-1:run-1",
+      JSON.stringify(raw),
+    );
+
+    const loaded = loadQuizSnapshot("conv-1", "run-1");
+    expect(loaded?.mode).toBe("quiz");
+    expect(loaded?.hintOpen).toEqual({});
+    expect(loaded?.minimized).toBe(false);
+    expect(loaded?.answers).toEqual({ "q-1": "Paris" });
+  });
+});

@@ -220,7 +220,7 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
       ),
     ).toBeInTheDocument();
     expect(screen.getByText(/Question 1 of 3.*0 correct/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).not.toBeDisabled();
   });
 
   it("needs a note before it can start (covers: AC-1)", async () => {
@@ -250,7 +250,7 @@ describe("QuizRunner reload replay (spec 0031, covers: AC-5)", () => {
     expect(
       await screen.findByText(/Question 2 of 3.*1 correct/),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Next" })).not.toBeDisabled();
   });
 });
 
@@ -397,5 +397,165 @@ describe("QuizRunner wizard handoff (spec 0033, covers: AC-8)", () => {
     expect(
       screen.getByRole("link", { name: "Open full quiz page" }),
     ).toHaveAttribute("href", "/quizzes/quiz-1");
+  });
+});
+
+describe("QuizRunner low docked card (spec 0034)", () => {
+  const hintedQuiz = {
+    ...readyQuiz,
+    metadata: { hints: { 0: "Think about what adding means." } },
+  };
+  const HINTED_QUIZ_PAYLOAD = {
+    data: { quiz: hintedQuiz },
+    isPending: false,
+    isError: false,
+  };
+
+  async function startHintedQuiz(user: ReturnType<typeof userEvent.setup>) {
+    useQuizMock.mockImplementation((id: string) => {
+      if (!id) return EMPTY_QUIZ_PAYLOAD;
+      return HINTED_QUIZ_PAYLOAD;
+    });
+    render(<QuizRunner {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 3.*0 correct/);
+  }
+
+  it("moves freely with Back plus Next and jumps on dots with answers kept (covers: AC-3)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    expect(screen.getByRole("button", { name: "Next" })).not.toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText(/Question 2 of 3.*0 correct/);
+
+    expect(screen.getByRole("button", { name: "Back" })).not.toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Back" }));
+    await screen.findByText(/Question 1 of 3.*0 correct/);
+
+    await user.click(
+      screen.getByRole("button", { name: /Question 3 of 3, unanswered/ }),
+    );
+    await screen.findByText(/Question 3 of 3.*0 correct/);
+
+    await user.click(screen.getByRole("button", { name: /mars/i }));
+    expect(await screen.findByText("That's correct.")).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: /Question 1 of 3, unanswered/ }),
+    );
+    await screen.findByText(/Question 1 of 3.*1 correct/);
+    expect(
+      screen.getByRole("button", { name: /Question 3 of 3, correct/ }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps spot plus answers across the Quiz and Flashcards toggle (covers: AC-8)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    await user.click(screen.getByRole("button", { name: /four/i }));
+    expect(await screen.findByText("That's correct.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Flashcards" }));
+    expect(
+      screen.queryByRole("button", { name: /four/i }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("That's correct.")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Quiz" }));
+    expect(screen.getByRole("button", { name: /four/i })).toBeInTheDocument();
+    expect(screen.getByText(/Question 1 of 3.*1 correct/)).toBeInTheDocument();
+  });
+
+  it("reveals the hint from generate and hides the control when empty (covers: AC-7)", async () => {
+    const user = userEvent.setup();
+    await startHintedQuiz(user);
+
+    await user.click(screen.getByRole("button", { name: "Show hint" }));
+    expect(
+      await screen.findByText("Think about what adding means."),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText(/Question 2 of 3.*0 correct/);
+    expect(
+      screen.queryByRole("button", { name: "Show hint" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("docks the answering card into the slot above the composer (covers: AC-1)", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <div id="quiz-dock-slot" />
+        <QuizRunner {...props()} />
+      </>,
+    );
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 3.*0 correct/);
+
+    const slot = document.getElementById("quiz-dock-slot");
+    expect(slot).not.toBeNull();
+    expect(
+      slot?.contains(screen.getByText(/Question 1 of 3.*0 correct/)),
+    ).toBe(true);
+  });
+
+  it("minimizes to a slim bar and restores the same spot (covers: AC-8)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await screen.findByText(/Question 2 of 3.*0 correct/);
+
+    await user.click(screen.getByRole("button", { name: "Minimize" }));
+    expect(screen.getByRole("button", { name: "Restore" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Next" }),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    await screen.findByText(/Question 2 of 3.*0 correct/);
+  });
+
+  it("keeps the failed grade tap with a retry line (covers: AC-6)", async () => {
+    const user = userEvent.setup();
+    const gradeMock = vi.mocked(api.mutations.quizzes.grade);
+    gradeMock.mockRejectedValueOnce(new Error("Model timed out"));
+    const openQuiz = {
+      id: "quiz-1",
+      title: "Quiz",
+      noteTitle: "Bio notes",
+      status: "READY",
+      questions: [
+        {
+          id: "o1",
+          type: "OPEN",
+          question: "Why is the sky blue?",
+          options: [],
+          correctAnswer: "Rayleigh scattering",
+          explanation: "Light scatters.",
+          order: 0,
+          sourcePages: [],
+        },
+      ],
+    };
+    useQuizMock.mockImplementation((id: string) => {
+      if (!id) return EMPTY_QUIZ_PAYLOAD;
+      return { data: { quiz: openQuiz }, isPending: false, isError: false };
+    });
+    render(<QuizRunner {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 1.*0 correct/);
+
+    await user.type(screen.getByPlaceholderText(/type your answer/i), "blue");
+    await user.click(screen.getByRole("button", { name: "Mark answer" }));
+
+    expect(
+      await screen.findByText(/Could not mark that answer/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try marking again" }),
+    ).toBeInTheDocument();
   });
 });

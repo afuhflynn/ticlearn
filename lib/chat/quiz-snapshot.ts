@@ -5,9 +5,11 @@
  * snapshot with a plain message plus retry at the call site.
  */
 
-export const QUIZ_SNAPSHOT_VERSION = 2;
+export const QUIZ_SNAPSHOT_VERSION = 3;
 
 export type QuizMark = { isCorrect: boolean; why: string };
+
+export type QuizRunnerMode = "quiz" | "flashcards";
 
 export type WizardLevelChoice = "GCE" | "HND" | "PROF" | "MIXED";
 export type WizardDifficultyChoice = "STANDARD" | "HARD" | "MIXED";
@@ -35,6 +37,9 @@ export type QuizSnapshot = {
   count: number;
   clientRunId: string;
   updatedAt: number;
+  mode?: QuizRunnerMode;
+  hintOpen?: Record<string, boolean>;
+  minimized?: boolean;
 } & WizardState;
 
 function storage(): Storage | null {
@@ -119,7 +124,11 @@ export function loadQuizSnapshot(
     const raw = store.getItem(snapshotKey(conversationId, runId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<QuizSnapshot>;
-    if (parsed.version !== 1 && parsed.version !== QUIZ_SNAPSHOT_VERSION)
+    if (
+      parsed.version !== 1 &&
+      parsed.version !== 2 &&
+      parsed.version !== QUIZ_SNAPSHOT_VERSION
+    )
       return null;
     if (!parsed.clientRunId) return null;
     const isWizardRun =
@@ -135,6 +144,9 @@ export function loadQuizSnapshot(
       count: parsed.count ?? 5,
       clientRunId: parsed.clientRunId,
       updatedAt: parsed.updatedAt ?? Date.now(),
+      mode: parsed.mode === "flashcards" ? "flashcards" : "quiz",
+      hintOpen: parsed.hintOpen ?? {},
+      minimized: parsed.minimized ?? false,
       topicText: parsed.topicText,
       noteId: parsed.noteId,
       noteTitle: parsed.noteTitle,

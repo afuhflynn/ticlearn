@@ -349,11 +349,22 @@ export const generateQuiz = inngest.createFunction(
         JSON.stringify(generatedQuestions[0], null, 2),
       );
 
+      // Hints ride in the quiz metadata map keyed by question order, so no
+      // schema change is needed and old quizzes without hints read as empty.
+      const hintMap: Record<string, string> = {};
+      for (const [index, q] of generatedQuestions.entries()) {
+        const hint =
+          "hint" in q && typeof q.hint === "string" ? q.hint.trim() : "";
+        if (hint) hintMap[String(index)] = hint;
+      }
+
       await prisma.quiz.update({
         where: { id: quizId },
         data: {
           questionCount: generatedQuestions.length,
           status: "READY",
+          metadata:
+            Object.keys(hintMap).length > 0 ? { hints: hintMap } : undefined,
           questions: {
             create: generatedQuestions.map((q, index) => ({
               type: q.type,
