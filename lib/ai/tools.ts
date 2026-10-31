@@ -59,7 +59,10 @@ const quizPreviewSelect = {
   updatedAt: true,
 } as const;
 
-export function createChatTools({ userId, conversationId }: ToolFactoryOptions) {
+export function createChatTools({
+  userId,
+  conversationId,
+}: ToolFactoryOptions) {
   const policyContext = createToolPolicyContext(userId);
 
   // Per request, not per conversation. A five step agent turn must not multiply
@@ -582,10 +585,7 @@ export function createChatTools({ userId, conversationId }: ToolFactoryOptions) 
   const getNotePagesTool = tool({
     description: getToolDescription("get_note_pages"),
     inputSchema: z.object({}),
-    execute: async (
-      _args,
-      options?: { toolCallId?: string },
-    ) => {
+    execute: async (_args, options?: { toolCallId?: string }) => {
       if (!conversationId) {
         throw new Error(
           "This conversation has no note attached. Answer from the typed question instead.",
@@ -656,9 +656,7 @@ export function createChatTools({ userId, conversationId }: ToolFactoryOptions) 
             amount: lookupCost,
             type: "PAGE_LOOKUP",
             description: `Page lookup in note: ${note.title}`,
-            referenceId: toolCallId
-              ? `pagelookup:${toolCallId}`
-              : undefined,
+            referenceId: toolCallId ? `pagelookup:${toolCallId}` : undefined,
           });
         } catch (err) {
           console.error("[getNotePages] Credit debit failed:", err);

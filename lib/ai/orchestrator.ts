@@ -910,25 +910,18 @@ export async function agent(opts: AgentOptions): Promise<AgentResult> {
             ];
             if (typeof entry === "function") {
               toolResult = await (
-                entry as (
-                  args: unknown,
-                  opts: unknown,
-                ) => Promise<unknown>
+                entry as (args: unknown, opts: unknown) => Promise<unknown>
               )(toolCall.args, { toolCallId: toolCall.id });
             } else if (
               entry !== null &&
               typeof entry === "object" &&
-              typeof (entry as { execute?: unknown }).execute ===
-                "function"
+              typeof (entry as { execute?: unknown }).execute === "function"
             ) {
               // SDK style tools carry their own execute and expect the call
               // id beside the args, so idempotent tools debit only once.
               toolResult = await (
                 entry as {
-                  execute: (
-                    args: unknown,
-                    opts: unknown,
-                  ) => Promise<unknown>;
+                  execute: (args: unknown, opts: unknown) => Promise<unknown>;
                 }
               ).execute(toolCall.args, { toolCallId: toolCall.id });
             } else {

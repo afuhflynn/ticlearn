@@ -53,10 +53,11 @@ function DrawnFigure({
           htmlLabels: false,
         });
         if (!alive || !hostRef.current) return;
-        const renderId = `art-${item.id}${idSuffix ? `-${idSuffix}` : ""}`.replace(
-          /[^a-zA-Z0-9-_]/g,
-          "-",
-        );
+        const renderId =
+          `art-${item.id}${idSuffix ? `-${idSuffix}` : ""}`.replace(
+            /[^a-zA-Z0-9-_]/g,
+            "-",
+          );
         const { svg } = await mermaid.render(renderId, item.payload);
         if (!alive || !hostRef.current) return;
         // Sanitized after render per spec; the svg string never lands raw.

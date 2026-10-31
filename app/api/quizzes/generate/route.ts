@@ -20,6 +20,8 @@ const generateQuizSchema = z.object({
   timeLimit: z.number().int().min(1).max(180).nullable().optional(),
   isPublic: z.boolean().optional(),
   grounded: z.boolean().optional(),
+  source: z.enum(["page", "chat"]).optional(),
+  conversationId: z.string().optional(),
 });
 
 export async function POST(req: Request) {

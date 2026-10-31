@@ -8,7 +8,11 @@ vi.mock("@/lib/grounded-pages", () => ({
   getGroundedPageInputs: vi.fn(),
 }));
 
-import { getEffectiveCreditCost, getUserCreditBalance, spendCredits } from "@/lib/credits";
+import {
+  getEffectiveCreditCost,
+  getUserCreditBalance,
+  spendCredits,
+} from "@/lib/credits";
 import { getGroundedPageInputs } from "@/lib/grounded-pages";
 import { getPlatformSettings } from "@/lib/platform-settings";
 
@@ -31,7 +35,13 @@ const SETTINGS = {
 
 type MockFn = (...args: never[]) => Promise<unknown>;
 
-function dbMock(model: string, method: string): { mockResolvedValue: (v: unknown) => void; mockReturnValue: (v: unknown) => void } {
+function dbMock(
+  model: string,
+  method: string,
+): {
+  mockResolvedValue: (v: unknown) => void;
+  mockReturnValue: (v: unknown) => void;
+} {
   const db = prisma as unknown as Record<string, Record<string, MockFn>>;
   db[model] ??= {};
   db[model][method] ??= vi.fn();
@@ -70,7 +80,10 @@ describe("getNotePages tool description (AC-3)", () => {
   });
 
   it("takes no model supplied id, so the model cannot steer it", () => {
-    const tools = createChatTools({ userId: "user-1", conversationId: "conv-1" });
+    const tools = createChatTools({
+      userId: "user-1",
+      conversationId: "conv-1",
+    });
     const schema = tools.getNotePages.inputSchema as unknown as {
       shape: Record<string, unknown>;
     };
@@ -91,10 +104,11 @@ describe("getNotePages empty note (AC-5)", () => {
   it("returns the pending shape and debits nothing when no page is analyzed", async () => {
     vi.mocked(getGroundedPageInputs).mockResolvedValue([]);
 
-    const out = (await tool()(
-      {},
-      { toolCallId: "t-empty", messages: [] },
-    )) as { pages: unknown[]; scanPending: boolean; noteTitle: string };
+    const out = (await tool()({}, { toolCallId: "t-empty", messages: [] })) as {
+      pages: unknown[];
+      scanPending: boolean;
+      noteTitle: string;
+    };
 
     expect(out.pages).toEqual([]);
     expect(out.scanPending).toBe(true);

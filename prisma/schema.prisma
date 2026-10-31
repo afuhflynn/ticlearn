@@ -306,6 +306,16 @@ model QuizAttempt {
   totalQuestions Int                 @map("total_questions")
   correctAnswers Int                 @map("correct_answers")
   completedAt    DateTime            @default(now()) @map("completed_at")
+  // source is "page" for quizzes started on the quiz page and "chat" for
+  // quizzes run inside the conversation. Null on rows written before this
+  // column existed.
+  source         String?             @map("source")
+  // conversationId links a chat-sourced attempt to the chat conversation it
+  // ran in. Nulled when the chat is deleted; never blocks a submit.
+  conversationId String?             @map("conversation_id")
+  // clientRunId is a client generated id used to deduplicate duplicate submits
+  // of the same run. A duplicate run id returns the existing attempt.
+  clientRunId    String?             @unique @map("client_run_id")
   user           User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   quiz           Quiz?               @relation(fields: [quizId], references: [id], onDelete: SetNull)
   answers        QuizAttemptAnswer[]
