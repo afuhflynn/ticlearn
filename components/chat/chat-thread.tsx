@@ -384,6 +384,7 @@ function ConversationSession({
 
       <div className="border-t bg-background/95 px-4 py-4 backdrop-blur">
         <div className="mx-auto w-full max-w-[48rem]">
+          <div id="quiz-dock-slot" className="w-full" />
           {spentAllowance ? (
             <AllowanceNotice resetsAt={chatDailyUsage?.resetsAt} />
           ) : (

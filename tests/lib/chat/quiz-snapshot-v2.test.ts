@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   loadQuizSnapshot,
+  QUIZ_SNAPSHOT_VERSION,
   saveQuizSnapshot,
   snapshotKey,
 } from "@/lib/chat/quiz-snapshot";
@@ -74,7 +75,7 @@ describe("quiz snapshot v2 wizard (spec 0033, covers: AC-5, AC-7)", () => {
 
     const loaded = loadQuizSnapshot("conv-1", "run-1");
     expect(loaded?.quizId).toBe("quiz-1");
-    expect(loaded?.version).toBe(2);
+    expect(loaded?.version).toBe(QUIZ_SNAPSHOT_VERSION);
   });
 
   it("drops a snapshot with an unknown version", () => {

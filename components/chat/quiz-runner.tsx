@@ -3,6 +3,7 @@
 import { ChevronRight, Loader2, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,18 @@ import { useQuiz, useSubmitQuizAttempt } from "@/hooks";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
   clearActiveRunId,
   clearQuizSnapshot,
   getActiveRunId,
   loadQuizSnapshot,
   newQuizRunId,
+  type QuizRunnerMode,
   saveQuizSnapshot,
 } from "@/lib/chat/quiz-snapshot";
 import { cn } from "@/lib/utils";
@@ -48,6 +56,7 @@ type QuizResponse = {
   title: string;
   noteTitle: string;
   status: "GENERATING" | "READY" | "ERROR";
+  metadata?: { hints?: Record<string, string> } | null;
   questions: QuizQuestion[];
 };
 
@@ -199,6 +208,33 @@ export function QuizRunner({
   const [typedLetter, setTypedLetter] = useState("");
   const [unclearNotice, setUnclearNotice] = useState<string | null>(null);
   const [reprompted, setReprompted] = useState<Record<string, boolean>>({});
+  const [mode, setMode] = useState<QuizRunnerMode>(() => {
+    const active = getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved) return saved.mode ?? "quiz";
+    }
+    return "quiz";
+  });
+  const [hintOpen, setHintOpen] = useState<Record<string, boolean>>(() => {
+    const active = getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved) return saved.hintOpen ?? {};
+    }
+    return {};
+  });
+  const [minimized, setMinimized] = useState(() => {
+    const active = getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved) return saved.minimized ?? false;
+    }
+    return false;
+  });
+  const [flipped, setFlipped] = useState(false);
+  const [gradeFailed, setGradeFailed] = useState<string | null>(null);
+  const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
   const letterInputId = useId();
 
   const submitAttempt = useSubmitQuizAttempt();
@@ -242,6 +278,9 @@ export function QuizRunner({
       count,
       clientRunId,
       updatedAt: Date.now(),
+      mode,
+      hintOpen,
+      minimized,
     });
   }, [
     phase,
@@ -252,12 +291,28 @@ export function QuizRunner({
     count,
     clientRunId,
     conversationId,
+    mode,
+    hintOpen,
+    minimized,
   ]);
+
+  /**
+   * The dock slot lives above the composer. The active run portals there so
+   * the card pins low; a stale run stays inline where its message sits.
+   * The active pointer is read fresh every render so two runs never dock
+   * into the same slot at once.
+   */
+  useEffect(() => {
+    setDockEl(document.getElementById("quiz-dock-slot"));
+  }, []);
+  const liveActiveId =
+    typeof window === "undefined"
+      ? null
+      : getActiveRunId(conversationId);
 
   const questions = quiz?.questions ?? [];
   const currentQuestion = questions[currentIndex];
   const correctCount = Object.values(marks).filter((m) => m.isCorrect).length;
-  const answeredCount = Object.keys(answers).length;
   const progress = questions.length
     ? ((currentIndex + 1) / questions.length) * 100
     : 0;
@@ -271,6 +326,17 @@ export function QuizRunner({
     [questions],
   );
   const showHandoff = visualCount >= 2;
+
+  /**
+   * Hints ride in the quiz metadata map keyed by question order, written by
+   * the generate job. Old quizzes have no map and read as empty, which hides
+   * the hint control instead of flashing a broken one.
+   */
+  const hints = useMemo(() => {
+    const raw = (quizData?.quiz as QuizResponse | undefined)?.metadata?.hints;
+    if (!raw || typeof raw !== "object") return {} as Record<string, string>;
+    return raw;
+  }, [quizData]);
 
   const handleStart = useCallback(async () => {
     if (!noteId) {
@@ -315,6 +381,8 @@ export function QuizRunner({
   const clearAttemptState = useCallback(() => {
     setTypedLetter("");
     setUnclearNotice(null);
+    setFlipped(false);
+    setGradeFailed(null);
   }, []);
 
   /**
@@ -407,6 +475,7 @@ export function QuizRunner({
           why: graded.why,
         },
       }));
+      setGradeFailed(null);
     } catch {
       setMarks((current) => ({
         ...current,
@@ -415,6 +484,9 @@ export function QuizRunner({
           why: "Could not mark that answer just now. Try again.",
         },
       }));
+      // The tap stays saved and the retry button below stays live, so a
+      // failed grade or a stopped stream never loses the student's answer.
+      setGradeFailed(currentQuestion.id);
     } finally {
       setGrading(null);
     }
@@ -633,33 +705,144 @@ export function QuizRunner({
     const mark = marks[currentQuestion.id];
     const isMCQ = currentQuestion.type === "MCQ";
     const selected = answers[currentQuestion.id];
+    const docked =
+      dockEl !== null &&
+      (liveActiveId === null || liveActiveId === clientRunId);
+    const currentHint = hints[String(currentQuestion.order)] ?? "";
+    const hintIsOpen = hintOpen[currentQuestion.id] ?? false;
+    const hideOptions =
+      mode === "flashcards" && isMCQ && !flipped;
 
-    return (
-      <div className="mx-auto w-full max-w-[48rem] space-y-6 px-4">
-        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+    const dotLabel = (index: number, id: string) => {
+      const state = marks[id]
+        ? marks[id].isCorrect
+          ? "correct"
+          : "incorrect"
+        : id in answers
+          ? "answered"
+          : "unanswered";
+      return `Question ${index + 1} of ${questions.length}, ${state}`;
+    };
+
+    if (minimized) {
+      const bar = (
+        <div className="mx-auto w-full max-w-[48rem] px-4 py-2">
+          <div className="flex items-center gap-2 rounded-xl border bg-card p-3 shadow-lg">
+            <span className="sr-only">Practice quiz, minimized</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">
+                {noteTitle ?? "Quiz"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Question {currentIndex + 1} of {questions.length} •{" "}
+                {correctCount} correct
+              </p>
+            </div>
+            <Button size="sm" onClick={() => setMinimized(false)}>
+              Restore
+            </Button>
+          </div>
+        </div>
+      );
+      return docked ? createPortal(bar, dockEl) : bar;
+    }
+
+    const answeringNode = (
+      <div className="mx-auto w-full max-w-[48rem] px-4 py-2">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Badge variant="outline" className="max-w-full truncate">
                 {noteTitle ?? "Quiz"}
               </Badge>
               <Badge variant="secondary">{currentQuestion.type}</Badge>
             </div>
-            <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">
-              Quiz
-            </h1>
-            <p className="break-words text-sm text-muted-foreground sm:text-base">
-              Question {currentIndex + 1} of {questions.length} • {correctCount}{" "}
-              correct
-            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMinimized(true)}
+              >
+                Minimize
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleClose}>
+                Back to chat
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-col gap-3 md:items-end">
-            <Button variant="outline" onClick={handleClose}>
-              Back to chat
-            </Button>
-          </div>
+          <p
+            id="quiz-runner-heading"
+            tabIndex={-1}
+            className="break-words text-sm text-muted-foreground sm:text-base"
+          >
+            Question {currentIndex + 1} of {questions.length} • {correctCount}{" "}
+            correct
+          </p>
+          <fieldset className="m-0 flex flex-wrap gap-1.5 border-0 p-0">
+            <legend className="sr-only">Questions in this quiz</legend>
+            {questions.map((question, index) => {
+              const questionMark = marks[question.id];
+              const answered = question.id in answers;
+              const isCurrent = index === currentIndex;
+              return (
+                <Button
+                  key={question.id}
+                  type="button"
+                  variant={isCurrent ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    setCurrentIndex(index);
+                    clearAttemptState();
+                    document
+                      .getElementById("quiz-runner-heading")
+                      ?.focus({ preventScroll: true });
+                  }}
+                  className={cn(
+                    "h-11 min-w-11 rounded-full border px-2 text-xs font-semibold",
+                    !isCurrent &&
+                      questionMark &&
+                      (questionMark.isCorrect
+                        ? "border-primary text-primary"
+                        : "border-destructive text-destructive"),
+                    !isCurrent &&
+                      !questionMark &&
+                      answered &&
+                      "border-primary/60 text-foreground",
+                    !isCurrent &&
+                      !questionMark &&
+                      !answered &&
+                      "text-muted-foreground",
+                  )}
+                >
+                  {index + 1}
+                  <span className="sr-only">
+                    {dotLabel(index, question.id)}
+                    {isCurrent ? ", current question" : ""}
+                  </span>
+                </Button>
+              );
+            })}
+          </fieldset>
+          <fieldset className="m-0 self-start border-0 p-0">
+            <legend className="sr-only">Practice mode</legend>
+            <Tabs
+              value={mode}
+              onValueChange={(entry) => {
+                if (entry === "quiz" || entry === "flashcards") {
+                  setMode(entry);
+                  setFlipped(false);
+                }
+              }}
+            >
+              <TabsList>
+                <TabsTrigger value="quiz">Quiz</TabsTrigger>
+                <TabsTrigger value="flashcards">Flashcards</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </fieldset>
         </div>
 
-        <Progress value={progress} />
+        <Progress value={progress} className="mt-3" />
 
         {showHandoff && quizId ? (
           <Card className="w-full border-primary/40 bg-primary/5">
@@ -677,8 +860,8 @@ export function QuizRunner({
           </Card>
         ) : null}
 
-        <Card className="w-full">
-          <CardHeader className="space-y-3">
+        <Card className="mt-3 flex max-h-[50dvh] w-full flex-col">
+          <CardHeader className="shrink-0 space-y-3 pb-3">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
               <CardTitle className="min-w-0 text-lg sm:text-xl">
                 Question {currentIndex + 1}
@@ -695,11 +878,64 @@ export function QuizRunner({
             <CardDescription className="break-words text-base text-foreground">
               <MathMarkdown content={currentQuestion.question} />
             </CardDescription>
+            {mode === "flashcards" ? (
+              <div className="flex flex-wrap gap-2">
+                {!flipped ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFlipped(true)}
+                  >
+                    Show answer
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setFlipped(false)}
+                  >
+                    Back to question
+                  </Button>
+                )}
+              </div>
+            ) : null}
           </CardHeader>
-          <CardContent className="space-y-4">
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CardContent className="space-y-4 pt-1">
+              {mode === "flashcards" && flipped ? (
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  {mark ? (
+                    <>
+                      <p className="text-sm font-medium">
+                        {mark.isCorrect ? "Correct" : "Incorrect"}
+                      </p>
+                      <p className="break-words text-sm">{mark.why}</p>
+                      {!mark.isCorrect ? (
+                        <p className="break-words pt-2 text-sm text-muted-foreground">
+                          Correct answer: {currentQuestion.correctAnswer}
+                        </p>
+                      ) : null}
+                    </>
+                  ) : currentHint ? (
+                    <p className="break-words text-sm">{currentHint}</p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Answer the question to reveal the explanation.
+                    </p>
+                  )}
+                </div>
+              ) : null}
             {isMCQ ? (
               <div className="space-y-3">
-                {currentQuestion.options.map((option, index) => {
+                {hideOptions ? (
+                  <p className="text-xs text-muted-foreground">
+                    Options are hidden on the front. Type the letter or flip to
+                    study.
+                  </p>
+                ) : null}
+                {hideOptions
+                  ? null
+                  : currentQuestion.options.map((option, index) => {
                   const selectedOption = selected === option;
                   const letter = LETTERS[index] ?? String(index + 1);
                   return (
@@ -806,6 +1042,40 @@ export function QuizRunner({
               </div>
             )}
 
+            {currentHint && !flipped ? (
+              <Collapsible
+                open={hintIsOpen}
+                onOpenChange={(open) =>
+                  setHintOpen((current) => ({
+                    ...current,
+                    [currentQuestion.id]: open,
+                  }))
+                }
+              >
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    {hintIsOpen ? "Hide hint" : "Show hint"}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <p className="break-words text-sm text-muted-foreground">
+                    {currentHint}
+                  </p>
+                </CollapsibleContent>
+              </Collapsible>
+            ) : null}
+
+            {gradeFailed === currentQuestion.id ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleMarkOpenAnswer()}
+                disabled={grading === currentQuestion.id}
+              >
+                Try marking again
+              </Button>
+            ) : null}
+
             {grading === currentQuestion.id && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 Marking...
@@ -814,31 +1084,40 @@ export function QuizRunner({
 
             {!mark && !grading && currentIndex < questions.length - 1 ? (
               <p className="text-xs text-muted-foreground">
-                Answer the question, then move to the next one.
+                You can move freely. Unanswered questions stay open for later.
               </p>
             ) : null}
           </CardContent>
+          </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="grid grid-cols-1 gap-3 pt-3 sm:flex sm:items-center sm:justify-between">
           <Button
             variant="outline"
             onClick={() => {
               setCurrentIndex((index) => Math.max(index - 1, 0));
               clearAttemptState();
+              document
+                .getElementById("quiz-runner-heading")
+                ?.focus({ preventScroll: true });
             }}
-            disabled={currentIndex === 0 || !!mark}
+            disabled={currentIndex === 0}
             className="w-full sm:w-auto"
           >
             <ChevronRight className="mr-2 h-4 w-4 rotate-180" />
-            Previous
+            Back
           </Button>
 
           <div className="grid grid-cols-1 gap-3 sm:flex sm:gap-3">
             {currentIndex < questions.length - 1 ? (
               <Button
-                onClick={handleNext}
-                disabled={!mark}
+                onClick={() => {
+                  handleNext();
+                  clearAttemptState();
+                  document
+                    .getElementById("quiz-runner-heading")
+                    ?.focus({ preventScroll: true });
+                }}
                 className="w-full sm:w-auto"
               >
                 Next
@@ -847,7 +1126,7 @@ export function QuizRunner({
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !mark}
+                disabled={submitting}
                 className="w-full sm:w-auto"
               >
                 {submitting ? (
@@ -864,6 +1143,7 @@ export function QuizRunner({
         </div>
       </div>
     );
+    return docked ? createPortal(answeringNode, dockEl) : answeringNode;
   }
 
   // phase === "complete"

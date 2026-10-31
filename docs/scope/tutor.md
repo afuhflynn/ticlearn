@@ -103,10 +103,17 @@ Tip guides setup as a three step wizard inside chat. Topic picks come first, the
 - [ ] Verify it: /verify-release agentic quiz setup wizard
 - [x] Test it: /test-engineer agentic quiz setup wizard
 
-### 59. Low docked runner card · needs a decision
+### 59. Low docked runner card · in-progress
 The runner lives low near the composer as a docked sheet above the reply box, matching the approved reference. It shows one question at a time with numbered dots plus Back plus Next plus Show hint plus a Quiz plus Flashcards toggle. Taps answer at once, reload rebuilds the same spot with answers kept, and a stopped stream marks cleanly with no lost tap. Phone thumbs reach options without scrolling past a tall thread.
 **Done when:** the runner docks low above the composer, shows one question at a time with dots plus Back plus Next plus Show hint, taps answer at once with no stall, reload rebuilds the same spot, and placement matches the approved reference on phone and desktop.
-- [ ] Design it (spec): /solution-architect low docked runner card
+- [x] Design it (spec): /solution-architect low docked runner card · spec [0034](../specs/0034-low-docked-runner-card/index.md)
+- [x] Build it: /feature-build low docked runner card · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `lib/ai/validators.ts`, `lib/inngest/functions.ts`, `prompts/quiz/quiz_from_note.md`, `prompts/quiz/grounded_from_note.md`, `components/chat/chat-thread.tsx`
+  - [x] Docked shell plus free movement with dots jump (covers **AC-1**, **AC-2**, **AC-3**)
+  - [x] Instant tap plus toggle plus per question hint (covers **AC-4**, **AC-7**, **AC-8**)
+  - [x] Snapshot v3 plus reload plus fail keep with retry (covers **AC-5**, **AC-6**, **AC-8**)
+  - [x] Phone height cap plus access path plus tests (covers **AC-9**, **AC-10**)
+- [ ] Verify it: /verify-release low docked runner card
+- [ ] Test it: /test-engineer low docked runner card
 
 ### 60. Marking plus mark scheme plus results plus save · needs a decision
 Each answer marks the moment it lands with correct plus incorrect styling plus the mark scheme that shows where each mark comes from. The end state shows percent plus correct count plus per question review plus Start over plus a weak area follow up that offers a harder set or an open written set for marking. The run saves to attempts so progress counts, and a review or print ask hands to the full quiz page with a clear link.
