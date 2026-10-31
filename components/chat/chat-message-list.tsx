@@ -31,6 +31,7 @@ import {
 } from "@/components/ai-elements/message";
 import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
 import { ActivityBlock } from "@/components/chat/activity-block";
+import { ChatArt } from "@/components/chat/chat-art";
 import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
 import { FilePreview } from "@/components/chat/file-preview";
 import { SuggestedReplies } from "@/components/chat/suggested-replies";
@@ -381,6 +382,7 @@ function MessageBody({
   stopped = false,
   durationMs,
   suggestions,
+  noteId,
   onRetry,
   onRegenerate,
   onEdit,
@@ -397,6 +399,7 @@ function MessageBody({
   stopped?: boolean;
   durationMs?: number | null;
   suggestions?: string[];
+  noteId?: string | null;
   onRetry?: (messageId?: string) => void;
   onRegenerate?: (messageId: string) => void;
   onEdit?: (message: UIMessage) => void;
@@ -465,6 +468,8 @@ function MessageBody({
           </div>
         ) : null}
 
+        <ChatArt message={message} text={normalizedText} noteId={noteId} />
+
         {stopped ? <StoppedLine onRetry={() => onRetry?.(message.id)} /> : null}
 
         {isNewestAssistant && suggestions && suggestions.length > 0 ? (
@@ -517,6 +522,7 @@ export function ChatMessageList({
   messages,
   status,
   emptyState,
+  noteId,
   onRetry,
   onRegenerate,
   onEdit,
@@ -531,6 +537,7 @@ export function ChatMessageList({
   messages: UIMessage[];
   status: ChatStatus;
   emptyState?: React.ReactNode;
+  noteId?: string | null;
   /** Sends the last question again through the same transport. */
   onRetry?: (messageId?: string) => void;
   onRegenerate?: (messageId: string) => void;
@@ -593,6 +600,7 @@ export function ChatMessageList({
                 message.role === "assistant"
               }
               message={message}
+              noteId={noteId}
               onEdit={handleEdit}
               onEditCancel={() => setEditingId(null)}
               onEditSubmit={handleEditSubmit}

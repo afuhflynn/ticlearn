@@ -73,6 +73,7 @@ model User {
   emailSuppression     EmailSuppression[]
   aiUsageEvents        AiUsageEvent[]        @relation("AiUsageEvents")
   webSearchEvents      WebSearchEvent[]      @relation("WebSearchEvents")
+  visualArtifacts      VisualArtifact[]
 
   @@index([role, createdAt])
   @@index([referredBy])
@@ -179,6 +180,7 @@ model Note {
   topicNotes        TopicNote[]
   chatConversations ChatConversation[]
   pages             Page[]
+  visualArtifacts   VisualArtifact[]
 
   @@index([userId])
   @@index([userId, createdAt])
@@ -219,6 +221,32 @@ model VisualAnalysis {
 
   @@index([pageId])
   @@map("visual_analyses")
+}
+
+// One drawn or referenced visual shared by chat, quiz, and notes (spec 0030).
+// Scans reuse Page.pageImageUrl and never store a row; only drawn art stores
+// a payload. Rows are immutable once created.
+model VisualArtifact {
+  id            String   @id @default(cuid()) @map("artifact_id")
+  userId        String   @map("user_id")
+  noteId        String?  @map("note_id")
+  kind          String   @default("drawn") @map("kind") @db.VarChar(20)
+  format        String   @map("format") @db.VarChar(20)
+  sourcePage    Int?     @map("source_page")
+  originAnswerId String? @map("origin_answer_id")
+  concept         String?  @map("concept") @db.VarChar(160)
+  imageUrl      String?  @map("image_url")
+  payload       String?  @map("payload") @db.Text
+  altText       String   @map("alt_text") @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  note Note? @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([noteId])
+  @@index([originAnswerId, createdAt])
+  @@map("visual_artifacts")
 }
 
 model Quiz {

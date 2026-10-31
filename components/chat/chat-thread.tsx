@@ -53,11 +53,13 @@ function textOf(message: UIMessage): string {
 function ConversationSession({
   conversationId,
   noteTitle,
+  noteId,
   initialMessages,
   initialStoppedIds,
 }: {
   conversationId: string;
   noteTitle: string | null;
+  noteId: string | null;
   initialMessages: UIMessage[];
   initialStoppedIds: string[];
 }) {
@@ -316,6 +318,7 @@ function ConversationSession({
         <ChatMessageList
           className="min-h-0 flex-1"
           durationMs={durationMs}
+          noteId={noteId}
           emptyState={
             <StarterRows
               onStart={(prompt) =>
@@ -468,6 +471,7 @@ export function ChatThread({ conversationId }: { conversationId: string }) {
         initialMessages={initialMessages}
         initialStoppedIds={initialStoppedIds}
         noteTitle={conversationInfo.note?.title ?? null}
+        noteId={conversationInfo.note?.id ?? null}
       />
     </div>
   );

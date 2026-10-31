@@ -151,6 +151,14 @@ export const taskRegistry: Record<string, TaskConfig> = {
     cacheTtlMs: 0,
     provider: "meta",
   },
+
+  visual_draw: {
+    chain: ["muse-spark-1.3"],
+    requiresTools: false,
+    requiresMultimodal: false,
+    cacheTtlMs: 0,
+    provider: "meta",
+  },
 };
 
 export function getTaskConfig(task: string): TaskConfig {

@@ -21,6 +21,7 @@ export {
 } from "./useAdmin";
 export { useAdminMetrics, useExportMetrics } from "./useAdminMetrics";
 export { useConfirmEarnings, useCreateAffiliate } from "./useAffiliate";
+export { useAnswerArt, useGenerateArt, useNoteArt } from "./useArtifacts";
 export {
   useChatConversations,
   useCreateConversation,

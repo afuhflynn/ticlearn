@@ -14,6 +14,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { NoteArt } from "@/components/art/note-art";
 import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -376,6 +377,7 @@ export default function NoteDetailPage() {
           </TabsContent>
         </Tabs>
       </div>
+      <NoteArt noteId={params.id} />
     </div>
   );
 }

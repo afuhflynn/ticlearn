@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { QuizArt } from "@/components/art/quiz-art";
 import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -125,6 +126,7 @@ export function RetryPanel({ answerId }: { answerId: string }) {
             <p className="break-words">{retry.sourceExcerpt.slice(0, 600)}</p>
           </div>
         ) : null}
+        <QuizArt answerId={answerId} concept={retry.concept} />
         <div>
           <p className="mb-2 text-sm font-medium">
             <MathMarkdown content={retry.retryQuestion} />

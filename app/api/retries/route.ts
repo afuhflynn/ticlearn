@@ -68,7 +68,10 @@ export async function POST(req: Request) {
     });
     if (active && !isExpiredPending(active.createdAt)) {
       return NextResponse.json(
-        { error: "A retry is already waiting for this answer.", retryId: active.id },
+        {
+          error: "A retry is already waiting for this answer.",
+          retryId: active.id,
+        },
         { status: 409 },
       );
     }
@@ -132,7 +135,9 @@ export async function POST(req: Request) {
         missedQuestion: answer.question,
         userAnswer: answer.userAnswer,
         correctAnswer: answer.correctAnswer,
-        conceptHint: answer.quizQuestion?.question.slice(0, 200) ?? answer.question.slice(0, 200),
+        conceptHint:
+          answer.quizQuestion?.question.slice(0, 200) ??
+          answer.question.slice(0, 200),
         noteExcerpt,
         pageContext,
         userId,
@@ -167,7 +172,8 @@ export async function POST(req: Request) {
       });
       return NextResponse.json(
         {
-          error: "AI help is briefly unavailable. Please try again in a moment.",
+          error:
+            "AI help is briefly unavailable. Please try again in a moment.",
           retryId: failed.id,
           status: "failed",
         },
@@ -223,9 +229,15 @@ export async function POST(req: Request) {
     );
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: "Invalid answer id." }, { status: 400 });
+      return NextResponse.json(
+        { error: "Invalid answer id." },
+        { status: 400 },
+      );
     }
-    return NextResponse.json({ error: "Failed to create retry." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to create retry." },
+      { status: 500 },
+    );
   }
 }
 
@@ -240,7 +252,10 @@ export async function GET(req: Request) {
     const url = new URL(req.url);
     const answerId = url.searchParams.get("answerId");
     if (!answerId) {
-      return NextResponse.json({ error: "answerId is required." }, { status: 400 });
+      return NextResponse.json(
+        { error: "answerId is required." },
+        { status: 400 },
+      );
     }
 
     const answer = await prisma.quizAttemptAnswer.findFirst({
@@ -279,6 +294,9 @@ export async function GET(req: Request) {
       },
     });
   } catch {
-    return NextResponse.json({ error: "Failed to read retry." }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to read retry." },
+      { status: 500 },
+    );
   }
 }

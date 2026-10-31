@@ -1,7 +1,7 @@
 # 0030. Visual output in chat and quizzes
 
 **Date**: 2026-10-30
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
