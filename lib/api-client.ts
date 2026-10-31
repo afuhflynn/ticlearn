@@ -342,6 +342,10 @@ export const api = {
           questionId: string;
           isCorrect: boolean;
           why: string;
+          marksEarned: number;
+          marksTotal: number;
+          schemeMd: string;
+          examinerNote: string;
         }>("/quizzes/grade", { method: "POST", body: data }),
       wizardGenerate: (data: {
         topicText: string;

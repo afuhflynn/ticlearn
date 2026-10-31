@@ -377,6 +377,15 @@ export const generateQuiz = inngest.createFunction(
                   ? q.sourcePages
                   : [],
               order: index,
+              marks: "marks" in q && typeof q.marks === "number" ? q.marks : 1,
+              markSchemeMd:
+                "markSchemeMd" in q && typeof q.markSchemeMd === "string"
+                  ? q.markSchemeMd
+                  : null,
+              examinerNote:
+                "examinerNote" in q && typeof q.examinerNote === "string"
+                  ? q.examinerNote
+                  : null,
             })),
           },
         },

@@ -115,10 +115,20 @@ The runner lives low near the composer as a docked sheet above the reply box, ma
 - [ ] Verify it: /verify-release low docked runner card
 - [ ] Test it: /test-engineer low docked runner card
 
-### 60. Marking plus mark scheme plus results plus save · needs a decision
+### 60. Marking plus mark scheme plus results plus save · in-progress
 Each answer marks the moment it lands with correct plus incorrect styling plus the mark scheme that shows where each mark comes from. The end state shows percent plus correct count plus per question review plus Start over plus a weak area follow up that offers a harder set or an open written set for marking. The run saves to attempts so progress counts, and a review or print ask hands to the full quiz page with a clear link.
 **Done when:** each answer marks at once with correct plus incorrect plus mark scheme, the end shows percent plus correct count plus per question review plus Start over plus weak area follow up, and the run saves to attempts so progress counts.
-- [ ] Design it (spec): /solution-architect marking plus mark scheme plus results plus save
+
+spec ../specs/0035-marking-mark-scheme-results-save/index.md
+
+- [x] Design it (spec): /solution-architect marking plus mark scheme plus results plus save
+- [x] Build it: /feature-build marking plus mark scheme plus results plus save · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `lib/ai/validators.ts`, `lib/api-client.ts`, `lib/inngest/functions.ts`, `app/api/quizzes/grade/route.ts`, `app/api/quizzes/attempts/route.ts`, `app/api/quizzes/wizard-generate/route.ts`, `app/api/quizzes/generate/from-weak-areas/route.ts`, `prisma/migrations/20261031090000_add_quiz_marking_columns/`, `tests/components/quiz-runner.test.tsx`, `tests/app/api/quiz-grade.test.ts`
+  - [x] Marks plus scheme columns plus grade reply shape, covers **AC-1**, **AC-2**, **AC-8**
+  - [x] Runner instant marking plus nav plus hint plus reload, covers **AC-3**, **AC-4**
+  - [x] Results plus Start over plus one submit plus weak area offers, covers **AC-5**, **AC-6**, **AC-7**, **AC-9**
+  - [x] Retry then handoff plus owner checks plus caps parity, covers **AC-10**, **AC-11**, **AC-12**
+- [ ] Verify it: /verify-release marking plus mark scheme plus results plus save
+- [ ] Test it: /test-engineer marking plus mark scheme plus results plus save
 
 ### 61. Quiz reliability plus visual fallback · needs a decision
 Generation plus marking plus drawing stay dependable under real model limits. A length cutoff retries with a smaller set then hands to the full quiz page instead of a dead Quiz not available card. The draw tool carries a proper activity label so Working reads cleanly, draw failures show a plain notice with text instead plus a retry, and duplicate message warnings stay in logs out of the student view. Topic mix stays student choice with Quiz plus Flashcards available where it helps recall.
