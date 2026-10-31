@@ -1,7 +1,7 @@
 # 0031. Quiz practice inside chat
 
 **Date**: 2026-10-30
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 
@@ -19,7 +19,7 @@ Tip runs the whole quiz inside the conversation instead of sending the student a
 2. **AC-2**: Questions render one at a time as lettered tappable cards (MCQ) or a text box (open), accepting taps or typed letters, with a progress line plus running score above.
 3. **AC-3**: Each answer is marked as it lands with a short why, the student answers before Tip explains, full correction lands at completion, and attempts plus retakes update through the same rows the quiz page writes.
 4. **AC-4**: V1 runs untimed only with no clock shown and no cutoff; timed practice is an explicit non goal of v1.
-5. **AC-5**: Reloading mid run rebuilds position from the thread history; marked answers stay marked; a restart happens only when the student asks.
+5. **AC-5**: Reloading mid run rebuilds position from the saved run snapshot; marked answers stay marked; a restart happens only when the student asks.
 6. **AC-6**: An unclear answer gets one reprompt, then Tip reads the best guess; unclear input is never silently skipped and never auto marked wrong.
 7. **AC-7**: When a quiz needs the full page (long diagrams, careful review, printing), Tip links the separate UI and says why; every run call checks owner plus note and attempt ownership; foreign ids read as not found.
 8. **AC-8**: Generation counts, caps, and debits apply exactly as on the quiz page; chat is another surface, not another rulebook.
@@ -38,15 +38,15 @@ Reasoning and options: see rationale.md.
 
 **Data model sketch**:
 - `QuizAttempt` (existing): add source String optional (page or chat; null on old rows, always set on new rows); add conversationId String optional (link to the chat conversation, nulled when the chat is deleted; never blocks a submit); add clientRunId String optional unique (duplicate submit returns the existing attempt). No new tables; no change to Quiz, QuizQuestion, QuizAttemptAnswer, QuizRetry.
-- In progress answers live in chat state until submit; nothing stored mid run in v1.
+- In progress answers live in chat state plus a browser snapshot until submit; nothing stored in the database mid run in v1. Browser keys use sessionStorage on the same device. Active pointer key holds the run id for one conversation, snapshot key holds one run. Snapshot holds schema version plus quiz id plus answers plus marks plus current index plus count. Quiz questions refetch by quiz id through the existing quiz read on rebuild. A version mismatch or a missing quiz row drops the snapshot with a plain message plus retry.
 
-**State transitions**: none persisted. Run states (setup, answering, marked, complete) live in the chat thread only, carried in message part data (run id, question id, pick, mark).
+**State transitions**: none persisted in the database. Run states (setup, answering, marked, complete) live in the chat thread plus a browser snapshot. Active pointer maps one conversation to its run id; snapshot key maps conversation plus run id to the saved state. Snapshot writes on every mark and every index move, and clears on submit, on close, and on a new run. Close means the quiz close event, the runner unmount, or a conversation switch. Restart happens through Retake or a new run, never on reload alone. Text drafts and pending grades stay out of the snapshot until marked.
 
 **API surface**:
 | Endpoint | Method | Key inputs | Key outputs | Auth | Key errors |
 |---|---|---|---|---|---|
 | existing generate | POST | noteId, count, types (same shape as page) | quiz id, questions | bearer owner | 401 no session, 400 bad input, 402 low balance, 403 limit reached |
-| existing attempts submit | POST | quizId, answers array (same shape as page) plus source chat plus conversationId | attempt, score, points | bearer owner | 401 no session, 400 bad input, 404 missing quiz, 422 bad answers |
+| existing attempts submit | POST | quizId, answers array (same shape as page) plus source hint chat plus conversationId plus clientRunId | attempt, score, points, duplicate flag when the run id repeats | bearer owner | 401 no session, 400 bad input, 404 missing quiz, 422 bad answers |
 | existing retry plus submit | POST | as today | as today | bearer owner | as today |
 
 **Value sourcing**:
@@ -59,8 +59,8 @@ Reasoning and options: see rationale.md.
 | Mark | correct or not plus short why | MCQ positional match after normalization, open through gradeOpenAnswer with the same task, timeout, and cost as the page; student answer always precedes the explanation |
 | Unclear | reprompt plus best guess | fixed copy asks for a tap or a letter; best guess stated out loud before scoring; open answers under 2 chars reprompt |
 | Run | progress plus running score | line reads Q i of N plus correct count among marked; counts held in thread state |
-| Submit | attempt rows plus score | existing attempts endpoint with source chat, conversationId, and client generated run id (duplicate run id returns the existing attempt); quiz taken event gains the chat source |
-| Reload | rebuilt position | thread history replay over message parts carrying run id, question id, pick, and mark; marked answers stay marked |
+| Submit | attempt rows plus score | existing attempts endpoint with a source hint of chat, conversationId, and client generated run id. Server allowlists the hint to chat or page and writes the final value. A repeated run id returns 200 with the existing attempt plus duplicate true, no new row, no extra points. Quiz taken event gains the chat source |
+| Reload | rebuilt position | active pointer plus snapshot replay in sessionStorage (schema version, quiz id, answers, marks, current index). Marked answers stay marked; restart only on ask. Missing snapshot, version mismatch, or deleted quiz shows a plain message plus retry and clears the keys |
 | Handoff | link plus reason | trigger on 2 or more cited visuals or a review or print ask; fixed copy names the reason and links the quiz page |
 | Auth | owner check | session user id against note and attempt ownership, same as page routes |
 | Money | caps plus debits | PlatformSettings plus credit rows identical to page flow (decided in spec 0028); per answer grading costs what page grading costs; over cap shows the page style plain message |
@@ -72,9 +72,11 @@ Reasoning and options: see rationale.md.
 4. Timed runs do not exist in v1; no clock is shown and no cutoff enforced.
 5. Loading follows the repo loading rule: skeleton for the first question area, thin progress while grading, plain notice plus retry on failure.
 6. Option cards are real buttons; progress uses the existing live region pattern.
-7. Source is set by the server, never the client; conversationId is nulled when the chat is deleted.
+7. Client may send source as a hint; server allowlists it to chat or page and writes the final value. ConversationId is nulled when the chat is deleted.
 8. Reprompt copy is fixed; a best guess is always stated out loud before scoring it.
-9. Concurrent tabs count as separate runs.
+9. Concurrent tabs count as separate runs, keyed by run id.
+10. Reload rebuild reads the browser snapshot for that conversation plus run id; a cleared snapshot loses the unsubmitted run, same as a cleared thread did before.
+11. Snapshot writes on mark and on index move; submit, close, and a new run clear it.
 
 **Security model**:
 Owner only throughout. Every run call checks session plus note and attempt ownership exactly like the page routes. No shared threads, no public run reads. No new personal data. Study content the student already owns.
@@ -84,7 +86,7 @@ No new env vars, no new providers, no new deps. Three nullable columns via migra
 
 **Critical test scenarios**:
 - Happy path: setup by tap, answer run with mixed right and wrong, per answer marks, submit writes attempt rows with source chat, full correction plus retakes update, verifies **AC-1**, **AC-2**, **AC-3**.
-- Failure case: reload mid run rebuilds from thread with marks intact; unclear answer gets one reprompt then a best guess reading; generation failure shows a plain message plus retry, verifies **AC-5**, **AC-6**.
+- Failure case: reload mid run rebuilds from the snapshot with marks intact; unclear answer gets one reprompt then a best guess reading; generation failure shows a plain message plus retry, verifies **AC-5**, **AC-6**.
 - Auth and permission: foreign note or attempt id receives not found on every run call, verifies **AC-7**.
 - Money: generation debit plus caps behave identically for chat and page runs; over cap attempts refuse the same way, verifies **AC-8**.
 
@@ -94,7 +96,7 @@ Tracer Bullet: a thin thread through setup plus one question plus submit first, 
 
 1. Migration for `QuizAttempt.source` plus `conversationId` plus `clientRunId` (all nullable, `clientRunId` unique, no backfill), satisfies **AC-3**.
 2. Chat setup flow (setup questions through reused reply chips, generate input shape as page, no timed option in v1), satisfies **AC-1**, **AC-4**, **AC-8**.
-3. Question runner card (lettered tappable cards accepting typed letters, text box for open, progress plus running score) with rebuild from thread on reload, satisfies **AC-2**, **AC-5**.
+3. Question runner card (lettered tappable cards accepting typed letters, text box for open, progress plus running score) with rebuild through the active pointer plus the browser snapshot on reload, satisfies **AC-2**, **AC-5**.
 4. Answer submit plus per answer mark plus end correction plus attempts and retakes write (existing endpoints, same shapes), with one reprompt on unclear input, satisfies **AC-3**, **AC-6**.
 5. Handoff rule plus owner checks plus caps parity wiring (source chat passed through, conversation id stored, quiz taken event with chat source), satisfies **AC-7**, **AC-8**.
 6. Tests for happy path plus reload rebuild plus reprompt plus foreign 404 plus caps parity, satisfies all ACs.
@@ -107,7 +109,8 @@ Tracer Bullet: a thin thread through setup plus one question plus submit first, 
 - Least new code: no new tables, no new endpoints, same validation and tests as the page.
 
 **Negative or tradeoffs**:
-- Reload rebuild depends on thread history; a cleared thread loses the unsubmitted run.
+- Reload rebuild depends on the browser snapshot; a cleared snapshot loses the unsubmitted run.
+- Snapshot stays on one device; a new device starts fresh.
 - Scripted flow cannot improvise like an agentic loop; odd requests fall back to open tutoring.
 - Chat runs share page caps, so heavy chat practice spends the same budget.
 - Per answer grading means one model call per answer.
@@ -119,4 +122,4 @@ Tracer Bullet: a thin thread through setup plus one question plus submit first, 
 ## Follow-up
 
 - [ ] Timed practice in chat after the hackathon (server clock decides, client countdown, late answers score late).
-- [ ] Server held run state for true resume if rebuild from thread proves lossy.
+- [ ] Server held run state for true cross device resume if the browser snapshot proves lossy.

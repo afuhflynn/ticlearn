@@ -29,6 +29,7 @@ import {
 } from "./chat-composer";
 import { ChatMessageList } from "./chat-message-list";
 import { consumePendingChatMessage } from "./pending-message";
+import { QuizRunner } from "./quiz-runner";
 import { StarterRows } from "./starter-rows";
 import { suggestionsFromParts } from "./suggested-replies";
 
@@ -73,6 +74,16 @@ function ConversationSession({
   const [stoppedIds, setStoppedIds] = useState<Set<string>>(
     () => new Set(initialStoppedIds),
   );
+  const [quizRun, setQuizRun] = useState<{
+    noteId: string | null;
+    noteTitle: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    const onClose = () => setQuizRun(null);
+    window.addEventListener("ticlearn:quiz-close", onClose);
+    return () => window.removeEventListener("ticlearn:quiz-close", onClose);
+  }, []);
 
   const startedAt = useRef<number | null>(null);
   const lastSubmission = useRef<ChatComposerSubmission | null>(null);
@@ -285,6 +296,10 @@ function ConversationSession({
     setPrefill({ text: CHAT_QUIZ_PREFILL, nonce: Date.now() });
   }, []);
 
+  const handleStartQuiz = useCallback(() => {
+    setQuizRun({ noteId, noteTitle });
+  }, [noteId, noteTitle]);
+
   const handleSuggestion = useCallback(
     (text: string) => {
       startedAt.current = Date.now();
@@ -324,6 +339,7 @@ function ConversationSession({
               onStart={(prompt) =>
                 setPrefill({ text: prompt, nonce: Date.now() })
               }
+              onQuiz={handleStartQuiz}
             />
           }
           messages={messages}
@@ -336,6 +352,13 @@ function ConversationSession({
           stoppedIds={stoppedIds}
           suggestions={liveSuggestions}
         />
+        {quizRun && (
+          <QuizRunner
+            conversationId={conversationId}
+            noteId={quizRun.noteId}
+            noteTitle={quizRun.noteTitle}
+          />
+        )}
       </div>
 
       <div className="border-t bg-background/95 px-4 py-4 backdrop-blur">

@@ -109,4 +109,37 @@ describe("POST /api/quizzes/generate (covers: AC-2)", () => {
     expect(res.status).toBe(200);
     expect((await res.json()).status).toBe("GENERATING");
   });
+
+  it("refuses a chat sourced quiz over the limit exactly like a page quiz (spec 0031 AC-8)", async () => {
+    db.quiz.count.mockResolvedValue(5);
+
+    const page = await generate({ noteId: "note-1", questionCount: 5 });
+    const chat = await generate({
+      noteId: "note-1",
+      questionCount: 5,
+      source: "chat",
+      conversationId: "conv-1",
+    });
+
+    expect(page.status).toBe(403);
+    expect(chat.status).toBe(403);
+    expect(db.quiz.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for an unknown source hint (covers: AC-8)", async () => {
+    const res = await generate({ noteId: "note-1", source: "evil" });
+
+    expect(res.status).toBe(400);
+    expect(db.quiz.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for a count below the server floor (covers: AC-8)", async () => {
+    // The chat runner clamps counts to 1 to 10 client side while the server
+    // floor stays at 5, so a Custom count of 3 fails here. Pinned as is;
+    // whether the floor should drop to 1 is a product call.
+    const res = await generate({ noteId: "note-1", questionCount: 3 });
+
+    expect(res.status).toBe(400);
+    expect(db.quiz.create).not.toHaveBeenCalled();
+  });
 });

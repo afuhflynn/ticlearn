@@ -298,6 +298,8 @@ export const api = {
         timed?: boolean;
         timeLimit?: number;
         isPublic?: boolean;
+        source?: "page" | "chat";
+        conversationId?: string;
       }) =>
         apiRequest<{ quiz: Quiz; success: boolean }>("/quizzes/generate", {
           method: "POST",
@@ -310,11 +312,15 @@ export const api = {
       submitAttempt: (data: {
         quizId: string;
         answers: { questionId: string; answer: string }[];
+        source?: "page" | "chat";
+        conversationId?: string;
+        clientRunId?: string;
       }) =>
         apiRequest<{
           attempt: unknown;
           pointsEarned: number;
           currentStreak: number;
+          duplicate?: boolean;
         }>("/quizzes/attempts", { method: "POST", body: data }),
       getAttempts: (quizId: string) =>
         apiRequest<{ attempts: unknown[] }>(`/quizzes/${quizId}/attempts`, {
@@ -324,6 +330,19 @@ export const api = {
         apiRequest<{ attempt: unknown }>(`/quizzes/attempts/${attemptId}`, {
           method: "GET",
         }),
+      grade: (data: {
+        questionId: string;
+        question: string;
+        type: "MCQ" | "OPEN";
+        userAnswer: string;
+        correctAnswer: string;
+        options?: string[];
+      }) =>
+        apiRequest<{
+          questionId: string;
+          isCorrect: boolean;
+          why: string;
+        }>("/quizzes/grade", { method: "POST", body: data }),
       getRecentAttempts: (limit?: number) =>
         apiRequest<{ attempts: unknown[] }>(
           `/quizzes/attempts/recent${limit ? `?limit=${limit}` : ""}`,

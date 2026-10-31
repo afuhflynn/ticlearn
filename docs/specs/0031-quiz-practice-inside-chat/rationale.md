@@ -17,7 +17,7 @@ A fixed UI flow drives setup, questions, marking, and submit; the model grades a
 
 **Cons**:
 - Cannot improvise beyond the scripted flow.
-- Reload depends on thread history.
+- Reload depends on the browser snapshot on one device.
 
 ### Option 2: Agentic loop with run tools
 

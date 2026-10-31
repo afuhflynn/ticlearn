@@ -70,8 +70,8 @@ describe("generateQuizFromNote (covers: quiz output cap)", () => {
       questionTypes: "MIXED",
     });
 
-    const call = vi.mocked(orchestrator.generateCritical).mock.calls[0][0];
-    expect(call.modelOptions.maxOutputTokens).toBeGreaterThanOrEqual(
+    const call = vi.mocked(orchestrator.generateCritical).mock.calls[0]?.[0];
+    expect(call?.modelOptions?.maxOutputTokens).toBeGreaterThanOrEqual(
       50 * QUIZ_TOKENS_PER_QUESTION,
     );
   });
@@ -82,9 +82,9 @@ describe("generateQuizFromNote (covers: quiz output cap)", () => {
       questionTypes: "MIXED",
     });
 
-    const call = vi.mocked(orchestrator.generateCritical).mock.calls[0][0];
+    const call = vi.mocked(orchestrator.generateCritical).mock.calls[0]?.[0];
     // 5 questions need fewer tokens than the file cap, so the cap wins.
-    expect(call.modelOptions.maxOutputTokens).toBe(2048);
+    expect(call?.modelOptions?.maxOutputTokens).toBe(2048);
   });
 
   it("throws instead of swallowing a model failure", async () => {

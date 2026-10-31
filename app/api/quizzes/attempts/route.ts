@@ -15,7 +15,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { quizId, answers } = await req.json();
+    const { quizId, answers, source, conversationId, clientRunId } =
+      await req.json();
+
+    // The client sends source as a hint. The server allowlists it and
+    // writes the final value, so an unknown string never lands in the row.
+    const allowedSource =
+      source === "chat" || source === "page" ? source : null;
 
     if (!quizId || !answers) {
       return NextResponse.json(
@@ -38,12 +44,45 @@ export async function POST(req: Request) {
       );
     }
 
+    // A duplicate client run id returns the existing attempt so a retry of the
+    // same run never writes a second attempt row.
+    if (clientRunId) {
+      const existing = await prisma.quizAttempt.findFirst({
+        where: { clientRunId },
+        include: { answers: true },
+      });
+
+      if (existing) {
+        trackEvent(session.user.id, "quiz_taken", {
+          quizId: existing.quizId,
+          score: existing.score,
+          correctCount: existing.correctAnswers,
+          totalQuestions: existing.totalQuestions,
+          source: existing.source,
+        }).catch(() => {});
+
+        return NextResponse.json({
+          attempt: existing,
+          success: true,
+          pointsEarned: 0,
+          currentStreak: 0,
+          duplicate: true,
+        });
+      }
+    }
+
     const quiz = await prisma.quiz.findUnique({
       where: { id: quizId },
       include: { questions: true },
     });
 
     if (!quiz) {
+      return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
+    }
+
+    // A quiz id that is not the caller's own reads as not found, the same
+    // rule the page routes enforce.
+    if (quiz.userId !== session.user.id) {
       return NextResponse.json({ error: "Quiz not found" }, { status: 404 });
     }
 
@@ -119,6 +158,9 @@ export async function POST(req: Request) {
           quizId,
           quizTitle: quiz.title,
           noteTitle: quiz.noteTitle,
+          source: allowedSource,
+          conversationId: conversationId ?? null,
+          clientRunId: clientRunId ?? null,
           score,
           totalQuestions: quiz.questions.length,
           correctAnswers: correctCount,
@@ -188,6 +230,7 @@ export async function POST(req: Request) {
       score,
       correctCount,
       totalQuestions: quiz.questions.length,
+      source: allowedSource ?? undefined,
     }).catch(() => {});
 
     return NextResponse.json({
