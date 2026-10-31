@@ -204,6 +204,26 @@ function ConversationSession({
     async (submission: ChatComposerSubmission) => {
       if (!submission.text.trim() && submission.files.length === 0) return;
 
+      // While the setup wizard is open the composer belongs to the wizard.
+      // Typed text moves the same step forward, identical to a tap, so the
+      // thread never stalls waiting for a tap that never lands.
+      const wizardOpen =
+        (window as unknown as { __ticlearn_wizard_open?: string })
+          .__ticlearn_wizard_open === conversationId;
+      if (
+        wizardOpen &&
+        submission.text.trim() &&
+        submission.files.length === 0
+      ) {
+        window.dispatchEvent(
+          new CustomEvent("ticlearn:wizard-text", {
+            detail: { text: submission.text },
+          }),
+        );
+        setRestore(undefined);
+        return;
+      }
+
       startedAt.current = Date.now();
       setDurationMs(null);
       setLiveSuggestions([]);
@@ -225,7 +245,7 @@ function ConversationSession({
         });
       }
     },
-    [chat],
+    [chat, conversationId],
   );
 
   /**

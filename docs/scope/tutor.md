@@ -92,10 +92,16 @@ Tip reads like a teacher, not a search result. It names the note once per topic,
 - [ ] Verify it: /verify-release tutor voice and citation habit
 - [ ] Test it: /test-engineer tutor voice and citation habit
 
-### 58. Agentic quiz setup wizard · needs a decision
+### 58. Agentic quiz setup wizard · in-progress
 Tip guides setup as a three step wizard inside chat. Topic picks come first, then level plus format, then count plus difficulty. Each step shows numbered tappable options plus an inline Other box with a send arrow plus an Or reply directly line plus Skip plus Back plus Next. A typed reply in the composer moves the same step forward. No browser prompt appears at any point and the thread never stalls waiting for a tap that never lands.
 **Done when:** a student can open setup in chat, pick topic plus level plus count by tap or by typing in the inline Other box or the composer, move back and forward with Skip, and reach a ready runner with no browser prompt and no stall.
-- [ ] Design it (spec): /solution-architect agentic quiz setup wizard
+- [x] Design it (spec): /solution-architect agentic quiz setup wizard · spec [0033](../specs/0033-agentic-quiz-setup-wizard/index.md)
+- [x] Build it: /feature-build agentic quiz setup wizard · code in `components/chat/quiz-setup-wizard.tsx`, `lib/chat/quiz-wizard.ts`, `lib/chat/quiz-snapshot.ts`, `app/api/quizzes/wizard-generate/route.ts`
+  - [x] Snapshot plus wizard card shell with pager plus Skip plus Back plus Next plus collapsed draft (covers AC-1, AC-5, AC-7)
+  - [x] Topic plus level plus count steps with resolve plus defaults plus typing path (covers AC-2, AC-3, AC-4, AC-6)
+  - [x] Wizard endpoint plus retry smaller then handoff plus caps parity (covers AC-8, AC-9)
+- [ ] Verify it: /verify-release agentic quiz setup wizard
+- [x] Test it: /test-engineer agentic quiz setup wizard
 
 ### 59. Low docked runner card · needs a decision
 The runner lives low near the composer as a docked sheet above the reply box, matching the approved reference. It shows one question at a time with numbered dots plus Back plus Next plus Show hint plus a Quiz plus Flashcards toggle. Taps answer at once, reload rebuilds the same spot with answers kept, and a stopped stream marks cleanly with no lost tap. Phone thumbs reach options without scrolling past a tall thread.

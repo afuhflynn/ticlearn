@@ -383,3 +383,19 @@ describe("QuizRunner typed and open answers (spec 0031, covers: AC-2, AC-4, AC-6
     ).not.toBeInTheDocument();
   });
 });
+
+describe("QuizRunner wizard handoff (spec 0033, covers: AC-8)", () => {
+  it("opens straight into answering when the wizard hands a quiz id", async () => {
+    render(<QuizRunner {...props()} initialQuizId="quiz-1" />);
+
+    expect(
+      await screen.findByText(/Question 1 of 3.*0 correct/),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start quiz" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open full quiz page" }),
+    ).toHaveAttribute("href", "/quizzes/quiz-1");
+  });
+});

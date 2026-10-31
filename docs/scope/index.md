@@ -52,7 +52,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 47 | Chat interface redesign | Slice 2 | in-progress |
 | 56 | Quiz practice inside chat | Slice 2 | in-progress |
 | 57 | Tutor voice and citation habit | Slice 2 | in-progress |
-| 58 | Agentic quiz setup wizard | Slice 2 | planned |
+| 58 | Agentic quiz setup wizard | Slice 2 | in-progress |
 | 59 | Low docked runner card | Slice 2 | planned |
 | 60 | Marking plus mark scheme plus results plus save | Slice 2 | planned |
 | 61 | Quiz reliability plus visual fallback | Slice 2 | planned |

@@ -112,10 +112,12 @@ export function QuizRunner({
   conversationId,
   noteId,
   noteTitle,
+  initialQuizId,
 }: {
   conversationId: string;
   noteId: string | null;
   noteTitle: string | null;
+  initialQuizId?: string | null;
 }) {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
@@ -136,6 +138,9 @@ export function QuizRunner({
   });
 
   const [phase, setPhase] = useState<Phase>(() => {
+    if (initialQuizId) {
+      return "generating";
+    }
     const active = getActiveRunId(conversationId);
     if (active && loadQuizSnapshot(conversationId, active)) {
       return "generating";
@@ -177,10 +182,12 @@ export function QuizRunner({
     return {};
   });
   const [quizId, setQuizId] = useState<string | null>(() => {
+    if (initialQuizId) return initialQuizId;
     const active = getActiveRunId(conversationId);
     if (active) {
       const saved = loadQuizSnapshot(conversationId, active);
-      if (saved) return saved.quizId;
+      if (saved?.quizId) return saved.quizId;
+      if (saved?.wizardDone && saved.quizId) return saved.quizId;
     }
     return null;
   });
@@ -196,6 +203,14 @@ export function QuizRunner({
 
   const submitAttempt = useSubmitQuizAttempt();
   const { data: quizData, isError: quizError } = useQuiz(quizId ?? "");
+
+  useEffect(() => {
+    if (initialQuizId && initialQuizId !== quizId) {
+      setQuizId(initialQuizId);
+      setPhase("generating");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuizId]);
 
   useEffect(() => {
     if (quizData?.quiz && quizData.quiz.status === "READY") {
