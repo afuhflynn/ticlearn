@@ -52,6 +52,10 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 47 | Chat interface redesign | Slice 2 | in-progress |
 | 56 | Quiz practice inside chat | Slice 2 | in-progress |
 | 57 | Tutor voice and citation habit | Slice 2 | in-progress |
+| 58 | Agentic quiz setup wizard | Slice 2 | planned |
+| 59 | Low docked runner card | Slice 2 | planned |
+| 60 | Marking plus mark scheme plus results plus save | Slice 2 | planned |
+| 61 | Quiz reliability plus visual fallback | Slice 2 | planned |
 | 21 | Note upload experience | Slice 3 | planned |
 | 22 | Storage move to Neon object storage | Slice 3 | planned |
 | 23 | Quiz generation flow | Slice 3 | planned |
@@ -84,7 +88,7 @@ Each epic is one file with its own feature sections.
 - **[Carried over](carried-over.md)** · 7 features · what already exists in the codebase, enrolled for context only.
 - **[Pivot](pivot.md)** · 2 features, Foundations · removing the secondary school product outright, mocks, exams and papers included.
 - **[Market](market.md)** · 9 features, Slice 1 · the landing page, the public pages, onboarding and pricing. What a stranger sees and what a new student does in the first two minutes. Plus the search surface: the public course catalogue, the technical SEO foundation, public guides, and readiness for AI answer engines.
-- **[Tutor](tutor.md)** · 5 features, Slice 2 · the chat interface, the web search tool, in chat quiz practice, tutor voice, and the controls students get over it.
+- **[Tutor](tutor.md)** · 10 features, Slice 2 · the chat interface, the web search tool, in chat quiz practice, tutor voice, and the controls students get over it.
 - **[Content](content.md)** · 5 features, Slice 3 · notes, storage, uploads, quiz generation, limits and offline.
 - **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
 - **[Commerce](commerce.md)** · 7 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites, conversion analytics and the in app subscription page.
