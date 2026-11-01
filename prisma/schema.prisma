@@ -489,12 +489,15 @@ model AffiliateEarning {
   affiliateEmail    String        @map("affiliate_email")
   referredUserId    String?       @map("referred_user_id")
   referredUserEmail String        @map("referred_user_email")
-  plan              Plan
+  plan              String
   amount            Int
   commission        Float
+  commissionRate    Float?        @map("commission_rate")
   status            EarningStatus @default(PENDING)
   requestedAt       DateTime?     @map("requested_at")
   paidAt            DateTime?     @map("paid_at")
+  payoutReference   String?       @map("payout_reference")
+  orderReference    String?       @unique @map("order_reference")
   fapshiTransId     String?       @unique @map("fapshi_trans_id")
   createdAt         DateTime      @default(now())
   affiliate         Affiliate     @relation(fields: [affiliateCode], references: [code])
@@ -502,6 +505,25 @@ model AffiliateEarning {
   @@index([affiliateCode])
   @@index([status])
   @@map("affiliate_earnings")
+}
+
+model PartnerInvite {
+  id             String       @id @default(cuid())
+  email          String       @map("email")
+  token          String       @unique @map("token")
+  invitedBy      String       @map("invited_by")
+  status         InviteStatus @default(PENDING)
+  expiresAt      DateTime     @map("expires_at")
+  acceptedUserId String?      @map("accepted_user_id")
+  resendCount    Int          @default(0) @map("resend_count")
+  lastResentAt   DateTime?    @map("last_resent_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([status])
+  @@index([token])
+  @@map("partner_invites")
 }
 
 // User Settings
@@ -657,6 +679,7 @@ enum AffiliateStatus {
   PENDING
   ACTIVE
   SUSPENDED
+  REVOKED
 }
 
 enum EarningStatus {

@@ -11,6 +11,7 @@ const SUBJECTS: Record<string, string> = {
   "come-back": "Your {{exam}} exam is getting close",
   "subscription-ending": "Your {{plan}} plan ends on {{date}}",
   "admin-invite": "Invitation to become an Admin on TiCLearn 🛡️",
+  "partner-invite": "You are invited to partner with TiCLearn",
   "admin-role-update":
     "Your TiCLearn account role has been updated to {{role}} 🛡️",
   "admin-payment-alert": "💰 New Sale: {{planLabel}} — {{userName}}",

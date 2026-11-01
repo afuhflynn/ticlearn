@@ -85,10 +85,17 @@ Spec 0037 [0037](../specs/0037-conversion-analytics/index.md)
 - [ ] Verify it: `/verify-release conversion analytics`
 - [ ] Test it: `/test-engineer conversion analytics`
 
-### 43. Affiliate invites for partners · needs a decision · from spec 0014
+### 43. Affiliate invites for partners · in-progress · from spec 0014
 Today any signed in student becomes a paying affiliate by loading `/affiliate`, and 500 credits are paid at signup before email verification. The owner wants the opposite: no student can create a link or see the page, an admin invites a chosen person, and only that person sees their partner stats.
 **Done when:** only an admin can create an affiliate, the invite starts as PENDING and the admin approves to ACTIVE, no open route creates an affiliate row, an uninvited student sees no page and no entry, attribution needs verified email, the signup award cannot double pay on retry, payout moves REQUESTED to PAID and clears pending only while lifetime total stays intact, and partner screens never show referee emails.
-- [ ] Design it (spec): `/solution-architect affiliate invites`
+- [x] Design it (spec): `/solution-architect affiliate invites` · spec [0038](../specs/0038-affiliate-invites/index.md)
+- [x] Build it: `/feature-build affiliate invites`
+  - [x] Invite plus claim plus approve thread with hidden surface, satisfies **AC-1**, **AC-2**, **AC-3**, **AC-4**, **AC-5**, **AC-10**
+  - [x] Conversion with verified plus paid check plus fixed percent math, satisfies **AC-6**, **AC-7**, **AC-11**
+  - [x] Stats plus payout plus expiry with counts only copy, satisfies **AC-8**, **AC-9**, **AC-12**
+  - code in `lib/affiliates/`, `app/api/affiliates/`, `app/api/admin/affiliates/invites/`, `app/(dashboard)/affiliates/`, `app/(admin)/admin/affiliates/invites/` · schema live via `db:push`, migration file `20261101120000_affiliate_invites` written but not applied via migrate (drift blocks `db:migrate` in this database)
+- [ ] Verify it: `/verify-release affiliate invites`
+- [ ] Test it: `/test-engineer affiliate invites`
 
 (basis: spec 0014 surface audit · the current GET creates a payable active affiliate on page load, the apply route updates outside its transaction so a parallel double submit pays twice, and admin payout decrements the lifetime total)
 

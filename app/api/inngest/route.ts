@@ -19,6 +19,7 @@ import {
   processNote,
 } from "@/lib/inngest/functions";
 import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
+import { expirePartnerInvites } from "@/lib/inngest/partner-functions";
 import { visualAnalysisProcess } from "@/lib/inngest/visual-analysis-functions";
 
 export const { GET, POST, PUT } = serve({
@@ -40,5 +41,6 @@ export const { GET, POST, PUT } = serve({
     dispatchEngagementCampaigns,
     pruneAppCache,
     visualAnalysisProcess,
+    expirePartnerInvites,
   ],
 });

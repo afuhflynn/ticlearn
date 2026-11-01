@@ -4,6 +4,7 @@ import { render as adminInvite } from "./internal/admin-invite";
 import { render as adminPaymentAlert } from "./internal/admin-payment-alert";
 import { render as adminRoleUpdate } from "./internal/admin-role-update";
 import { render as passwordReset } from "./password-reset";
+import { render as partnerInvite } from "./partner-invite";
 import { render as paymentFailed } from "./payment-failed";
 import { render as paymentReceived } from "./payment-received";
 import { render as referralReward } from "./referral-reward";
@@ -42,6 +43,7 @@ export const TEMPLATES: Record<string, TemplateDef> = {
   "come-back": asTemplateDef(comeBack, "campaign"),
   "subscription-ending": asTemplateDef(subscriptionEnding, "campaign"),
   "admin-invite": asTemplateDef(adminInvite, "lifecycle"),
+  "partner-invite": asTemplateDef(partnerInvite, "lifecycle"),
   "admin-role-update": asTemplateDef(adminRoleUpdate, "lifecycle"),
   "admin-payment-alert": asTemplateDef(adminPaymentAlert, "transactional"),
 };

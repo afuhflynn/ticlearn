@@ -716,6 +716,89 @@ export const api = {
           apiRequest<{ success: boolean }>(`/admin/affiliates/${id}`, {
             method: "DELETE",
           }),
+        invites: (
+          params: {
+            page?: number;
+            limit?: number;
+            status?: string;
+            search?: string;
+          } = {},
+        ) => {
+          const sp = new URLSearchParams();
+          if (params.page) sp.set("page", String(params.page));
+          if (params.limit) sp.set("limit", String(params.limit));
+          if (params.status) sp.set("status", params.status);
+          if (params.search) sp.set("search", params.search);
+          return apiRequest<{
+            invites: {
+              id: string;
+              email: string;
+              status: string;
+              expiresAt: string;
+              createdAt: string;
+            }[];
+            total: number;
+            page: number;
+            totalPages: number;
+          }>(`/admin/affiliates/invites?${sp.toString()}`, { method: "GET" });
+        },
+        inviteCreate: (data: { email: string }) =>
+          apiRequest<{
+            success: boolean;
+            invite: {
+              id: string;
+              email: string;
+              status: string;
+              expiresAt: string;
+            };
+          }>("/admin/affiliates/invites", { method: "POST", body: data }),
+        inviteApprove: (id: string) =>
+          apiRequest<{
+            success: boolean;
+            affiliate: { id: string; status: string };
+          }>(`/admin/affiliates/invites/${id}/approve`, { method: "POST" }),
+        inviteResend: (id: string) =>
+          apiRequest<{
+            success: boolean;
+            invite: { id: string; expiresAt: string };
+          }>(`/admin/affiliates/invites/${id}/resend`, { method: "POST" }),
+        inviteRevoke: (id: string) =>
+          apiRequest<{ success: boolean; status: string }>(
+            `/admin/affiliates/invites/${id}/revoke`,
+            { method: "POST" },
+          ),
+        payout: (id: string, data: { payoutReference: string }) =>
+          apiRequest<{ success: boolean; message: string; amountPaid: number }>(
+            `/admin/affiliates/${id}/payout`,
+            { method: "POST", body: data },
+          ),
+        revoke: (id: string, data: { reason: string }) =>
+          apiRequest<{ success: boolean; status: string }>(
+            `/admin/affiliates/${id}/revoke`,
+            { method: "POST", body: data },
+          ),
+      },
+      partner: {
+        me: () =>
+          apiRequest<{
+            code: string;
+            link: string;
+            clicks: number;
+            conversions: number;
+            pending: number;
+            lifetime: number;
+            status: string;
+          }>("/affiliates/me", { method: "GET" }),
+        claim: (token: string) =>
+          apiRequest<{
+            success: boolean;
+            affiliate: { id: string; status: string; code: string };
+          }>("/affiliates/claim", { method: "POST", body: { token } }),
+        requestPayout: () =>
+          apiRequest<{ success: boolean; requested: number }>(
+            "/affiliates/payout-requests",
+            { method: "POST" },
+          ),
       },
       // Metrics / Analytics
       metrics: {
