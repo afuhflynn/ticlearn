@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateQuizFromNote } from "@/lib/ai/index";
+import { isCutoffMessage, smallerRetryCount } from "@/lib/ai/validators";
 import type { normalizeGeneratedQuestions } from "@/lib/ai/validators";
 import { auth } from "@/lib/auth";
 import {
@@ -96,6 +97,7 @@ export async function POST(req: Request) {
 
     const title = `${topicText} (${levelChoice}, ${count})`;
     const noteTitle = note?.title ?? topicText;
+    const userId = session.user.id;
 
     // A linked note reuses the page pipeline exactly: a GENERATING row plus
     // the Inngest job, so counts plus caps plus debits match the quiz page.
@@ -155,23 +157,76 @@ export async function POST(req: Request) {
     // same quiz rows as the page so history stays in one place.
     const content = `Topic: ${topicText}. Level: ${levelChoice}. Format: ${formatChoice}. Difficulty: ${difficulty}. Teach and quiz this topic for Cameroon schools.`;
     let questions: ReturnType<typeof normalizeGeneratedQuestions> = [];
-    try {
+    let cutoff = false;
+    let retried = false;
+    const handoffNoteId = body.noteId ?? null;
+    const handoff = {
+      noteId: handoffNoteId,
+      noteTitle,
+      topicText,
+      formatChoice,
+      count,
+    };
+    async function runOnce(ask: number) {
       const generated = await generateQuizFromNote(
         content,
-        { questionCount: count, questionTypes: "MIXED" },
-        session.user.id,
+        { questionCount: ask, questionTypes: "MIXED" },
+        userId,
       );
-      questions = generated.questions;
+      return generated.questions;
+    }
+    try {
+      questions = await runOnce(count);
+      if (questions.length === 0) throw new Error("Quiz generation failed.");
+      if (questions.length < count) {
+        cutoff = true;
+        const smaller = smallerRetryCount(count);
+        if (smaller !== null) {
+          retried = true;
+          questions = await runOnce(smaller);
+        }
+      }
     } catch (error) {
-      console.error("[wizard-generate] model generation failed:", error);
-      return NextResponse.json(
-        { error: "Quiz generation failed. Try again." },
-        { status: 500 },
-      );
+      const message =
+        error instanceof Error ? error.message : "Quiz generation failed.";
+      const isCutoff = isCutoffMessage(message);
+      if (isCutoff) cutoff = true;
+      if (isCutoff) {
+        const smaller = smallerRetryCount(count);
+        if (smaller !== null && !retried) {
+          try {
+            retried = true;
+            questions = await runOnce(smaller);
+          } catch {
+            questions = [];
+          }
+        }
+      }
+      if (questions.length === 0) {
+        console.error("[wizard-generate] model generation failed:", error);
+        return NextResponse.json(
+          {
+            error: cutoff
+              ? "That set came out too long, so it stopped short."
+              : "Quiz generation failed. Try again.",
+            cutoff,
+            retryWithCount: smallerRetryCount(count),
+            retried,
+            ...handoff,
+          },
+          { status: 500 },
+        );
+      }
     }
     if (questions.length === 0) {
       return NextResponse.json(
-        { error: "Quiz generation failed. Try again." },
+        {
+          error: "That set came out too long, so it stopped short.",
+          cutoff: true,
+          retryWithCount: smallerRetryCount(count),
+          retried,
+          ...handoff,
+        },
         { status: 500 },
       );
     }

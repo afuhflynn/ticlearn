@@ -77,7 +77,7 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
     const res = await POST(request(valid));
     expect(res.status).toBe(403);
     const body = (await res.json()) as { error: string };
-    expect(body.error).toContain("Quiz generation limit reached (4)");
+    expect(body.error).toContain("Quiz generation limit reached (10)");
     expect(body.error).toContain("Upgrade");
   });
 
@@ -200,5 +200,153 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
     const res = await POST(request({ ...valid, noteId: "note-1" }));
 
     expect(res.status).toBe(400);
+  });
+
+  it("retries once with a smaller count when the first set comes back short", async () => {
+    const short = [
+      {
+        type: "MCQ",
+        question: "Q1",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E1",
+      },
+      {
+        type: "MCQ",
+        question: "Q2",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E2",
+      },
+    ];
+    const full = [
+      {
+        type: "MCQ",
+        question: "Q1",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E1",
+      },
+      {
+        type: "MCQ",
+        question: "Q2",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E2",
+      },
+      {
+        type: "MCQ",
+        question: "Q3",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E3",
+      },
+    ];
+    const gen = vi.mocked(generateQuizFromNote);
+    gen.mockResolvedValueOnce({ questions: short, fromCache: false } as never);
+    gen.mockResolvedValueOnce({ questions: full, fromCache: false } as never);
+    db.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        quiz: { create: vi.fn(async () => ({ id: "quiz-retry-1" })) },
+        quizQuestion: { createMany: vi.fn(async () => ({})) },
+      };
+      return fn(tx);
+    });
+
+    const res = await POST(request({ ...valid, count: 5 }));
+
+    expect(res.status).toBe(200);
+    expect(gen).toHaveBeenCalledTimes(2);
+    expect(gen.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ questionCount: 3 }),
+    );
+    const body = (await res.json()) as { quiz: { id: string } };
+    expect(body.quiz.id).toBe("quiz-retry-1");
+  });
+
+  it("retries once when the model reports a length cutoff then succeeds", async () => {
+    const full = [
+      {
+        type: "MCQ",
+        question: "Q1",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E1",
+      },
+      {
+        type: "MCQ",
+        question: "Q2",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E2",
+      },
+      {
+        type: "MCQ",
+        question: "Q3",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E3",
+      },
+    ];
+    const gen = vi.mocked(generateQuizFromNote);
+    gen.mockRejectedValueOnce(
+      new Error("Response stopped: finish reason length"),
+    );
+    gen.mockResolvedValueOnce({ questions: full, fromCache: false } as never);
+    db.$transaction.mockImplementation(async (fn: (tx: unknown) => unknown) => {
+      const tx = {
+        quiz: { create: vi.fn(async () => ({ id: "quiz-retry-2" })) },
+        quizQuestion: { createMany: vi.fn(async () => ({})) },
+      };
+      return fn(tx);
+    });
+
+    const res = await POST(request({ ...valid, count: 8 }));
+
+    expect(res.status).toBe(200);
+    expect(gen).toHaveBeenCalledTimes(2);
+    expect(gen.mock.calls[1]?.[1]).toEqual(
+      expect.objectContaining({ questionCount: 4 }),
+    );
+  });
+
+  it("skips the retry and returns handoff at once when the ask is 3 or less", async () => {
+    const gen = vi.mocked(generateQuizFromNote);
+    gen.mockRejectedValueOnce(new Error("max tokens length reached"));
+
+    const res = await POST(request({ ...valid, count: 3 }));
+
+    expect(res.status).toBe(500);
+    expect(gen).toHaveBeenCalledTimes(1);
+    const body = (await res.json()) as {
+      cutoff: boolean;
+      retryWithCount: number | null;
+      retried: boolean;
+      topicText: string;
+      formatChoice: string;
+    };
+    expect(body.cutoff).toBe(true);
+    expect(body.retryWithCount).toBeNull();
+    expect(body.retried).toBe(false);
+    expect(body.topicText).toBe("Photosynthesis");
+    expect(body.formatChoice).toBe("MCQ plus structured");
+  });
+
+  it("goes straight to handoff with no retry on a plain failure", async () => {
+    const gen = vi.mocked(generateQuizFromNote);
+    gen.mockRejectedValueOnce(new Error("Quiz generation failed. Try again."));
+
+    const res = await POST(request({ ...valid, count: 6 }));
+
+    expect(res.status).toBe(500);
+    expect(gen).toHaveBeenCalledTimes(1);
+    const body = (await res.json()) as {
+      cutoff: boolean;
+      retryWithCount: number;
+      retried: boolean;
+    };
+    expect(body.cutoff).toBe(false);
+    expect(body.retryWithCount).toBe(3);
+    expect(body.retried).toBe(false);
   });
 });

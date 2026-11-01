@@ -214,7 +214,31 @@ export function QuizRunner({
   const [typedLetter, setTypedLetter] = useState("");
   const [unclearNotice, setUnclearNotice] = useState<string | null>(null);
   const [reprompted, setReprompted] = useState<Record<string, boolean>>({});
-  const [mode] = useState<QuizRunnerMode>("quiz");
+  const [mode, setMode] = useState<QuizRunnerMode>(() => {
+    const active =
+      typeof window === "undefined" ? null : getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved?.mode) return saved.mode;
+    }
+    return "quiz";
+  });
+  const [retrying, setRetrying] = useState(false);
+  const [handoff, setHandoff] = useState<{
+    noteId: string | null;
+    noteTitle: string | null;
+    topicText: string | null;
+    retryWithCount: number | null;
+    formatChoice: string | null;
+  } | null>(() => {
+    const active =
+      typeof window === "undefined" ? null : getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved?.handoff) return saved.handoff;
+    }
+    return null;
+  });
   const [hintOpen, setHintOpen] = useState<Record<string, boolean>>(() => {
     const active = getActiveRunId(conversationId);
     if (active) {
@@ -358,8 +382,10 @@ export function QuizRunner({
     setCurrentIndex(0);
     setResult(null);
     setReprompted({});
+    setHandoff(null);
     setPhase("generating");
     setError(null);
+    setRetrying(false);
     const startWith = async (questionCount: number) => {
       const result = await api.mutations.quizzes.generate({
         noteId,
@@ -373,32 +399,61 @@ export function QuizRunner({
     };
     try {
       await startWith(count);
+      setRetrying(false);
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to start the quiz.";
-      const looksLong = /length|cutoff|truncat|too long|too big/i.test(message);
-      if (looksLong && count > 5) {
-        try {
-          await startWith(5);
-          return;
-        } catch {
-          // Falls through to the handoff below.
-        }
-      }
-      setPhase("setup");
       if (
-        /limit reached|insufficient credits|not ready|not found/i.test(message)
+        /limit reached|insufficient credits|not ready|not found|no note/i.test(
+          message,
+        )
       ) {
+        setPhase("setup");
         setError(message);
         return;
       }
-      if (looksLong) {
-        setError("Full paper lives on the quiz page. Open it to continue.");
-        return;
+      const looksLong = /length|cutoff|truncat|too long|too big/i.test(message);
+      if (looksLong && count > 3) {
+        setRetrying(true);
+        try {
+          const smaller = Math.max(3, Math.floor(count / 2));
+          await startWith(smaller);
+          setRetrying(false);
+          return;
+        } catch {
+          setRetrying(false);
+        }
       }
-      setError(message);
+      const info = {
+        noteId,
+        noteTitle,
+        topicText: noteTitle,
+        retryWithCount: count > 3 ? Math.max(3, Math.floor(count / 2)) : null,
+        formatChoice: mode === "flashcards" ? "Flashcards" : "Quiz",
+      };
+      setHandoff(info);
+      saveQuizSnapshot(conversationId, {
+        version: 5,
+        quizId: null,
+        answers: {},
+        marks: {},
+        currentIndex: 0,
+        count,
+        clientRunId: runId,
+        updatedAt: Date.now(),
+        mode,
+        hintOpen: {},
+        minimized: false,
+        handoff: info,
+      });
+      setPhase("error");
+      setError(
+        looksLong
+          ? "That set came out too long, so it stopped short."
+          : message,
+      );
     }
-  }, [noteId, count, conversationId]);
+  }, [noteId, count, conversationId, noteTitle, mode]);
 
   const handleAnswerChange = (questionId: string, value: string) => {
     setAnswers((current) => ({ ...current, [questionId]: value }));
@@ -767,9 +822,17 @@ export function QuizRunner({
       <div className="mx-auto w-full max-w-[48rem] px-4">
         <Card className="w-full">
           <CardContent className="space-y-4 pt-6">
-            <p className="font-medium">Your quiz is being written.</p>
+            <p className="font-medium">
+              {retrying
+                ? "That set ran long, trying a smaller set."
+                : "Your quiz is being written."}
+            </p>
             <ProgressLine
-              message="Tip is building your questions."
+              message={
+                retrying
+                  ? "Trying a smaller set now."
+                  : "Tip is building your questions."
+              }
               estimate="It usually takes about a minute."
             />
             <p className="break-words text-sm text-muted-foreground">
@@ -782,17 +845,55 @@ export function QuizRunner({
   }
 
   if (phase === "error") {
+    const retryCount = handoff?.retryWithCount ?? null;
+    const topic = handoff?.topicText ?? noteTitle ?? "this note";
+    const freshParams = new URLSearchParams();
+    if (handoff?.noteId) freshParams.set("noteId", handoff.noteId);
+    if (topic) freshParams.set("topic", topic);
+    if (retryCount) freshParams.set("count", String(retryCount));
+    if (handoff?.formatChoice) freshParams.set("format", handoff.formatChoice);
+    const freshHref = `/quizzes/new?${freshParams.toString()}`;
     return (
       <div className="mx-auto w-full max-w-[48rem] px-4">
-        <Card className="w-full border-destructive/50 bg-destructive/10">
+        <Card className="w-full">
           <CardContent className="space-y-4 pt-6">
-            <p className="font-medium text-destructive">Quiz not available.</p>
-            <p className="text-sm text-muted-foreground">{error}</p>
+            <p className="font-medium">
+              Practice paused here, two ways to continue.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {error ?? "That set came out too long, so it stopped short."}
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                onClick={() => {
+                  if (retryCount) setCount(retryCount);
+                  setPhase("setup");
+                  setError(null);
+                  setHandoff(null);
+                  void handleStart();
+                }}
+              >
+                Try {retryCount ?? 3} questions now
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href={freshHref}>Open fresh quiz start</Link>
+              </Button>
+            </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" onClick={handleClose}>
+              <Button variant="ghost" size="sm" onClick={handleClose}>
                 Back to chat
               </Button>
-              <Button onClick={() => setPhase("setup")}>Try again</Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setPhase("setup");
+                  setHandoff(null);
+                  setError(null);
+                }}
+              >
+                Change setup
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -868,6 +969,24 @@ export function QuizRunner({
                 {noteTitle ?? "Quiz"}
               </Badge>
               <Badge variant="secondary">{currentQuestion.type}</Badge>
+              <div className="flex rounded-md border p-0.5">
+                <Button
+                  size="sm"
+                  variant={mode === "quiz" ? "default" : "ghost"}
+                  onClick={() => setMode("quiz")}
+                  className="h-7 px-2"
+                >
+                  Quiz
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mode === "flashcards" ? "default" : "ghost"}
+                  onClick={() => setMode("flashcards")}
+                  className="h-7 px-2"
+                >
+                  Flashcards
+                </Button>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               <Button

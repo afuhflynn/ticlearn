@@ -78,4 +78,16 @@ describe("the student surface for web tools (AC-16)", () => {
   it("knows the quiz start tool, so it never falls back to Working (spec 0031, AC-1)", () => {
     expect(isKnownToolName("startQuiz")).toBe(true);
   });
+
+  it("reads Drawing your diagram for both draw names (spec 0040, AC-5)", () => {
+    expect(toolLabelFromName("drawVisual", {})).toBe("Drawing your diagram");
+    expect(toolLabelFromName("drawDiagram", {})).toBe("Drawing your diagram");
+    expect(isKnownToolName("drawDiagram")).toBe(true);
+  });
+
+  it("reads a plain failure sentence for a draw miss (spec 0040, AC-4)", () => {
+    expect(toolFailureFromName("drawDiagram")).toBe(
+      "Could not draw that. Steps below still teach it.",
+    );
+  });
 });

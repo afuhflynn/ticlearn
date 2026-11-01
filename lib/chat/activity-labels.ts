@@ -56,6 +56,8 @@ const LABELS: Record<string, LabelBuilder> = {
   createQuiz: () => "Setting up your practice",
   startQuiz: () => "Starting your quiz",
   getNotePages: () => "Reading page numbers from your note",
+  drawVisual: () => "Drawing your diagram",
+  drawDiagram: () => "Drawing your diagram",
   suggestReplies: () => "",
 };
 
@@ -74,6 +76,8 @@ const FAILURE_LABELS: Record<string, string> = {
   createQuiz: "Couldn't set up the practice. Answering without it.",
   startQuiz: "Couldn't start the quiz here. Ask again and I will set it up.",
   getNotePages: "Couldn't read the page numbers. Answering without them.",
+  drawVisual: "Could not draw that. Steps below still teach it.",
+  drawDiagram: "Could not draw that. Steps below still teach it.",
   suggestReplies: "Couldn't suggest what to ask next.",
 };
 

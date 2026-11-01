@@ -366,14 +366,15 @@ export function QuizSetupWizard({
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to start the quiz.";
-      // A length cutoff retries once with a smaller set, then hands to the
-      // full quiz page with a reason. No dead card is ever shown.
-      const looksLong = /length|cutoff|truncat|too long|too big/i.test(message);
-      if (looksLong && finalCount === 10) {
+      const looksLong = /length|cutoff|truncat|too long|too big|max/i.test(
+        message,
+      );
+      if (looksLong && finalCount > 3) {
         try {
+          const smaller = Math.max(3, Math.floor(finalCount / 2));
           const retry = await api.mutations.quizzes.wizardGenerate({
             ...payload,
-            count: 5,
+            count: smaller,
           });
           setGenerating(false);
           onReady(retry.quiz.id);
@@ -389,7 +390,7 @@ export function QuizSetupWizard({
         setError(message);
         return;
       }
-      setError("Full paper lives on the quiz page. Open it to continue.");
+      setError("That set came out too long, so it stopped short.");
       setHandoffQuizId(null);
     }
   }
@@ -658,24 +659,43 @@ export function QuizSetupWizard({
           ) : null}
 
           {error ? (
-            <div className="space-y-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
-              <p className="text-sm text-destructive">{error}</p>
-              {handoffQuizId ? (
-                <Button variant="outline" size="sm" asChild>
-                  <Link href={`/quizzes/${handoffQuizId}`}>
-                    Open full quiz page
-                  </Link>
-                </Button>
-              ) : null}
-              <div className="flex gap-2">
+            <div className="space-y-2 rounded-lg border p-3">
+              <p className="text-sm font-medium">
+                Practice paused here, two ways to continue.
+              </p>
+              <p className="text-sm text-muted-foreground">{error}</p>
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setError(null)}
+                  onClick={() => {
+                    setError(null);
+                    void submit(
+                      Math.max(3, Math.floor(count / 2)),
+                      difficulty,
+                      level,
+                    );
+                  }}
                 >
-                  Try again
+                  Try {Math.max(3, Math.floor(count / 2))} questions now
                 </Button>
                 <Button variant="outline" size="sm" asChild>
+                  <Link
+                    href={`/quizzes/new?topic=${encodeURIComponent(topicText)}&count=${count}&format=${encodeURIComponent(levelFormat(level))}`}
+                  >
+                    Open fresh quiz start
+                  </Link>
+                </Button>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setError(null)}
+                >
+                  Dismiss
+                </Button>
+                <Button variant="ghost" size="sm" asChild>
                   <Link href="/quizzes">Open full quiz page</Link>
                 </Button>
               </div>

@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createChatTools } from "@/lib/ai/tools";
-import { getToolDescription } from "@/lib/prompts/loader";
 import { prisma } from "@/lib/prisma";
+import { getToolDescription } from "@/lib/prompts/loader";
 
 vi.mock("@/lib/grounded-pages", () => ({
   getGroundedPageInputs: vi.fn(),
@@ -10,6 +10,10 @@ vi.mock("@/lib/grounded-pages", () => ({
 
 vi.mock("@/lib/inngest/client", () => ({
   inngest: { send: vi.fn() },
+}));
+
+vi.mock("@/lib/visual-artifacts", () => ({
+  generateVisualArtifact: vi.fn(),
 }));
 
 import {
@@ -20,6 +24,7 @@ import {
 import { getGroundedPageInputs } from "@/lib/grounded-pages";
 import { inngest } from "@/lib/inngest/client";
 import { getPlatformSettings } from "@/lib/platform-settings";
+import { generateVisualArtifact } from "@/lib/visual-artifacts";
 
 type Execute = (args: unknown, options: unknown) => Promise<unknown>;
 
@@ -442,5 +447,84 @@ describe("getNotePages explicit note id (spec 0028, covers: AC-3, AC-7)", () => 
     await expect(
       tool()({}, { toolCallId: "t-neither", messages: [] }),
     ).rejects.toThrow("no note attached");
+  });
+});
+
+describe("draw tools text fallback (spec 0040, covers: AC-4, AC-5, AC-7)", () => {
+  function draw(which: "drawVisual" | "drawDiagram") {
+    const tools = createChatTools({
+      userId: "user-1",
+      conversationId: "conv-1",
+    });
+    return tools[which].execute as unknown as Execute;
+  }
+
+  beforeEach(() => {
+    vi.mocked(generateVisualArtifact).mockResolvedValue({
+      ok: true,
+      id: "art-1",
+      format: "mermaid",
+      payload: "graph TD\n A-->B",
+      altText: "Two boxes with an arrow.",
+      textSteps: ["Name it.", "Trace it.", "Use it."],
+    } as never);
+  });
+
+  it("registers both draw names on the chat surface", () => {
+    const tools = createChatTools({ userId: "user-1" });
+
+    expect(tools).toHaveProperty("drawVisual");
+    expect(tools).toHaveProperty("drawDiagram");
+  });
+
+  it("pairs three teaching steps with a fresh drawing", async () => {
+    const out = (await draw("drawDiagram")(
+      { concept: "field lines" },
+      { toolCallId: "t-draw", messages: [] },
+    )) as { ok: boolean; textSteps: string[]; concept: string };
+
+    expect(out.ok).toBe(true);
+    expect(out.textSteps).toHaveLength(3);
+    expect(out.concept).toBe("field lines");
+  });
+
+  it("still teaches with text steps when the draw misses", async () => {
+    vi.mocked(generateVisualArtifact).mockResolvedValue({
+      ok: false,
+      reason: "failed",
+      message: "The drawing failed.",
+      textSteps: ["Name it.", "Trace it.", "Use it."],
+    } as never);
+
+    const out = (await draw("drawVisual")(
+      { concept: "field lines" },
+      { toolCallId: "t-draw-miss", messages: [] },
+    )) as { ok: boolean; textSteps: string[] };
+
+    expect(out.ok).toBe(false);
+    expect(out.textSteps).toHaveLength(3);
+  });
+
+  it("reads a foreign note as missing and draws nothing", async () => {
+    dbMock("note", "findFirst").mockResolvedValue(null);
+
+    const out = (await draw("drawDiagram")(
+      { noteId: "note-foreign", concept: "field lines" },
+      { toolCallId: "t-draw-foreign", messages: [] },
+    )) as { ok: boolean; reason: string };
+
+    expect(out).toEqual({ ok: false, reason: "missing" });
+    expect(generateVisualArtifact).not.toHaveBeenCalled();
+  });
+
+  it("trims a long concept before the artifact call", async () => {
+    await draw("drawVisual")(
+      { concept: "x".repeat(200) },
+      { toolCallId: "t-draw-long", messages: [] },
+    );
+
+    expect(generateVisualArtifact).toHaveBeenCalledWith(
+      expect.objectContaining({ concept: "x".repeat(160) }),
+    );
   });
 });

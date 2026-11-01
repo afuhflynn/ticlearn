@@ -25,6 +25,7 @@ Return JSON only with these fields:
 - payload: mermaid source or inline svg markup, max 200000 chars, plain text labels, no script tags, no event handlers, no foreign objects
 - altText: one plain sentence describing the diagram for a screen reader
 - caption: one plain sentence shown under the art, max 140 chars
+- textSteps: three short plain steps that teach the concept without the art
 
 Rules:
 - Labels stay plain text, never code or URLs

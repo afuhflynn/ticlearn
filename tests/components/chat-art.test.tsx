@@ -171,7 +171,12 @@ describe("ChatArt (spec 0030)", () => {
             type: "tool-drawVisual",
             state: "output-available",
             input: { concept: "field lines" },
-            output: { ok: false, reason: "failed", message: "Draw failed." },
+            output: {
+              ok: false,
+              reason: "failed",
+              message: "Draw failed.",
+              textSteps: ["Step one.", "Step two."],
+            },
           } as unknown as UIMessage["parts"][number],
         ])}
         text="Here is the idea in words."
@@ -179,7 +184,10 @@ describe("ChatArt (spec 0030)", () => {
       />,
     );
 
-    expect(screen.getAllByText("Draw failed.")).toHaveLength(2);
+    expect(
+      screen.getAllByText("Could not draw that. Steps below still teach it."),
+    ).toHaveLength(2);
+    expect(screen.getByText("Step one.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
