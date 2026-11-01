@@ -1,7 +1,7 @@
 # 0033. Semester pass plans and limits
 
 **Date**: 2026-10-31
-**Status**: Proposed
+**Status**: In Progress
 
 ## Summary
 

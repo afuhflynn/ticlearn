@@ -8,6 +8,8 @@ import { grantCredits } from "@/lib/credits";
  */
 export function planCredits(plan: string): number {
   switch (plan) {
+    case "WEEKLY":
+      return 2_500;
     case "STARTER":
       return 1_600;
     case "STANDARD":
@@ -15,7 +17,7 @@ export function planCredits(plan: string): number {
     case "PREMIUM":
       return 12_000;
     case "PRO":
-      return 12_000;
+      return 15_000;
     default:
       return 0;
   }

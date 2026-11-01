@@ -15,6 +15,7 @@ vi.mock("@/lib/prisma", () => ({
     user: { count: vi.fn(), findMany: vi.fn() },
     subscription: { count: vi.fn(), groupBy: vi.fn() },
     kpiEvent: { count: vi.fn(), groupBy: vi.fn() },
+    aiUsageEvent: { aggregate: vi.fn() },
     dailyMetric: { findMany: vi.fn(), count: vi.fn() },
     quiz: { groupBy: vi.fn() },
   },
@@ -40,6 +41,7 @@ const db = prisma as unknown as {
     count: ReturnType<typeof vi.fn>;
     groupBy: ReturnType<typeof vi.fn>;
   };
+  aiUsageEvent: { aggregate: ReturnType<typeof vi.fn> };
   dailyMetric: {
     findMany: ReturnType<typeof vi.fn>;
     count: ReturnType<typeof vi.fn>;
@@ -63,6 +65,7 @@ beforeEach(() => {
   db.subscription.groupBy.mockResolvedValue([]);
   db.kpiEvent.count.mockResolvedValue(0);
   db.kpiEvent.groupBy.mockResolvedValue([]);
+  db.aiUsageEvent.aggregate.mockResolvedValue({ _sum: { costXaf: 0 } });
   db.dailyMetric.findMany.mockResolvedValue([]);
   db.dailyMetric.count.mockResolvedValue(0);
   db.quiz.groupBy.mockResolvedValue([]);
@@ -122,6 +125,15 @@ describe("GET /api/admin/metrics (covers: AC-3, AC-9)", () => {
     expect(body.summary.mrr).toBe(15000);
     expect(body.summary.totalSubscribers).toBe(3);
     expect(body.mrrByPlan).toEqual({ STANDARD: 5000, PREMIUM: 10000 });
+    expect(body.moneyTrail).toEqual({
+      limitHits: 0,
+      upgradeStarts: 0,
+      paidSuccess: 0,
+      weeklyTake: 0,
+      proTake: 0,
+      pendingToPaidRate: 0,
+      aiCostXaf: 0,
+    });
   });
 
   it("serves cohort retention from stored rows", async () => {

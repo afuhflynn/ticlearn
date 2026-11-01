@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuizArt } from "@/components/art/quiz-art";
 import { MathMarkdown } from "@/components/math-markdown";
 import { RetryPanel } from "@/components/retries/retry-panel";
+import { UpgradePrompt } from "@/components/upgrade/upgrade-prompt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -430,6 +431,7 @@ export default function QuizPlayerPage() {
                   <Link href="/quizzes">Back to quizzes</Link>
                 </Button>
               </div>
+              <UpgradePrompt score={result.attempt.score} />
             </CardContent>
           </Card>
 

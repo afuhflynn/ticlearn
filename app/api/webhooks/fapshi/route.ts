@@ -160,7 +160,28 @@ export async function POST(req: Request) {
     if (status === "SUCCESSFUL") {
       // Use the stored amount, not the body amount, so an in flight payment is
       // receipted at what the student actually paid even if the catalogue
-      // changes later.
+      // changes later. A body amount that disagrees stays pending for review.
+      const bodyAmount = Number(
+        (body as { amount?: unknown }).amount ?? sub.amount,
+      );
+      if (Number.isFinite(bodyAmount) && bodyAmount !== sub.amount) {
+        console.log(
+          JSON.stringify({
+            event: "webhook_amount_mismatch",
+            transId,
+            stored: sub.amount,
+            received: bodyAmount,
+          }),
+        );
+        return NextResponse.json(
+          {
+            success: false,
+            status: "PENDING",
+            note: "Amount differs from the stored pass price. Kept pending for support review with the transaction id.",
+          },
+          { status: 200 },
+        );
+      }
       const planPrice = sub.amount;
       const commission = Math.round(planPrice * COMMISSION_RATE);
 
@@ -190,6 +211,10 @@ export async function POST(req: Request) {
         plan: sub.plan,
         amount: planPrice,
       }).catch(() => {});
+      trackEvent(sub.userId, EVENTS.PAID_SUCCESS, {
+        plan: sub.plan,
+        amount: planPrice,
+      }).catch(() => {});
 
       // Award plan-based credits once when a subscription activates, so a
       // paid plan comes with its credits included and no separate purchase.
@@ -204,7 +229,27 @@ export async function POST(req: Request) {
           where: { code: sub.user.referredBy },
         });
 
-        if (affiliate && affiliate.status === "ACTIVE") {
+        const referee = await prisma.user.findUnique({
+          where: { id: sub.userId },
+          select: {
+            id: true,
+            email: true,
+            emailVerified: true,
+            referredBy: true,
+          },
+        });
+        const selfReferral =
+          affiliate &&
+          (affiliate.userId === sub.userId ||
+            affiliate.userEmail.toLowerCase() ===
+              (referee?.email ?? sub.userEmail).toLowerCase());
+
+        if (
+          affiliate &&
+          affiliate.status === "ACTIVE" &&
+          referee?.emailVerified === true &&
+          !selfReferral
+        ) {
           await prisma.affiliateEarning.create({
             data: {
               affiliateCode: affiliate.code,

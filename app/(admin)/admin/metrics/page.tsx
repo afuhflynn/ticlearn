@@ -316,6 +316,7 @@ export default function AnalyticsPage() {
     activationFunnel,
     newUsersLast30Days,
     mrrByPlan,
+    moneyTrail,
     isLoading,
     refetch,
   } = useAdminMetrics({
@@ -911,6 +912,77 @@ export default function AnalyticsPage() {
                   </Card>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Money trail, last 30 days</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {moneyTrail ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Limit hits
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.limitHits.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Upgrade starts
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.upgradeStarts.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Paid success
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.paidSuccess.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Pending to paid, 7 days
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.pendingToPaidRate}%
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Weekly take
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.weeklyTake.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Semester take
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.proTake.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center sm:col-span-2">
+                            <p className="text-sm text-muted-foreground">
+                              AI cost, XAF
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {moneyTrail.aiCostXaf.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          No money trail data available
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
                   <Card>
                     <CardHeader>
                       <CardTitle>Revenue Over Time</CardTitle>

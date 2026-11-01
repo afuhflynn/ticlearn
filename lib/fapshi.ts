@@ -167,13 +167,14 @@ export async function pollPaymentStatusUntilReady(
 import { planCatalog } from "@/constants/plans";
 
 export interface PaymentPlanConfig {
+  WEEKLY: { amount: number; fcfa: string };
+  PRO: { amount: number; fcfa: string };
   STARTER: { amount: number; fcfa: string };
   STANDARD: { amount: number; fcfa: string };
   PREMIUM: { amount: number; fcfa: string };
-  PRO: { amount: number; fcfa: string };
 }
 
-export function getPlanPrice(plan: keyof PaymentPlanConfig) {
+export function getPlanPrice(plan: string) {
   const def = planCatalog[plan];
   if (!def) {
     return { amount: 0, fcfa: "0" };

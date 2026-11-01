@@ -244,6 +244,85 @@ export async function GET(req: Request) {
       case "monetization": {
         result.mrrByPlan = mrrData.byPlan;
         result.conversionRate = conversionRate;
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const [limitHits, upgradeStarts, paidSuccess, weeklyTake, proTake] =
+          await Promise.all([
+            prisma.kpiEvent.count({
+              where: {
+                event: "limit_hit",
+                createdAt: { gte: thirtyDaysAgo },
+                user: { role: "USER" },
+              },
+            }),
+            prisma.kpiEvent.count({
+              where: {
+                event: "upgrade_start",
+                createdAt: { gte: thirtyDaysAgo },
+                user: { role: "USER" },
+              },
+            }),
+            prisma.kpiEvent.count({
+              where: {
+                event: "paid_success",
+                createdAt: { gte: thirtyDaysAgo },
+                user: { role: "USER" },
+              },
+            }),
+            prisma.subscription.count({
+              where: {
+                status: "ACTIVE",
+                plan: "WEEKLY",
+                activatedAt: { gte: thirtyDaysAgo },
+                user: { role: "USER" },
+              },
+            }),
+            prisma.subscription.count({
+              where: {
+                status: "ACTIVE",
+                plan: "PRO",
+                activatedAt: { gte: thirtyDaysAgo },
+                user: { role: "USER" },
+              },
+            }),
+          ]);
+        const [pendingPaid, pendingTotal] = await Promise.all([
+          prisma.kpiEvent.count({
+            where: {
+              event: "paid_success",
+              createdAt: { gte: sevenDaysAgo },
+              user: { role: "USER" },
+            },
+          }),
+          prisma.kpiEvent.count({
+            where: {
+              event: "upgrade_start",
+              createdAt: { gte: sevenDaysAgo },
+              user: { role: "USER" },
+            },
+          }),
+        ]);
+        const aiCost = await prisma.aiUsageEvent.aggregate({
+          _sum: { costXaf: true },
+          where: {
+            createdAt: { gte: thirtyDaysAgo },
+            user: { role: "USER" },
+          },
+        });
+        result.moneyTrail = {
+          limitHits,
+          upgradeStarts,
+          paidSuccess,
+          weeklyTake,
+          proTake,
+          pendingToPaidRate:
+            pendingTotal > 0
+              ? Math.round((pendingPaid / pendingTotal) * 100)
+              : 0,
+          aiCostXaf: aiCost._sum.costXaf ?? 0,
+        };
         break;
       }
       case "retention": {

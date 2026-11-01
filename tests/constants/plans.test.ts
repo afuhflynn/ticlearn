@@ -1,9 +1,8 @@
 /**
- * The one plan catalogue (spec 0019, AC-1 and AC-6).
+ * The one plan catalogue (spec 0033, AC-1 to AC-6).
  *
- * The pricing page, the client island, the payment route, the webhook and the
- * manual route all read this catalogue, so the price a student reads can never
- * drift from the amount they are charged.
+ * Free plus Weekly plus Semester are the only offer. Monthly keys stay in
+ * code for old active subs but are not for sale.
  */
 import { describe, expect, it, vi } from "vitest";
 import { payablePlans, planCatalog, publicPlans } from "@/constants/plans";
@@ -21,9 +20,13 @@ vi.mock("@/lib/fapshi", async (importOriginal) => {
 
 import { getPlanPrice } from "@/lib/fapshi";
 
-describe("the plan catalogue (spec 0019 AC-1)", () => {
-  it("offers a free plan and one paid plan on the public page", () => {
-    expect(publicPlans.map((plan) => plan.key)).toEqual(["FREE", "PRO"]);
+describe("the plan catalogue (spec 0033 AC-1)", () => {
+  it("offers free plus weekly plus semester on the public page", () => {
+    expect(publicPlans.map((plan) => plan.key)).toEqual([
+      "FREE",
+      "WEEKLY",
+      "PRO",
+    ]);
   });
 
   it("keeps the plan keys unique", () => {
@@ -65,14 +68,17 @@ describe("the plan catalogue (spec 0019 AC-1)", () => {
     expect(planCatalog.FREE.priceXaf).toBe(0);
   });
 
-  it("sells the semester pass at 2,500 FCFA", () => {
-    expect(planCatalog.PRO.priceXaf).toBe(2_500);
+  it("sells weekly at 500 and semester at 3000", () => {
+    expect(planCatalog.WEEKLY.priceXaf).toBe(500);
+    expect(planCatalog.WEEKLY.label).toBe("Weekly Pass");
+    expect(planCatalog.WEEKLY.period).toBe("week");
+    expect(planCatalog.PRO.priceXaf).toBe(3000);
     expect(planCatalog.PRO.label).toBe("Semester Pass");
     expect(planCatalog.PRO.period).toBe("semester");
     expect(planCatalog.PRO.semesterMonths).toBe(5);
   });
 
-  it("reads the free bullets from FREE_LIMITS (spec 0019 AC-2)", () => {
+  it("reads the free bullets from FREE_LIMITS (spec 0033 AC-2)", () => {
     const free = planCatalog.FREE;
     expect(free.features).toContain(`${FREE_LIMITS.pdfUploads} notes`);
     expect(free.features).toContain(
@@ -81,44 +87,52 @@ describe("the plan catalogue (spec 0019 AC-1)", () => {
     expect(free.features).toContain(
       `${FREE_LIMITS.aiTutorMessages} Tip messages a day`,
     );
-    expect(free.features).toContain(
-      "200 starting credits, enough for 4 quizzes",
-    );
+    expect(FREE_LIMITS.pdfUploads).toBe(5);
+    expect(FREE_LIMITS.quizGenerations).toBe(10);
+    expect(FREE_LIMITS.aiTutorMessages).toBe(15);
   });
 
-  it("reads the semester pass bullets from PAID_LIMITS.PRO (spec 0019 AC-3)", () => {
-    const pass = planCatalog.PRO;
-    expect(pass.features).toContain("Unlimited notes");
-    expect(pass.features).toContain("Unlimited quizzes from your notes");
-    expect(pass.features).toContain("Unlimited Tip messages");
-    expect(pass.features).toContain(
+  it("states bounded counts with no Unlimited word (spec 0033 AC-5)", () => {
+    for (const plan of Object.values(planCatalog)) {
+      for (const feature of plan.features) {
+        expect(feature.toLowerCase()).not.toContain("unlimited");
+      }
+    }
+    expect(planCatalog.WEEKLY.features).toContain("10 notes");
+    expect(planCatalog.PRO.features).toContain("100 notes");
+    expect(planCatalog.PRO.features).toContain(
       "Every quiz traces back to the page it came from",
     );
   });
 
-  it("shows an estimated monthly line as a secondary estimate (spec 0019 AC-4)", () => {
+  it("shows an estimated monthly line as a secondary estimate", () => {
     const pass = planCatalog.PRO;
     const perMonth = Math.round(pass.priceXaf / (pass.semesterMonths ?? 1));
     expect(pass.features.length).toBeGreaterThan(0);
-    expect(String(perMonth)).toBe("500");
+    expect(String(perMonth)).toBe("600");
   });
 
-  it("charges the amount the page displays, from the one catalogue (spec 0019 AC-6)", () => {
+  it("charges the amount the page displays, from the one catalogue", () => {
     const price = getPlanPrice("PRO");
     expect(price.amount).toBe(planCatalog.PRO.priceXaf);
-    expect(price.amount).toBe(2_500);
+    expect(price.amount).toBe(3000);
   });
 
-  it("only accepts payable plans, never Free", () => {
-    expect(payablePlans).toContain("PRO");
+  it("only accepts weekly and semester, never Free or legacy monthly", () => {
+    expect(payablePlans).toEqual(["WEEKLY", "PRO"]);
     expect(payablePlans).not.toContain("FREE");
+    expect(payablePlans).not.toContain("STARTER");
   });
 });
 
-describe("the plan catalogue public tiers (spec 0019 AC-1)", () => {
-  it("shows exactly two public tiers, Free and Semester Pass", () => {
-    expect(publicPlans).toHaveLength(2);
-    expect(publicPlans.map((plan) => plan.key)).toEqual(["FREE", "PRO"]);
+describe("the plan catalogue public tiers (spec 0033 AC-1)", () => {
+  it("shows exactly three public tiers", () => {
+    expect(publicPlans).toHaveLength(3);
+    expect(publicPlans.map((plan) => plan.key)).toEqual([
+      "FREE",
+      "WEEKLY",
+      "PRO",
+    ]);
   });
 
   it("keeps the free and paid bullet lists genuinely different", () => {
@@ -129,12 +143,10 @@ describe("the plan catalogue public tiers (spec 0019 AC-1)", () => {
   });
 });
 
-describe("the plan catalogue pricing (spec 0019 AC-6)", () => {
+describe("the plan catalogue pricing (spec 0033 AC-6)", () => {
   it("charges the catalogue amount for every payable plan", () => {
     for (const plan of payablePlans) {
-      const price = getPlanPrice(
-        plan as "PRO" | "STARTER" | "STANDARD" | "PREMIUM",
-      );
+      const price = getPlanPrice(plan);
       expect(price.amount).toBe(
         planCatalog[plan as keyof typeof planCatalog].priceXaf,
       );
@@ -144,11 +156,14 @@ describe("the plan catalogue pricing (spec 0019 AC-6)", () => {
     }
   });
 
-  it("treats the semester as the main unit with an estimated monthly line (spec 0019 AC-4)", () => {
-    const pass = planCatalog.PRO;
-    expect(pass.period).toBe("semester");
-    expect(pass.priceXaf).toBe(2_500);
-    const perMonth = Math.round(pass.priceXaf / (pass.semesterMonths ?? 1));
-    expect(perMonth).toBe(500);
+  it("awards 2500 credits weekly and 15000 semester", () => {
+    expect(planCatalog.WEEKLY.credits).toBe(2500);
+    expect(planCatalog.PRO.credits).toBe(15000);
+  });
+
+  it("reads weekly caps from PAID_LIMITS.WEEKLY", () => {
+    expect(PAID_LIMITS.WEEKLY.pdfUploads).toBe(10);
+    expect(PAID_LIMITS.WEEKLY.quizGenerations).toBe(20);
+    expect(PAID_LIMITS.WEEKLY.aiTutorMessages).toBe(50);
   });
 });

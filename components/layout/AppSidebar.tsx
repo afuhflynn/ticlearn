@@ -3,9 +3,11 @@
 import {
   ArrowRight,
   BotMessageSquare,
+  ChartNoAxesColumn,
   ChevronDown,
   ChevronRight,
   ClipboardCheck,
+  CreditCard,
   Crown,
   LayoutDashboard,
   NotebookPen,
@@ -54,6 +56,9 @@ const accountNav: NavItem[] = [
 const adminNav: NavItem[] = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Manage Users", icon: Users },
+  { href: "/admin/subscriptions", label: "Subscriptions", icon: Crown },
+  { href: "/admin/plans", label: "Plans", icon: CreditCard },
+  { href: "/admin/metrics", label: "Metrics", icon: ChartNoAxesColumn },
 ];
 
 export function AppSidebar() {

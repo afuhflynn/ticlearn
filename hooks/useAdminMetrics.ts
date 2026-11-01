@@ -83,6 +83,15 @@ export function useAdminMetrics(params: MetricsParams = {}) {
     newUsersLast30Days: (result?.newUsersLast30Days ?? 0) as number,
     mrrByPlan: (result?.mrrByPlan ?? {}) as Record<string, number>,
     conversionRate: (result?.conversionRate ?? 0) as number,
+    moneyTrail: (result?.moneyTrail ?? null) as {
+      limitHits: number;
+      upgradeStarts: number;
+      paidSuccess: number;
+      weeklyTake: number;
+      proTake: number;
+      pendingToPaidRate: number;
+      aiCostXaf: number;
+    } | null,
     isLoading,
     error,
     refetch,

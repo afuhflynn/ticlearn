@@ -10,11 +10,11 @@ Slice 5, the money. Research is unusually clear here: a month to month subscript
 Free plus small weekly passes plus one semester pass. The free tier never expires and never locks the student notes. Paid tiers state plain counts for notes plus quizzes plus Tip messages per term. No tier prints the word Unlimited. Credits stay inside as the cost meter only.
 **Done when:** a stranger sees Free plus weekly plus semester only, each paid tier shows counts like 10 notes plus 20 quizzes plus 50 Tip messages a day, no screen prints Unlimited, free allows 5 notes plus 10 quizzes plus 15 Tip messages a day, overuse invites a weekly or semester upgrade, and admin can adjust counts without a code change.
 - [x] Design it (spec): `/solution-architect semester pass plans and limits`
-- [ ] Build it: `/feature-build semester pass plans and limits`
-  - [ ] Catalogue plus limits plus resolved read (covers AC-1 to AC-6)
-  - [ ] Purchase thread plus poll (covers AC-7, AC-9)
-  - [ ] Student surfaces plus prompt (covers AC-5, AC-8, AC-11)
-  - [ ] Receipt plus trail plus overrides plus ledger (covers AC-10, AC-12, AC-13, AC-14)
+- [x] Build it: `/feature-build semester pass plans and limits`
+  - [x] Catalogue plus limits plus resolved read (covers AC-1 to AC-6)
+  - [x] Purchase thread plus poll (covers AC-7, AC-9)
+  - [x] Student surfaces plus prompt (covers AC-5, AC-8, AC-11)
+  - [x] Receipt plus trail plus overrides plus ledger (covers AC-10, AC-12, AC-13, AC-14)
 - [ ] Verify it: `/verify-release semester pass plans and limits`
 - [ ] Test it: `/test-engineer semester pass plans and limits`
 - [ ] Review it (fresh model): `/peer-review semester pass plans and limits`

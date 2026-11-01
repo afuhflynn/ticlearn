@@ -34,7 +34,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
   const { data: session } = useSession();
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,7 +59,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
       return;
     }
 
-    setLoading(true);
+    setLoadingPlan(planKey);
     setError(null);
     try {
       const res = await fetch("/api/payment/initiate", {
@@ -76,12 +76,13 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
     } catch {
       setError("Failed to start payment. Please try again.");
     } finally {
-      setLoading(false);
+      setLoadingPlan(null);
     }
   };
 
   const periodLabel = (plan: PlanDefinition): string => {
     if (plan.period === "semester") return "per semester";
+    if (plan.period === "week") return "per 7 days";
     if (plan.period === "month") return "per month";
     return "forever";
   };
@@ -103,7 +104,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
         </Alert>
       ) : null}
 
-      <div className="mx-auto grid max-w-3xl gap-6 md:grid-cols-2 lg:gap-8">
+      <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-3 lg:gap-8">
         {plans.map((plan) => {
           const isFree = plan.key === "FREE";
           const isCurrentPlan = currentPlan === plan.key && isActive;
@@ -181,15 +182,17 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
                     <Button
                       className="w-full"
                       onClick={() => handleSubscribe(plan.key)}
-                      disabled={loading}
+                      disabled={loadingPlan !== null}
                     >
-                      {loading ? "Starting payment…" : plan.cta}
+                      {loadingPlan === plan.key
+                        ? "Starting payment…"
+                        : plan.cta}
                     </Button>
                     <p className="text-center text-xs text-muted-foreground">
                       {isPending
                         ? "Finish on your phone, then come back here."
                         : hasPaidPlan
-                          ? "Buying the Semester Pass replaces your current plan."
+                          ? "Buying a new pass replaces your current plan at its end date."
                           : "Paid once over MTN Mobile Money or Orange Money."}
                     </p>
                   </>

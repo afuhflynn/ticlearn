@@ -44,7 +44,6 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { planCatalog, publicPlans } from "@/constants/plans";
 import { useCredits, useUsage } from "@/hooks";
-import { isUnlimited } from "@/lib/plan-limits";
 import { subscriptionViewParsers } from "@/nuqs/subscription";
 import { SubscriptionSkeleton } from "../student-skeletons";
 
@@ -62,17 +61,133 @@ function planLabel(plan: string): string {
 function periodLabel(plan: string): string {
   const def = planCatalog[plan];
   if (!def || def.period === "forever") return "";
-  return def.period === "semester" ? "per semester" : "per month";
+  if (def.period === "semester") return "per semester";
+  if (def.period === "week") return "per week";
+  return "per month";
 }
 
-function spendLine(limit: number, used: number): string {
-  if (isUnlimited(limit)) return `${used} used · unlimited`;
+function spendLine(limit: number, used: string | number): string {
   return `${used} of ${limit}`;
 }
 
 function percent(limit: number, used: number): number {
-  if (isUnlimited(limit) || limit <= 0) return 0;
+  if (limit <= 0) return 0;
   return Math.min(100, Math.round((used / limit) * 100));
+}
+
+function PaidReceipt() {
+  const [receipt, setReceipt] = useState<{
+    plan: string;
+    amount: number;
+    transId: string | null;
+    paidAt: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/subscription/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.subscription) return;
+        setReceipt({
+          plan: data.subscription.plan,
+          amount: data.subscription.amount,
+          transId: data.subscription.fapshiTransId ?? null,
+          paidAt: data.subscription.activatedAt ?? null,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!receipt) return null;
+  return (
+    <div className="rounded-lg border p-4">
+      <p className="text-sm font-medium">Receipt</p>
+      <p className="mt-1 text-sm text-muted-foreground">
+        {planCatalog[receipt.plan]?.label ?? receipt.plan} ·{" "}
+        {receipt.amount.toLocaleString()} FCFA
+        {receipt.paidAt
+          ? ` · paid ${new Date(receipt.paidAt).toLocaleDateString()}`
+          : ""}
+      </p>
+      {receipt.transId ? (
+        <p className="mt-1 text-xs text-muted-foreground">
+          Transaction id:{" "}
+          <span className="tabular-nums">{receipt.transId}</span> · keep it for
+          support.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function PendingRecheck() {
+  const [transId, setTransId] = useState<string | null>(null);
+  const [label, setLabel] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/subscription/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled && data?.subscription?.fapshiTransId)
+          setTransId(data.subscription.fapshiTransId);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!transId) return;
+    let attempts = 0;
+    let stopped = false;
+    const tick = async () => {
+      attempts += 1;
+      try {
+        const r = await fetch(
+          `/api/payment/status?transId=${encodeURIComponent(transId)}`,
+        );
+        const data = await r.json().catch(() => null);
+        if (!stopped && data?.status === "ACTIVE") {
+          window.location.reload();
+          return;
+        }
+        if (!stopped && data?.providerStatus)
+          setLabel(`Phone provider says: ${data.providerStatus}.`);
+      } catch {}
+      if (!stopped && attempts < 60) setTimeout(tick, 5000);
+      else if (!stopped)
+        setLabel(
+          "Still pending after 5 minutes. Contact support with the transaction id below.",
+        );
+    };
+    const t = setTimeout(tick, 5000);
+    return () => {
+      stopped = true;
+      clearTimeout(t);
+    };
+  }, [transId]);
+
+  if (!transId) return null;
+  return (
+    <div className="mt-3 space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Transaction id: <span className="tabular-nums">{transId}</span>
+      </p>
+      {label ? (
+        <p className="text-xs text-muted-foreground">{label}</p>
+      ) : (
+        <p className="text-xs text-muted-foreground">
+          Rechecking every 5 seconds. Keep this page open.
+        </p>
+      )}
+    </div>
+  );
 }
 
 export default function SubscriptionPage() {
@@ -274,8 +389,11 @@ export default function SubscriptionPage() {
                   Finish the payment on your phone, then come back to this page.
                   Nothing is charged twice.
                 </p>
+                <PendingRecheck />
               </div>
             ) : null}
+
+            {status === "ACTIVE" ? <PaidReceipt /> : null}
 
             <Separator />
 
@@ -328,8 +446,8 @@ export default function SubscriptionPage() {
 
             {isFree ? (
               <p className="text-xs text-muted-foreground">
-                The Semester Pass adds 12,000 credits, which covers the whole
-                semester&apos;s practice.
+                The Semester Pass adds 15,000 credits with 100 notes plus 300
+                quizzes plus 200 Tip messages a day.
               </p>
             ) : null}
           </CardContent>
@@ -342,7 +460,7 @@ export default function SubscriptionPage() {
           <CardDescription>
             {isFree
               ? "Free limits. They are checked each time you upload or generate."
-              : "Your plan limits. Tip messages reset every day."}
+              : "Your plan limits. Tip messages reset every day at Africa/Douala midnight."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -397,7 +515,7 @@ export default function SubscriptionPage() {
         <CardFooter>
           <p className="text-xs text-muted-foreground">
             {isFree
-              ? "The Semester Pass removes the note and quiz limits and adds 12,000 credits."
+              ? "Free allows 5 notes plus 10 quizzes plus 15 Tip messages a day. A Weekly Pass or the Semester Pass lifts each count."
               : `Your plan runs for the ${periodLabel(plan).replace("per ", "")}. It does not renew by itself.`}
           </p>
         </CardFooter>

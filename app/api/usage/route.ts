@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getChatResetWindow, getRemainingAllowance } from "@/lib/chat-usage";
 import { getEffectiveCreditCost } from "@/lib/credits";
-import {
-  getPlanLimits,
-  limitReached,
-  remainingOf,
-  resolvePlan,
-} from "@/lib/plan-limits";
+import { getPlanLimits, limitReached, remainingOf } from "@/lib/plan-limits";
 import { getPlatformSettings } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
+import {
+  getResolvedTier,
+  isSubscriptionExpired,
+  planExpiryFrom,
+} from "@/lib/resolved-plans";
 
 export async function GET() {
   try {
@@ -40,31 +40,39 @@ export async function GET() {
         where: { userId: session.user.id },
         orderBy: { createdAt: "desc" },
       }),
-      prisma.note.count({
-        where: { userId: session.user.id },
-      }),
-      prisma.quiz.count({
-        where: { userId: session.user.id },
-      }),
+      prisma.note.count({ where: { userId: session.user.id } }),
+      prisma.quiz.count({ where: { userId: session.user.id } }),
       prisma.chatMessage.count({
         where: {
           userId: session.user.id,
           role: "user",
-          createdAt: {
-            gte: windowStart,
-            lt: nextResetAt,
-          },
+          createdAt: { gte: windowStart, lt: nextResetAt },
         },
       }),
     ]);
 
-    const plan = resolvePlan(activeSubscription);
-    const currentStatus = latestSubscription?.status || "NONE";
-    const previousPlan = activeSubscription
+    let effectiveActive = activeSubscription;
+    if (
+      activeSubscription?.activatedAt &&
+      isSubscriptionExpired(
+        activeSubscription.plan,
+        activeSubscription.activatedAt,
+      )
+    ) {
+      effectiveActive = null;
+    }
+
+    const { resolvePlan } = await import("@/lib/plan-limits");
+    const plan = resolvePlan(effectiveActive);
+    const currentStatus = effectiveActive
+      ? "ACTIVE"
+      : latestSubscription?.status || "NONE";
+    const previousPlan = effectiveActive
       ? null
       : latestSubscription?.plan || null;
 
-    const limits = getPlanLimits(plan);
+    const resolved = await getResolvedTier(plan).catch(() => null);
+    const limits = resolved?.limits ?? getPlanLimits(plan);
     const chatRemaining = getRemainingAllowance(
       limits.aiTutorMessages,
       chatsToday,
@@ -107,6 +115,14 @@ export async function GET() {
       canGenerateQuiz: !limitReached(limits.quizGenerations, quizCount),
       canUseAIChat: !limitReached(limits.aiTutorMessages, chatsToday),
       remainingUploads: remainingOf(limits.pdfUploads, noteCount),
+      remainingQuizzes: remainingOf(limits.quizGenerations, quizCount),
+      remainingChat: remainingOf(limits.aiTutorMessages, chatsToday),
+      expiresAt: effectiveActive?.activatedAt
+        ? (planExpiryFrom(
+            new Date(effectiveActive.activatedAt),
+            effectiveActive.plan,
+          )?.toISOString() ?? null)
+        : null,
     });
   } catch (error) {
     console.error("Usage GET error:", error);
