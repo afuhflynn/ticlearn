@@ -44,6 +44,7 @@ export async function initiatePayment(
         amount: request.amount,
         email: request.email,
         name: request.name,
+        phone: request.phone,
         userId: request.userId,
         externalId: request.externalId,
         redirectUrl: request.redirectUrl,

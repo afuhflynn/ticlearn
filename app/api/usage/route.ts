@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { getChatResetWindow, getRemainingAllowance } from "@/lib/chat-usage";
 import { getEffectiveCreditCost } from "@/lib/credits";
+import { getDoualaDayBounds, nextDoualaMidnightIso } from "@/lib/day";
+import { EVENTS } from "@/lib/kpi";
 import { getPlanLimits, limitReached, remainingOf } from "@/lib/plan-limits";
 import { getPlatformSettings } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
@@ -11,6 +13,7 @@ import {
   isSubscriptionExpired,
   planExpiryFrom,
 } from "@/lib/resolved-plans";
+import { decidePromptForm } from "@/lib/upgrade-prompt-state";
 
 export async function GET() {
   try {
@@ -30,6 +33,8 @@ export async function GET() {
       noteCount,
       quizCount,
       chatsToday,
+      promptToday,
+      dismissedToday,
     ] = await Promise.all([
       prisma.subscription.findFirst({
         where: { userId: session.user.id, status: "ACTIVE" },
@@ -48,6 +53,22 @@ export async function GET() {
           role: "user",
           createdAt: { gte: windowStart, lt: nextResetAt },
         },
+      }),
+      prisma.kpiEvent.findFirst({
+        where: {
+          userId: session.user.id,
+          event: EVENTS.PROMPT_SHOWN,
+          createdAt: { gte: getDoualaDayBounds(new Date()).dayStart },
+        },
+        select: { id: true },
+      }),
+      prisma.kpiEvent.findFirst({
+        where: {
+          userId: session.user.id,
+          event: EVENTS.PROMPT_DISMISSED,
+          createdAt: { gte: getDoualaDayBounds(new Date()).dayStart },
+        },
+        select: { id: true },
       }),
     ]);
 
@@ -85,6 +106,11 @@ export async function GET() {
       settings,
     );
 
+    const promptState = decidePromptForm({
+      shownToday: Boolean(promptToday),
+      dismissedToday: Boolean(dismissedToday),
+    });
+
     return NextResponse.json({
       plan,
       status: currentStatus,
@@ -99,6 +125,12 @@ export async function GET() {
         pdfUploads: noteCount,
         quizGenerations: quizCount,
         aiTutorMessages: chatsToday,
+      },
+      prompt: {
+        showFull: promptState.showFull,
+        shownToday: Boolean(promptToday),
+        dismissedToday: Boolean(dismissedToday),
+        resetsAt: nextDoualaMidnightIso(new Date()),
       },
       creditCosts: {
         quizGeneration: quizCreditCost,

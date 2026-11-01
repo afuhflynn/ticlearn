@@ -58,6 +58,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UrlSearchInput } from "@/components/url-search-input";
+import { ConversionPanel } from "@/components/admin/conversion-panel";
 import { useAdminMetrics, useExportMetrics } from "@/hooks/useAdminMetrics";
 import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
 import {
@@ -1089,6 +1090,7 @@ export default function AnalyticsPage() {
                     </div>
                   </CardContent>
                 </Card>
+                <ConversionPanel />
               </>
             ))}
         </TabsContent>

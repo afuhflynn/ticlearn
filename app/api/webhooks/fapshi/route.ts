@@ -63,7 +63,20 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { transId, status, externalId } = body;
+    const { transId, externalId } = body as {
+      transId?: string;
+      externalId?: string;
+      status?: string;
+    };
+    const rawStatus =
+      typeof (body as { status?: unknown }).status === "string"
+        ? ((body as { status: string }).status ?? "")
+        : "";
+    const status = rawStatus
+      .trim()
+      .toUpperCase()
+      .replace(/^SUCCESS$/, "SUCCESSFUL")
+      .replace(/^FAIL$/, "FAILED");
 
     if (!externalId || !status) {
       return NextResponse.json(

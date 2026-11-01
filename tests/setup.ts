@@ -91,7 +91,18 @@ vi.mock("@/lib/prisma", () => ({
       findUnique: vi.fn(),
       update: vi.fn(),
       create: vi.fn(),
+      count: vi.fn(async () => 0),
+      groupBy: vi.fn(async () => []),
+      aggregate: vi.fn(async () => ({ _sum: { amount: 0 } })),
     },
+    kpiEvent: {
+      count: vi.fn(async () => 0),
+      findFirst: vi.fn(async () => null),
+      findMany: vi.fn(async () => []),
+      create: vi.fn(async () => ({ id: "kpi-1" })),
+      groupBy: vi.fn(async () => []),
+    },
+    planOverride: { findMany: vi.fn(async () => []) },
     affiliate: {
       findUnique: vi.fn(),
       findMany: vi.fn(),

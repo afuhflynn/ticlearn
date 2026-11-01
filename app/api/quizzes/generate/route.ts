@@ -81,9 +81,18 @@ export async function POST(req: Request) {
     });
 
     if (limitReached(quizLimit, quizCount)) {
+      trackEvent(session.user.id, EVENTS.LIMIT_HIT, {
+        surface: "quiz",
+        kind: "quiz_limit",
+        used: quizCount,
+        cap: quizLimit,
+      }).catch(() => {});
       return NextResponse.json(
         {
           error: `Quiz generation limit reached (${quizLimit}). Upgrade to generate more quizzes.`,
+          code: "UPGRADE_REQUIRED",
+          used: quizCount,
+          cap: quizLimit,
         },
         { status: 403 },
       );

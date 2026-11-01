@@ -191,7 +191,7 @@ describe("POST /api/webhooks/fapshi (spec 0019 AC-6)", () => {
     );
   });
 
-  it("uses the stored amount, not the body amount, for the receipt (spec 0019 AC-6)", async () => {
+  it("keeps the row pending when the body amount differs from the stored amount (spec 0034 AC-7)", async () => {
     const sub = {
       id: "sub-1",
       plan: "PRO",
@@ -202,14 +202,18 @@ describe("POST /api/webhooks/fapshi (spec 0019 AC-6)", () => {
     };
     vi.mocked(db.subscription.findUnique).mockResolvedValue(sub as never);
 
-    await POST(
+    const res = await POST(
       new Request("http://localhost/api/webhooks/fapshi", {
         method: "POST",
         body: successfulBody({ amount: 9_999 }),
       }) as NextRequest,
     );
 
-    expect(db.subscription.update).toHaveBeenCalledWith(
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.status).toBe("PENDING");
+    // A mismatched amount never activates: no ACTIVE update runs.
+    expect(db.subscription.update).not.toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: "sub-1" },
         data: expect.objectContaining({ status: "ACTIVE" }),

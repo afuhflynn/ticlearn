@@ -13,25 +13,25 @@ export async function GET() {
       return NextResponse.json({ subscription: null }, { status: 401 });
     }
 
-    const subscription = await prisma.subscription.findFirst({
-      where: {
-        userId: session.user.id,
-        status: "ACTIVE",
-      },
-      orderBy: { createdAt: "desc" },
-    });
-
-    const previousSubscription = await prisma.subscription.findFirst({
-      where: {
-        userId: session.user.id,
-        status: { in: ["PENDING", "FAILED"] },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // The active pass first; else the most recent pending or failed row so
+    // the pending panel and the receipt can read the transaction id.
+    const [active, recent] = await Promise.all([
+      prisma.subscription.findFirst({
+        where: { userId: session.user.id, status: "ACTIVE" },
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.subscription.findFirst({
+        where: {
+          userId: session.user.id,
+          status: { in: ["PENDING", "FAILED"] },
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
     return NextResponse.json({
-      subscription,
-      previousPlan: previousSubscription?.plan || null,
+      subscription: active ?? recent ?? null,
+      previousPlan: recent?.plan || null,
     });
   } catch (error) {
     console.error("Subscription fetch error:", error);

@@ -3,27 +3,34 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { initiatePayment } from "@/lib/fapshi";
+import { EVENTS, trackEvent } from "@/lib/kpi";
 import {
-  CREDIT_PURCHASE_EXTERNAL_ID_PREFIX,
-  creditsFromXaf,
-  ensurePlatformSettings,
-  getPlatformSettings,
-} from "@/lib/platform-settings";
+  CREDIT_MAX_XAF,
+  CREDIT_MIN_XAF,
+  CREDIT_STEP_XAF,
+  creditsForXaf,
+  normalizePhone,
+  normalizeProvider,
+} from "@/lib/mobile-money";
+import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
+import { limit } from "@/lib/rate-limit";
 
 const bodySchema = z.object({
-  amountXaf: z.number().int().positive(),
+  amountXaf: z.number().int(),
+  phone: z.string().min(1).max(20),
+  provider: z.string().min(1).max(10),
 });
 
 export async function POST(request: Request) {
   try {
+    const limited = await limit("payment-initiate", request).catch(() => null);
+    if (limited) return limited;
+
     const session = await auth.api.getSession({ headers: await headers() });
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-
-    await ensurePlatformSettings();
-    const settings = await getPlatformSettings();
 
     const parsed = bodySchema.safeParse(await request.json());
     if (!parsed.success) {
@@ -34,44 +41,78 @@ export async function POST(request: Request) {
     }
 
     const { amountXaf } = parsed.data;
-    const minXaf = Math.max(100, settings.minCreditPurchaseXaf);
-    const maxXaf = settings.maxCreditPurchaseXaf;
 
-    if (amountXaf < minXaf) {
-      return NextResponse.json(
-        { error: `Minimum top-up is ${minXaf.toLocaleString()} XAF` },
-        { status: 400 },
-      );
-    }
-    if (amountXaf > maxXaf) {
-      return NextResponse.json(
-        { error: `Maximum single top-up is ${maxXaf.toLocaleString()} XAF` },
-        { status: 400 },
-      );
-    }
-
-    const creditsPromised = creditsFromXaf(
-      amountXaf,
-      settings.creditsPer1000Xaf,
-    );
-    if (creditsPromised < 1) {
+    if (
+      !Number.isInteger(amountXaf) ||
+      amountXaf < CREDIT_MIN_XAF ||
+      amountXaf > CREDIT_MAX_XAF ||
+      amountXaf % CREDIT_STEP_XAF !== 0
+    ) {
       return NextResponse.json(
         {
-          error:
-            "That amount is too low to receive at least 1 credit at the current rate. Increase the amount or ask an admin to adjust credits per 1,000 XAF.",
+          error: `Type an amount from ${CREDIT_MIN_XAF.toLocaleString()} XAF to ${CREDIT_MAX_XAF.toLocaleString()} XAF in ${CREDIT_STEP_XAF} XAF steps.`,
         },
         { status: 400 },
       );
     }
 
-    const order = await prisma.creditPurchaseOrder.create({
-      data: {
+    const provider = normalizeProvider(parsed.data.provider);
+    if (!provider) {
+      return NextResponse.json(
+        { error: "Choose MTN Mobile Money or Orange Money." },
+        { status: 400 },
+      );
+    }
+
+    const phone = normalizePhone(parsed.data.phone);
+    if (!phone) {
+      return NextResponse.json(
+        {
+          error:
+            "Enter a valid Cameroon phone number, 9 digits starting with 6.",
+        },
+        { status: 400 },
+      );
+    }
+
+    const creditsPromised = creditsForXaf(amountXaf);
+    if (creditsPromised < 1) {
+      return NextResponse.json(
+        { error: "That amount gives no credits. Type a larger amount." },
+        { status: 400 },
+      );
+    }
+
+    // A double tap within 15 minutes reuses the same pending row.
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000);
+    const reusable = await prisma.creditPurchaseOrder.findFirst({
+      where: {
         userId: session.user.id,
-        amountXaf,
-        creditsPromised,
         status: "PENDING",
+        amountXaf,
+        createdAt: { gte: fifteenMinutesAgo },
       },
+      orderBy: { createdAt: "desc" },
     });
+
+    let order = reusable;
+    if (order) {
+      order = await prisma.creditPurchaseOrder.update({
+        where: { id: order.id },
+        data: { provider, phone },
+      });
+    } else {
+      order = await prisma.creditPurchaseOrder.create({
+        data: {
+          userId: session.user.id,
+          amountXaf,
+          creditsPromised,
+          status: "PENDING",
+          provider,
+          phone,
+        },
+      });
+    }
 
     const externalId = `${CREDIT_PURCHASE_EXTERNAL_ID_PREFIX}${order.id}`;
     const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "";
@@ -80,6 +121,7 @@ export async function POST(request: Request) {
       amount: amountXaf,
       email: session.user.email,
       name: session.user.name || "Student",
+      phone,
       userId: session.user.id,
       externalId,
       message: `TiCLearn credits (${creditsPromised} cr.)`,
@@ -89,10 +131,12 @@ export async function POST(request: Request) {
     });
 
     if (!result.success) {
-      await prisma.creditPurchaseOrder.update({
-        where: { id: order.id },
-        data: { status: "FAILED" },
-      });
+      if (!reusable) {
+        await prisma.creditPurchaseOrder.update({
+          where: { id: order.id },
+          data: { status: "FAILED" },
+        });
+      }
       return NextResponse.json(
         { error: result.message || "Could not start payment" },
         { status: 400 },
@@ -103,6 +147,13 @@ export async function POST(request: Request) {
       where: { id: order.id },
       data: { fapshiTransId: result.transId ?? undefined },
     });
+
+    trackEvent(session.user.id, EVENTS.PAYMENT_INITIATED, {
+      kind: "credits",
+      amount: amountXaf,
+      credits: creditsPromised,
+      provider,
+    }).catch(() => {});
 
     return NextResponse.json({
       link: result.link,

@@ -1,32 +1,27 @@
 import { NextResponse } from "next/server";
 import {
-  creditsFromXaf,
-  ensurePlatformSettings,
-  getPlatformSettings,
-} from "@/lib/platform-settings";
+  CREDIT_MAX_XAF,
+  CREDIT_MIN_XAF,
+  CREDIT_STEP_XAF,
+  CREDIT_XAF_RATE,
+  creditsForXaf,
+} from "@/lib/mobile-money";
 
 /**
- * Public pricing for pay-as-you-go credits (no auth).
- * Mirrors the server calculation used at purchase time.
+ * Public pricing for typed credit buys (no auth).
+ * Mirrors the server calculation used at purchase time:
+ * credits equal amount times 5, 500 to 20000 in 100 steps.
  */
 export async function GET() {
   try {
-    await ensurePlatformSettings();
-    const s = await getPlatformSettings();
-
-    const minXafEffective = Math.max(100, s.minCreditPurchaseXaf);
-    const example500 = creditsFromXaf(500, s.creditsPer1000Xaf);
-    const example5000 = creditsFromXaf(5000, s.creditsPer1000Xaf);
-
     return NextResponse.json({
-      creditsPer1000Xaf: s.creditsPer1000Xaf,
-      minCreditPurchaseXaf: s.minCreditPurchaseXaf,
-      maxCreditPurchaseXaf: s.maxCreditPurchaseXaf,
-      /** Fapshi minimum is 100 XAF; we expose the effective lower bound. */
-      minXafEffective,
+      rate: CREDIT_XAF_RATE,
+      minXaf: CREDIT_MIN_XAF,
+      maxXaf: CREDIT_MAX_XAF,
+      stepXaf: CREDIT_STEP_XAF,
       examples: {
-        at500Xaf: example500,
-        at5000Xaf: example5000,
+        at500Xaf: creditsForXaf(500),
+        at3000Xaf: creditsForXaf(3000),
       },
     });
   } catch (error) {

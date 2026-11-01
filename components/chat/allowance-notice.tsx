@@ -10,9 +10,13 @@ import { formatDoualaTime } from "@/lib/utils";
  */
 export function AllowanceNotice({
   resetsAt,
+  used,
+  cap,
   className,
 }: {
   resetsAt?: string | null;
+  used?: number;
+  cap?: number;
   className?: string;
 }) {
   const reset = resetsAt ? formatDoualaTime(resetsAt) : null;
@@ -29,12 +33,15 @@ export function AllowanceNotice({
           ? `Your next messages unlock at ${reset}.`
           : "Your next messages unlock when the allowance resets."}{" "}
         You can still read this conversation.
+        {used !== undefined && cap !== undefined
+          ? ` You used ${used} of ${cap} free Tip messages today.`
+          : ""}
       </p>
       <Link
         className="mt-2 inline-flex min-h-11 items-center gap-1 underline underline-offset-4 hover:text-foreground"
-        href="/pricing"
+        href="/subscription"
       >
-        See the plans
+        See the Semester Pass
       </Link>
     </div>
   );
