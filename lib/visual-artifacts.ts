@@ -110,15 +110,27 @@ export async function generateVisualArtifact(input: {
       format: DrawFormat;
       payload: string;
       altText: string;
+      textSteps: string[];
     }
-  | { ok: false; reason: "cap" | "invalid" | "failed"; message: string }
+  | {
+      ok: false;
+      reason: "cap" | "invalid" | "failed";
+      message: string;
+      textSteps: string[];
+    }
 > {
   const concept = input.concept.trim().slice(0, 160);
+  const fallbackSteps = [
+    `Name the parts of ${concept || "this idea"} in your own words.`,
+    `Trace how each part leads to the next.`,
+    `Say when you would use ${concept || "this idea"} in an exam answer.`,
+  ];
   if (!concept) {
     return {
       ok: false,
       reason: "invalid",
       message: "A concept is needed to draw.",
+      textSteps: fallbackSteps,
     };
   }
   const key = { answerId: input.answerId, noteId: input.noteId, concept };
@@ -135,6 +147,7 @@ export async function generateVisualArtifact(input: {
       ok: false,
       reason: "cap",
       message: "Daily draw limit reached for this idea. Try again tomorrow.",
+      textSteps: fallbackSteps,
     };
   }
 
@@ -182,6 +195,7 @@ export async function generateVisualArtifact(input: {
         ok: false,
         reason: "invalid",
         message: "The drawing came back unreadable, here is the text instead.",
+        textSteps: fallbackSteps,
       };
     }
 
@@ -205,6 +219,7 @@ export async function generateVisualArtifact(input: {
       format: object.format,
       payload,
       altText: object.altText.slice(0, 500),
+      textSteps: fallbackSteps,
     };
   } catch (error) {
     await logUsage({
@@ -218,6 +233,7 @@ export async function generateVisualArtifact(input: {
       ok: false,
       reason: "failed",
       message: "The drawing failed, here is the text instead.",
+      textSteps: fallbackSteps,
     };
   }
 }

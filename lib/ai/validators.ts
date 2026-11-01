@@ -126,3 +126,36 @@ export function sanitizeSuggestions(input: string[]): string[] {
 
   return kept.length >= 2 ? kept : [];
 }
+
+/**
+ * Cutoff means the model stopped mid output because the answer grew too long.
+ * The server checks the stop reason or a short validated set against the ask.
+ */
+export function isCutoffMessage(message: string): boolean {
+  return /length|cutoff|truncat|too long|too big|max[_ ]?tokens|finish[_ ]?reason.*length/i.test(
+    message ?? "",
+  );
+}
+
+/**
+ * One smaller retry count per spec. Half rounded down with a floor of 3.
+ * At 3 or less no retry runs.
+ */
+export function smallerRetryCount(asked: number): number | null {
+  if (!Number.isFinite(asked) || asked <= 3) return null;
+  return Math.max(3, Math.floor(asked / 2));
+}
+
+/**
+ * True cutoff when the stop says length or the parsed set is short.
+ */
+export function detectCutoff(input: {
+  asked: number;
+  got: number;
+  stopReason?: string | null;
+  errorMessage?: string | null;
+}): boolean {
+  if (input.errorMessage && isCutoffMessage(input.errorMessage)) return true;
+  if (input.stopReason && /length/i.test(input.stopReason)) return true;
+  return input.got < input.asked;
+}

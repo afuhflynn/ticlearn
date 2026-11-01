@@ -278,12 +278,15 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
     await user.click(screen.getByRole("button", { name: "Start quiz" }));
     expect(
       await screen.findByText(
-        "Full paper lives on the quiz page. Open it to continue.",
+        "That set came out too long, so it stopped short.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open full quiz page" }),
-    ).toHaveAttribute("href", "/quizzes");
+      screen.getByRole("button", { name: "Try 5 questions now" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open fresh quiz start" }),
+    ).toBeInTheDocument();
   });
 });
 
@@ -413,7 +416,10 @@ describe("QuizRunner typed and open answers (spec 0031, covers: AC-2, AC-4, AC-6
 
     expect(await screen.findByText("No credits left")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Start quiz" }),
+      screen.getByRole("button", { name: /try .* questions now/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open fresh quiz start" }),
     ).toBeInTheDocument();
     expect(generateMock).toHaveBeenCalledTimes(1);
   });

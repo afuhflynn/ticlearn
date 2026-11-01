@@ -312,9 +312,7 @@ describe("QuizSetupWizard submit (spec 0033, covers: AC-8, AC-9)", () => {
     expect(
       await screen.findByText(/quiz generation limit reached/i),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: "Try again" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
   });
 
   it("shows the handoff copy and a full quiz page link on an unknown failure", async () => {
@@ -325,10 +323,10 @@ describe("QuizSetupWizard submit (spec 0033, covers: AC-8, AC-9)", () => {
     await user.click(screen.getByRole("button", { name: "Start quiz" }));
 
     expect(
-      await screen.findByText(/full paper lives on the quiz page/i),
+      await screen.findByText(/that set came out too long/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open full quiz page" }),
-    ).toHaveAttribute("href", "/quizzes");
+      screen.getByRole("link", { name: "Open fresh quiz start" }),
+    ).toBeInTheDocument();
   });
 });

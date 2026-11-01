@@ -55,7 +55,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 58 | Agentic quiz setup wizard | Slice 2 | in-progress |
 | 59 | Low docked runner card | Slice 2 | in-progress |
 | 60 | Marking plus mark scheme plus results plus save | Slice 2 | planned |
-| 61 | Quiz reliability plus visual fallback | Slice 2 | planned |
+| 61 | Quiz reliability plus visual fallback | Slice 2 | in-progress |
 | 62 | Smart setup that knows you | Slice 2 | planned |
 | 63 | Durable quiz build with live progress | Slice 2 | planned |
 | 64 | Clean activity plus true answer split | Slice 2 | planned |

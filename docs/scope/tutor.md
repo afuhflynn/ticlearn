@@ -130,10 +130,17 @@ spec ../specs/0035-marking-mark-scheme-results-save/index.md
 - [ ] Verify it: /verify-release marking plus mark scheme plus results plus save
 - [ ] Test it: /test-engineer marking plus mark scheme plus results plus save
 
-### 61. Quiz reliability plus visual fallback · needs a decision
+### 61. Quiz reliability plus visual fallback · in-progress
 Generation plus marking plus drawing stay dependable under real model limits. A length cutoff retries with a smaller set then hands to the full quiz page instead of a dead Quiz not available card. The draw tool carries a proper activity label so Working reads cleanly, draw failures show a plain notice with text instead plus a retry, and duplicate message warnings stay in logs out of the student view. Topic mix stays student choice with Quiz plus Flashcards available where it helps recall.
 **Done when:** generation never ends on a dead card, a length cutoff retries with a smaller set then hands to the full quiz page, draw failures show a plain notice with text instead plus a retry, the draw tool has a proper activity label, and duplicate message warnings stay out of the student view.
-- [ ] Design it (spec): /solution-architect quiz reliability plus visual fallback
+- [x] Design it (spec): /solution-architect quiz reliability plus visual fallback · spec [0040](../specs/0040-quiz-reliability-visual-fallback.md)
+- [x] Build it: /feature-build quiz reliability plus visual fallback
+  - [x] Draw label plus duplicate hygiene in the label map (covers AC-5, AC-6)
+  - [x] Cutoff detection plus one server retry plus handoff card (covers AC-1, AC-2, AC-3)
+  - [x] Draw text fallback with manual retry running parallel to text (covers AC-4)
+  - [x] Quiz plus Flashcards parity with owner checks on every exit (covers AC-7)
+- [x] Verify it: /verify-release quiz reliability plus visual fallback
+- [x] Test it: /test-engineer quiz reliability plus visual fallback
 
 ### 62. Smart setup that knows you · needs a decision
 Tip reads profile plus programs plus notes before it asks anything, so it never asks level again and never treats a note title as a topic. It picks topics from inside the note and asks only the missing piece one at a time.

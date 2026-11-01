@@ -5,7 +5,7 @@
  * snapshot with a plain message plus retry at the call site.
  */
 
-export const QUIZ_SNAPSHOT_VERSION = 4;
+export const QUIZ_SNAPSHOT_VERSION = 5;
 
 export type QuizMark = {
   isCorrect: boolean;
@@ -47,6 +47,13 @@ export type QuizSnapshot = {
   mode?: QuizRunnerMode;
   hintOpen?: Record<string, boolean>;
   minimized?: boolean;
+  handoff?: {
+    noteId: string | null;
+    noteTitle: string | null;
+    topicText: string | null;
+    formatChoice: string | null;
+    retryWithCount: number | null;
+  } | null;
 } & WizardState;
 
 function storage(): Storage | null {
@@ -135,6 +142,7 @@ export function loadQuizSnapshot(
       parsed.version !== 1 &&
       parsed.version !== 2 &&
       parsed.version !== 3 &&
+      parsed.version !== 4 &&
       parsed.version !== QUIZ_SNAPSHOT_VERSION
     )
       return null;
@@ -171,6 +179,7 @@ export function loadQuizSnapshot(
       mode: parsed.mode === "flashcards" ? "flashcards" : "quiz",
       hintOpen: parsed.hintOpen ?? {},
       minimized: parsed.minimized ?? false,
+      handoff: parsed.handoff ?? null,
       topicText: parsed.topicText,
       noteId: parsed.noteId,
       noteTitle: parsed.noteTitle,

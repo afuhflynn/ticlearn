@@ -88,8 +88,26 @@ async function runAfterFirstByte(input: {
   userId: string;
   conversationId: string;
   userContent: string;
+  messageId?: string | null;
+  quizId?: string | null;
 }): Promise<void> {
   try {
+    // Dedupe by message id. Two rows with the same id mean one resend.
+    // The warn stays in server logs with ids only, never in the thread.
+    if (input.messageId) {
+      const count = await prisma.chatMessage.count({
+        where: { id: input.messageId },
+      });
+      if (count > 1) {
+        // Sampled so a retry storm does not flood logs.
+        if (Math.random() < 0.2) {
+          console.warn(
+            `[CHAT] duplicate message id=${input.messageId} quiz=${input.quizId ?? "none"} conv=${input.conversationId}`,
+          );
+        }
+        return;
+      }
+    }
     const recentUserMessages = await prisma.chatMessage.findMany({
       where: { conversationId: input.conversationId, role: "user" },
       orderBy: { createdAt: "desc" },
@@ -104,9 +122,11 @@ async function runAfterFirstByte(input: {
       );
     });
     if (isDuplicate) {
-      console.warn(
-        `[CHAT] Possible duplicate message in conversation ${input.conversationId}`,
-      );
+      if (Math.random() < 0.2) {
+        console.warn(
+          `[CHAT] duplicate message id=${input.messageId ?? "none"} quiz=${input.quizId ?? "none"} conv=${input.conversationId}`,
+        );
+      }
     }
   } catch {
     // Non-critical; never fail a turn over a diagnostic
@@ -1029,6 +1049,8 @@ export async function POST(req: Request) {
           userId,
           conversationId,
           userContent,
+          messageId: latestUserMessage.id ?? userMsgRecord?.id ?? null,
+          quizId: null,
         }).catch(() => {});
 
         try {

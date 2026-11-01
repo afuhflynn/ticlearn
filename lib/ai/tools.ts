@@ -46,6 +46,16 @@ const notePreviewSelect = {
   updatedAt: true,
 } as const;
 
+/** Short teaching steps paired with every draw so art failure still teaches. */
+function textStepsFor(concept: string): string[] {
+  const clean = concept.trim().slice(0, 160) || "this idea";
+  return [
+    `Name the parts of ${clean} in your own words.`,
+    `Trace how each part leads to the next.`,
+    `Say when you would use ${clean} in an exam answer.`,
+  ];
+}
+
 const quizPreviewSelect = {
   id: true,
   title: true,
@@ -749,14 +759,14 @@ export function createChatTools({
         .describe("The note in play, when there is one."),
     }),
     execute: async ({ concept, noteId }) => {
-      // Server validated: ownership resolves through the caller id, the cap
-      // runs before the model call, invalid output degrades to text.
+      // Server validated: ownership runs through the caller id, the cap
+      // runs before the model call, bad output degrades to text.
       const { generateVisualArtifact } = await import("@/lib/visual-artifacts");
       const clean = concept.trim().slice(0, 160);
       let context = "";
       let resolvedNoteId: string | null = null;
-      // The model may omit the note; fall back to the conversation's note
-      // so drawings stay grounded and linked, exactly like getNotePages.
+      // The model may omit the note; fall back to the conversation note
+      // so drawings stay linked, exactly like getNotePages.
       let effectiveNoteId = noteId ?? null;
       if (!effectiveNoteId && conversationId) {
         const conversation = await prisma.chatConversation.findFirst({
@@ -782,10 +792,18 @@ export function createChatTools({
         concept: clean,
         context,
       });
-      if (!result.ok) return result;
-      return { ...result, noteId: resolvedNoteId, concept: clean };
+      if (!result.ok) return { ...result, textSteps: textStepsFor(clean) };
+      return {
+        ...result,
+        noteId: resolvedNoteId,
+        concept: clean,
+        textSteps: textStepsFor(clean),
+      };
     },
   });
+
+  // Spec name for the same draw path. The model may call either name.
+  const drawDiagramTool = drawVisualTool;
 
   const startQuizTool = tool({
     description: getToolDescription("start_quiz"),
@@ -886,6 +904,11 @@ export function createChatTools({
     // two or three sentences, which the sanitizer caps.
     suggestReplies: wrapTool(suggestRepliesTool, [], policyContext),
     drawVisual: wrapTool(
+      drawVisualTool,
+      DEFAULT_CHAT_TOOL_POLICIES,
+      policyContext,
+    ),
+    drawDiagram: wrapTool(
       drawVisualTool,
       DEFAULT_CHAT_TOOL_POLICIES,
       policyContext,

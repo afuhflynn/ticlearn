@@ -13,6 +13,7 @@ type DrawOutput = {
   format?: "mermaid" | "svg";
   payload?: string;
   altText?: string;
+  textSteps?: string[];
 };
 
 type DrawPart = {
@@ -45,7 +46,8 @@ function drawOutputsFromParts(
       continue;
     }
     const tool = part as DrawPart & { toolName?: string };
-    if (drawNameOf({ type: typed.type }, tool) !== "drawVisual") continue;
+    const name = drawNameOf({ type: typed.type }, tool);
+    if (name !== "drawVisual" && name !== "drawDiagram") continue;
     const output = tool.output as DrawOutput | undefined;
     if (output && typeof output.ok === "boolean") {
       out.push({ part: tool, output });
@@ -84,9 +86,13 @@ export function ChatArt({
   const [redrawn, setRedrawn] = useState<DrawOutput[]>([]);
   const [redrawError, setRedrawError] = useState<string | null>(null);
   const [redrawingKey, setRedrawingKey] = useState<string | null>(null);
+  const [retryTaps, setRetryTaps] = useState<Record<string, number>>({});
   const generate = useGenerateArt();
 
   const onRetryDraw = (key: string, concept: string) => {
+    const taps = (retryTaps[key] ?? 0) + 1;
+    setRetryTaps((current) => ({ ...current, [key]: taps }));
+    if (taps > 2) return;
     setRedrawingKey(key);
     setRedrawError(null);
     generate.mutate(
@@ -154,43 +160,69 @@ export function ChatArt({
       ) : null}
       {draws.map(({ part, output: d }, i) => {
         const key = d.id ?? `draw-${i}`;
+        const steps = Array.isArray(d.textSteps) ? d.textSteps.slice(0, 3) : [];
+        const taps = retryTaps[key] ?? 0;
         if (d.ok && d.payload && d.format) {
           return (
-            <ArtCard
-              key={key}
-              item={{
-                kind: "drawn",
-                id: d.id ?? `draw-${i}`,
-                format: d.format as "mermaid" | "svg",
-                payload: d.payload as string,
-                altText: d.altText ?? "Diagram drawn for this answer",
-                sourcePage: null,
-                createdAt: new Date().toISOString(),
-              }}
-              caption={d.altText ?? "Fresh diagram for this idea"}
-            />
+            <div key={key} className="flex w-full flex-col gap-2">
+              <ArtCard
+                item={{
+                  kind: "drawn",
+                  id: d.id ?? `draw-${i}`,
+                  format: d.format as "mermaid" | "svg",
+                  payload: d.payload as string,
+                  altText: d.altText ?? "Diagram drawn for this answer",
+                  sourcePage: null,
+                  createdAt: new Date().toISOString(),
+                }}
+                caption={d.altText ?? "Fresh diagram for this idea"}
+              />
+              {steps.length > 0 ? (
+                <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                  {steps.map((s, n) => (
+                    <li key={n}>{s}</li>
+                  ))}
+                </ol>
+              ) : null}
+            </div>
           );
         }
         if (d.reason === "cap") {
           return (
-            <ArtNotice
-              key={key}
-              message={d.message ?? "Daily draw limit reached for this idea."}
-              limit
-            />
+            <div key={key} className="flex w-full flex-col gap-2">
+              <ArtNotice
+                message={d.message ?? "Daily draw limit reached for this idea."}
+                limit
+              />
+              {steps.length > 0 ? (
+                <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                  {steps.map((s, n) => (
+                    <li key={n}>{s}</li>
+                  ))}
+                </ol>
+              ) : null}
+            </div>
           );
         }
         const concept = part.input?.concept?.trim().slice(0, 160);
         return (
-          <ArtNotice
-            key={key}
-            message={d.message ?? "The drawing could not load."}
-            onRetry={
-              concept && redrawingKey !== key
-                ? () => onRetryDraw(key, concept)
-                : undefined
-            }
-          />
+          <div key={key} className="flex w-full flex-col gap-2">
+            <ArtNotice
+              message="Could not draw that. Steps below still teach it."
+              onRetry={
+                concept && redrawingKey !== key && taps < 2
+                  ? () => onRetryDraw(key, concept)
+                  : undefined
+              }
+            />
+            {steps.length > 0 ? (
+              <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                {steps.map((s, n) => (
+                  <li key={n}>{s}</li>
+                ))}
+              </ol>
+            ) : null}
+          </div>
         );
       })}
       {redrawn.map((d, i) =>
