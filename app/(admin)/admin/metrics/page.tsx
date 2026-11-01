@@ -318,6 +318,12 @@ export default function AnalyticsPage() {
     newUsersLast30Days,
     mrrByPlan,
     moneyTrail,
+    funnel,
+    takeRates,
+    pendingToPaid,
+    fallback,
+    aiCost,
+    window: conversionWindow,
     isLoading,
     refetch,
   } = useAdminMetrics({
@@ -909,6 +915,168 @@ export default function AnalyticsPage() {
                           ? `${Math.round(summary.mrr / summary.paidUsers).toLocaleString()} FCFA`
                           : "0 FCFA"}
                       </p>
+                    </CardContent>
+                  </Card>
+                </div>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Signup to paid funnel</CardTitle>
+                    <CardDescription>
+                      Totals only for the chosen window
+                      {conversionWindow?.capped ? " (capped at 90 days)" : ""}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {funnel ? (
+                      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {[
+                          { label: "Signups", value: funnel.signup },
+                          { label: "First note", value: funnel.firstNote },
+                          {
+                            label: "First Tip answer",
+                            value: funnel.firstTipAnswer,
+                          },
+                          { label: "First quiz", value: funnel.firstQuiz },
+                          {
+                            label: "First limit hit",
+                            value: funnel.firstLimitHit,
+                          },
+                          {
+                            label: "First upgrade start",
+                            value: funnel.firstUpgradeStart,
+                          },
+                          {
+                            label: "Completed purchases",
+                            value: funnel.completedPurchases,
+                          },
+                          {
+                            label: "Paid success check",
+                            value: funnel.paidSuccessCheck,
+                          },
+                        ].map((step) => (
+                          <div
+                            key={step.label}
+                            className="rounded-lg border p-4 text-center"
+                          >
+                            <p className="text-sm text-muted-foreground">
+                              {step.label}
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {step.value.toLocaleString()}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-center py-8">
+                        No funnel data for this window
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Take rates</CardTitle>
+                      <CardDescription>
+                        Base is all verified student accounts
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {takeRates ? (
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Weekly take
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {takeRates.weeklyTakeRate}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {takeRates.weeklyFirst.toLocaleString()} of{" "}
+                              {takeRates.base.toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="rounded-lg border p-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                              Semester take
+                            </p>
+                            <p className="text-2xl font-bold tabular-nums">
+                              {takeRates.semesterTakeRate}%
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {takeRates.semesterFirst.toLocaleString()} of{" "}
+                              {takeRates.base.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-muted-foreground text-center py-8">
+                          No take rate data
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Money plus provider plus cost</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="rounded-lg border p-4 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Pending to paid
+                          </p>
+                          <p className="text-2xl font-bold tabular-nums">
+                            {pendingToPaid ? `${pendingToPaid.rate}%` : "0%"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {pendingToPaid
+                              ? `${pendingToPaid.convertedUsers.toLocaleString()} of ${pendingToPaid.upgradeUsers.toLocaleString()}`
+                              : "paid success divided by upgrade start"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-4 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            Search fallback
+                          </p>
+                          <p className="text-2xl font-bold tabular-nums">
+                            {fallback ? `${fallback.rate}%` : "0%"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {fallback
+                              ? `${fallback.fallback.toLocaleString()} of ${fallback.total.toLocaleString()}`
+                              : "Tavily after Firecrawl"}
+                          </p>
+                        </div>
+                        <div className="rounded-lg border p-4 text-center sm:col-span-2">
+                          <p className="text-sm text-muted-foreground">
+                            Total AI cost, XAF
+                          </p>
+                          <p className="text-2xl font-bold tabular-nums">
+                            {aiCost ? aiCost.totalXaf.toLocaleString() : "0"}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {aiCost
+                              ? `${aiCost.costPerPaidUserXaf.toLocaleString()} per paid user`
+                              : "summed live from usage rows"}
+                          </p>
+                        </div>
+                      </div>
+                      {(fallback?.note || aiCost?.note) && (
+                        <div className="mt-4 space-y-1">
+                          {fallback?.note && (
+                            <p className="text-xs text-muted-foreground">
+                              {fallback.note}
+                            </p>
+                          )}
+                          {aiCost?.note && (
+                            <p className="text-xs text-muted-foreground">
+                              {aiCost.note}
+                            </p>
+                          )}
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </div>

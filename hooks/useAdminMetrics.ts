@@ -92,6 +92,47 @@ export function useAdminMetrics(params: MetricsParams = {}) {
       pendingToPaidRate: number;
       aiCostXaf: number;
     } | null,
+    funnel: (result?.funnel ?? null) as {
+      signup: number;
+      firstNote: number;
+      firstTipAnswer: number;
+      firstQuiz: number;
+      firstLimitHit: number;
+      firstUpgradeStart: number;
+      completedPurchases: number;
+      paidSuccessCheck: number;
+    } | null,
+    takeRates: (result?.takeRates ?? null) as {
+      base: number;
+      weeklyFirst: number;
+      semesterFirst: number;
+      weeklyTakeRate: number;
+      semesterTakeRate: number;
+    } | null,
+    pendingToPaid: (result?.pendingToPaid ?? null) as {
+      upgradeUsers: number;
+      paidUsers: number;
+      convertedUsers: number;
+      rate: number;
+    } | null,
+    fallback: (result?.fallback ?? null) as {
+      total: number;
+      fallback: number;
+      rate: number;
+      note: string | null;
+    } | null,
+    aiCost: (result?.aiCost ?? null) as {
+      totalXaf: number;
+      paidUsers: number;
+      costPerPaidUserXaf: number;
+      note: string | null;
+    } | null,
+    window: (result?.window ?? null) as {
+      from: string;
+      to: string;
+      capped: boolean;
+      maxDays: number;
+    } | null,
     isLoading,
     error,
     refetch,

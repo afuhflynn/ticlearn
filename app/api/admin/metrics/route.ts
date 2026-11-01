@@ -3,13 +3,34 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import {
   computeActivationFunnel,
+  computeAiCost,
   computeCohortRetention,
+  computeConversionFunnel,
+  computeConversionTakeRates,
   computeDailyMetrics,
+  computeFallbackRate,
   computeMRR,
+  computePendingToPaid,
   computeSubjectDistribution,
   countDistinctActiveUsers,
 } from "@/lib/kpi";
 import { prisma } from "@/lib/prisma";
+
+const CONVERSION_CACHE_TTL_MS = 5 * 60 * 1000;
+const CONVERSION_MAX_DAYS = 90;
+const conversionCache = new Map<
+  string,
+  { at: number; body: Record<string, unknown> }
+>();
+
+function capWindow(fromDate: Date, toDate: Date) {
+  const spanMs = toDate.getTime() - fromDate.getTime();
+  const maxMs = CONVERSION_MAX_DAYS * 24 * 60 * 60 * 1000;
+  if (spanMs > maxMs) {
+    return new Date(toDate.getTime() - maxMs);
+  }
+  return fromDate;
+}
 
 export async function GET(req: Request) {
   try {
@@ -40,8 +61,10 @@ export async function GET(req: Request) {
     const order = searchParams.get("order") || "desc";
     const search = searchParams.get("search") || "";
 
-    const fromDate = new Date(from);
+    const fromDateRaw = new Date(from);
     const toDate = new Date(`${to}T23:59:59.999Z`);
+    const fromDate = capWindow(fromDateRaw, toDate);
+    const capped = fromDate.getTime() !== fromDateRaw.getTime();
 
     // Summary cards - always returned
     const dayStart = new Date(new Date().setHours(0, 0, 0, 0));
@@ -244,85 +267,96 @@ export async function GET(req: Request) {
       case "monetization": {
         result.mrrByPlan = mrrData.byPlan;
         result.conversionRate = conversionRate;
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const [limitHits, upgradeStarts, paidSuccess, weeklyTake, proTake] =
-          await Promise.all([
-            prisma.kpiEvent.count({
-              where: {
-                event: "limit_hit",
-                createdAt: { gte: thirtyDaysAgo },
-                user: { role: "USER" },
-              },
-            }),
-            prisma.kpiEvent.count({
-              where: {
-                event: "upgrade_start",
-                createdAt: { gte: thirtyDaysAgo },
-                user: { role: "USER" },
-              },
-            }),
-            prisma.kpiEvent.count({
-              where: {
-                event: "paid_success",
-                createdAt: { gte: thirtyDaysAgo },
-                user: { role: "USER" },
-              },
-            }),
-            prisma.subscription.count({
-              where: {
-                status: "ACTIVE",
-                plan: "WEEKLY",
-                activatedAt: { gte: thirtyDaysAgo },
-                user: { role: "USER" },
-              },
-            }),
-            prisma.subscription.count({
-              where: {
-                status: "ACTIVE",
-                plan: "PRO",
-                activatedAt: { gte: thirtyDaysAgo },
-                user: { role: "USER" },
-              },
-            }),
-          ]);
-        const [pendingPaid, pendingTotal] = await Promise.all([
-          prisma.kpiEvent.count({
-            where: {
-              event: "paid_success",
-              createdAt: { gte: sevenDaysAgo },
-              user: { role: "USER" },
+        const cacheKey = `monetization:${fromDate.toISOString()}:${toDate.toISOString()}`;
+        const cached = conversionCache.get(cacheKey);
+        if (cached && Date.now() - cached.at < CONVERSION_CACHE_TTL_MS) {
+          Object.assign(result, cached.body);
+          break;
+        }
+        try {
+          const thirtyDaysAgo = new Date();
+          thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+          const [limitHits, upgradeStarts, paidSuccess, weeklyTake, proTake] =
+            await Promise.all([
+              prisma.kpiEvent.count({
+                where: {
+                  event: "limit_hit",
+                  createdAt: { gte: fromDate, lte: toDate },
+                  user: { role: "USER" },
+                },
+              }),
+              prisma.kpiEvent.count({
+                where: {
+                  event: "upgrade_start",
+                  createdAt: { gte: fromDate, lte: toDate },
+                  user: { role: "USER" },
+                },
+              }),
+              prisma.kpiEvent.count({
+                where: {
+                  event: "paid_success",
+                  createdAt: { gte: fromDate, lte: toDate },
+                  user: { role: "USER" },
+                },
+              }),
+              prisma.subscription.count({
+                where: {
+                  status: "ACTIVE",
+                  plan: "WEEKLY",
+                  activatedAt: { gte: fromDate, lte: toDate },
+                  user: { role: "USER" },
+                },
+              }),
+              prisma.subscription.count({
+                where: {
+                  status: "ACTIVE",
+                  plan: "PRO",
+                  activatedAt: { gte: fromDate, lte: toDate },
+                  user: { role: "USER" },
+                },
+              }),
+            ]);
+          const [funnel, takeRates, pending, fallback, cost] =
+            await Promise.all([
+              computeConversionFunnel(fromDate, toDate),
+              computeConversionTakeRates(),
+              computePendingToPaid(fromDate, toDate),
+              computeFallbackRate(fromDate, toDate),
+              computeAiCost(fromDate, toDate),
+            ]);
+          result.moneyTrail = {
+            limitHits,
+            upgradeStarts,
+            paidSuccess,
+            weeklyTake,
+            proTake,
+            pendingToPaidRate: pending.rate,
+            aiCostXaf: Math.floor(cost.totalXaf),
+          };
+          const body = {
+            moneyTrail: result.moneyTrail,
+            funnel,
+            takeRates,
+            pendingToPaid: pending,
+            fallback,
+            aiCost: cost,
+            window: {
+              from: fromDate.toISOString(),
+              to: toDate.toISOString(),
+              capped,
+              maxDays: CONVERSION_MAX_DAYS,
             },
-          }),
-          prisma.kpiEvent.count({
-            where: {
-              event: "upgrade_start",
-              createdAt: { gte: sevenDaysAgo },
-              user: { role: "USER" },
-            },
-          }),
-        ]);
-        const aiCost = await prisma.aiUsageEvent.aggregate({
-          _sum: { costXaf: true },
-          where: {
-            createdAt: { gte: thirtyDaysAgo },
-            user: { role: "USER" },
-          },
-        });
-        result.moneyTrail = {
-          limitHits,
-          upgradeStarts,
-          paidSuccess,
-          weeklyTake,
-          proTake,
-          pendingToPaidRate:
-            pendingTotal > 0
-              ? Math.round((pendingPaid / pendingTotal) * 100)
-              : 0,
-          aiCostXaf: aiCost._sum.costXaf ?? 0,
-        };
+          };
+          Object.assign(result, body);
+          conversionCache.set(cacheKey, { at: Date.now(), body });
+        } catch (conversionError) {
+          const stale = conversionCache.get(cacheKey);
+          if (stale) {
+            Object.assign(result, stale.body);
+          } else {
+            throw conversionError;
+          }
+        }
         break;
       }
       case "retention": {

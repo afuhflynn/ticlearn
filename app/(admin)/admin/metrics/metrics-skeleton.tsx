@@ -91,11 +91,19 @@ export function GrowthPanelSkeleton() {
   );
 }
 
-/** Monetization: four numbers, revenue over time, MRR by plan, signals. */
+/** Monetization: funnel, take rates, money, revenue, MRR, signals. */
 export function MonetizationPanelSkeleton() {
   return (
     <div className="space-y-6" data-slot="monetization-panel-skeleton">
       <StatCardsSkeleton count={4} />
+      <div className="rounded-xl border p-6">
+        <Skeleton className="h-5 w-56" />
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {placeholderKeys(8).map((key) => (
+            <Skeleton key={key} className="h-20 w-full" />
+          ))}
+        </div>
+      </div>
       <div className="grid gap-4 md:grid-cols-2">
         <ChartCardSkeleton height="h-72" />
         <ChartCardSkeleton height="h-72" />
