@@ -63,6 +63,7 @@ const protectedRoutes = [
   "/admin",
   "/subscription",
   "/ambassadors",
+  "/affiliates",
   "/onboarding",
 ];
 

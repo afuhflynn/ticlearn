@@ -10,7 +10,6 @@ import {
   Loader2,
   Mail,
   MoreVertical,
-  Plus,
   TrendingUp,
   Users,
   XCircle,
@@ -35,7 +34,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -56,13 +54,12 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { UrlSearchInput } from "@/components/url-search-input";
-import { UserCommandSelector } from "@/components/user-command-selector";
 import {
   useAdminAffiliate,
   useAdminAffiliates,
   useUpdateAdminAffiliate,
 } from "@/hooks/useAdmin";
-import { useConfirmEarnings, useCreateAffiliate } from "@/hooks/useAffiliate";
+import { usePayoutPartner } from "@/hooks/useAffiliate";
 import { clampLimit, clampPage, correctionsForKeys } from "@/nuqs";
 import {
   adminAffiliatesViewDefaults,
@@ -149,14 +146,6 @@ export default function AdminAffiliatesPage() {
   const [suspendActivateStatus, setSuspendActivateStatus] =
     useState<string>("");
 
-  // New Affiliate Form State
-  const [selectedUserId, setSelectedUserId] = useState("");
-  const [selectedUserName, setSelectedUserName] = useState("");
-  const [selectedUserEmail, setSelectedUserEmail] = useState("");
-  const [affiliateCode, setAffiliateCode] = useState("");
-  const [momoNumber, setMomoNumber] = useState("");
-  const [momoName, setMomoName] = useState("");
-
   const { affiliates, total, totalPages, isLoading } = useAdminAffiliates({
     search: q,
     limit: safeLimit,
@@ -165,46 +154,8 @@ export default function AdminAffiliatesPage() {
 
   const updateAffiliateMutation = useUpdateAdminAffiliate();
 
-  const createAffiliateMutation = useCreateAffiliate();
-  const { mutate: confirmEarningsMutation, isPending: isPaying } =
-    useConfirmEarnings();
-
-  const resetForm = () => {
-    setSelectedUserId("");
-    setSelectedUserName("");
-    setSelectedUserEmail("");
-    setAffiliateCode("");
-    setMomoNumber("");
-    setMomoName("");
-  };
-
-  const handleUserChange = (
-    userId: string,
-    userName: string,
-    userEmail: string,
-  ) => {
-    setSelectedUserId(userId);
-    setSelectedUserName(userName);
-    setSelectedUserEmail(userEmail);
-  };
-
-  const handleCreate = (e: React.FormEvent) => {
-    e.preventDefault();
-    createAffiliateMutation.mutate(
-      {
-        userId: selectedUserId,
-        code: affiliateCode,
-        momoNumber,
-        momoName,
-      },
-      {
-        onSuccess() {
-          closeModal();
-          resetForm();
-        },
-      },
-    );
-  };
+  const payoutPartner = usePayoutPartner();
+  const [payoutReference, setPayoutReference] = useState("");
 
   const handleViewDetails = (id: string) => {
     setView({ modal: "details", selectedId: id });
@@ -216,11 +167,19 @@ export default function AdminAffiliatesPage() {
 
   const confirmPayEarnings = async () => {
     if (view.modal !== "pay" || !view.selectedId) return;
-    confirmEarningsMutation(view.selectedId, {
-      onSuccess() {
-        closeModal();
+    if (!payoutReference.trim()) {
+      toast.error("Add the Mobile Money reference for this payout.");
+      return;
+    }
+    payoutPartner.mutate(
+      { id: view.selectedId, payoutReference: payoutReference.trim() },
+      {
+        onSuccess() {
+          closeModal();
+          setPayoutReference("");
+        },
       },
-    });
+    );
   };
 
   const handleSuspendActivate = (id: string, currentStatus: string) => {
@@ -255,12 +214,6 @@ export default function AdminAffiliatesPage() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("Copied to clipboard");
-  };
-
-  const handleGenerateCode = () => {
-    const suffix = Math.random().toString(36).substring(2, 8).toUpperCase();
-    const code = `TIC-${suffix}`;
-    setAffiliateCode(code);
   };
 
   return (
@@ -463,18 +416,30 @@ export default function AdminAffiliatesPage() {
               Pay pending earnings to this affiliate partner
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
+          <div className="py-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              This will mark all pending earnings as paid and update the
-              affiliate&apos;s account.
+              This marks every requested earning as paid and clears only the
+              pending total. The lifetime total stays intact.
             </p>
+            <div className="grid gap-2">
+              <Label htmlFor="payout-reference">Mobile Money reference</Label>
+              <Input
+                id="payout-reference"
+                placeholder="e.g. MTN-TXN-123456"
+                value={payoutReference}
+                onChange={(e) => setPayoutReference(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={closeModal}>
               Cancel
             </Button>
-            <Button onClick={confirmPayEarnings} disabled={isPaying}>
-              {isPaying ? (
+            <Button
+              onClick={confirmPayEarnings}
+              disabled={payoutPartner.isPending}
+            >
+              {payoutPartner.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Processing...
@@ -533,108 +498,15 @@ export default function AdminAffiliatesPage() {
             Affiliate Program
           </h1>
           <p className="text-muted-foreground">
-            Manage your affiliate marketing program and track performance
+            Invite only. Invite by email, approve after claim, pay with a Mobile
+            Money reference.
           </p>
         </div>
-        <Dialog
-          open={view.modal === "create"}
-          onOpenChange={(open) => {
-            if (open) setView({ modal: "create" });
-            else closeModal();
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Affiliate Link
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <form onSubmit={handleCreate}>
-              <DialogHeader>
-                <DialogTitle>Create New Affiliate Link</DialogTitle>
-                <DialogDescription>
-                  Manually create an affiliate link for a specific user.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label>Select User</Label>
-                  <UserCommandSelector
-                    value={selectedUserId}
-                    onChange={handleUserChange}
-                    placeholder="Search users by name or email..."
-                  />
-                  {selectedUserId && (
-                    <p className="text-xs text-muted-foreground">
-                      Selected:{" "}
-                      <span className="font-bold text-lg line-clamp-1">
-                        {selectedUserName} ({selectedUserEmail})
-                      </span>
-                    </p>
-                  )}
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="code">Affiliate Code</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="code"
-                      placeholder="e.g. CAMEROON2024"
-                      value={affiliateCode}
-                      onChange={(e) =>
-                        setAffiliateCode(e.target.value.toUpperCase())
-                      }
-                      required
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon"
-                      onClick={handleGenerateCode}
-                    >
-                      <TrendingUp className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="momoNumber">MoMo Number</Label>
-                  <Input
-                    id="momoNumber"
-                    placeholder="6XXXXXXXX"
-                    value={momoNumber}
-                    onChange={(e) => setMomoNumber(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="momoName">MoMo Name</Label>
-                  <Input
-                    id="momoName"
-                    placeholder="Full name as on MoMo"
-                    value={momoName}
-                    onChange={(e) => setMomoName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button
-                  type="submit"
-                  disabled={createAffiliateMutation.isPending}
-                >
-                  {createAffiliateMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Link"
-                  )}
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-2">
+          <Button variant="outline" asChild>
+            <a href="/admin/affiliates/invites">Partner invites</a>
+          </Button>
+        </div>
       </div>
 
       {/* Stats Cards */}

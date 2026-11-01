@@ -9,8 +9,6 @@ import { grantPlanCredits } from "@/lib/plan-credits";
 import { CREDIT_PURCHASE_EXTERNAL_ID_PREFIX } from "@/lib/platform-settings";
 import { prisma } from "@/lib/prisma";
 
-const COMMISSION_RATE = 0.2;
-
 function planLabel(plan: string): string {
   return planCatalog[plan]?.label || plan;
 }
@@ -150,12 +148,24 @@ export async function POST(req: Request) {
         );
       }
       if (status === "SUCCESSFUL" && result.credited) {
-        const { qualifyAmbassadorReferral } = await import(
-          "@/lib/ambassadors/qualify"
+        const { recordAffiliateEarning } = await import(
+          "@/lib/affiliates/conversion"
         );
-        await qualifyAmbassadorReferral({ buyerId: order.userId }).catch(
-          (error) => console.error("ambassador qualify failed:", error),
-        );
+        const earned = await recordAffiliateEarning({
+          buyerId: order.userId,
+          amountXaf: order.amountXaf,
+          plan: "CREDITS",
+          orderReference: `credit:${order.id}:${transId ?? "no-trans"}`,
+          fapshiTransId: transId,
+        }).catch(() => ({ created: false, reason: "error" }));
+        if (!earned.created) {
+          const { qualifyAmbassadorReferral } = await import(
+            "@/lib/ambassadors/qualify"
+          );
+          await qualifyAmbassadorReferral({ buyerId: order.userId }).catch(
+            (error) => console.error("ambassador qualify failed:", error),
+          );
+        }
       }
 
       return NextResponse.json({ success: true }, { status: 200 });
@@ -204,7 +214,6 @@ export async function POST(req: Request) {
         );
       }
       const planPrice = sub.amount;
-      const commission = Math.round(planPrice * COMMISSION_RATE);
 
       const existingStats = await prisma.userStats.findFirst({
         where: { userId: sub.userId },
@@ -245,67 +254,27 @@ export async function POST(req: Request) {
         subscriptionId: sub.id,
       }).catch(console.error);
 
-      // Ambassador friends never create affiliate earnings. Qualification
-      // needs verified email plus this settled paid order.
-      const { qualifyAmbassadorReferral } = await import(
-        "@/lib/ambassadors/qualify"
+      // Affiliate wins when a valid partner code is bound, else the
+      // ambassador loop counts. One friend never pays in both loops.
+      const { recordAffiliateEarning } = await import(
+        "@/lib/affiliates/conversion"
       );
-      await qualifyAmbassadorReferral({ buyerId: sub.userId }).catch((error) =>
-        console.error("ambassador qualify failed:", error),
-      );
-
-      if (sub.user.referredBy) {
-        const affiliate = await prisma.affiliate.findUnique({
-          where: { code: sub.user.referredBy },
-        });
-
-        const referee = await prisma.user.findUnique({
-          where: { id: sub.userId },
-          select: {
-            id: true,
-            email: true,
-            emailVerified: true,
-            referredBy: true,
-          },
-        });
-        const selfReferral =
-          affiliate &&
-          (affiliate.userId === sub.userId ||
-            affiliate.userEmail.toLowerCase() ===
-              (referee?.email ?? sub.userEmail).toLowerCase());
-
-        if (
-          affiliate &&
-          affiliate.status === "ACTIVE" &&
-          referee?.emailVerified === true &&
-          !selfReferral
-        ) {
-          await prisma.affiliateEarning.create({
-            data: {
-              affiliateCode: affiliate.code,
-              affiliateEmail: affiliate.userEmail,
-              referredUserId: sub.userId,
-              referredUserEmail: sub.userEmail,
-              plan: sub.plan,
-              amount: planPrice,
-              commission: commission,
-              status: "PENDING",
-              fapshiTransId: transId,
-            },
-          });
-
-          await prisma.affiliate.update({
-            where: { id: affiliate.id },
-            data: {
-              pendingEarnings: { increment: commission },
-              totalEarnings: { increment: commission },
-            },
-          });
-
-          console.log(
-            `Created affiliate earning: ${commission} XFA for ${affiliate.code}`,
-          );
-        }
+      const affiliateResult = await recordAffiliateEarning({
+        buyerId: sub.userId,
+        amountXaf: planPrice,
+        plan: sub.plan,
+        orderReference: `sub:${sub.id}:${transId ?? "no-trans"}`,
+        fapshiTransId: transId,
+      }).catch(() => ({ created: false, reason: "error" }));
+      if (affiliateResult.created) {
+        console.log(`Created affiliate earning for ${sub.user.referredBy}`);
+      } else {
+        const { qualifyAmbassadorReferral } = await import(
+          "@/lib/ambassadors/qualify"
+        );
+        await qualifyAmbassadorReferral({ buyerId: sub.userId }).catch(
+          (error) => console.error("ambassador qualify failed:", error),
+        );
       }
 
       console.log(`Enqueueing payment emails for ${sub.userEmail}`);
