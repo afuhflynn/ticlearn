@@ -134,3 +134,65 @@ spec ../specs/0035-marking-mark-scheme-results-save/index.md
 Generation plus marking plus drawing stay dependable under real model limits. A length cutoff retries with a smaller set then hands to the full quiz page instead of a dead Quiz not available card. The draw tool carries a proper activity label so Working reads cleanly, draw failures show a plain notice with text instead plus a retry, and duplicate message warnings stay in logs out of the student view. Topic mix stays student choice with Quiz plus Flashcards available where it helps recall.
 **Done when:** generation never ends on a dead card, a length cutoff retries with a smaller set then hands to the full quiz page, draw failures show a plain notice with text instead plus a retry, the draw tool has a proper activity label, and duplicate message warnings stay out of the student view.
 - [ ] Design it (spec): /solution-architect quiz reliability plus visual fallback
+
+### 62. Smart setup that knows you · needs a decision
+Tip reads profile plus programs plus notes before it asks anything, so it never asks level again and never treats a note title as a topic. It picks topics from inside the note and asks only the missing piece one at a time.
+**Done when:** a student starting a quiz sees no level ask when level lives in profile, topic options come from note content, and each reply moves one step forward by tap or by typing.
+- [ ] Design it (spec): /solution-architect smart setup that knows you
+
+(basis: onboarding profile plus programs in the database, note content as topic source, progressive disclosure asks one thing at a time)
+
+### 63. Durable quiz build with live progress · needs a decision
+Long builds run in background jobs that survive slow models, with true stage names and live updates in thread, so silence never feels dead.
+**Done when:** a 40 question build shows progress in seconds, survives a model cutoff by retrying smaller, and refreshes to ready without a dead stall.
+- [ ] Design it (spec): /solution-architect durable quiz build with live progress
+
+(basis: Inngest background jobs per root AGENTS.md, pending region plus process progress per loading states row 35, retry smaller then handoff per row 61)
+
+### 64. Clean activity plus true answer split · needs a decision
+Working steps collapse to one small line while building, then one clean final answer lands with no repeats, so inner chatter never leaks to the student.
+**Done when:** the thread shows one activity line with human labels, expands on tap, and the final answer starts where it should with no duplicated build chatter.
+- [ ] Design it (spec): /solution-architect clean activity plus true answer split
+
+(basis: labelled activity line per research/chat-experience.md, strict split of build chatter and final answer per your reference shots)
+
+### 65. Generative card system low near composer · needs a decision
+Quiz plus flashcards plus diagrams share one docked card family low above the reply box, with dots plus Back plus Next plus hint, so thumbs reach options without scrolling past a tall thread.
+**Done when:** the runner docks low, shows one item at a time with dots plus Back plus Next, taps answer at once, reload rebuilds the same spot, and placement matches the approved reference on phone and desktop.
+- [ ] Design it (spec): /solution-architect generative card system low near composer
+
+(basis: low docked runner per row 59, thumb reach on phones per mobile bar row 33, one card family for quiz plus flashcards plus diagrams)
+
+### 66. Honest failure plus two paths · needs a decision
+A failed build shows a calm modern card with plain words and two live exits, so practice never ends dead.
+**Done when:** a failed build never shows a dead card, offers a smaller chat quiz now plus a full page quiz link, and a tap retries or moves forward cleanly.
+- [ ] Design it (spec): /solution-architect honest failure plus two paths
+
+(basis: honest failure with retry per loading states row 35, two live exits per your failed build ask, never a dead end)
+
+### 67. Simple true visuals with fallback · needs a decision
+Science sketches render as clean line art first, with text steps beside them, and a failed draw shows plain notice plus retry instead of a dead card.
+**Done when:** a light ray or similar ask shows a readable visual, text steps stay beside it, a failed draw shows notice plus retry, and the draw tool has a proper activity label.
+- [ ] Design it (spec): /solution-architect simple true visuals with fallback
+
+(basis: visual page analysis per hackathon row 50, draw activity label per row 61, text steps beside art so a failed draw still teaches)
+
+## References
+
+Project sources you can open in the repo.
+1. Onboarding profile plus programs plus note content in the database.
+2. Root AGENTS.md on Inngest background jobs and the loading states rule.
+3. Loading states row 35 with pending region plus process progress plus honest failure.
+4. Quiz rows 56 plus 58 plus 59 plus 60 plus 61 with practice plus wizard plus docked runner plus marking plus reliability.
+5. Hackathon row 50 with visual page analysis.
+
+Practices and standards named in the basis lines, no links here.
+1. Progressive disclosure asks one thing at a time.
+2. One labelled activity line while working, then one clean final answer.
+3. Honest failure with retry plus an alternate path, never a dead end.
+
+Links verified by fetch on this run, for a human to follow.
+1. [Progressive Disclosure, Nielsen Norman Group](https://www.nngroup.com/articles/progressive-disclosure/)
+2. [Inngest Realtime, Stream Updates from Functions](https://www.inngest.com/docs/realtime)
+3. [Chatbot Tool Usage, Vercel AI SDK](https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage)
+4. [Error Message Guidelines, Nielsen Norman Group](https://www.nngroup.com/articles/error-message-guidelines/)
