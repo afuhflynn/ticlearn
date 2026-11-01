@@ -79,16 +79,18 @@ afterEach(() => {
   });
 });
 
-describe("the pricing island (spec 0019 AC-7)", () => {
+describe("the pricing island (spec 0033 AC-1)", () => {
   it("shows the name, the price and the features of every plan", () => {
     renderIsland();
 
     expect(screen.getByText("Free")).toBeInTheDocument();
+    expect(screen.getByText("Weekly Pass")).toBeInTheDocument();
     expect(screen.getByText("Semester Pass")).toBeInTheDocument();
-    expect(screen.getByText("2,500")).toBeInTheDocument();
-    expect(screen.getByText("Unlimited notes")).toBeInTheDocument();
-    expect(screen.getByText("2 notes")).toBeInTheDocument();
-    expect(screen.getAllByText("FCFA").length).toBe(2);
+    expect(screen.getByText("500")).toBeInTheDocument();
+    expect(screen.getByText("3,000")).toBeInTheDocument();
+    expect(screen.getByText("100 notes")).toBeInTheDocument();
+    expect(screen.getByText("5 notes")).toBeInTheDocument();
+    expect(screen.getAllByText("FCFA").length).toBe(3);
   });
 
   it("marks one plan as the one semester pass", () => {
@@ -226,24 +228,26 @@ describe("the pricing island payment failures (spec 0019 AC-8)", () => {
     ).not.toBeDisabled();
   });
 
-  it("shows the estimated monthly line as a secondary estimate (spec 0019 AC-4)", () => {
+  it("shows the estimated monthly line as a secondary estimate (spec 0033 AC-6)", () => {
     renderIsland();
 
     expect(
-      screen.getByText(/about 500 FCFA a month \(estimate\)/),
+      screen.getByText(/about 600 FCFA a month \(estimate\)/),
     ).toBeInTheDocument();
   });
 
-  it("shows the current plan as disabled and names what buying the pass does (spec 0019 AC-11)", async () => {
+  it("shows the current plan as disabled and names what buying the pass does (spec 0033 AC-1)", async () => {
     signIn();
     subscriptionMock.mockResolvedValue({
-      subscription: { plan: "STARTER", status: "ACTIVE" },
+      subscription: { plan: "WEEKLY", status: "ACTIVE" },
     });
     renderIsland();
 
     await screen.findByRole("button", { name: "Start Semester Pass" });
     expect(
-      screen.getByText("Buying the Semester Pass replaces your current plan."),
+      screen.getByText(
+        "Buying a new pass replaces your current plan at its end date.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -254,9 +258,10 @@ describe("the pricing island payment failures (spec 0019 AC-8)", () => {
     });
     renderIsland();
 
-    expect(
-      await screen.findByText("Finish on your phone, then come back here."),
-    ).toBeInTheDocument();
+    const notes = await screen.findAllByText(
+      "Finish on your phone, then come back here.",
+    );
+    expect(notes.length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getByRole("button", { name: "Start Semester Pass" }),
     ).not.toBeDisabled();

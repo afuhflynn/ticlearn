@@ -64,9 +64,6 @@ export async function POST(_req: Request, { params }: RouteParams) {
         where: { id },
         data: {
           pendingEarnings: 0,
-          totalEarnings: {
-            decrement: totalToPay,
-          },
         },
       }),
     ]);

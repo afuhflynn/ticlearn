@@ -64,9 +64,14 @@ export async function POST(req: Request) {
 
     // Check if user has reached their limit
     if (limitReached(uploadLimit, noteCount)) {
+      trackEvent(session.user.id, "limit_hit", {
+        limit: "notes",
+        plan,
+        used: noteCount,
+      }).catch(() => {});
       return NextResponse.json(
         {
-          error: `Upload limit reached (${uploadLimit} notes). Please upgrade to continue.`,
+          error: `Upload limit reached (${uploadLimit} notes). Weekly adds 10 notes, Semester adds 100 notes. See the plans to lift it.`,
         },
         { status: 403 },
       );

@@ -17,13 +17,19 @@ export interface PlanLimits {
 export type ResolvedPlan = Plan | "FREE";
 
 export const FREE_LIMITS: PlanLimits = {
-  pdfUploads: 2,
-  quizGenerations: 4,
-  aiTutorMessages: 8,
+  pdfUploads: 5,
+  quizGenerations: 10,
+  aiTutorMessages: 15,
   maxConversationMessages: 50,
 };
 
-export const PAID_LIMITS: Record<Plan, PlanLimits> = {
+export const PAID_LIMITS: Record<string, PlanLimits> = {
+  WEEKLY: {
+    pdfUploads: 10,
+    quizGenerations: 20,
+    aiTutorMessages: 50,
+    maxConversationMessages: 100,
+  },
   STARTER: {
     pdfUploads: 10,
     quizGenerations: 20,
@@ -33,19 +39,19 @@ export const PAID_LIMITS: Record<Plan, PlanLimits> = {
   STANDARD: {
     pdfUploads: 30,
     quizGenerations: 60,
-    aiTutorMessages: UNLIMITED,
+    aiTutorMessages: 200,
     maxConversationMessages: 200,
   },
   PREMIUM: {
-    pdfUploads: UNLIMITED,
-    quizGenerations: UNLIMITED,
-    aiTutorMessages: UNLIMITED,
+    pdfUploads: 100,
+    quizGenerations: 300,
+    aiTutorMessages: 200,
     maxConversationMessages: 500,
   },
   PRO: {
-    pdfUploads: UNLIMITED,
-    quizGenerations: UNLIMITED,
-    aiTutorMessages: UNLIMITED,
+    pdfUploads: 100,
+    quizGenerations: 300,
+    aiTutorMessages: 200,
     maxConversationMessages: 500,
   },
 };

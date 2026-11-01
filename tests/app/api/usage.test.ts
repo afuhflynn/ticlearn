@@ -49,7 +49,9 @@ describe("GET /api/usage (covers: AC-2, AC-9)", () => {
 
     expect(body.plan).toBe("FREE");
     expect(body.status).toBe("NONE");
-    expect(body.limits.pdfUploads).toBe(2);
+    expect(body.limits.pdfUploads).toBe(5);
+    expect(body.limits.quizGenerations).toBe(10);
+    expect(body.limits.aiTutorMessages).toBe(15);
   });
 
   it("reads the active subscription plan", async () => {

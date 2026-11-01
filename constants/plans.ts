@@ -15,14 +15,16 @@ export interface PlanDefinition {
   key: Plan | "FREE";
   label: string;
   priceXaf: number;
-  period: "forever" | "month" | "semester";
+  period: "forever" | "week" | "month" | "semester";
   semesterMonths?: number;
+  periodDays?: number;
   /** Credits the plan adds to the account when it activates. */
   credits: number;
   features: string[];
   cta: string;
   href: string;
   popular?: boolean;
+  forSale?: boolean;
 }
 
 export const planCatalog: Record<string, PlanDefinition> = {
@@ -32,6 +34,7 @@ export const planCatalog: Record<string, PlanDefinition> = {
     priceXaf: 0,
     period: "forever",
     credits: 200,
+    forSale: true,
     features: [
       `${FREE_LIMITS.pdfUploads} notes`,
       `${FREE_LIMITS.quizGenerations} quizzes from your notes`,
@@ -41,18 +44,36 @@ export const planCatalog: Record<string, PlanDefinition> = {
     cta: "Get Started",
     href: "/sign-up",
   },
+  WEEKLY: {
+    key: "WEEKLY" as Plan,
+    label: "Weekly Pass",
+    priceXaf: 500,
+    period: "week",
+    periodDays: 7,
+    credits: 2500,
+    forSale: true,
+    features: [
+      "10 notes",
+      "20 quizzes from your notes",
+      "50 Tip messages a day",
+      "2,500 credits included for the week",
+    ],
+    cta: "Start Weekly Pass",
+    href: "/api/payment/initiate",
+  },
   PRO: {
     key: "PRO",
     label: "Semester Pass",
-    priceXaf: 2_500,
+    priceXaf: 3000,
     period: "semester",
     semesterMonths: 5,
-    credits: 12_000,
+    credits: 15000,
+    forSale: true,
     features: [
-      "Unlimited notes",
-      "Unlimited quizzes from your notes",
-      "Unlimited Tip messages",
-      "12,000 credits included for the semester",
+      "100 notes",
+      "300 quizzes from your notes",
+      "200 Tip messages a day",
+      "15,000 credits included for the semester",
       "Every quiz traces back to the page it came from",
     ],
     cta: "Start Semester Pass",
@@ -62,9 +83,10 @@ export const planCatalog: Record<string, PlanDefinition> = {
   STARTER: {
     key: "STARTER",
     label: "Starter",
-    priceXaf: 3_000,
+    priceXaf: 3000,
     period: "month",
-    credits: 1_600,
+    credits: 1600,
+    forSale: false,
     features: [
       `${PAID_LIMITS.STARTER.pdfUploads} notes`,
       `${PAID_LIMITS.STARTER.quizGenerations} quizzes from your notes`,
@@ -77,13 +99,14 @@ export const planCatalog: Record<string, PlanDefinition> = {
   STANDARD: {
     key: "STANDARD",
     label: "Standard",
-    priceXaf: 5_000,
+    priceXaf: 5000,
     period: "month",
-    credits: 3_600,
+    credits: 3600,
+    forSale: false,
     features: [
       `${PAID_LIMITS.STANDARD.pdfUploads} notes`,
       `${PAID_LIMITS.STANDARD.quizGenerations} quizzes from your notes`,
-      "Unlimited Tip messages",
+      `${PAID_LIMITS.STANDARD.aiTutorMessages} Tip messages a day`,
       "3,600 credits included",
     ],
     cta: "Start Standard",
@@ -92,13 +115,14 @@ export const planCatalog: Record<string, PlanDefinition> = {
   PREMIUM: {
     key: "PREMIUM",
     label: "Premium",
-    priceXaf: 10_000,
+    priceXaf: 10000,
     period: "month",
-    credits: 12_000,
+    credits: 12000,
+    forSale: false,
     features: [
-      "Unlimited notes",
-      "Unlimited quizzes from your notes",
-      "Unlimited Tip messages",
+      `${PAID_LIMITS.PREMIUM.pdfUploads} notes`,
+      `${PAID_LIMITS.PREMIUM.quizGenerations} quizzes from your notes`,
+      `${PAID_LIMITS.PREMIUM.aiTutorMessages} Tip messages a day`,
       "12,000 credits included",
     ],
     cta: "Start Premium",
@@ -106,13 +130,15 @@ export const planCatalog: Record<string, PlanDefinition> = {
   },
 };
 
-/** The two tiers the public page shows, Free and Semester Pass. */
+/** The tiers the public page shows, Free plus Weekly plus Semester. */
 export const publicPlans: PlanDefinition[] = [
   planCatalog.FREE,
+  planCatalog.WEEKLY,
   planCatalog.PRO,
 ];
 
-/** The payable catalogue keys a student can actually buy (everything except Free). */
-export const payablePlans: string[] = Object.keys(planCatalog).filter(
-  (key) => key !== "FREE",
-);
+/** The payable catalogue keys a student can actually buy. */
+export const payablePlans: string[] = ["WEEKLY", "PRO"];
+
+/** Monthly keys stay valid for old active subs but are not for sale. */
+export const legacyPlans: string[] = ["STARTER", "STANDARD", "PREMIUM"];

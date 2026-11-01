@@ -3,9 +3,9 @@ import { publicPlans } from "@/constants/plans";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata = publicPageMetadata({
-  title: "TiCLearn Pricing · Free and Semester Pass",
+  title: "TiCLearn Pricing · Free, Weekly and Semester Pass",
   description:
-    "TiCLearn is free to start, and one Semester Pass at 2,500 FCFA paid over MTN Mobile Money or Orange Money unlocks unlimited notes, quizzes and Tip messages. A one time payment, no card, no auto renewal.",
+    "TiCLearn is free to start with 5 notes plus 10 quizzes plus 15 Tip messages a day. A Weekly Pass at 500 FCFA or a Semester Pass at 3,000 FCFA paid over MTN Mobile Money or Orange Money lifts the counts. A one time payment, no card, no auto renewal.",
   path: "/pricing",
 });
 
@@ -23,10 +23,10 @@ export default function PricingPage() {
           Simple, honest pricing
         </h1>
         <p className="text-lg text-muted-foreground">
-          Start free with 200 credits. When you are ready, one Semester Pass at
-          2,500 FCFA adds 12,000 credits and removes the free limits. Paid once
-          over MTN Mobile Money or Orange Money, with no card and no auto
-          renewal.
+          Start free with 5 notes plus 10 quizzes plus 15 Tip messages a day and
+          200 starting credits. When you are ready, a Weekly Pass at 500 FCFA or
+          a Semester Pass at 3,000 FCFA lifts the counts. Paid once over MTN
+          Mobile Money or Orange Money, with no card and no auto renewal.
         </p>
       </div>
 

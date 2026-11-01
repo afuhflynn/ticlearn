@@ -34,17 +34,19 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("getPlanPrice (spec 0019 AC-6)", () => {
+describe("getPlanPrice (spec 0033 AC-6)", () => {
   it("returns the catalogue amount and fcfa string for STARTER", () => {
     const price = getPlanPrice("STARTER");
     expect(price.amount).toBe(3_000);
     expect(price.fcfa).toBe("3,000");
   });
 
-  it("returns the catalogue amount and fcfa string for PRO", () => {
+  it("returns the catalogue amount and fcfa string for WEEKLY and PRO", () => {
+    expect(getPlanPrice("WEEKLY").amount).toBe(500);
+    expect(getPlanPrice("WEEKLY").fcfa).toBe("500");
     const price = getPlanPrice("PRO");
-    expect(price.amount).toBe(2_500);
-    expect(price.fcfa).toBe("2,500");
+    expect(price.amount).toBe(3_000);
+    expect(price.fcfa).toBe("3,000");
   });
 
   it("returns the catalogue amount and fcfa string for STANDARD and PREMIUM", () => {

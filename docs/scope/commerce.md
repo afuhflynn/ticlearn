@@ -6,16 +6,26 @@ Slice 5, the money. Research is unusually clear here: a month to month subscript
 
 ## Slice 5: Money
 
-### 28. Semester pass plans and limits · needs a decision · GA
-Replace the current four monthly plans with a free tier and three semester passes. Every tier resets on the academic calendar rather than on the purchase date, so buying in November runs to the end of the academic year. The free tier never expires and never gates the student's own notes, because that is where the habit lives and the archive of past papers is being deleted with the secondary school product. Each tier gets its own honest allowance stated in human terms rather than as credits.
-**Done when:** the tiers are a free tier plus a semester pass, a larger pass and a year pass, each resetting on the academic calendar, the free tier allows a real but limited number of notes, quizzes and AI questions per semester, an internal meter protects the AI cost, and top ups are available in round mobile money friendly amounts when a student runs out.
-- [ ] Design it (spec): `/solution-architect semester pass plans and limits`
+### 28. Semester pass plans and limits · GA · in-progress
+Free plus small weekly passes plus one semester pass. The free tier never expires and never locks the student notes. Paid tiers state plain counts for notes plus quizzes plus Tip messages per term. No tier prints the word Unlimited. Credits stay inside as the cost meter only.
+**Done when:** a stranger sees Free plus weekly plus semester only, each paid tier shows counts like 10 notes plus 20 quizzes plus 50 Tip messages a day, no screen prints Unlimited, free allows 5 notes plus 10 quizzes plus 15 Tip messages a day, overuse invites a weekly or semester upgrade, and admin can adjust counts without a code change.
+- [x] Design it (spec): `/solution-architect semester pass plans and limits`
+- [x] Build it: `/feature-build semester pass plans and limits`
+  - [x] Catalogue plus limits plus resolved read (covers AC-1 to AC-6)
+  - [x] Purchase thread plus poll (covers AC-7, AC-9)
+  - [x] Student surfaces plus prompt (covers AC-5, AC-8, AC-11)
+  - [x] Receipt plus trail plus overrides plus ledger (covers AC-10, AC-12, AC-13, AC-14)
+- [ ] Verify it: `/verify-release semester pass plans and limits`
+- [ ] Test it: `/test-engineer semester pass plans and limits`
+- [ ] Review it (fresh model): `/peer-review semester pass plans and limits`
+- [ ] Document it: `/tech-writer semester pass plans and limits`
+Spec 0033 [0033](../specs/0033-semester-pass-plans-and-limits.md)
 
 (basis: research/audience-and-market.md §7 and §8 · heavy AI use costs about 130 to 200 XAF a month per student against a 2,500 XAF pass, so the AI allowance is well over ninety percent margin, and September is the worst month to ask for money because registration has just drained the family)
 
 ### 29. Mobile money payments for the pass · needs a decision · GA
 Payments run through Fapshi today. Research is specific about the failure mode that loses the sale: a PIN timeout shown to the student as an error, and payment only working on WiFi. The webhook currently grants a subscription when its secret is unset, and that is fixed upstream in [Security](platform.md#2-security-and-integrity-hardening--ga).
-**Done when:** MTN Mobile Money is the primary path with Orange Money always present, the amount is chosen from buttons rather than typed, an abandoned or timed out PIN reads as normal rather than as an error, a payment that is pending shows the student what happens next, the receipt arrives by email, and no payment can be replayed.
+**Done when:** MTN Mobile Money leads with Orange Money always present, amounts come from buttons, a timed out PIN reads as normal and invites a retry, a pending payment shows what happens next plus a recheck action, the receipt arrives by email, the webhook uses the stored amount, a retry reuses the same row, and no payment can be replayed to grant twice.
 
 And given that we are having some kind of credit based business model, then users too can decide to type in the amount to pay and then purchase an amount of credits appropriate for what they paid for right?
 - [ ] Design it (spec): `/solution-architect mobile money payments for the pass`
@@ -24,33 +34,33 @@ And given that we are having some kind of credit based business model, then user
 
 ### 30. Free tier conversion surfaces · needs a decision · GA
 The free tier has to work on its own and still lead somewhere. Research found freemium converts around two percent at thirty five days, that rest of world conversions land late and need reminders, and that a soft paywall at the moment of value outperforms a wall at the door. Our own advice said premium first, then let them sample.
-**Done when:** the free tier is genuinely useful on its own, every place a student hits a limit explains the limit and what the pass adds, the prompt to upgrade appears at the moment the value is proven rather than at sign up, the upgrade screen shows the semester price with mobile money visible, and a student who can never pay is not blocked from their own notes.
+**Done when:** free works alone for notes plus quiz plus Tip within its counts, every limit notice names the limit plus what weekly or semester adds, the upgrade prompt appears when value is proven, the upgrade screen shows weekly and semester prices with mobile money marks visible, and notes stay open for a student who never pays.
 - [ ] Design it (spec): `/solution-architect free tier conversion surfaces`
 
 (basis: research/audience-and-market.md §5 · showing premium first then letting the student sample is documented as increasing conversion, which directly challenges the default of hiding the paid tier)
 
 ### 31. Campus ambassadors · needs a decision
 A student who refers enough people earns a free semester pass. Costs nothing, pays in acquisition, and every ambassador becomes a trusted local advocate. A faculty or student union buying seats in bulk is the same mechanism at larger scale and is left for the [deferred](index.md#deferred) list.
-**Done when:** a student can share a referral link, a referred student who upgrades credits the referrer, a referrer who reaches the threshold receives a semester pass automatically, and the programme is described honestly with no income promise dressed as a prize.
+**Done when:** a student can share a referral link over WhatsApp, a referred student who upgrades credits the referrer only after verified email, self referral never pays, a referrer who reaches the threshold receives a semester pass automatically, and the programme promises a pass for referrals only with no income claim.
 - [ ] Design it (spec): `/solution-architect campus ambassadors`
 
 (basis: research/audience-and-market.md §7 · this is the hardship route as a business asset rather than charity, and it monetises the students who cannot pay through the students who can)
 
 ### 32. Conversion analytics · needs a decision
 Nothing today tells us whether the free tier converts, which tier converts, or which provider actually served each answer. Without this we are pricing on inference, and the research found no published Cameroonian student willingness to pay study at all.
-**Done when:** sign up, first note, first AI answer, first quiz, first limit hit, first upgrade and first completed purchase are all tracked, the fallback rate between the two search providers is measurable, per student AI cost in XAF is visible, and the admin can answer what converts without running a query by hand.
+**Done when:** sign up plus first note plus first Tip answer plus first quiz plus first limit hit plus first upgrade plus first completed purchase are tracked, weekly versus semester take rate is visible, pending to paid rate is visible, fallback rate between search providers is visible, per student AI cost in XAF is visible, and admin sees it without a manual query.
 - [ ] Design it (spec): `/solution-architect conversion analytics`
 
 ### 43. Affiliate invites for partners · needs a decision · from spec 0014
 Today any signed in student becomes a paying affiliate by loading `/affiliate`, and 500 credits are paid at signup before email verification. The owner wants the opposite: no student can create a link or see the page, an admin invites a chosen person, and only that person sees their partner stats.
-**Done when:** only an admin can create an affiliate, the invite is a `PENDING` row the invited person accepts, an uninvited student gets no page and no navigation entry, attribution requires a verified email, the 500 credit award is safe against a double submit, payout is a ledger with pending, requested and paid amounts that never disagree with the earnings rows, and the referee emails are no longer returned to the partner.
+**Done when:** only an admin can create an affiliate, the invite starts as PENDING and the admin approves to ACTIVE, no open route creates an affiliate row, an uninvited student sees no page and no entry, attribution needs verified email, the signup award cannot double pay on retry, payout moves REQUESTED to PAID and clears pending only while lifetime total stays intact, and partner screens never show referee emails.
 - [ ] Design it (spec): `/solution-architect affiliate invites`
 
 (basis: spec 0014 surface audit · the current GET creates a payable active affiliate on page load, the apply route updates outside its transaction so a parallel double submit pays twice, and admin payout decrements the lifetime total)
 
 ### 45. Dashboard subscription page reconciliation · needs a decision · from spec 0019
-Spec 0019 rebuilds the public pricing page around Free plus one Semester Pass, but the in-app subscription page still sells three monthly plans with its own price map, feature copy and credit discounts. A signed in student therefore sees a second, different offer from the one the public page just showed them.
-**Done when:** the dashboard subscription page shows the same Free plus Semester Pass offer as `/pricing`, its upgrade action leads to the same payment path, its price map, feature copy and credit discounts all read the one catalogue in `constants/plans.ts`, and no surface in the app prints a monthly plan the public page does not sell.
+Spec 0019 rebuilds the public pricing page around Free plus one Semester Pass, but the in app subscription page still sells three monthly plans with its own price map, feature copy and credit discounts. A signed in student therefore sees a second, different offer from the one the public page just showed them.
+**Done when:** the dashboard shows the same Free plus weekly plus semester offer as `/pricing`, the upgrade action leads to the same payment path, price plus feature copy plus credit notes all read `constants/plans.ts`, and no screen prints a plan the public page does not sell.
 - [ ] Design it (spec): `/solution-architect dashboard subscription reconciliation`
 
 (basis: spec 0019 follow-up · the dashboard grid and the public page would otherwise stay two offers, and the credits copy is a separate balance that must not be folded into the catalogue)

@@ -639,6 +639,7 @@ enum Plan {
   STANDARD
   PREMIUM
   PRO
+  WEEKLY
 }
 
 enum SubscriptionStatus {
@@ -657,6 +658,30 @@ enum EarningStatus {
   PENDING
   REQUESTED
   PAID
+}
+
+model PlanOverride {
+  id        String   @id @default(cuid())
+  planKey   String   @unique @map("plan_key")
+  priceXaf  Int?     @map("price_xaf")
+  limits    Json?
+  updatedBy String   @map("updated_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("plan_overrides")
+}
+
+model PlanAudit {
+  id        String   @id @default(cuid())
+  planKey   String   @map("plan_key")
+  actorId   String   @map("actor_id")
+  before    Json?
+  after     Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([planKey, createdAt])
+  @@map("plan_audits")
 }
 
 // ===========================================
