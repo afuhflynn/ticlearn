@@ -82,6 +82,7 @@ export const searchParamsSchema = {
   conversationId: parseAsString,
   email: parseAsString,
   error: parseAsString,
+  ref: parseAsString,
 };
 
 export type AuthParams = inferParserType<typeof searchParamsSchema>;

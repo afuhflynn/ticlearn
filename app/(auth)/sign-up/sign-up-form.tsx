@@ -34,11 +34,12 @@ import { AuthFormSkeleton } from "../auth-form-skeleton";
 function SignUpForm() {
   const router = useRouter();
   const [params] = useQueryStates(searchParamsSchema);
-  const { callbackUrl, error: searchError } = params;
+  const { callbackUrl, error: searchError, ref } = params;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [referralCode, setReferralCode] = useState(ref ?? "");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -68,11 +69,13 @@ function SignUpForm() {
     setIsLoading(true);
 
     try {
+      const code = (referralCode || ref || "").trim().toUpperCase();
       const result = await signUp.email({
         email,
         password,
         name,
-      });
+        ...(code ? { referredBy: code } : {}),
+      } as never);
 
       if (result.error) {
         setError(result.error.message || "Sign up failed");
@@ -212,6 +215,21 @@ function SignUpForm() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="referralCode">Invite code (optional)</Label>
+                <Input
+                  id="referralCode"
+                  type="text"
+                  placeholder="Friend invite code"
+                  value={referralCode}
+                  onChange={(e) =>
+                    setReferralCode(e.target.value.toUpperCase())
+                  }
+                  className="uppercase"
+                  maxLength={16}
+                />
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

@@ -27,6 +27,8 @@ model User {
   role          UserRole  @default(USER)
   referredBy    String?   @map("referred_by")
   refApplied    Boolean   @default(false) @map("ref_applied")
+  referralCode  String?   @unique @map("referral_code")
+  ambassadorGrantBlocked Boolean @default(false) @map("ambassador_grant_blocked")
   warningSentAt DateTime? @map("warning_sent_at")
 
   // Credits system
@@ -68,6 +70,7 @@ model User {
   creditTransactions   CreditTransaction[]   @relation("UserCredits")
   creditPurchaseOrders CreditPurchaseOrder[]
   referralBonuses      ReferralBonus[]       @relation("ReferrerCredits")
+  ambassadorReferralsMade AmbassadorReferral[] @relation("AmbassadorReferrer")
   kpiEvents            KpiEvent[]
   engagementLogs       EngagementLog[]
   emailSuppression     EmailSuppression[]
@@ -951,6 +954,34 @@ model ReferralBonus {
   @@index([referrerId])
   @@index([refereeId])
   @@map("referral_bonuses")
+}
+
+model AmbassadorReferral {
+  id             String                   @id @default(cuid())
+  referrerId     String                   @map("referrer_id")
+  referredUserId String?                  @map("referred_user_id")
+  invitedEmail   String?                  @map("invited_email")
+  codeUsed       String                   @map("code_used")
+  status         AmbassadorReferralStatus @default(PENDING)
+  qualifiedAt    DateTime?                @map("qualified_at")
+  rewardedAt     DateTime?                @map("rewarded_at")
+  expiresAt      DateTime                 @map("expires_at")
+  createdAt      DateTime                 @default(now()) @map("created_at")
+
+  referrer User @relation("AmbassadorReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId, status])
+  @@index([codeUsed])
+  @@index([invitedEmail])
+  @@map("ambassador_referrals")
+}
+
+enum AmbassadorReferralStatus {
+  PENDING
+  QUALIFIED
+  REWARDED
+  EXPIRED
+  FLAGGED
 }
 
 model EngagementLog {

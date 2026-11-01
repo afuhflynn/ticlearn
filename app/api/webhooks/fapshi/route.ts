@@ -149,6 +149,14 @@ export async function POST(req: Request) {
           `Credit purchase webhook ${result.credited ? "credited" : "processed"} for ${user.email}`,
         );
       }
+      if (status === "SUCCESSFUL" && result.credited) {
+        const { qualifyAmbassadorReferral } = await import(
+          "@/lib/ambassadors/qualify"
+        );
+        await qualifyAmbassadorReferral({ buyerId: order.userId }).catch(
+          (error) => console.error("ambassador qualify failed:", error),
+        );
+      }
 
       return NextResponse.json({ success: true }, { status: 200 });
     }
@@ -236,6 +244,15 @@ export async function POST(req: Request) {
         plan: sub.plan,
         subscriptionId: sub.id,
       }).catch(console.error);
+
+      // Ambassador friends never create affiliate earnings. Qualification
+      // needs verified email plus this settled paid order.
+      const { qualifyAmbassadorReferral } = await import(
+        "@/lib/ambassadors/qualify"
+      );
+      await qualifyAmbassadorReferral({ buyerId: sub.userId }).catch((error) =>
+        console.error("ambassador qualify failed:", error),
+      );
 
       if (sub.user.referredBy) {
         const affiliate = await prisma.affiliate.findUnique({

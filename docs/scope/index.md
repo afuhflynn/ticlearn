@@ -66,7 +66,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 28 | Semester pass plans and limits | Slice 5 | in-progress |
 | 29 | Mobile money payments for the pass | Slice 5 | planned |
 | 30 | Free tier conversion surfaces | Slice 5 | in-progress |
-| 31 | Campus ambassadors | Slice 5 | planned |
+| 31 | Campus ambassadors | Slice 5 | in-progress |
 | 32 | Conversion analytics | Slice 5 | planned |
 | 43 | Affiliate invites for partners | Slice 5 | planned |
 | 45 | Dashboard subscription page reconciliation | Slice 5 | planned |
