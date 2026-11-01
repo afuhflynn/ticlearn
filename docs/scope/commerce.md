@@ -99,9 +99,16 @@ Today any signed in student becomes a paying affiliate by loading `/affiliate`, 
 
 (basis: spec 0014 surface audit · the current GET creates a payable active affiliate on page load, the apply route updates outside its transaction so a parallel double submit pays twice, and admin payout decrements the lifetime total)
 
-### 45. Dashboard subscription page reconciliation · needs a decision · from spec 0019
+### 45. Dashboard subscription page reconciliation · in-progress · from spec 0019
 Spec 0019 rebuilds the public pricing page around Free plus one Semester Pass, but the in app subscription page still sells three monthly plans with its own price map, feature copy and credit discounts. A signed in student therefore sees a second, different offer from the one the public page just showed them.
 **Done when:** the dashboard shows the same Free plus weekly plus semester offer as `/pricing`, the upgrade action leads to the same payment path, price plus feature copy plus credit notes all read `constants/plans.ts`, and no screen prints a plan the public page does not sell.
-- [ ] Design it (spec): `/solution-architect dashboard subscription reconciliation`
+- [x] Design it (spec): `/solution-architect dashboard subscription reconciliation`
+- [x] Build it: `/feature-build dashboard subscription reconciliation`
+  - [x] Catalogue plus grid parity, satisfies AC-1, AC-3, AC-6
+  - [x] Plan only payment plus active guard, satisfies AC-2, AC-7
+  - [x] Deletions plus pending and receipt words plus loading feel, satisfies AC-4, AC-5, AC-8, AC-9
+- [ ] Verify it: `/verify-release dashboard subscription reconciliation`
+- [ ] Test it: `/test-engineer dashboard subscription reconciliation`
+Spec 0039 [0039](../specs/0039-dashboard-subscription-reconciliation/index.md) · code in `constants/plans.ts`, `lib/plans-display.ts`, `components/marketing/pricing-plans.tsx`, `app/(dashboard)/subscription/page.tsx`, `app/api/payment/initiate/route.ts`, `app/api/subscription/manual/route.ts`
 
 (basis: spec 0019 follow-up · the dashboard grid and the public page would otherwise stay two offers, and the credits copy is a separate balance that must not be folded into the catalogue)

@@ -435,7 +435,7 @@ export const api = {
             body: data,
           },
         ),
-      initiatePass: (data: { plan: string; phone: string; provider: string }) =>
+      initiatePass: (data: { plan: string }) =>
         apiRequest<{ link: string; transId: string; status: string }>(
           "/payment/initiate",
           { method: "POST", body: data },

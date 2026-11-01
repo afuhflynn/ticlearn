@@ -1,87 +1,23 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { planCatalog } from "@/constants/plans";
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 
-export async function POST(req: Request) {
-  try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { plan, transactionId, paymentMethod } = await req.json();
-
-    if (!plan || !transactionId || !paymentMethod) {
-      return NextResponse.json(
-        {
-          error: "Missing required fields: plan, transactionId, paymentMethod",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (!["STARTER", "STANDARD", "PREMIUM", "PRO"].includes(plan)) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-    }
-
-    if (!["MTN", "ORANGE"].includes(paymentMethod)) {
-      return NextResponse.json(
-        { error: "Invalid payment method" },
-        { status: 400 },
-      );
-    }
-
-    const amount = planCatalog[plan]?.priceXaf ?? 0;
-
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
-    }
-
-    const subscription = await prisma.subscription.upsert({
-      where: { userId: session.user.id },
-      create: {
-        userId: session.user.id,
-        userEmail: user.email,
-        userName: user.name,
-        plan: plan as any,
-        status: "PENDING",
-        amount,
-        fapshiTransId: transactionId,
-      },
-      update: {
-        plan: plan as any,
-        status: "PENDING",
-        amount,
-        fapshiTransId: transactionId,
-        activatedAt: null,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      subscription: {
-        id: subscription.id,
-        plan: subscription.plan,
-        status: subscription.status,
-        amount: subscription.amount,
-        transactionId: subscription.fapshiTransId,
-        createdAt: subscription.createdAt,
-      },
-    });
-  } catch (error) {
-    console.error("Manual subscription POST error:", error);
-    return NextResponse.json(
-      { error: "Failed to submit manual payment" },
-      { status: 500 },
-    );
+/**
+ * Retired with spec 0039. Direct Mobile Money transfer is gone, only Fapshi
+ * remains. The card is deleted from the page, so this route never accepts
+ * a transaction ID again and always points back to the Fapshi initiate path.
+ */
+export async function POST(_req?: Request) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  return NextResponse.json(
+    { error: "Direct transfer is retired. Start payment with Fapshi instead." },
+    { status: 410 },
+  );
+}
+
+export async function GET() {
+  return POST();
 }

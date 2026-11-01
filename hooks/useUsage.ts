@@ -36,13 +36,14 @@ interface UseUsageResult {
     resetsAt: string | null;
   };
   isLoading: boolean;
+  isFetching: boolean;
   isPaid: boolean;
   isPending: boolean;
   refetch: () => void;
 }
 
 export function useUsage(): UseUsageResult {
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: queryKeys.usage,
     queryFn: async () => {
       const result = await api.queries.usage();
@@ -83,6 +84,7 @@ export function useUsage(): UseUsageResult {
       resetsAt: data?.prompt?.resetsAt ?? null,
     },
     isLoading,
+    isFetching,
     isPaid,
     isPending,
     refetch,

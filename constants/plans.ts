@@ -9,13 +9,13 @@
  * the `Plan` enum values.
  */
 import type { Plan } from "@/lib/generated/prisma/enums";
-import { FREE_LIMITS, PAID_LIMITS } from "@/lib/plan-limits";
+import { FREE_LIMITS } from "@/lib/plan-limits";
 
 export interface PlanDefinition {
   key: Plan | "FREE";
   label: string;
   priceXaf: number;
-  period: "forever" | "week" | "month" | "semester";
+  period: "forever" | "week" | "semester";
   semesterMonths?: number;
   periodDays?: number;
   /** Credits the plan adds to the account when it activates. */
@@ -80,54 +80,6 @@ export const planCatalog: Record<string, PlanDefinition> = {
     href: "/api/payment/initiate",
     popular: true,
   },
-  STARTER: {
-    key: "STARTER",
-    label: "Starter",
-    priceXaf: 3000,
-    period: "month",
-    credits: 1600,
-    forSale: false,
-    features: [
-      `${PAID_LIMITS.STARTER.pdfUploads} notes`,
-      `${PAID_LIMITS.STARTER.quizGenerations} quizzes from your notes`,
-      `${PAID_LIMITS.STARTER.aiTutorMessages} Tip messages a day`,
-      "1,600 credits included",
-    ],
-    cta: "Start Starter",
-    href: "/api/payment/initiate",
-  },
-  STANDARD: {
-    key: "STANDARD",
-    label: "Standard",
-    priceXaf: 5000,
-    period: "month",
-    credits: 3600,
-    forSale: false,
-    features: [
-      `${PAID_LIMITS.STANDARD.pdfUploads} notes`,
-      `${PAID_LIMITS.STANDARD.quizGenerations} quizzes from your notes`,
-      `${PAID_LIMITS.STANDARD.aiTutorMessages} Tip messages a day`,
-      "3,600 credits included",
-    ],
-    cta: "Start Standard",
-    href: "/api/payment/initiate",
-  },
-  PREMIUM: {
-    key: "PREMIUM",
-    label: "Premium",
-    priceXaf: 10000,
-    period: "month",
-    credits: 12000,
-    forSale: false,
-    features: [
-      `${PAID_LIMITS.PREMIUM.pdfUploads} notes`,
-      `${PAID_LIMITS.PREMIUM.quizGenerations} quizzes from your notes`,
-      `${PAID_LIMITS.PREMIUM.aiTutorMessages} Tip messages a day`,
-      "12,000 credits included",
-    ],
-    cta: "Start Premium",
-    href: "/api/payment/initiate",
-  },
 };
 
 /** The tiers the public page shows, Free plus Weekly plus Semester. */
@@ -139,6 +91,3 @@ export const publicPlans: PlanDefinition[] = [
 
 /** The payable catalogue keys a student can actually buy. */
 export const payablePlans: string[] = ["WEEKLY", "PRO"];
-
-/** Monthly keys stay valid for old active subs but are not for sale. */
-export const legacyPlans: string[] = ["STARTER", "STANDARD", "PREMIUM"];

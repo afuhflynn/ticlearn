@@ -30,24 +30,6 @@ export const PAID_LIMITS: Record<string, PlanLimits> = {
     aiTutorMessages: 50,
     maxConversationMessages: 100,
   },
-  STARTER: {
-    pdfUploads: 10,
-    quizGenerations: 20,
-    aiTutorMessages: 50,
-    maxConversationMessages: 100,
-  },
-  STANDARD: {
-    pdfUploads: 30,
-    quizGenerations: 60,
-    aiTutorMessages: 200,
-    maxConversationMessages: 200,
-  },
-  PREMIUM: {
-    pdfUploads: 100,
-    quizGenerations: 300,
-    aiTutorMessages: 200,
-    maxConversationMessages: 500,
-  },
   PRO: {
     pdfUploads: 100,
     quizGenerations: 300,

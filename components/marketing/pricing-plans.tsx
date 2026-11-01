@@ -17,6 +17,10 @@ import {
 import type { PlanDefinition } from "@/constants/plans";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
+import {
+  monthlyEstimateForPlan,
+  periodLabelForPlan,
+} from "@/lib/plans-display";
 
 interface Subscription {
   plan: string;
@@ -24,13 +28,34 @@ interface Subscription {
   previousPlan?: string | null;
 }
 
+function formatDoualaDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("en-GB", {
+      timeZone: "Africa/Douala",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
+}
+
 /**
  * The one client island on the pricing page. It owns everything that needs
  * state: who is signed in, which plan they are on, and the subscribe button.
  * The page around it is a server component, so the heading and this copy are
- * in the first HTML and only this card grid hydrates.
+ * in the first HTML and only this card grid hydrates. The subscription page
+ * reuses this grid with mode app, so both pages print the same catalogue
+ * entries verbatim and start payment the same plan only way.
  */
-export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
+export function PricingPlans({
+  plans,
+  mode = "public",
+}: {
+  plans: PlanDefinition[];
+  mode?: "public" | "app";
+}) {
   const { data: session } = useSession();
   const router = useRouter();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
@@ -54,6 +79,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
   const hasPaidPlan = isActive && currentPlan !== "FREE";
 
   const handleSubscribe = async (planKey: string) => {
+    if (loadingPlan !== null) return;
     if (!session) {
       router.push("/sign-in?callbackUrl=/pricing");
       return;
@@ -70,6 +96,11 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
       const data = await res.json();
       if (data.link) {
         window.location.href = data.link;
+      } else if (res.status === 409) {
+        const when = data.endDate
+          ? ` Your ${data.currentPlan ?? planKey} runs until ${formatDoualaDate(data.endDate)}.`
+          : "";
+        setError(`${data.error ?? "You already have an active pass."}${when}`);
       } else {
         setError(data.error || "Payment initiation failed. Please try again.");
       }
@@ -80,18 +111,11 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
     }
   };
 
-  const periodLabel = (plan: PlanDefinition): string => {
-    if (plan.period === "semester") return "per semester";
-    if (plan.period === "week") return "per 7 days";
-    if (plan.period === "month") return "per month";
-    return "forever";
-  };
+  const monthlyEstimate = (plan: PlanDefinition): string | null =>
+    monthlyEstimateForPlan(plan);
 
-  const monthlyEstimate = (plan: PlanDefinition): string | null => {
-    if (plan.period !== "semester" || !plan.semesterMonths) return null;
-    const perMonth = Math.round(plan.priceXaf / plan.semesterMonths);
-    return `about ${perMonth.toLocaleString()} FCFA a month (estimate), paid once`;
-  };
+  const periodLabel = (plan: PlanDefinition): string =>
+    periodLabelForPlan(plan);
 
   return (
     <div className="space-y-6">
@@ -164,7 +188,7 @@ export function PricingPlans({ plans }: { plans: PlanDefinition[] }) {
                     <Button className="w-full" variant="outline" disabled>
                       Current plan
                     </Button>
-                  ) : session ? (
+                  ) : session || mode === "app" ? (
                     <Button className="w-full" variant="outline" disabled>
                       Included in every account
                     </Button>

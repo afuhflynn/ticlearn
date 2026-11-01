@@ -130,6 +130,6 @@ describe("the dashboard subscription page", () => {
 
     expect(await screen.findByText("Free")).toBeInTheDocument();
     expect(screen.getByText("200")).toBeInTheDocument();
-    expect(screen.getByText("1 of 2")).toBeInTheDocument();
+    expect(screen.getByText("1 of 5")).toBeInTheDocument();
   });
 });
