@@ -72,10 +72,18 @@ Spec 0036 [0036](../specs/0036-campus-ambassadors/index.md) · code in `lib/amba
 
 (basis: research/audience-and-market.md §7 · this is the hardship route as a business asset rather than charity, and it monetises the students who cannot pay through the students who can)
 
-### 32. Conversion analytics · needs a decision
+### 32. Conversion analytics · in-progress
 Nothing today tells us whether the free tier converts, which tier converts, or which provider actually served each answer. Without this we are pricing on inference, and the research found no published Cameroonian student willingness to pay study at all.
 **Done when:** sign up plus first note plus first Tip answer plus first quiz plus first limit hit plus first upgrade plus first completed purchase are tracked, weekly versus semester take rate is visible, pending to paid rate is visible, fallback rate between search providers is visible, per student AI cost in XAF is visible, and admin sees it without a manual query.
-- [ ] Design it (spec): `/solution-architect conversion analytics`
+- [x] Design it (spec): `/solution-architect conversion analytics`
+Spec 0037 [0037](../specs/0037-conversion-analytics/index.md)
+- [x] Build it: `/feature-build conversion analytics`
+  - [x] Funnel plus take rates on the monetization tab (covers AC-1, AC-2, AC-7)
+  - [x] Money plus cost with zero plus note behavior (covers AC-3, AC-5, AC-8)
+  - [x] Fallback plus hardening with totals only guard (covers AC-4, AC-6, AC-8)
+  - code in `lib/kpi.ts`, `app/api/admin/metrics/route.ts`, `app/(admin)/admin/metrics/page.tsx`
+- [ ] Verify it: `/verify-release conversion analytics`
+- [ ] Test it: `/test-engineer conversion analytics`
 
 ### 43. Affiliate invites for partners · needs a decision · from spec 0014
 Today any signed in student becomes a paying affiliate by loading `/affiliate`, and 500 credits are paid at signup before email verification. The owner wants the opposite: no student can create a link or see the page, an admin invites a chosen person, and only that person sees their partner stats.

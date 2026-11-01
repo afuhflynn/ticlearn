@@ -3,8 +3,13 @@ import { GET } from "@/app/api/admin/metrics/route";
 import { auth } from "@/lib/auth";
 import {
   computeActivationFunnel,
+  computeAiCost,
   computeCohortRetention,
+  computeConversionFunnel,
+  computeConversionTakeRates,
+  computeFallbackRate,
   computeMRR,
+  computePendingToPaid,
   computeSubjectDistribution,
   countDistinctActiveUsers,
 } from "@/lib/kpi";
@@ -29,6 +34,11 @@ vi.mock("@/lib/kpi", () => ({
   computeSubjectDistribution: vi.fn(),
   computeActivationFunnel: vi.fn(),
   computeDailyMetrics: vi.fn(),
+  computeConversionFunnel: vi.fn(),
+  computeConversionTakeRates: vi.fn(),
+  computePendingToPaid: vi.fn(),
+  computeFallbackRate: vi.fn(),
+  computeAiCost: vi.fn(),
 }));
 
 const db = prisma as unknown as {
@@ -83,6 +93,41 @@ beforeEach(() => {
     onboardingCompleted: 0,
     firstQuizTaken: 0,
     returnedAfterOnboarding: 0,
+  });
+  vi.mocked(computeConversionFunnel).mockResolvedValue({
+    signup: 0,
+    firstNote: 0,
+    firstTipAnswer: 0,
+    firstQuiz: 0,
+    firstLimitHit: 0,
+    firstUpgradeStart: 0,
+    completedPurchases: 0,
+    paidSuccessCheck: 0,
+  });
+  vi.mocked(computeConversionTakeRates).mockResolvedValue({
+    base: 0,
+    weeklyFirst: 0,
+    semesterFirst: 0,
+    weeklyTakeRate: 0,
+    semesterTakeRate: 0,
+  });
+  vi.mocked(computePendingToPaid).mockResolvedValue({
+    upgradeUsers: 0,
+    paidUsers: 0,
+    convertedUsers: 0,
+    rate: 0,
+  });
+  vi.mocked(computeFallbackRate).mockResolvedValue({
+    total: 0,
+    fallback: 0,
+    rate: 0,
+    note: "Fallback logging started 26 Oct 2026. Windows before that show zero.",
+  });
+  vi.mocked(computeAiCost).mockResolvedValue({
+    totalXaf: 0,
+    paidUsers: 0,
+    costPerPaidUserXaf: 0,
+    note: "No AI cost rows in this window. Cost sums live from AiUsageEvent.",
   });
 });
 

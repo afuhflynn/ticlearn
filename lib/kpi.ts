@@ -401,3 +401,267 @@ export async function computeActivationFunnel() {
     returnedAfterOnboarding: cameBack.length,
   };
 }
+
+/** When fallback logging started, shown when a window has no search rows. */
+export const FALLBACK_LOG_NOTE =
+  "Fallback logging started 26 Oct 2026. Windows before that show zero.";
+
+function inWindow(d: Date, from: Date, to: Date) {
+  const t = d.getTime();
+  return t >= from.getTime() && t <= to.getTime();
+}
+
+export interface ConversionFunnel {
+  signup: number;
+  firstNote: number;
+  firstTipAnswer: number;
+  firstQuiz: number;
+  firstLimitHit: number;
+  firstUpgradeStart: number;
+  completedPurchases: number;
+  paidSuccessCheck: number;
+}
+
+export async function computeConversionFunnel(
+  from: Date,
+  to: Date,
+): Promise<ConversionFunnel> {
+  const userWhere = { role: "USER" as const };
+  const [
+    signup,
+    noteGroups,
+    quizGroups,
+    tipGroups,
+    limitGroups,
+    upgradeGroups,
+    paidGroups,
+    activeSubs,
+  ] = await Promise.all([
+    prisma.user.count({
+      where: {
+        ...userWhere,
+        emailVerified: true,
+        createdAt: { gte: from, lte: to },
+      },
+    }),
+    prisma.note.groupBy({
+      by: ["userId"],
+      where: { user: userWhere },
+      _min: { createdAt: true },
+    }),
+    prisma.quiz.groupBy({
+      by: ["userId"],
+      where: { user: userWhere },
+      _min: { createdAt: true },
+    }),
+    prisma.chatMessage.groupBy({
+      by: ["userId"],
+      where: { user: userWhere, role: "assistant" },
+      _min: { createdAt: true },
+    }),
+    prisma.kpiEvent.groupBy({
+      by: ["userId"],
+      where: {
+        event: EVENTS.LIMIT_HIT,
+        createdAt: { gte: from, lte: to },
+        user: userWhere,
+      },
+    }),
+    prisma.kpiEvent.groupBy({
+      by: ["userId"],
+      where: {
+        event: EVENTS.UPGRADE_START,
+        createdAt: { gte: from, lte: to },
+        user: userWhere,
+      },
+    }),
+    prisma.kpiEvent.groupBy({
+      by: ["userId"],
+      where: {
+        event: EVENTS.PAID_SUCCESS,
+        createdAt: { gte: from, lte: to },
+        user: userWhere,
+      },
+    }),
+    prisma.subscription.count({
+      where: {
+        status: "ACTIVE",
+        activatedAt: { gte: from, lte: to },
+        user: userWhere,
+      },
+    }),
+  ]);
+
+  const firstNote = noteGroups.filter(
+    (g) => g._min.createdAt && inWindow(g._min.createdAt, from, to),
+  ).length;
+  const firstQuiz = quizGroups.filter(
+    (g) => g._min.createdAt && inWindow(g._min.createdAt, from, to),
+  ).length;
+  const firstTipAnswer = tipGroups.filter(
+    (g) => g._min.createdAt && inWindow(g._min.createdAt, from, to),
+  ).length;
+
+  return {
+    signup,
+    firstNote,
+    firstTipAnswer,
+    firstQuiz,
+    firstLimitHit: limitGroups.length,
+    firstUpgradeStart: upgradeGroups.length,
+    completedPurchases: activeSubs,
+    paidSuccessCheck: paidGroups.length,
+  };
+}
+
+export interface ConversionTakeRates {
+  base: number;
+  weeklyFirst: number;
+  semesterFirst: number;
+  weeklyTakeRate: number;
+  semesterTakeRate: number;
+}
+
+function toRate(numerator: number, base: number) {
+  if (base <= 0) return 0;
+  return Math.round((numerator / base) * 10000) / 100;
+}
+
+export async function computeConversionTakeRates(): Promise<ConversionTakeRates> {
+  const [base, weeklyFirst, semesterFirst] = await Promise.all([
+    prisma.user.count({
+      where: { role: "USER", emailVerified: true },
+    }),
+    prisma.subscription.count({
+      where: {
+        status: "ACTIVE",
+        plan: "WEEKLY",
+        user: { role: "USER" },
+      },
+    }),
+    prisma.subscription.count({
+      where: {
+        status: "ACTIVE",
+        plan: "PRO",
+        user: { role: "USER" },
+      },
+    }),
+  ]);
+  return {
+    base,
+    weeklyFirst,
+    semesterFirst,
+    weeklyTakeRate: toRate(weeklyFirst, base),
+    semesterTakeRate: toRate(semesterFirst, base),
+  };
+}
+
+export interface PendingToPaid {
+  upgradeUsers: number;
+  paidUsers: number;
+  convertedUsers: number;
+  rate: number;
+}
+
+export async function computePendingToPaid(
+  from: Date,
+  to: Date,
+): Promise<PendingToPaid> {
+  const [upgradeGroups, paidGroups] = await Promise.all([
+    prisma.kpiEvent.groupBy({
+      by: ["userId"],
+      where: {
+        event: EVENTS.UPGRADE_START,
+        createdAt: { gte: from, lte: to },
+        user: { role: "USER" },
+      },
+    }),
+    prisma.kpiEvent.groupBy({
+      by: ["userId"],
+      where: {
+        event: EVENTS.PAID_SUCCESS,
+        createdAt: { gte: from, lte: to },
+        user: { role: "USER" },
+      },
+    }),
+  ]);
+  const upgradeSet = new Set(upgradeGroups.map((g) => g.userId));
+  const paidSet = new Set(paidGroups.map((g) => g.userId));
+  let converted = 0;
+  for (const id of paidSet) {
+    if (upgradeSet.has(id)) converted += 1;
+  }
+  return {
+    upgradeUsers: upgradeSet.size,
+    paidUsers: paidSet.size,
+    convertedUsers: converted,
+    rate: upgradeSet.size > 0 ? toRate(converted, upgradeSet.size) : 0,
+  };
+}
+
+export interface FallbackRate {
+  total: number;
+  fallback: number;
+  rate: number;
+  note: string | null;
+}
+
+export async function computeFallbackRate(
+  from: Date,
+  to: Date,
+): Promise<FallbackRate> {
+  const [total, fallback] = await Promise.all([
+    prisma.webSearchEvent.count({
+      where: { tool: "webSearch", createdAt: { gte: from, lte: to } },
+    }),
+    prisma.webSearchEvent.count({
+      where: {
+        tool: "webSearch",
+        fallbackUsed: true,
+        createdAt: { gte: from, lte: to },
+      },
+    }),
+  ]);
+  return {
+    total,
+    fallback,
+    rate: total > 0 ? toRate(fallback, total) : 0,
+    note: total === 0 ? FALLBACK_LOG_NOTE : null,
+  };
+}
+
+export interface AiCostSummary {
+  totalXaf: number;
+  paidUsers: number;
+  costPerPaidUserXaf: number;
+  note: string | null;
+}
+
+export async function computeAiCost(
+  from: Date,
+  to: Date,
+): Promise<AiCostSummary> {
+  const [agg, paidUsers] = await Promise.all([
+    prisma.aiUsageEvent.aggregate({
+      _sum: { costXaf: true },
+      where: { createdAt: { gte: from, lte: to } },
+    }),
+    prisma.subscription.count({
+      where: {
+        status: "ACTIVE",
+        activatedAt: { gte: from, lte: to },
+        user: { role: "USER" },
+      },
+    }),
+  ]);
+  const totalXaf = Math.floor(agg._sum.costXaf ?? 0);
+  return {
+    totalXaf,
+    paidUsers,
+    costPerPaidUserXaf: paidUsers > 0 ? Math.floor(totalXaf / paidUsers) : 0,
+    note:
+      totalXaf === 0
+        ? "No AI cost rows in this window. Cost sums live from AiUsageEvent."
+        : null,
+  };
+}
