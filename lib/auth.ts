@@ -92,6 +92,21 @@ export const auth = betterAuth({
             description: "Welcome bonus: 200 credits to start learning",
           }).catch(console.error);
 
+          // Ambassador attribution runs for both password and Google signups.
+          // The code arrives as referredBy when the signup form passes ?ref,
+          // otherwise the attach route binds the signed tic_ref cookie later.
+          const code = (user as { referredBy?: string | null }).referredBy;
+          if (code) {
+            const { attachAmbassadorReferral } = await import(
+              "@/lib/ambassadors/attach"
+            );
+            await attachAmbassadorReferral({
+              newUserId: user.id,
+              newUserEmail: user.email,
+              code,
+            }).catch(console.error);
+          }
+
           // Send the welcome email to every signup, not just Google accounts.
           await inngest
             .send({

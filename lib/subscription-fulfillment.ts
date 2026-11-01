@@ -91,5 +91,13 @@ export async function fulfillSubscriptionFromFapshi(params: {
     subscriptionId: sub.id,
   }).catch((error) => console.error("grantPlanCredits failed:", error));
 
+  // Ambassador qualify runs on the same settled signal, idempotent by row state.
+  const { qualifyAmbassadorReferral } = await import(
+    "@/lib/ambassadors/qualify"
+  );
+  await qualifyAmbassadorReferral({ buyerId: sub.userId }).catch((error) =>
+    console.error("ambassador qualify failed:", error),
+  );
+
   return { ok: true, transitioned: true, subscriptionId: externalId };
 }

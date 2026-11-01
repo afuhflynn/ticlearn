@@ -42,10 +42,12 @@ const publicPaths = [
   "/privacy",
   "/terms",
   "/pricing",
+  "/r",
   "/api/auth",
   "/api/webhooks",
   "/api/inngest",
   "/api/uploadthing",
+  "/api/ambassadors/click",
 ];
 
 const authPaths = ["/sign-in", "/sign-up", "/verify-email"];
@@ -60,6 +62,7 @@ const protectedRoutes = [
   "/settings",
   "/admin",
   "/subscription",
+  "/ambassadors",
   "/onboarding",
 ];
 

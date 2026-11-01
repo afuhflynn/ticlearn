@@ -58,10 +58,17 @@ Spec 0035 [0035](../specs/0035-free-tier-conversion-surfaces/index.md) · code i
 
 (basis: research/audience-and-market.md §5 · showing premium first then letting the student sample is documented as increasing conversion, which directly challenges the default of hiding the paid tier)
 
-### 31. Campus ambassadors · needs a decision
+### 31. Campus ambassadors · in-progress
 A student who refers enough people earns a free semester pass. Costs nothing, pays in acquisition, and every ambassador becomes a trusted local advocate. A faculty or student union buying seats in bulk is the same mechanism at larger scale and is left for the [deferred](index.md#deferred) list.
 **Done when:** a student can share a referral link over WhatsApp, a referred student who upgrades credits the referrer only after verified email, self referral never pays, a referrer who reaches the threshold receives a semester pass automatically, and the programme promises a pass for referrals only with no income claim.
-- [ ] Design it (spec): `/solution-architect campus ambassadors`
+- [x] Design it (spec): `/solution-architect campus ambassadors`
+- [x] Build it: `/feature-build campus ambassadors`
+  - [x] Attribution thread plus auto grant (covers AC-2, AC-3, AC-4, AC-5, AC-6, AC-12)
+  - [x] Student plus admin surfaces plus copy honesty (covers AC-1, AC-9, AC-10, AC-11)
+  - [x] Expiry plus fraud plus single grant guard (covers AC-7, AC-8)
+- [ ] Verify it: `/verify-release campus ambassadors`
+- [ ] Test it: `/test-engineer campus ambassadors`
+Spec 0036 [0036](../specs/0036-campus-ambassadors/index.md) · code in `lib/ambassadors/`, `app/r/[code]/`, `app/api/ambassadors/`, `app/api/admin/ambassadors/`, `app/(dashboard)/ambassadors/`, `app/(admin)/admin/ambassadors/`
 
 (basis: research/audience-and-market.md §7 · this is the hardship route as a business asset rather than charity, and it monetises the students who cannot pay through the students who can)
 
