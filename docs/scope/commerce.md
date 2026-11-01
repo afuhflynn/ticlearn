@@ -23,19 +23,38 @@ Spec 0033 [0033](../specs/0033-semester-pass-plans-and-limits.md)
 
 (basis: research/audience-and-market.md §7 and §8 · heavy AI use costs about 130 to 200 XAF a month per student against a 2,500 XAF pass, so the AI allowance is well over ninety percent margin, and September is the worst month to ask for money because registration has just drained the family)
 
-### 29. Mobile money payments for the pass · needs a decision · GA
+### 29. Mobile money payments for the pass · GA · in-progress
 Payments run through Fapshi today. Research is specific about the failure mode that loses the sale: a PIN timeout shown to the student as an error, and payment only working on WiFi. The webhook currently grants a subscription when its secret is unset, and that is fixed upstream in [Security](platform.md#2-security-and-integrity-hardening--ga).
 **Done when:** MTN Mobile Money leads with Orange Money always present, amounts come from buttons, a timed out PIN reads as normal and invites a retry, a pending payment shows what happens next plus a recheck action, the receipt arrives by email, the webhook uses the stored amount, a retry reuses the same row, and no payment can be replayed to grant twice.
 
 And given that we are having some kind of credit based business model, then users too can decide to type in the amount to pay and then purchase an amount of credits appropriate for what they paid for right?
-- [ ] Design it (spec): `/solution-architect mobile money payments for the pass`
+- [x] Design it (spec): `/solution-architect mobile money payments for the pass`
+- [x] Build it: `/feature-build mobile money payments for the pass`
+  - [x] Migration plus resolved read (covers AC-1, AC-3)
+  - [x] Pass plus credit threads with webhook guard (covers AC-1, AC-3, AC-7, AC-8, AC-9, AC-11)
+  - [x] Student pending plus receipt plus feel (covers AC-2, AC-4, AC-5, AC-6, AC-12)
+  - [x] Hardening plus admin plus trail (covers AC-10, AC-11)
+- [ ] Verify it: `/verify-release mobile money payments for the pass`
+- [ ] Test it: `/test-engineer mobile money payments for the pass`
+- [ ] Review it (fresh model): `/peer-review mobile money payments for the pass`
+- [ ] Document it: `/tech-writer mobile money payments for the pass`
+Spec 0034 [0034](../specs/0034-mobile-money-payments/index.md) · code in `lib/mobile-money.ts`, `lib/subscription-fulfillment.ts`, `app/api/payment/`, `app/api/credits/purchase/`, `app/api/admin/payments/`, `app/(dashboard)/subscription/page.tsx`
 
 (basis: research/design-reference.md §12 · PIN timeouts are the top payment failure in this market and should not be surfaced as errors; research/audience-and-market.md §3 · MTN dominates the Southwest and Anglophone student belt, so MTN is first, never Orange first)
 
-### 30. Free tier conversion surfaces · needs a decision · GA
+### 30. Free tier conversion surfaces · GA · in-progress
 The free tier has to work on its own and still lead somewhere. Research found freemium converts around two percent at thirty five days, that rest of world conversions land late and need reminders, and that a soft paywall at the moment of value outperforms a wall at the door. Our own advice said premium first, then let them sample.
 **Done when:** free works alone for notes plus quiz plus Tip within its counts, every limit notice names the limit plus what weekly or semester adds, the upgrade prompt appears when value is proven, the upgrade screen shows weekly and semester prices with mobile money marks visible, and notes stay open for a student who never pays.
-- [ ] Design it (spec): `/solution-architect free tier conversion surfaces`
+- [x] Design it (spec): `/solution-architect free tier conversion surfaces`
+- [x] Build it: `/feature-build free tier conversion surfaces`
+  - [x] Event plus notice plus upgrade page (covers AC-2, AC-5, AC-7)
+  - [x] Value triggers plus quiet rules (covers AC-3, AC-4, AC-6)
+  - [x] Proof plus hardening (covers AC-1, AC-7, AC-8)
+- [ ] Verify it: `/verify-release free tier conversion surfaces`
+- [ ] Test it: `/test-engineer free tier conversion surfaces`
+- [ ] Review it (fresh model): `/peer-review free tier conversion surfaces`
+- [ ] Document it: `/tech-writer free tier conversion surfaces`
+Spec 0035 [0035](../specs/0035-free-tier-conversion-surfaces/index.md) · code in `app/api/prompts/event/`, `components/upgrade/`, `app/(dashboard)/subscription/`, `lib/day.ts`
 
 (basis: research/audience-and-market.md §5 · showing premium first then letting the student sample is documented as increasing conversion, which directly challenges the default of hiding the paid tier)
 

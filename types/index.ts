@@ -334,6 +334,12 @@ export interface UsageData {
     resetsAt: string;
     resetsInSeconds: number;
   } | null;
+  prompt?: {
+    showFull: boolean;
+    shownToday: boolean;
+    dismissedToday: boolean;
+    resetsAt: string;
+  };
 }
 
 export interface UserProfile {

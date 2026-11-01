@@ -57,6 +57,11 @@ export const queryKeys = {
   adminMetrics: (params?: Record<string, unknown>) =>
     ["admin", "metrics", params] as const,
   adminRetention: ["admin", "metrics", "retention"] as const,
+
+  adminConversion: ["admin", "conversion"] as const,
+
+  plans: ["plans"] as const,
+  upgradePrompt: ["upgrade", "prompt"] as const,
 } as const;
 
 export type QueryKey = typeof queryKeys;

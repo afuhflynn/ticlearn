@@ -26,6 +26,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts/loader";
 import { limit } from "@/lib/rate-limit";
+import { getPlanLimits } from "@/lib/plan-limits";
 
 export const runtime = "nodejs";
 
@@ -741,14 +742,25 @@ export async function POST(req: Request) {
       PRO: -1,
     };
 
-    const chatLimit = dailyLimits[plan] || 8;
+    const resolvedLimit = getPlanLimits(plan).aiTutorMessages;
+    const chatLimit =
+      plan === "FREE" ? resolvedLimit : (dailyLimits[plan] ?? resolvedLimit);
 
     if (!isPaid) {
       if (chatLimit !== -1 && chatsToday >= chatLimit) {
+        trackEvent(userId, EVENTS.LIMIT_HIT, {
+          surface: "tip",
+          kind: "tip_limit",
+          used: chatsToday,
+          cap: chatLimit,
+        }).catch(() => {});
         return NextResponse.json(
           {
             error:
               "Your daily AI chat allowance is exhausted. You can still read previous conversations until the next reset.",
+            code: "UPGRADE_REQUIRED",
+            used: chatsToday,
+            cap: chatLimit,
           },
           { status: 403 },
         );

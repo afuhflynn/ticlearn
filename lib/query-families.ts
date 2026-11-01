@@ -80,6 +80,8 @@ export const queryFamilies = {
   credits: ALWAYS_FRESH,
   /** Plan usage counters. */
   usage: ALWAYS_FRESH,
+  /** Resolved plan catalogue for the upgrade surfaces. */
+  plans: PLAN,
   /** Chat conversations and messages. */
   chat: ALWAYS_FRESH,
   /** Notes, which poll on their own while a note is processing. */

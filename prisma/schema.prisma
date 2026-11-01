@@ -415,6 +415,8 @@ model Subscription {
   status        SubscriptionStatus @default(PENDING)
   fapshiTransId String?            @unique @map("fapshi_trans_id")
   amount        Int
+  provider      String?
+  phone         String?
   activatedAt   DateTime?          @map("activated_at")
   createdAt     DateTime           @default(now())
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -923,6 +925,8 @@ model CreditPurchaseOrder {
   creditsPromised Int                  @map("credits_promised")
   status          CreditPurchaseStatus @default(PENDING)
   fapshiTransId   String?              @unique @map("fapshi_trans_id")
+  provider        String?
+  phone           String?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -930,6 +934,7 @@ model CreditPurchaseOrder {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([status])
   @@map("credit_purchase_orders")
 }
 

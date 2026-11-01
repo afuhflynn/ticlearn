@@ -29,6 +29,12 @@ interface UseUsageResult {
   canGenerateQuiz: boolean;
   canUseAIChat: boolean;
   chatDailyUsage: ChatDailyUsage | null;
+  prompt: {
+    showFull: boolean;
+    shownToday: boolean;
+    dismissedToday: boolean;
+    resetsAt: string | null;
+  };
   isLoading: boolean;
   isPaid: boolean;
   isPending: boolean;
@@ -70,6 +76,12 @@ export function useUsage(): UseUsageResult {
     canGenerateQuiz: data?.canGenerateQuiz ?? true,
     canUseAIChat: data?.canUseAIChat ?? true,
     chatDailyUsage: data?.chatDailyUsage ?? null,
+    prompt: {
+      showFull: data?.prompt?.showFull ?? true,
+      shownToday: data?.prompt?.shownToday ?? false,
+      dismissedToday: data?.prompt?.dismissedToday ?? false,
+      resetsAt: data?.prompt?.resetsAt ?? null,
+    },
     isLoading,
     isPaid,
     isPending,

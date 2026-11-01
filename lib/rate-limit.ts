@@ -28,6 +28,8 @@ const bucketConfigs: Record<
   search: { refillRate: 10, interval: 60, capacity: 30 },
   contact: { refillRate: 3, interval: 3600, capacity: 3 },
   payment: { refillRate: 10, interval: 60, capacity: 20 },
+  "payment-initiate": { refillRate: 5, interval: 3600, capacity: 5 },
+  "payment-status": { refillRate: 30, interval: 60, capacity: 30 },
   admin: { refillRate: 30, interval: 60, capacity: 100 },
   default: { refillRate: 30, interval: 60, capacity: 100 },
 };

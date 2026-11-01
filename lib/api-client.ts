@@ -150,6 +150,29 @@ export const api = {
 
     usage: () => apiRequest<UsageData>("/usage", { method: "GET" }),
 
+    plans: () =>
+      apiRequest<{
+        tiers: Array<{
+          key: string;
+          label: string;
+          priceXaf: number;
+          period: string;
+          periodDays: number | null;
+          semesterMonths: number | null;
+          credits: number;
+          features: string[];
+          cta: string;
+          popular: boolean;
+          notForSale: boolean;
+          limits: {
+            pdfUploads: number;
+            quizGenerations: number;
+            aiTutorMessages: number;
+            maxConversationMessages: number;
+          };
+        }>;
+      }>("/plans", { method: "GET", isPublic: true }),
+
     credits: () =>
       apiRequest<{
         balance: number;
@@ -185,6 +208,21 @@ export const api = {
             method: "GET",
           },
         ),
+      status: (transId: string) =>
+        apiRequest<{
+          kind?: "pass" | "credits";
+          status: string;
+          plan?: string;
+          transId?: string;
+          providerStatus?: string | null;
+          next?: string;
+          pollHint?: string;
+          paidAt?: string | null;
+          credits?: number;
+          amount?: number;
+        }>(`/payment/status?transId=${encodeURIComponent(transId)}`, {
+          method: "GET",
+        }),
     },
 
     stats: {
@@ -249,6 +287,13 @@ export const api = {
       }>("/subscription/me", {
         method: "GET",
       }),
+
+    conversion: () =>
+      apiRequest<{
+        range: { start: string; end: string };
+        byEvent: Record<string, number>;
+        paid: number;
+      }>("/admin/conversion", { method: "GET" }),
 
     invites: {
       accept: (data: { token: string }) =>
@@ -390,6 +435,43 @@ export const api = {
             body: data,
           },
         ),
+      initiatePass: (data: { plan: string; phone: string; provider: string }) =>
+        apiRequest<{ link: string; transId: string; status: string }>(
+          "/payment/initiate",
+          { method: "POST", body: data },
+        ),
+      initiateCredits: (data: {
+        amountXaf: number;
+        phone: string;
+        provider: string;
+      }) =>
+        apiRequest<{
+          link: string;
+          transId: string;
+          orderId: string;
+          creditsPromised: number;
+          amountXaf: number;
+        }>("/credits/purchase/initiate", { method: "POST", body: data }),
+    },
+
+    prompts: {
+      record: (data: {
+        event:
+          | "limit_hit"
+          | "prompt_shown"
+          | "prompt_clicked"
+          | "prompt_dismissed"
+          | "upgrade_start";
+        surface: "quiz" | "tip" | "note";
+        kind?: string;
+        used?: number;
+        cap?: number;
+        metadata?: Record<string, unknown>;
+      }) =>
+        apiRequest<{ ok: boolean; deduped?: boolean }>("/prompts/event", {
+          method: "POST",
+          body: data,
+        }),
     },
 
     affiliate: {

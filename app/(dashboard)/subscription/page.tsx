@@ -42,8 +42,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { WHATSAPP_GROUP_URL } from "@/constants/contact";
 import { planCatalog, publicPlans } from "@/constants/plans";
-import { useCredits, useUsage } from "@/hooks";
+import { useCredits, usePlans, useUsage } from "@/hooks";
+import { api } from "@/lib/api-client";
+import {
+  CREDIT_MAX_XAF,
+  CREDIT_MIN_XAF,
+  CREDIT_STEP_XAF,
+  creditsForXaf,
+  MOMO_PROVIDERS,
+} from "@/lib/mobile-money";
 import { subscriptionViewParsers } from "@/nuqs/subscription";
 import { SubscriptionSkeleton } from "../student-skeletons";
 
@@ -85,15 +94,19 @@ function PaidReceipt() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/subscription/me")
-      .then((r) => (r.ok ? r.json() : null))
+    api.queries
+      .subscription()
       .then((data) => {
         if (cancelled || !data?.subscription) return;
+        const full = data.subscription as typeof data.subscription & {
+          amount?: number;
+          fapshiTransId?: string | null;
+        };
         setReceipt({
-          plan: data.subscription.plan,
-          amount: data.subscription.amount,
-          transId: data.subscription.fapshiTransId ?? null,
-          paidAt: data.subscription.activatedAt ?? null,
+          plan: full.plan,
+          amount: full.amount ?? 0,
+          transId: full.fapshiTransId ?? null,
+          paidAt: full.activatedAt ?? null,
         });
       })
       .catch(() => {});
@@ -103,15 +116,26 @@ function PaidReceipt() {
   }, []);
 
   if (!receipt) return null;
+  let paidLabel: string | null = null;
+  if (receipt.paidAt) {
+    try {
+      paidLabel = new Date(receipt.paidAt).toLocaleDateString("en-GB", {
+        timeZone: "Africa/Douala",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    } catch {
+      paidLabel = new Date(receipt.paidAt).toLocaleDateString();
+    }
+  }
   return (
     <div className="rounded-lg border p-4">
       <p className="text-sm font-medium">Receipt</p>
       <p className="mt-1 text-sm text-muted-foreground">
         {planCatalog[receipt.plan]?.label ?? receipt.plan} ·{" "}
         {receipt.amount.toLocaleString()} FCFA
-        {receipt.paidAt
-          ? ` · paid ${new Date(receipt.paidAt).toLocaleDateString()}`
-          : ""}
+        {paidLabel ? ` · paid ${paidLabel}` : ""}
       </p>
       {receipt.transId ? (
         <p className="mt-1 text-xs text-muted-foreground">
@@ -124,17 +148,26 @@ function PaidReceipt() {
   );
 }
 
+const MAX_RECHECK_ATTEMPTS = 60;
+
 function PendingRecheck() {
   const [transId, setTransId] = useState<string | null>(null);
   const [label, setLabel] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+  const [checking, setChecking] = useState(false);
+  const done = attempts >= MAX_RECHECK_ATTEMPTS;
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/subscription/me")
-      .then((r) => (r.ok ? r.json() : null))
+    api.queries
+      .subscription()
       .then((data) => {
-        if (!cancelled && data?.subscription?.fapshiTransId)
-          setTransId(data.subscription.fapshiTransId);
+        if (cancelled) return;
+        const full = data?.subscription as
+          | (typeof data.subscription & { fapshiTransId?: string | null })
+          | null
+          | undefined;
+        if (full?.fapshiTransId) setTransId(full.fapshiTransId);
       })
       .catch(() => {});
     return () => {
@@ -144,34 +177,61 @@ function PendingRecheck() {
 
   useEffect(() => {
     if (!transId) return;
-    let attempts = 0;
     let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     const tick = async () => {
-      attempts += 1;
+      if (stopped) return;
+      setAttempts((n) => {
+        if (n >= MAX_RECHECK_ATTEMPTS) return n;
+        return n + 1;
+      });
       try {
-        const r = await fetch(
-          `/api/payment/status?transId=${encodeURIComponent(transId)}`,
-        );
-        const data = await r.json().catch(() => null);
-        if (!stopped && data?.status === "ACTIVE") {
+        const data = await api.queries.payments.status(transId);
+        if (stopped) return;
+        if (data?.status === "ACTIVE") {
           window.location.reload();
           return;
         }
-        if (!stopped && data?.providerStatus)
+        if (data?.providerStatus)
           setLabel(`Phone provider says: ${data.providerStatus}.`);
       } catch {}
-      if (!stopped && attempts < 60) setTimeout(tick, 5000);
-      else if (!stopped)
-        setLabel(
-          "Still pending after 5 minutes. Contact support with the transaction id below.",
-        );
+      if (!stopped) {
+        setAttempts((n) => {
+          if (n < MAX_RECHECK_ATTEMPTS) {
+            timer = setTimeout(tick, 5000);
+          } else {
+            setLabel(
+              "Still pending after 5 minutes. Contact support with the transaction id below.",
+            );
+          }
+          return n;
+        });
+      }
     };
-    const t = setTimeout(tick, 5000);
+    timer = setTimeout(tick, 5000);
     return () => {
       stopped = true;
-      clearTimeout(t);
+      if (timer) clearTimeout(timer);
     };
   }, [transId]);
+
+  const handleRecheck = async () => {
+    if (!transId || checking || done) return;
+    setChecking(true);
+    try {
+      const data = await api.queries.payments.status(transId);
+      if (data?.status === "ACTIVE") {
+        window.location.reload();
+        return;
+      }
+      setAttempts((n) => Math.min(n + 1, MAX_RECHECK_ATTEMPTS));
+      if (data?.providerStatus)
+        setLabel(`Phone provider says: ${data.providerStatus}.`);
+    } catch {
+    } finally {
+      setChecking(false);
+    }
+  };
 
   if (!transId) return null;
   return (
@@ -179,13 +239,54 @@ function PendingRecheck() {
       <p className="text-xs text-muted-foreground">
         Transaction id: <span className="tabular-nums">{transId}</span>
       </p>
+      <div className="space-y-1">
+        <Progress
+          value={Math.min(
+            100,
+            Math.round((attempts / MAX_RECHECK_ATTEMPTS) * 100),
+          )}
+          className="h-2"
+        />
+        <p className="text-xs text-muted-foreground tabular-nums">
+          Recheck {Math.min(attempts, MAX_RECHECK_ATTEMPTS)} of{" "}
+          {MAX_RECHECK_ATTEMPTS}
+        </p>
+      </div>
       {label ? (
         <p className="text-xs text-muted-foreground">{label}</p>
       ) : (
         <p className="text-xs text-muted-foreground">
-          Rechecking every 5 seconds. Keep this page open.
+          Still waiting on the phone prompt. Finish the PIN on your phone, then
+          press Recheck. The wait is normal.
         </p>
       )}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleRecheck}
+          disabled={checking || done}
+        >
+          {checking ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" />
+              Rechecking
+            </>
+          ) : (
+            "Recheck now"
+          )}
+        </Button>
+        {done ? (
+          <a
+            href={WHATSAPP_GROUP_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs text-muted-foreground underline"
+          >
+            Ask for help with this id
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -202,6 +303,7 @@ export default function SubscriptionPage() {
     refetch,
   } = useUsage();
   const { data: creditsData } = useCredits();
+  const { tiers: resolvedTiers } = usePlans();
   const router = useRouter();
 
   const [view, setView] = useQueryStates(
@@ -215,6 +317,12 @@ export default function SubscriptionPage() {
   const [manualPlan, setManualPlan] = useState("PRO");
   const [paymentMethod, setPaymentMethod] = useState("MTN");
   const [transactionId, setTransactionId] = useState("");
+  const [momoPhone, setMomoPhone] = useState("");
+  const [momoProvider, setMomoProvider] = useState<string>("MTN");
+  const [creditAmount, setCreditAmount] = useState("1000");
+  const [creditPhone, setCreditPhone] = useState("");
+  const [creditProvider, setCreditProvider] = useState<string>("MTN");
+  const [isCreditSubmitting, setIsCreditSubmitting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,17 +351,22 @@ export default function SubscriptionPage() {
   }, []);
 
   const handleUpgrade = async (selectedPlan: string) => {
+    if (!momoPhone.trim()) {
+      toast.error("Enter the phone number that will approve the PIN.");
+      return;
+    }
     setIsSubmitting(true);
     try {
-      const res = await fetch("/api/payment/initiate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ plan: selectedPlan }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Could not start the payment");
+      const fresh = await api.queries.plans().catch(() => null);
+      if (!fresh) {
+        toast.error("The offer did not load. Check connection then retry.");
+        return;
       }
+      const data = await api.mutations.payments.initiatePass({
+        plan: selectedPlan,
+        phone: momoPhone.trim(),
+        provider: momoProvider,
+      });
       if (data.link) {
         window.location.href = data.link;
       } else {
@@ -265,6 +378,37 @@ export default function SubscriptionPage() {
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const creditAmountNumber = Number.parseInt(creditAmount, 10);
+  const creditPreview = Number.isInteger(creditAmountNumber)
+    ? creditsForXaf(creditAmountNumber)
+    : 0;
+
+  const handleCreditBuy = async () => {
+    if (!creditPhone.trim()) {
+      toast.error("Enter the phone number that will approve the PIN.");
+      return;
+    }
+    setIsCreditSubmitting(true);
+    try {
+      const data = await api.mutations.payments.initiateCredits({
+        amountXaf: creditAmountNumber,
+        phone: creditPhone.trim(),
+        provider: creditProvider,
+      });
+      if (data.link) {
+        window.location.href = data.link;
+      } else {
+        toast.error("The payment link was not generated. Please try again.");
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Could not start the payment",
+      );
+    } finally {
+      setIsCreditSubmitting(false);
     }
   };
 
@@ -312,6 +456,17 @@ export default function SubscriptionPage() {
   const isFree = plan === "FREE";
   const hasStatus = status !== "NONE";
   const manualPlans = publicPlans.filter((p) => p.key !== "FREE");
+  const offerTiers =
+    resolvedTiers.length > 0
+      ? resolvedTiers.filter((t) => ["FREE", "WEEKLY", "PRO"].includes(t.key))
+      : publicPlans.map((p) => ({
+          key: p.key,
+          label: p.label,
+          priceXaf: p.priceXaf,
+          features: p.features,
+          popular: p.popular ?? false,
+          cta: p.cta,
+        }));
   const hasManualNumbers =
     Boolean(paymentSettings?.mtnNumber) ||
     Boolean(paymentSettings?.orangeNumber);
@@ -521,6 +676,79 @@ export default function SubscriptionPage() {
         </CardFooter>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Smartphone className="size-5 text-primary" />
+            Top up credits
+          </CardTitle>
+          <CardDescription>
+            Type an amount from {CREDIT_MIN_XAF.toLocaleString()} XAF to{" "}
+            {CREDIT_MAX_XAF.toLocaleString()} XAF in {CREDIT_STEP_XAF} XAF
+            steps. Every 1 XAF gives 5 credits.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="credit-amount">Amount (XAF)</Label>
+              <Input
+                id="credit-amount"
+                inputMode="numeric"
+                placeholder="1000"
+                value={creditAmount}
+                onChange={(event) => setCreditAmount(event.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="credit-provider">Mobile Money</Label>
+              <Select value={creditProvider} onValueChange={setCreditProvider}>
+                <SelectTrigger id="credit-provider" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOMO_PROVIDERS.map((p) => (
+                    <SelectItem key={p.code} value={p.code}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="credit-phone">Phone number</Label>
+              <Input
+                id="credit-phone"
+                inputMode="tel"
+                placeholder="6XXXXXXXX"
+                value={creditPhone}
+                onChange={(event) => setCreditPhone(event.target.value)}
+              />
+            </div>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {Number.isInteger(creditAmountNumber) &&
+            creditAmountNumber >= CREDIT_MIN_XAF &&
+            creditAmountNumber <= CREDIT_MAX_XAF
+              ? `${creditAmountNumber.toLocaleString()} XAF gives ${creditPreview.toLocaleString()} credits.`
+              : `Type ${CREDIT_MIN_XAF.toLocaleString()} to ${CREDIT_MAX_XAF.toLocaleString()} XAF.`}
+          </p>
+          <Button
+            onClick={handleCreditBuy}
+            disabled={isCreditSubmitting || !creditPhone.trim()}
+          >
+            {isCreditSubmitting ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Starting
+              </>
+            ) : (
+              "Buy credits with Mobile Money"
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
       {hasManualNumbers ? (
         <Card>
           <CardHeader>
@@ -633,14 +861,43 @@ export default function SubscriptionPage() {
             <DialogTitle>Choose a plan</DialogTitle>
             <DialogDescription>
               The Semester Pass is paid once and does not renew by itself. Both
-              options keep your notes and quizzes.
+              options keep your notes and quizzes. Amounts come from the plan
+              buttons, never typed.
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {publicPlans.map((option) => {
+            <div className="space-y-2">
+              <Label htmlFor="momo-provider">Mobile Money</Label>
+              <Select value={momoProvider} onValueChange={setMomoProvider}>
+                <SelectTrigger id="momo-provider" className="w-full">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MOMO_PROVIDERS.map((p) => (
+                    <SelectItem key={p.code} value={p.code}>
+                      {p.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="momo-phone">Phone number</Label>
+              <Input
+                id="momo-phone"
+                inputMode="tel"
+                placeholder="6XXXXXXXX"
+                value={momoPhone}
+                onChange={(event) => setMomoPhone(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            {offerTiers.map((option) => {
               const isCurrent = plan === option.key && status === "ACTIVE";
-              const isFree = option.key === "FREE";
+              const isFreeOption = option.key === "FREE";
               return (
                 <div
                   key={option.key}
@@ -673,10 +930,10 @@ export default function SubscriptionPage() {
                   </ul>
                   <Button
                     className="mt-5 w-full"
-                    variant={isFree ? "outline" : "default"}
-                    disabled={isCurrent || isSubmitting || isFree}
+                    variant={isFreeOption ? "outline" : "default"}
+                    disabled={isCurrent || isSubmitting || isFreeOption}
                     onClick={() => {
-                      if (isFree) {
+                      if (isFreeOption) {
                         setView({ modal: "" }, { history: "replace" });
                         router.push("/upload");
                       } else {
@@ -686,7 +943,7 @@ export default function SubscriptionPage() {
                   >
                     {isCurrent
                       ? "Current plan"
-                      : isFree
+                      : isFreeOption
                         ? "Included"
                         : paymentPending
                           ? "Finish payment"

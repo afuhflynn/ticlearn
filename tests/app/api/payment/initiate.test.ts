@@ -63,21 +63,41 @@ const post = (body: unknown, sessionOverride?: unknown) => {
 };
 
 describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
+  const validBody = {
+    plan: "PRO",
+    phone: "677123456",
+    provider: "MTN",
+  };
+
   it("returns 401 when there is no session", async () => {
-    const res = await post({ plan: "PRO" }, null);
+    const res = await post(validBody, null);
 
     expect(res.status).toBe(401);
   });
 
   it("returns 400 for an invalid plan", async () => {
-    const res = await post({ plan: "FREE" });
+    const res = await post({ ...validBody, plan: "FREE" });
+
+    expect(res.status).toBe(400);
+    expect(initiatePayment).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for a bad phone number", async () => {
+    const res = await post({ ...validBody, phone: "123" });
+
+    expect(res.status).toBe(400);
+    expect(initiatePayment).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 for a bad provider", async () => {
+    const res = await post({ ...validBody, provider: "YOOME" });
 
     expect(res.status).toBe(400);
     expect(initiatePayment).not.toHaveBeenCalled();
   });
 
   it("creates a subscription and returns the payment link (happy path)", async () => {
-    const res = await post({ plan: "PRO" });
+    const res = await post(validBody);
 
     expect(res.status).toBe(200);
     expect(db.subscription.create).toHaveBeenCalledWith(
@@ -86,15 +106,18 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
           userId: "u-1",
           plan: "PRO",
           status: "PENDING",
-          amount: 2_500,
+          amount: 3_000,
+          provider: "MTN",
+          phone: "677123456",
         }),
       }),
     );
     expect(initiatePayment).toHaveBeenCalledWith(
       expect.objectContaining({
-        amount: 2_500,
+        amount: 3_000,
         email: "a@b.com",
         userId: "u-1",
+        phone: "677123456",
       }),
     );
     const body = await res.json();
@@ -107,7 +130,7 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
       userId: "u-1",
     } as never);
 
-    const res = await post({ plan: "PRO" });
+    const res = await post(validBody);
 
     expect(res.status).toBe(200);
     expect(db.subscription.update).toHaveBeenCalledWith(
@@ -116,7 +139,9 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
         data: expect.objectContaining({
           plan: "PRO",
           status: "PENDING",
-          amount: 2_500,
+          amount: 3_000,
+          provider: "MTN",
+          phone: "677123456",
         }),
       }),
     );
@@ -129,7 +154,7 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
       message: "gateway down",
     });
 
-    const res = await post({ plan: "PRO" });
+    const res = await post(validBody);
 
     expect(res.status).toBe(400);
     const body = await res.json();
