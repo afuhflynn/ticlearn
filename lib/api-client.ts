@@ -387,7 +387,23 @@ export const api = {
           questionId: string;
           isCorrect: boolean;
           why: string;
+          marksEarned: number;
+          marksTotal: number;
+          schemeMd: string;
+          examinerNote: string;
         }>("/quizzes/grade", { method: "POST", body: data }),
+      wizardGenerate: (data: {
+        topicText: string;
+        noteId?: string | null;
+        levelChoice: "GCE" | "HND" | "PROF" | "MIXED";
+        formatChoice: string;
+        count: number;
+        difficulty: "STANDARD" | "HARD" | "MIXED";
+      }) =>
+        apiRequest<{ quiz: Quiz; success: boolean; status: string }>(
+          "/quizzes/wizard-generate",
+          { method: "POST", body: data },
+        ),
       getRecentAttempts: (limit?: number) =>
         apiRequest<{ attempts: unknown[] }>(
           `/quizzes/attempts/recent${limit ? `?limit=${limit}` : ""}`,

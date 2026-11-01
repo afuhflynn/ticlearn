@@ -6,7 +6,11 @@ export const generatedQuestionSchema = z.object({
   options: z.array(z.string()),
   correctAnswer: z.string().min(1),
   explanation: z.string().min(1),
+  hint: z.string().max(200).optional().default(""),
   sourcePages: z.array(z.number().int().min(1)).optional().default([]),
+  marks: z.number().int().min(1).max(10).optional().default(1),
+  markSchemeMd: z.string().max(2000).optional().default(""),
+  examinerNote: z.string().max(500).optional().default(""),
 });
 
 export const quizSchema = z.object({
@@ -25,16 +29,39 @@ export const gradingSchema = z.object({
   missedPoints: z.array(z.string()),
 });
 
+/** The longest hint that still reads well inside the docked runner card. */
+export const HINT_MAX_CHARS = 140;
+
+export function defaultSchemeFor(type: "MCQ" | "OPEN", marks: number): string {
+  if (type === "MCQ") {
+    return `Correct choice earns ${marks} mark${marks === 1 ? "" : "s"}.`;
+  }
+  const lines: string[] = [];
+  for (let i = 1; i <= marks; i += 1) {
+    lines.push(`Point ${i} earns 1 mark in your own words.`);
+  }
+  return lines.join("\n");
+}
+
 export function normalizeGeneratedQuestions(
-  questions: z.infer<typeof generatedQuestionSchema>[],
+  questions: z.input<typeof generatedQuestionSchema>[],
 ) {
   return questions
     .map((question) => {
+      const rawMarks = Number(question.marks ?? 1);
+      const safeMarks =
+        Number.isFinite(rawMarks) && rawMarks >= 1 && rawMarks <= 10
+          ? Math.floor(rawMarks)
+          : 1;
+      const explanationText = question.explanation.trim();
+      const schemeText = (question.markSchemeMd ?? "").trim();
+      const examinerText = (question.examinerNote ?? "").trim();
       const normalized = {
         ...question,
         question: question.question.trim(),
         correctAnswer: question.correctAnswer.trim(),
-        explanation: question.explanation.trim(),
+        explanation: explanationText,
+        hint: (question.hint ?? "").trim().slice(0, HINT_MAX_CHARS),
         options: question.options.map((o) => o.trim()).filter(Boolean),
         sourcePages: Array.from(
           new Set(
@@ -43,6 +70,9 @@ export function normalizeGeneratedQuestions(
               .filter((n) => Number.isFinite(n) && n >= 1),
           ),
         ).slice(0, 10),
+        marks: safeMarks,
+        markSchemeMd: schemeText || defaultSchemeFor(question.type, safeMarks),
+        examinerNote: examinerText || "",
       };
       if (normalized.type === "MCQ" && normalized.options.length !== 4)
         return null;

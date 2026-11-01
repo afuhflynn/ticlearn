@@ -91,3 +91,46 @@ Tip reads like a teacher, not a search result. It names the note once per topic,
   - [x] Quiz correction parity plus thin evidence pivot plus lint and suite (covers AC-5, AC-6) · code in prompts/chat/chat_system.md, prompts/chat/voice_examples.md, prompts/grade/, prompts/retry/, tests/prompts/tutor-voice.test.ts
 - [ ] Verify it: /verify-release tutor voice and citation habit
 - [ ] Test it: /test-engineer tutor voice and citation habit
+
+### 58. Agentic quiz setup wizard · in-progress
+Tip guides setup as a three step wizard inside chat. Topic picks come first, then level plus format, then count plus difficulty. Each step shows numbered tappable options plus an inline Other box with a send arrow plus an Or reply directly line plus Skip plus Back plus Next. A typed reply in the composer moves the same step forward. No browser prompt appears at any point and the thread never stalls waiting for a tap that never lands.
+**Done when:** a student can open setup in chat, pick topic plus level plus count by tap or by typing in the inline Other box or the composer, move back and forward with Skip, and reach a ready runner with no browser prompt and no stall.
+- [x] Design it (spec): /solution-architect agentic quiz setup wizard · spec [0033](../specs/0033-agentic-quiz-setup-wizard/index.md)
+- [x] Build it: /feature-build agentic quiz setup wizard · code in `components/chat/quiz-setup-wizard.tsx`, `lib/chat/quiz-wizard.ts`, `lib/chat/quiz-snapshot.ts`, `app/api/quizzes/wizard-generate/route.ts`
+  - [x] Snapshot plus wizard card shell with pager plus Skip plus Back plus Next plus collapsed draft (covers AC-1, AC-5, AC-7)
+  - [x] Topic plus level plus count steps with resolve plus defaults plus typing path (covers AC-2, AC-3, AC-4, AC-6)
+  - [x] Wizard endpoint plus retry smaller then handoff plus caps parity (covers AC-8, AC-9)
+- [ ] Verify it: /verify-release agentic quiz setup wizard
+- [x] Test it: /test-engineer agentic quiz setup wizard
+
+### 59. Low docked runner card · in-progress
+The runner lives low near the composer as a docked sheet above the reply box, matching the approved reference. It shows one question at a time with numbered dots plus Back plus Next plus Show hint plus a Quiz plus Flashcards toggle. Taps answer at once, reload rebuilds the same spot with answers kept, and a stopped stream marks cleanly with no lost tap. Phone thumbs reach options without scrolling past a tall thread.
+**Done when:** the runner docks low above the composer, shows one question at a time with dots plus Back plus Next plus Show hint, taps answer at once with no stall, reload rebuilds the same spot, and placement matches the approved reference on phone and desktop.
+- [x] Design it (spec): /solution-architect low docked runner card · spec [0034](../specs/0034-low-docked-runner-card/index.md)
+- [x] Build it: /feature-build low docked runner card · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `lib/ai/validators.ts`, `lib/inngest/functions.ts`, `prompts/quiz/quiz_from_note.md`, `prompts/quiz/grounded_from_note.md`, `components/chat/chat-thread.tsx`
+  - [x] Docked shell plus free movement with dots jump (covers **AC-1**, **AC-2**, **AC-3**)
+  - [x] Instant tap plus toggle plus per question hint (covers **AC-4**, **AC-7**, **AC-8**)
+  - [x] Snapshot v3 plus reload plus fail keep with retry (covers **AC-5**, **AC-6**, **AC-8**)
+  - [x] Phone height cap plus access path plus tests (covers **AC-9**, **AC-10**)
+- [ ] Verify it: /verify-release low docked runner card
+- [ ] Test it: /test-engineer low docked runner card
+
+### 60. Marking plus mark scheme plus results plus save · in-progress
+Each answer marks the moment it lands with correct plus incorrect styling plus the mark scheme that shows where each mark comes from. The end state shows percent plus correct count plus per question review plus Start over plus a weak area follow up that offers a harder set or an open written set for marking. The run saves to attempts so progress counts, and a review or print ask hands to the full quiz page with a clear link.
+**Done when:** each answer marks at once with correct plus incorrect plus mark scheme, the end shows percent plus correct count plus per question review plus Start over plus weak area follow up, and the run saves to attempts so progress counts.
+
+spec ../specs/0035-marking-mark-scheme-results-save/index.md
+
+- [x] Design it (spec): /solution-architect marking plus mark scheme plus results plus save
+- [x] Build it: /feature-build marking plus mark scheme plus results plus save · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `lib/ai/validators.ts`, `lib/api-client.ts`, `lib/inngest/functions.ts`, `app/api/quizzes/grade/route.ts`, `app/api/quizzes/attempts/route.ts`, `app/api/quizzes/wizard-generate/route.ts`, `app/api/quizzes/generate/from-weak-areas/route.ts`, `prisma/migrations/20261031090000_add_quiz_marking_columns/`, `tests/components/quiz-runner.test.tsx`, `tests/app/api/quiz-grade.test.ts`
+  - [x] Marks plus scheme columns plus grade reply shape, covers **AC-1**, **AC-2**, **AC-8**
+  - [x] Runner instant marking plus nav plus hint plus reload, covers **AC-3**, **AC-4**
+  - [x] Results plus Start over plus one submit plus weak area offers, covers **AC-5**, **AC-6**, **AC-7**, **AC-9**
+  - [x] Retry then handoff plus owner checks plus caps parity, covers **AC-10**, **AC-11**, **AC-12**
+- [ ] Verify it: /verify-release marking plus mark scheme plus results plus save
+- [ ] Test it: /test-engineer marking plus mark scheme plus results plus save
+
+### 61. Quiz reliability plus visual fallback · needs a decision
+Generation plus marking plus drawing stay dependable under real model limits. A length cutoff retries with a smaller set then hands to the full quiz page instead of a dead Quiz not available card. The draw tool carries a proper activity label so Working reads cleanly, draw failures show a plain notice with text instead plus a retry, and duplicate message warnings stay in logs out of the student view. Topic mix stays student choice with Quiz plus Flashcards available where it helps recall.
+**Done when:** generation never ends on a dead card, a length cutoff retries with a smaller set then hands to the full quiz page, draw failures show a plain notice with text instead plus a retry, the draw tool has a proper activity label, and duplicate message warnings stay out of the student view.
+- [ ] Design it (spec): /solution-architect quiz reliability plus visual fallback

@@ -3,6 +3,7 @@
 import { ChevronRight, Loader2, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,18 @@ import { useQuiz, useSubmitQuizAttempt } from "@/hooks";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
   clearActiveRunId,
   clearQuizSnapshot,
   getActiveRunId,
   loadQuizSnapshot,
   newQuizRunId,
+  type QuizMark,
+  type QuizRunnerMode,
   saveQuizSnapshot,
 } from "@/lib/chat/quiz-snapshot";
 import { cn } from "@/lib/utils";
@@ -41,6 +49,9 @@ type QuizQuestion = {
   explanation?: string | null;
   order: number;
   sourcePages?: number[];
+  marks?: number;
+  markSchemeMd?: string | null;
+  examinerNote?: string | null;
 };
 
 type QuizResponse = {
@@ -48,6 +59,7 @@ type QuizResponse = {
   title: string;
   noteTitle: string;
   status: "GENERATING" | "READY" | "ERROR";
+  metadata?: { hints?: Record<string, string> } | null;
   questions: QuizQuestion[];
 };
 
@@ -57,6 +69,8 @@ type AttemptResult = {
     score: number;
     totalQuestions: number;
     correctAnswers: number;
+    totalMarks?: number;
+    marksEarned?: number;
     answers: Array<{
       id?: string;
       questionId: string;
@@ -65,6 +79,9 @@ type AttemptResult = {
       correctAnswer: string;
       isCorrect: boolean;
       explanation?: string | null;
+      marksEarned?: number;
+      marksTotal?: number;
+      markSchemeMd?: string | null;
     }>;
   };
   pointsEarned: number;
@@ -112,10 +129,12 @@ export function QuizRunner({
   conversationId,
   noteId,
   noteTitle,
+  initialQuizId,
 }: {
   conversationId: string;
   noteId: string | null;
   noteTitle: string | null;
+  initialQuizId?: string | null;
 }) {
   const { data: session } = useSession();
   const userId = session?.user?.id ?? null;
@@ -136,6 +155,9 @@ export function QuizRunner({
   });
 
   const [phase, setPhase] = useState<Phase>(() => {
+    if (initialQuizId) {
+      return "generating";
+    }
     const active = getActiveRunId(conversationId);
     if (active && loadQuizSnapshot(conversationId, active)) {
       return "generating";
@@ -166,9 +188,7 @@ export function QuizRunner({
     }
     return {};
   });
-  const [marks, setMarks] = useState<
-    Record<string, { isCorrect: boolean; why: string }>
-  >(() => {
+  const [marks, setMarks] = useState<Record<string, QuizMark>>(() => {
     const active = getActiveRunId(conversationId);
     if (active) {
       const saved = loadQuizSnapshot(conversationId, active);
@@ -177,10 +197,12 @@ export function QuizRunner({
     return {};
   });
   const [quizId, setQuizId] = useState<string | null>(() => {
+    if (initialQuizId) return initialQuizId;
     const active = getActiveRunId(conversationId);
     if (active) {
       const saved = loadQuizSnapshot(conversationId, active);
-      if (saved) return saved.quizId;
+      if (saved?.quizId) return saved.quizId;
+      if (saved?.wizardDone && saved.quizId) return saved.quizId;
     }
     return null;
   });
@@ -192,10 +214,39 @@ export function QuizRunner({
   const [typedLetter, setTypedLetter] = useState("");
   const [unclearNotice, setUnclearNotice] = useState<string | null>(null);
   const [reprompted, setReprompted] = useState<Record<string, boolean>>({});
+  const [mode] = useState<QuizRunnerMode>("quiz");
+  const [hintOpen, setHintOpen] = useState<Record<string, boolean>>(() => {
+    const active = getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved) return saved.hintOpen ?? {};
+    }
+    return {};
+  });
+  const [minimized, setMinimized] = useState(() => {
+    const active = getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved) return saved.minimized ?? false;
+    }
+    return false;
+  });
+  const [gradeFailed, setGradeFailed] = useState<string | null>(null);
+  const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
+  const [followUpError, setFollowUpError] = useState<string | null>(null);
+  const [dockEl, setDockEl] = useState<HTMLElement | null>(null);
   const letterInputId = useId();
 
   const submitAttempt = useSubmitQuizAttempt();
   const { data: quizData, isError: quizError } = useQuiz(quizId ?? "");
+
+  useEffect(() => {
+    if (initialQuizId && initialQuizId !== quizId) {
+      setQuizId(initialQuizId);
+      setPhase("generating");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuizId]);
 
   useEffect(() => {
     if (quizData?.quiz && quizData.quiz.status === "READY") {
@@ -227,6 +278,9 @@ export function QuizRunner({
       count,
       clientRunId,
       updatedAt: Date.now(),
+      mode,
+      hintOpen,
+      minimized,
     });
   }, [
     phase,
@@ -237,12 +291,32 @@ export function QuizRunner({
     count,
     clientRunId,
     conversationId,
+    mode,
+    hintOpen,
+    minimized,
   ]);
+
+  /**
+   * The dock slot lives above the composer. The active run portals there so
+   * the card pins low; a stale run stays inline where its message sits.
+   * The active pointer is read fresh every render so two runs never dock
+   * into the same slot at once.
+   */
+  useEffect(() => {
+    setDockEl(document.getElementById("quiz-dock-slot"));
+  }, []);
+  const liveActiveId =
+    typeof window === "undefined" ? null : getActiveRunId(conversationId);
 
   const questions = quiz?.questions ?? [];
   const currentQuestion = questions[currentIndex];
   const correctCount = Object.values(marks).filter((m) => m.isCorrect).length;
-  const answeredCount = Object.keys(answers).length;
+  const totalMarks = questions.reduce((sum, q) => sum + (q.marks ?? 1), 0);
+  const earnedMarks = Object.values(marks).reduce(
+    (sum, m) => sum + (m.marksEarned ?? 0),
+    0,
+  );
+  const markedCount = Object.keys(marks).length;
   const progress = questions.length
     ? ((currentIndex + 1) / questions.length) * 100
     : 0;
@@ -256,6 +330,17 @@ export function QuizRunner({
     [questions],
   );
   const showHandoff = visualCount >= 2;
+
+  /**
+   * Hints ride in the quiz metadata map keyed by question order, written by
+   * the generate job. Old quizzes have no map and read as empty, which hides
+   * the hint control instead of flashing a broken one.
+   */
+  const hints = useMemo(() => {
+    const raw = (quizData?.quiz as QuizResponse | undefined)?.metadata?.hints;
+    if (!raw || typeof raw !== "object") return {} as Record<string, string>;
+    return raw;
+  }, [quizData]);
 
   const handleStart = useCallback(async () => {
     if (!noteId) {
@@ -275,21 +360,43 @@ export function QuizRunner({
     setReprompted({});
     setPhase("generating");
     setError(null);
-    try {
+    const startWith = async (questionCount: number) => {
       const result = await api.mutations.quizzes.generate({
         noteId,
-        questionCount: count,
+        questionCount,
         questionTypes: "MIXED",
         timed: false,
         source: "chat",
         conversationId,
       });
       setQuizId(result.quiz.id);
+    };
+    try {
+      await startWith(count);
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to start the quiz.";
+      const looksLong = /length|cutoff|truncat|too long|too big/i.test(message);
+      if (looksLong && count > 5) {
+        try {
+          await startWith(5);
+          return;
+        } catch {
+          // Falls through to the handoff below.
+        }
+      }
       setPhase("setup");
-      setError(
-        err instanceof Error ? err.message : "Failed to start the quiz.",
-      );
+      if (
+        /limit reached|insufficient credits|not ready|not found/i.test(message)
+      ) {
+        setError(message);
+        return;
+      }
+      if (looksLong) {
+        setError("Full paper lives on the quiz page. Open it to continue.");
+        return;
+      }
+      setError(message);
     }
   }, [noteId, count, conversationId]);
 
@@ -300,6 +407,7 @@ export function QuizRunner({
   const clearAttemptState = useCallback(() => {
     setTypedLetter("");
     setUnclearNotice(null);
+    setGradeFailed(null);
   }, []);
 
   /**
@@ -313,13 +421,25 @@ export function QuizRunner({
     announced?: string,
   ) => {
     const isCorrect = userAnswer.trim() === question.correctAnswer.trim();
+    const marksTotal = question.marks ?? 1;
+    const schemeMd =
+      question.markSchemeMd ??
+      `Correct choice earns ${marksTotal} mark${marksTotal === 1 ? "" : "s"}.`;
+    const examinerNote = question.examinerNote ?? "";
     const prefix = announced ? `${announced} ` : "";
     const why = isCorrect
       ? `${prefix}That's correct.`
       : `${prefix}Not quite — the correct answer is ${question.correctAnswer}.`;
     setMarks((current) => ({
       ...current,
-      [question.id]: { isCorrect, why },
+      [question.id]: {
+        isCorrect,
+        why,
+        marksEarned: isCorrect ? marksTotal : 0,
+        marksTotal,
+        schemeMd,
+        examinerNote,
+      },
     }));
   };
 
@@ -390,16 +510,32 @@ export function QuizRunner({
         [currentQuestion.id]: {
           isCorrect: graded.isCorrect,
           why: graded.why,
+          marksEarned: graded.marksEarned ?? (graded.isCorrect ? 1 : 0),
+          marksTotal: graded.marksTotal ?? currentQuestion.marks ?? 1,
+          schemeMd:
+            graded.schemeMd ??
+            currentQuestion.markSchemeMd ??
+            "See the model feedback for where each mark comes from.",
+          examinerNote:
+            graded.examinerNote ?? currentQuestion.examinerNote ?? "",
         },
       }));
+      setGradeFailed(null);
     } catch {
       setMarks((current) => ({
         ...current,
         [currentQuestion.id]: {
           isCorrect: false,
           why: "Could not mark that answer just now. Try again.",
+          marksEarned: 0,
+          marksTotal: currentQuestion.marks ?? 1,
+          schemeMd: currentQuestion.markSchemeMd ?? "",
+          examinerNote: currentQuestion.examinerNote ?? "",
         },
       }));
+      // The tap stays saved and the retry button below stays live, so a
+      // failed grade or a stopped stream never loses the student's answer.
+      setGradeFailed(currentQuestion.id);
     } finally {
       setGrading(null);
     }
@@ -450,11 +586,68 @@ export function QuizRunner({
     setCurrentIndex(0);
     setResult(null);
     setError(null);
+    setFollowUpError(null);
     setTypedLetter("");
     setUnclearNotice(null);
     setReprompted({});
+    setGradeFailed(null);
     setPhase("answering");
+    saveQuizSnapshot(conversationId, {
+      version: 4,
+      quizId,
+      answers: {},
+      marks: {},
+      currentIndex: 0,
+      count,
+      clientRunId: runId,
+      updatedAt: Date.now(),
+      mode: "quiz",
+      hintOpen: {},
+      minimized: false,
+    });
   };
+
+  const handleFollowUp = useCallback(
+    async (kind: "harder" | "open") => {
+      if (!result?.attempt.id) return;
+      setFollowUpLoading(kind);
+      setFollowUpError(null);
+      try {
+        const res = await fetch("/api/quizzes/generate/from-weak-areas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            attemptId: result.attempt.id,
+            count: 5,
+            openOnly: kind === "open",
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          throw new Error(data.error ?? "Could not start the follow up set.");
+        }
+        const nextId = data.quiz?.id as string | undefined;
+        if (!nextId) throw new Error("Could not start the follow up set.");
+        const runId = newQuizRunId();
+        clearQuizSnapshot(conversationId, clientRunId);
+        setClientRunId(runId);
+        setQuizId(nextId);
+        setQuiz(null);
+        setAnswers({});
+        setMarks({});
+        setCurrentIndex(0);
+        setResult(null);
+        setPhase("generating");
+      } catch (err) {
+        setFollowUpError(
+          err instanceof Error ? err.message : "Could not start follow up.",
+        );
+      } finally {
+        setFollowUpLoading(null);
+      }
+    },
+    [result, conversationId, clientRunId],
+  );
 
   const handleClose = () => {
     clearQuizSnapshot(conversationId, clientRunId);
@@ -547,13 +740,21 @@ export function QuizRunner({
           <Card className="w-full border-destructive/50 bg-destructive/10">
             <CardContent className="space-y-2">
               <p className="text-sm text-destructive">{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setError(null)}
-              >
-                Try again
-              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setError(null)}
+                >
+                  Try again
+                </Button>
+                {error ===
+                "Full paper lives on the quiz page. Open it to continue." ? (
+                  <Button variant="outline" asChild size="sm">
+                    <Link href="/quizzes">Open full quiz page</Link>
+                  </Button>
+                ) : null}
+              </div>
             </CardContent>
           </Card>
         )}
@@ -618,33 +819,126 @@ export function QuizRunner({
     const mark = marks[currentQuestion.id];
     const isMCQ = currentQuestion.type === "MCQ";
     const selected = answers[currentQuestion.id];
+    const docked =
+      dockEl !== null &&
+      (liveActiveId === null || liveActiveId === clientRunId);
+    const currentHint = hints[String(currentQuestion.order)] ?? "";
+    const hintIsOpen = hintOpen[currentQuestion.id] ?? false;
 
-    return (
-      <div className="mx-auto w-full max-w-[48rem] space-y-6 px-4">
-        <div className="flex min-w-0 flex-col gap-4 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+    const dotLabel = (index: number, id: string) => {
+      const state = marks[id]
+        ? marks[id].isCorrect
+          ? "correct"
+          : "incorrect"
+        : id in answers
+          ? "answered"
+          : "unanswered";
+      return `Question ${index + 1} of ${questions.length}, ${state}`;
+    };
+
+    if (minimized) {
+      const bar = (
+        <div className="mx-auto w-full max-w-[48rem] px-4 py-2">
+          <div className="flex items-center gap-2 rounded-xl border bg-card p-3 shadow-lg">
+            <span className="sr-only">Practice quiz, minimized</span>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">
+                {noteTitle ?? "Quiz"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Question {currentIndex + 1} of {questions.length} •{" "}
+                {correctCount} correct
+              </p>
+            </div>
+            <Button size="sm" onClick={() => setMinimized(false)}>
+              Restore
+            </Button>
+          </div>
+        </div>
+      );
+      return docked ? createPortal(bar, dockEl) : bar;
+    }
+
+    const answeringNode = (
+      <div className="mx-auto w-full max-w-[48rem] px-4 py-2">
+        <div className="flex min-w-0 flex-col gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <Badge variant="outline" className="max-w-full truncate">
                 {noteTitle ?? "Quiz"}
               </Badge>
               <Badge variant="secondary">{currentQuestion.type}</Badge>
             </div>
-            <h1 className="break-words text-2xl font-bold tracking-tight sm:text-3xl">
-              Quiz
-            </h1>
-            <p className="break-words text-sm text-muted-foreground sm:text-base">
-              Question {currentIndex + 1} of {questions.length} • {correctCount}{" "}
-              correct
-            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setMinimized(true)}
+              >
+                Minimize
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleClose}>
+                Back to chat
+              </Button>
+            </div>
           </div>
-          <div className="flex flex-col gap-3 md:items-end">
-            <Button variant="outline" onClick={handleClose}>
-              Back to chat
-            </Button>
-          </div>
+          <p
+            id="quiz-runner-heading"
+            tabIndex={-1}
+            className="break-words text-sm text-muted-foreground sm:text-base"
+          >
+            Question {currentIndex + 1} of {questions.length} • {correctCount}{" "}
+            correct among {markedCount} marked • {earnedMarks} of {totalMarks}{" "}
+            marks
+          </p>
+          <fieldset className="m-0 flex flex-wrap gap-1.5 border-0 p-0">
+            <legend className="sr-only">Questions in this quiz</legend>
+            {questions.map((question, index) => {
+              const questionMark = marks[question.id];
+              const answered = question.id in answers;
+              const isCurrent = index === currentIndex;
+              return (
+                <Button
+                  key={question.id}
+                  type="button"
+                  variant={isCurrent ? "default" : "outline"}
+                  size="icon"
+                  onClick={() => {
+                    setCurrentIndex(index);
+                    clearAttemptState();
+                    document
+                      .getElementById("quiz-runner-heading")
+                      ?.focus({ preventScroll: true });
+                  }}
+                  className={cn(
+                    "h-11 min-w-11 rounded-full border px-2 text-xs font-semibold",
+                    !isCurrent &&
+                      questionMark &&
+                      (questionMark.isCorrect
+                        ? "border-primary text-primary"
+                        : "border-destructive text-destructive"),
+                    !isCurrent &&
+                      !questionMark &&
+                      answered &&
+                      "border-primary/60 text-foreground",
+                    !isCurrent &&
+                      !questionMark &&
+                      !answered &&
+                      "text-muted-foreground",
+                  )}
+                >
+                  {index + 1}
+                  <span className="sr-only">
+                    {dotLabel(index, question.id)}
+                    {isCurrent ? ", current question" : ""}
+                  </span>
+                </Button>
+              );
+            })}
+          </fieldset>
         </div>
 
-        <Progress value={progress} />
+        <Progress value={progress} className="mt-3" />
 
         {showHandoff && quizId ? (
           <Card className="w-full border-primary/40 bg-primary/5">
@@ -662,8 +956,8 @@ export function QuizRunner({
           </Card>
         ) : null}
 
-        <Card className="w-full">
-          <CardHeader className="space-y-3">
+        <Card className="mt-3 flex max-h-[50dvh] w-full flex-col">
+          <CardHeader className="shrink-0 space-y-3 pb-3">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
               <CardTitle className="min-w-0 text-lg sm:text-xl">
                 Question {currentIndex + 1}
@@ -681,149 +975,209 @@ export function QuizRunner({
               <MathMarkdown content={currentQuestion.question} />
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {isMCQ ? (
-              <div className="space-y-3">
-                {currentQuestion.options.map((option, index) => {
-                  const selectedOption = selected === option;
-                  const letter = LETTERS[index] ?? String(index + 1);
-                  return (
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <CardContent className="space-y-4 pt-1">
+              {isMCQ ? (
+                <div className="space-y-3">
+                  {currentQuestion.options.map((option, index) => {
+                    const selectedOption = selected === option;
+                    const letter = LETTERS[index] ?? String(index + 1);
+                    return (
+                      <Button
+                        key={option}
+                        variant={
+                          mark
+                            ? selectedOption === mark.isCorrect
+                              ? "default"
+                              : "outline"
+                            : selectedOption
+                              ? "default"
+                              : "outline"
+                        }
+                        className={`h-auto w-full justify-start whitespace-normal p-4 text-left ${
+                          mark
+                            ? selectedOption === mark.isCorrect
+                              ? "border-primary bg-primary/10 text-primary"
+                              : "border-destructive bg-destructive/10 text-destructive"
+                            : selectedOption
+                              ? "border-primary"
+                              : ""
+                        }`}
+                        disabled={!!mark}
+                        onClick={() => {
+                          if (mark) return;
+                          handleAnswerChange(currentQuestion.id, option);
+                          markMCQAnswer(currentQuestion, option);
+                        }}
+                      >
+                        <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs font-semibold">
+                          {letter}
+                        </span>
+                        <span className="min-w-0 break-words text-left">
+                          <MathMarkdown content={option} />
+                        </span>
+                      </Button>
+                    );
+                  })}
+                  {mark ? null : (
+                    <form className="flex gap-2" onSubmit={handleLetterSubmit}>
+                      <label className="sr-only" htmlFor={letterInputId}>
+                        Type a letter instead, for example B
+                      </label>
+                      <Input
+                        className="min-h-11"
+                        id={letterInputId}
+                        maxLength={60}
+                        onChange={(event) => setTypedLetter(event.target.value)}
+                        placeholder="Or type a letter, for example B"
+                        value={typedLetter}
+                      />
+                      <Button
+                        className="shrink-0"
+                        disabled={!typedLetter.trim()}
+                        type="submit"
+                        variant="outline"
+                      >
+                        Answer
+                      </Button>
+                    </form>
+                  )}
+                </div>
+              ) : (
+                <>
+                  <Textarea
+                    rows={8}
+                    className="min-h-40 resize-y"
+                    placeholder="Type your answer here..."
+                    value={answers[currentQuestion.id] ?? ""}
+                    onChange={(event) =>
+                      handleAnswerChange(currentQuestion.id, event.target.value)
+                    }
+                  />
+                  {mark ? null : (
                     <Button
-                      key={option}
-                      variant={
-                        mark
-                          ? selectedOption === mark.isCorrect
-                            ? "default"
-                            : "outline"
-                          : selectedOption
-                            ? "default"
-                            : "outline"
-                      }
-                      className={`h-auto w-full justify-start whitespace-normal p-4 text-left ${
-                        mark
-                          ? selectedOption === mark.isCorrect
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-destructive bg-destructive/10 text-destructive"
-                          : selectedOption
-                            ? "border-primary"
-                            : ""
-                      }`}
-                      disabled={!!mark}
-                      onClick={() => {
-                        if (mark) return;
-                        handleAnswerChange(currentQuestion.id, option);
-                        markMCQAnswer(currentQuestion, option);
-                      }}
+                      onClick={() => void handleMarkOpenAnswer()}
+                      disabled={grading === currentQuestion.id}
+                      className="w-full sm:w-auto"
                     >
-                      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-xs font-semibold">
-                        {letter}
-                      </span>
-                      <span className="min-w-0 break-words text-left">
-                        <MathMarkdown content={option} />
-                      </span>
+                      Mark answer
                     </Button>
-                  );
-                })}
-                {mark ? null : (
-                  <form className="flex gap-2" onSubmit={handleLetterSubmit}>
-                    <label className="sr-only" htmlFor={letterInputId}>
-                      Type a letter instead, for example B
-                    </label>
-                    <Input
-                      className="min-h-11"
-                      id={letterInputId}
-                      maxLength={60}
-                      onChange={(event) => setTypedLetter(event.target.value)}
-                      placeholder="Or type a letter, for example B"
-                      value={typedLetter}
-                    />
-                    <Button
-                      className="shrink-0"
-                      disabled={!typedLetter.trim()}
-                      type="submit"
-                      variant="outline"
-                    >
-                      Answer
-                    </Button>
-                  </form>
-                )}
-              </div>
-            ) : (
-              <>
-                <Textarea
-                  rows={8}
-                  className="min-h-40 resize-y"
-                  placeholder="Type your answer here..."
-                  value={answers[currentQuestion.id] ?? ""}
-                  onChange={(event) =>
-                    handleAnswerChange(currentQuestion.id, event.target.value)
+                  )}
+                </>
+              )}
+
+              {unclearNotice && !mark ? (
+                <p className="text-sm text-muted-foreground">{unclearNotice}</p>
+              ) : null}
+
+              {mark && (
+                <div
+                  className={cn(
+                    "rounded-lg border p-3 mt-2",
+                    mark.isCorrect
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-destructive bg-destructive/10 text-destructive",
+                  )}
+                >
+                  <p className="text-sm font-medium">
+                    {mark.isCorrect ? "Correct" : "Incorrect"} •{" "}
+                    {mark.marksEarned} of {mark.marksTotal} marks
+                  </p>
+                  <p className="text-sm break-words">{mark.why}</p>
+                  {mark.schemeMd ? (
+                    <div className="pt-2">
+                      <p className="text-xs font-medium uppercase tracking-wide opacity-80">
+                        Mark scheme
+                      </p>
+                      <div className="break-words text-sm">
+                        <MathMarkdown content={mark.schemeMd} />
+                      </div>
+                    </div>
+                  ) : null}
+                  {mark.examinerNote ? (
+                    <p className="break-words pt-1 text-xs opacity-90">
+                      Examiner note: {mark.examinerNote}
+                    </p>
+                  ) : null}
+                </div>
+              )}
+
+              {currentHint ? (
+                <Collapsible
+                  open={hintIsOpen}
+                  onOpenChange={(open) =>
+                    setHintOpen((current) => ({
+                      ...current,
+                      [currentQuestion.id]: open,
+                    }))
                   }
-                />
-                {mark ? null : (
-                  <Button
-                    onClick={() => void handleMarkOpenAnswer()}
-                    disabled={grading === currentQuestion.id}
-                    className="w-full sm:w-auto"
-                  >
-                    Mark answer
-                  </Button>
-                )}
-              </>
-            )}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm">
+                      {hintIsOpen ? "Hide hint" : "Show hint"}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <p className="break-words text-sm text-muted-foreground">
+                      {currentHint}
+                    </p>
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : null}
 
-            {unclearNotice && !mark ? (
-              <p className="text-sm text-muted-foreground">{unclearNotice}</p>
-            ) : null}
+              {gradeFailed === currentQuestion.id ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void handleMarkOpenAnswer()}
+                  disabled={grading === currentQuestion.id}
+                >
+                  Try marking again
+                </Button>
+              ) : null}
 
-            {mark && (
-              <div
-                className={cn(
-                  "rounded-lg border p-3 mt-2",
-                  mark.isCorrect
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-destructive bg-destructive/10 text-destructive",
-                )}
-              >
-                <p className="text-sm font-medium">
-                  {mark.isCorrect ? "Correct" : "Incorrect"}
+              {grading === currentQuestion.id && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  Marking...
+                </div>
+              )}
+
+              {!mark && !grading && currentIndex < questions.length - 1 ? (
+                <p className="text-xs text-muted-foreground">
+                  You can move freely. Unanswered questions stay open for later.
                 </p>
-                <p className="text-sm break-words">{mark.why}</p>
-              </div>
-            )}
-
-            {grading === currentQuestion.id && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                Marking...
-              </div>
-            )}
-
-            {!mark && !grading && currentIndex < questions.length - 1 ? (
-              <p className="text-xs text-muted-foreground">
-                Answer the question, then move to the next one.
-              </p>
-            ) : null}
-          </CardContent>
+              ) : null}
+            </CardContent>
+          </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-3 sm:flex sm:items-center sm:justify-between">
+        <div className="grid grid-cols-1 gap-3 pt-3 sm:flex sm:items-center sm:justify-between">
           <Button
             variant="outline"
             onClick={() => {
               setCurrentIndex((index) => Math.max(index - 1, 0));
               clearAttemptState();
+              document
+                .getElementById("quiz-runner-heading")
+                ?.focus({ preventScroll: true });
             }}
-            disabled={currentIndex === 0 || !!mark}
+            disabled={currentIndex === 0}
             className="w-full sm:w-auto"
           >
             <ChevronRight className="mr-2 h-4 w-4 rotate-180" />
-            Previous
+            Back
           </Button>
 
           <div className="grid grid-cols-1 gap-3 sm:flex sm:gap-3">
             {currentIndex < questions.length - 1 ? (
               <Button
-                onClick={handleNext}
-                disabled={!mark}
+                onClick={() => {
+                  handleNext();
+                  clearAttemptState();
+                  document
+                    .getElementById("quiz-runner-heading")
+                    ?.focus({ preventScroll: true });
+                }}
                 className="w-full sm:w-auto"
               >
                 Next
@@ -832,7 +1186,7 @@ export function QuizRunner({
             ) : (
               <Button
                 onClick={handleSubmit}
-                disabled={submitting || !mark}
+                disabled={submitting}
                 className="w-full sm:w-auto"
               >
                 {submitting ? (
@@ -849,23 +1203,35 @@ export function QuizRunner({
         </div>
       </div>
     );
+    return docked ? createPortal(answeringNode, dockEl) : answeringNode;
   }
 
   // phase === "complete"
+  const attemptTotalMarks =
+    result?.attempt.totalMarks ?? totalMarks ?? questions.length;
+  const attemptEarnedMarks = result?.attempt.marksEarned ?? earnedMarks;
+  const attemptPercent =
+    result?.attempt.score ??
+    (attemptTotalMarks > 0
+      ? Math.round((attemptEarnedMarks / attemptTotalMarks) * 100)
+      : 0);
   return (
     <div className="mx-auto w-full max-w-[48rem] space-y-6 px-4">
       <Card className="w-full">
         <CardHeader>
           <CardTitle>Quiz Results</CardTitle>
           <CardDescription>
-            Review your performance and question-by-question feedback.
+            Review your performance and question by question feedback.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-lg border p-4">
               <p className="text-sm text-muted-foreground">Score</p>
-              <p className="text-2xl font-bold">{result?.attempt.score}%</p>
+              <p className="text-2xl font-bold">{attemptPercent}%</p>
+              <p className="text-xs text-muted-foreground">
+                {attemptEarnedMarks} of {attemptTotalMarks} marks
+              </p>
             </div>
             <div className="rounded-lg border p-4">
               <p className="text-sm text-muted-foreground">Correct</p>
@@ -887,12 +1253,54 @@ export function QuizRunner({
           <div className="grid gap-3 sm:grid-cols-2">
             <Button className="w-full" onClick={handleRetake}>
               <RotateCcw className="mr-2 h-4 w-4" />
-              Retake Quiz
+              Start over
             </Button>
             <Button variant="outline" onClick={handleClose} className="w-full">
               Back to chat
             </Button>
           </div>
+          <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+            <p className="text-sm font-medium">Keep building on weak areas</p>
+            <p className="text-xs text-muted-foreground">
+              Tip picks the top missed ideas and builds the next set from them.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={followUpLoading !== null}
+                onClick={() => void handleFollowUp("harder")}
+              >
+                {followUpLoading === "harder"
+                  ? "Building harder set..."
+                  : "Harder set on weak areas"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={followUpLoading !== null}
+                onClick={() => void handleFollowUp("open")}
+              >
+                {followUpLoading === "open"
+                  ? "Building written set..."
+                  : "Open written set for marking"}
+              </Button>
+            </div>
+            {followUpError ? (
+              <p className="text-xs text-destructive">
+                {followUpError}{" "}
+                {quizId ? (
+                  <Link className="underline" href={`/quizzes/${quizId}`}>
+                    Open the full quiz page
+                  </Link>
+                ) : null}
+              </p>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            This run is saved to your attempts, so chat practice counts like
+            page practice.
+          </p>
         </CardContent>
       </Card>
 
@@ -901,7 +1309,10 @@ export function QuizRunner({
           const answer = result?.attempt.answers.find(
             (entry) => entry.questionId === question.id,
           );
-          const mark = marks[question.id];
+          const scheme = answer?.markSchemeMd ?? question.markSchemeMd ?? "";
+          const earned =
+            answer?.marksEarned ?? marks[question.id]?.marksEarned ?? 0;
+          const total = answer?.marksTotal ?? question.marks ?? 1;
 
           return (
             <Card key={question.id} className="w-full">
@@ -912,7 +1323,7 @@ export function QuizRunner({
                       Question {index + 1}
                     </CardTitle>
                     <Badge variant="outline" className="shrink-0 text-xs">
-                      {question.type}
+                      {question.type} • {earned} of {total} marks
                     </Badge>
                   </div>
                   <Badge
@@ -957,6 +1368,14 @@ export function QuizRunner({
                     </div>
                   </div>
                 )}
+                {scheme ? (
+                  <div>
+                    <p className="mb-1 text-sm font-medium">Mark scheme</p>
+                    <div className="overflow-x-auto rounded-lg bg-muted p-3 text-sm text-muted-foreground">
+                      <MathMarkdown content={scheme} />
+                    </div>
+                  </div>
+                ) : null}
                 <div>
                   <p className="mb-1 text-sm font-medium">Explanation</p>
                   <div className="overflow-x-auto rounded-lg bg-muted p-3 text-sm text-muted-foreground">
