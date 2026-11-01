@@ -2,20 +2,13 @@ import { planCatalog } from "@/constants/plans";
 import { grantCredits } from "@/lib/credits";
 
 /**
- * The credits a plan adds when it becomes active. The amounts are sized so a
- * student can use the plan's own quiz allowance: 4 free quizzes take the 200
- * signup credits, and every paid plan carries enough for its included quota.
+ * The credits a plan adds when it becomes active. A retired monthly row reads
+ * as FREE elsewhere, so only the two sale tiers award credits here.
  */
 export function planCredits(plan: string): number {
   switch (plan) {
     case "WEEKLY":
       return 2_500;
-    case "STARTER":
-      return 1_600;
-    case "STANDARD":
-      return 3_600;
-    case "PREMIUM":
-      return 12_000;
     case "PRO":
       return 15_000;
     default:

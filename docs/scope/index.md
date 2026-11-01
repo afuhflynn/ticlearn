@@ -69,7 +69,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 31 | Campus ambassadors | Slice 5 | in-progress |
 | 32 | Conversion analytics | Slice 5 | in-progress |
 | 43 | Affiliate invites for partners | Slice 5 | in-progress |
-| 45 | Dashboard subscription page reconciliation | Slice 5 | planned |
+| 45 | Dashboard subscription page reconciliation | Slice 5 | in-progress |
 | 33 | Mobile responsiveness and device quality | Cross cutting | planned |
 | 48 | Hackathon baseline and public repository safety | Hackathon | in-progress |
 | 49 | Provider aware model routing for Meta and Baseten | Hackathon | in-progress |

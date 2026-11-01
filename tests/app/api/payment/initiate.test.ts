@@ -62,11 +62,9 @@ const post = (body: unknown, sessionOverride?: unknown) => {
   );
 };
 
-describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
+describe("POST /api/payment/initiate (spec 0039 AC-2, AC-7)", () => {
   const validBody = {
     plan: "PRO",
-    phone: "677123456",
-    provider: "MTN",
   };
 
   it("returns 401 when there is no session", async () => {
@@ -75,25 +73,33 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
     expect(res.status).toBe(401);
   });
 
-  it("returns 400 for an invalid plan", async () => {
-    const res = await post({ ...validBody, plan: "FREE" });
+  it("returns 400 for an invalid plan and names the two valid passes", async () => {
+    const res = await post({ plan: "FREE" });
 
     expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.error).toMatch(/Weekly Pass|Semester Pass/);
     expect(initiatePayment).not.toHaveBeenCalled();
   });
 
-  it("returns 400 for a bad phone number", async () => {
-    const res = await post({ ...validBody, phone: "123" });
+  it("ignores extra phone and provider fields and starts plan only", async () => {
+    const res = await post({
+      plan: "PRO",
+      phone: "677123456",
+      provider: "MTN",
+    });
 
-    expect(res.status).toBe(400);
-    expect(initiatePayment).not.toHaveBeenCalled();
-  });
-
-  it("returns 400 for a bad provider", async () => {
-    const res = await post({ ...validBody, provider: "YOOME" });
-
-    expect(res.status).toBe(400);
-    expect(initiatePayment).not.toHaveBeenCalled();
+    expect(res.status).toBe(200);
+    expect(initiatePayment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        amount: 3_000,
+        email: "a@b.com",
+        userId: "u-1",
+      }),
+    );
+    expect(initiatePayment).toHaveBeenCalledWith(
+      expect.not.objectContaining({ phone: expect.anything() }),
+    );
   });
 
   it("creates a subscription and returns the payment link (happy path)", async () => {
@@ -107,8 +113,6 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
           plan: "PRO",
           status: "PENDING",
           amount: 3_000,
-          provider: "MTN",
-          phone: "677123456",
         }),
       }),
     );
@@ -117,7 +121,6 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
         amount: 3_000,
         email: "a@b.com",
         userId: "u-1",
-        phone: "677123456",
       }),
     );
     const body = await res.json();
@@ -140,12 +143,28 @@ describe("POST /api/payment/initiate (spec 0019 AC-6, AC-7)", () => {
           plan: "PRO",
           status: "PENDING",
           amount: 3_000,
-          provider: "MTN",
-          phone: "677123456",
         }),
       }),
     );
     expect(db.subscription.create).not.toHaveBeenCalled();
+  });
+
+  it("returns 409 with the end date when an active pass exists", async () => {
+    vi.mocked(db.subscription.findFirst).mockResolvedValue({
+      id: "sub-old",
+      userId: "u-1",
+      plan: "WEEKLY",
+      status: "ACTIVE",
+      activatedAt: new Date(Date.now() - 24 * 3600 * 1000),
+    } as never);
+
+    const res = await post({ plan: "PRO" });
+
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.currentPlan).toBe("WEEKLY");
+    expect(body.endDate).toBeTruthy();
+    expect(initiatePayment).not.toHaveBeenCalled();
   });
 
   it("returns 400 when the gateway returns no link", async () => {

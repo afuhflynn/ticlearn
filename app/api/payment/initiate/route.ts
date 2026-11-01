@@ -5,16 +5,30 @@ import { payablePlans } from "@/constants/plans";
 import { auth } from "@/lib/auth";
 import { initiatePayment } from "@/lib/fapshi";
 import { EVENTS, trackEvent } from "@/lib/kpi";
-import { normalizePhone, normalizeProvider } from "@/lib/mobile-money";
 import { prisma } from "@/lib/prisma";
 import { limit } from "@/lib/rate-limit";
-import { getResolvedTier, isSubscriptionExpired } from "@/lib/resolved-plans";
+import {
+  getResolvedTier,
+  isSubscriptionExpired,
+  planExpiryFrom,
+} from "@/lib/resolved-plans";
 
 const bodySchema = z.object({
   plan: z.enum(["WEEKLY", "PRO"]),
-  phone: z.string().min(1).max(20),
-  provider: z.string().min(1).max(10),
 });
+
+function doualaDate(date: Date): string {
+  try {
+    return date.toLocaleDateString("en-GB", {
+      timeZone: "Africa/Douala",
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return date.toLocaleDateString();
+  }
+}
 
 export async function POST(request: Request) {
   try {
@@ -27,24 +41,8 @@ export async function POST(request: Request) {
 
     const parsed = bodySchema.safeParse(await request.json().catch(() => ({})));
     if (!parsed.success || !payablePlans.includes(parsed.data.plan)) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
-    }
-
-    const provider = normalizeProvider(parsed.data.provider);
-    if (!provider) {
       return NextResponse.json(
-        { error: "Choose MTN Mobile Money or Orange Money." },
-        { status: 400 },
-      );
-    }
-
-    const phone = normalizePhone(parsed.data.phone);
-    if (!phone) {
-      return NextResponse.json(
-        {
-          error:
-            "Enter a valid Cameroon phone number, 9 digits starting with 6.",
-        },
+        { error: "Unknown plan. Choose Weekly Pass or Semester Pass." },
         { status: 400 },
       );
     }
@@ -53,7 +51,10 @@ export async function POST(request: Request) {
 
     const resolved = await getResolvedTier(plan);
     if (!resolved) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Unknown plan. Choose Weekly Pass or Semester Pass." },
+        { status: 400 },
+      );
     }
     const amount = resolved.priceXaf;
 
@@ -67,12 +68,31 @@ export async function POST(request: Request) {
       existing.activatedAt &&
       !isSubscriptionExpired(existing.plan, existing.activatedAt)
     ) {
+      const end = planExpiryFrom(new Date(existing.activatedAt), existing.plan);
+      return NextResponse.json(
+        {
+          error: `You already have an active ${resolved.label} pass. It runs until ${end ? doualaDate(end) : "its end date"} and does not renew by itself.`,
+          currentPlan: existing.plan,
+          endDate: end?.toISOString() ?? null,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (
+      existing?.status === "ACTIVE" &&
+      !existing.activatedAt &&
+      !isSubscriptionExpired(existing.plan, existing.activatedAt)
+    ) {
       return NextResponse.json(
         {
           error:
-            "You already have an active pass. It runs to its end date and does not renew by itself.",
+            "You already have an active pass. Contact support with your transaction id and we will confirm the end date.",
+          currentPlan: existing.plan,
+          endDate: null,
+          transId: existing.fapshiTransId ?? null,
         },
-        { status: 400 },
+        { status: 409 },
       );
     }
 
@@ -83,8 +103,8 @@ export async function POST(request: Request) {
         data: {
           plan: plan as "WEEKLY" | "PRO",
           amount,
-          provider,
-          phone,
+          provider: null,
+          phone: null,
           status: "PENDING",
         },
       });
@@ -97,8 +117,6 @@ export async function POST(request: Request) {
           plan: plan as "WEEKLY" | "PRO",
           status: "PENDING",
           amount,
-          provider,
-          phone,
         },
       });
     }
@@ -107,7 +125,6 @@ export async function POST(request: Request) {
       amount,
       email: session.user.email,
       name: session.user.name || "User",
-      phone,
       userId: session.user.id,
       message: `TiCLearn ${plan} subscription`,
       redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
@@ -126,12 +143,10 @@ export async function POST(request: Request) {
     trackEvent(session.user.id, EVENTS.PAYMENT_INITIATED, {
       plan,
       amount,
-      provider,
     }).catch(() => {});
     trackEvent(session.user.id, EVENTS.UPGRADE_START, {
       plan,
       amount,
-      provider,
     }).catch(() => {});
 
     return NextResponse.json({

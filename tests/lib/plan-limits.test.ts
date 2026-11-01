@@ -18,16 +18,19 @@ describe("resolvePlan (covers: AC-13)", () => {
   });
 
   it("resolves to FREE unless the subscription is active", () => {
-    expect(resolvePlan({ plan: Plan.PREMIUM, status: "PENDING" })).toBe("FREE");
-    expect(resolvePlan({ plan: Plan.PREMIUM, status: "CANCELLED" })).toBe(
+    expect(resolvePlan({ plan: Plan.WEEKLY, status: "PENDING" })).toBe("FREE");
+    expect(resolvePlan({ plan: Plan.WEEKLY, status: "CANCELLED" })).toBe(
       "FREE",
     );
   });
 
   it("resolves an active subscription to its plan", () => {
-    expect(resolvePlan({ plan: Plan.STARTER, status: "ACTIVE" })).toBe(
-      "STARTER",
-    );
+    expect(resolvePlan({ plan: Plan.WEEKLY, status: "ACTIVE" })).toBe("WEEKLY");
+  });
+
+  it("resolves a retired monthly plan to FREE (spec 0039)", () => {
+    expect(resolvePlan({ plan: Plan.STARTER, status: "ACTIVE" })).toBe("FREE");
+    expect(resolvePlan({ plan: Plan.PREMIUM, status: "ACTIVE" })).toBe("FREE");
   });
 
   it("falls back to FREE for a plan the schema does not know", () => {
@@ -82,8 +85,13 @@ describe("getPlanLimits (covers: AC-13)", () => {
     }
   });
 
-  it("caps a starter student at the tutor messages the client advertises", () => {
-    expect(getPlanLimits(Plan.STARTER).aiTutorMessages).toBe(50);
+  it("caps a weekly student at the tutor messages the client advertises", () => {
+    expect(getPlanLimits(Plan.WEEKLY).aiTutorMessages).toBe(50);
+  });
+
+  it("falls back to the free limits for a retired monthly plan (spec 0039)", () => {
+    expect(getPlanLimits(Plan.STARTER)).toEqual(FREE_LIMITS);
+    expect(getPlanLimits(Plan.PREMIUM)).toEqual(FREE_LIMITS);
   });
 
   it("counts with the unlimited sentinel or a positive whole number, nothing else", () => {
