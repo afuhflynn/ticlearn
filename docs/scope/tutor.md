@@ -142,10 +142,16 @@ Generation plus marking plus drawing stay dependable under real model limits. A 
 - [x] Verify it: /verify-release quiz reliability plus visual fallback
 - [x] Test it: /test-engineer quiz reliability plus visual fallback
 
-### 62. Smart setup that knows you · needs a decision
+### 62. Smart setup that knows you · in-progress
 Tip reads profile plus programs plus notes before it asks anything, so it never asks level again and never treats a note title as a topic. It picks topics from inside the note and asks only the missing piece one at a time.
 **Done when:** a student starting a quiz sees no level ask when level lives in profile, topic options come from note content, and each reply moves one step forward by tap or by typing.
-- [ ] Design it (spec): /solution-architect smart setup that knows you
+- [x] Design it (spec): /solution-architect smart setup that knows you · spec [0041](../../specs/0041-smart-onboarding-chat-setup/index.md)
+- [x] Build it: /feature-build smart setup that knows you
+  - [x] Progress store plus setup routes with owner checks (covers AC-4, AC-7, AC-8)
+  - [x] Chat led UI plus guard plus skip and resume (covers AC-1, AC-2, AC-3, AC-4)
+  - [x] Validation plus Tip wiring plus funnel logs (covers AC-5, AC-6)
+- [ ] Verify it: /verify-release smart setup that knows you
+- [x] Test it: /test-engineer smart setup that knows you
 
 (basis: onboarding profile plus programs in the database, note content as topic source, progressive disclosure asks one thing at a time)
 

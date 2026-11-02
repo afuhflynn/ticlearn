@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "onboarding_progress" ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3);

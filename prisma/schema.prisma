@@ -77,6 +77,7 @@ model User {
   aiUsageEvents        AiUsageEvent[]        @relation("AiUsageEvents")
   webSearchEvents      WebSearchEvent[]      @relation("WebSearchEvents")
   visualArtifacts      VisualArtifact[]
+  onboardingProgress   OnboardingProgress?
 
   @@index([role, createdAt])
   @@index([referredBy])
@@ -1085,4 +1086,20 @@ model Course {
 
   @@index([facultyId])
   @@map("courses")
+}
+
+// One row per student at most. Holds half done setup so resume works on any device.
+model OnboardingProgress {
+  id          String    @id @default(cuid())
+  userId      String    @unique @map("user_id")
+  currentStep Int       @default(0) @map("current_step")
+  answers     Json      @default("{}")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  completedAt DateTime? @map("completed_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("onboarding_progress")
 }

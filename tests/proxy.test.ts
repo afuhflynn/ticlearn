@@ -251,7 +251,11 @@ describe("the onboarding gate in proxy.ts (spec 0012)", () => {
     expect(findUniqueMock).toHaveBeenCalledTimes(2);
     expect(findUniqueMock).toHaveBeenLastCalledWith({
       where: { id: "user-1" },
-      select: { levelOfStudy: true, onboardingSkipped: true },
+      select: {
+        levelOfStudy: true,
+        onboardingSkipped: true,
+        onboardingCompleted: true,
+      },
     });
   });
 
