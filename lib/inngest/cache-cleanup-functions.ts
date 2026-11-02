@@ -20,6 +20,9 @@ const CRON = "0 3 * * *";
 /** Search rows are student authored content, so they do not live forever. */
 const WEB_SEARCH_RETENTION_DAYS = 90;
 
+/** Half done setup rows are scratch state, so they clear after a month. */
+const ONBOARDING_RETENTION_DAYS = 30;
+
 async function deleteExpired(): Promise<number> {
   let removed = 0;
   for (;;) {
@@ -86,6 +89,31 @@ async function deleteOldWebSearchEvents(): Promise<number> {
   return removed;
 }
 
+/**
+ * Half done setup is scratch state keyed by student. Anything untouched for
+ * 30 days is abandoned, finished or not, so it goes in the same batched way.
+ */
+async function deleteOldOnboardingProgress(): Promise<number> {
+  const cutoff = new Date(
+    Date.now() - ONBOARDING_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+  );
+  let removed = 0;
+  for (;;) {
+    const old = await prisma.onboardingProgress.findMany({
+      where: { updatedAt: { lt: cutoff } },
+      select: { id: true },
+      take: BATCH_SIZE,
+    });
+    if (old.length === 0) break;
+    await prisma.onboardingProgress.deleteMany({
+      where: { id: { in: old.map((row) => row.id) } },
+    });
+    removed += old.length;
+    if (old.length < BATCH_SIZE) break;
+  }
+  return removed;
+}
+
 export const pruneAppCache = inngest.createFunction(
   {
     name: "Prune App Cache",
@@ -97,9 +125,10 @@ export const pruneAppCache = inngest.createFunction(
     const expired = await deleteExpired();
     const trimmed = await trimToCeiling(ceiling);
     const searchEvents = await deleteOldWebSearchEvents();
+    const onboardingRows = await deleteOldOnboardingProgress();
     console.log(
-      `[cache] pruned ${expired} expired, ${trimmed} over ceiling ${ceiling}, and ${searchEvents} web search events past ${WEB_SEARCH_RETENTION_DAYS} days`,
+      `[cache] pruned ${expired} expired, ${trimmed} over ceiling ${ceiling}, ${searchEvents} web search events past ${WEB_SEARCH_RETENTION_DAYS} days, and ${onboardingRows} setup rows past ${ONBOARDING_RETENTION_DAYS} days`,
     );
-    return { expired, trimmed, ceiling, searchEvents };
+    return { expired, trimmed, ceiling, searchEvents, onboardingRows };
   },
 );

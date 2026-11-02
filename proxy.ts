@@ -140,7 +140,11 @@ export async function proxy(request: NextRequest) {
     const level = await readWithin(
       prisma.user.findUnique({
         where: { id: userId },
-        select: { levelOfStudy: true, onboardingSkipped: true },
+        select: {
+          levelOfStudy: true,
+          onboardingSkipped: true,
+          onboardingCompleted: true,
+        },
       }),
       ONBOARDING_GATE_TIMEOUT_MS,
     ).catch((error) => {
@@ -153,7 +157,11 @@ export async function proxy(request: NextRequest) {
 
     // null means "we do not know", which must never become a redirect.
     if (level) {
-      const onboarded = Boolean(level.levelOfStudy || level.onboardingSkipped);
+      const onboarded = Boolean(
+        level.levelOfStudy ||
+          level.onboardingSkipped ||
+          level.onboardingCompleted,
+      );
 
       if (!onboarded && !isOnboardingExempt(pathname)) {
         return NextResponse.redirect(new URL("/onboarding", request.url));

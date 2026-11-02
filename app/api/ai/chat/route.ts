@@ -929,10 +929,27 @@ export async function POST(req: Request) {
         });
     }
 
-    // The readiness score was cut with spec 0014. The prompt keeps the slot so
-    // the template shape does not change, and the slot stays empty because the
-    // app no longer holds a number to put in it.
-    const profileContext = "";
+    // The student profile personalizes Tip from day one. No cache past finish:
+    // the row is read live so a fresh finish shows at once.
+    const profile = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        levelOfStudy: true,
+        targetGoal: true,
+        institution: true,
+        program: true,
+      },
+    });
+    const profileBits = [
+      profile?.levelOfStudy ? `Level: ${profile.levelOfStudy}` : "",
+      profile?.targetGoal ? `Goal: ${profile.targetGoal}` : "",
+      profile?.institution ? `School: ${profile.institution}` : "",
+      profile?.program ? `Program: ${profile.program}` : "",
+    ].filter(Boolean);
+    const profileContext =
+      profileBits.length > 0
+        ? `Student profile: ${profileBits.join(" | ")}. Pitch answers to this level and goal.`
+        : "";
 
     // A note belongs to the student who owns it, so a conversation that points
     // at someone else's note reads as no note at all.

@@ -33,6 +33,12 @@ export { useCredits } from "./useCredits";
 export { useDashboardContinue } from "./useDashboard";
 export { useAcceptInvite } from "./useInvite";
 export {
+  useFinishOnboarding,
+  useOnboardingProgress,
+  useSaveOnboardingStep,
+  useStartOnboarding,
+} from "./useOnboarding";
+export {
   useDeleteNote,
   useNote,
   useNotes,

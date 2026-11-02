@@ -49,6 +49,7 @@ export const queryKeys = {
   // Profile & Settings
   profile: ["profile"] as const,
   settings: ["settings"] as const,
+  onboardingProgress: ["onboarding", "progress"] as const,
 
   // payment
   paymentSettings: ["payment", "settings"],

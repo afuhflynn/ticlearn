@@ -535,6 +535,35 @@ export const api = {
         }),
     },
 
+    onboarding: {
+      start: () =>
+        apiRequest<{
+          progressId: string;
+          currentStep: number;
+          answers: Record<string, unknown>;
+        }>("/onboarding/start", { method: "POST" }),
+      progress: () =>
+        apiRequest<{ currentStep: number; answers: Record<string, unknown> }>(
+          "/onboarding/progress",
+          { method: "GET" },
+        ),
+      save: (data: {
+        step: number;
+        stepKey: "level" | "goal" | "school" | "confirm";
+        answers: Record<string, unknown>;
+        skipped?: boolean;
+      }) =>
+        apiRequest<{ currentStep: number; saved: boolean; skipped?: boolean }>(
+          "/onboarding/progress",
+          { method: "POST", body: data },
+        ),
+      finish: (data: Record<string, unknown>) =>
+        apiRequest<{ ok: boolean; user: Record<string, unknown> }>(
+          "/onboarding/finish",
+          { method: "POST", body: data },
+        ),
+    },
+
     // Admin APIs
     admin: {
       // Users
