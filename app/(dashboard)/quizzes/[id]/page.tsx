@@ -11,9 +11,9 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { QuizArt } from "@/components/art/quiz-art";
+import { QuizBuildProgress } from "@/components/chat/quiz-build-progress";
 import { MathMarkdown } from "@/components/math-markdown";
 import { RetryPanel } from "@/components/retries/retry-panel";
-import { UpgradePrompt } from "@/components/upgrade/upgrade-prompt";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,10 +23,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useLongWait } from "@/components/ui/pending-region";
-import { ProgressLine } from "@/components/ui/process-progress";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
+import { UpgradePrompt } from "@/components/upgrade/upgrade-prompt";
 import { useQuiz, useQuizAttempts, useSubmitQuizAttempt } from "@/hooks";
 import { useSession } from "@/lib/auth-client";
 import { QuizRunnerSkeleton } from "../../student-skeletons";
@@ -47,6 +46,11 @@ type QuizResponse = {
   title: string;
   noteTitle: string;
   status: "GENERATING" | "READY" | "ERROR";
+  buildStage?: string | null;
+  builtCount?: number | null;
+  buildTotal?: number | null;
+  buildError?: string | null;
+  buildStartedAt?: string | null;
   timed: boolean;
   timeLimit: number | null;
   isPublic: boolean;
@@ -77,19 +81,9 @@ type AttemptResult = {
 
 /**
  * A quiz is one model call, so the honest indicator is a plain line with a
- * time estimate and not a stage list. The line only appears once the wait
- * passes ten seconds, measured on the client's own clock.
+ * time estimate and not a stage list. Long note builds use the staged
+ * progress card above; this helper only formats a clock.
  */
-function QuizGeneratingLine() {
-  const isLongWait = useLongWait(true);
-  if (!isLongWait) return null;
-  return (
-    <ProgressLine
-      message="Your quiz is still being written."
-      estimate="It usually takes about a minute."
-    />
-  );
-}
 
 function formatTime(totalSeconds: number) {
   const minutes = Math.floor(totalSeconds / 60);
@@ -244,11 +238,7 @@ export default function QuizPlayerPage() {
     return (
       <Card className="w-full">
         <CardContent className="space-y-2 pt-6">
-          <p className="font-medium">Quiz generation is still running</p>
-          <QuizGeneratingLine />
-          <p className="break-words text-sm text-muted-foreground">
-            This page refreshes automatically until the quiz is ready.
-          </p>
+          <QuizBuildProgress quiz={quiz} />
         </CardContent>
       </Card>
     );
@@ -258,8 +248,8 @@ export default function QuizPlayerPage() {
     return (
       <Card className="w-full">
         <CardContent className="space-y-4 pt-6">
-          <p className="font-medium">Quiz generation failed.</p>
-          <Button asChild className="w-full sm:w-auto">
+          <QuizBuildProgress quiz={quiz} />
+          <Button asChild variant="outline" className="w-full sm:w-auto">
             <Link href="/upload">Back to notes</Link>
           </Button>
         </CardContent>

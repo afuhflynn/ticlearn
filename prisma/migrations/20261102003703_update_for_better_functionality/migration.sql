@@ -1,5 +1,3 @@
--- AlterTable
-ALTER TABLE "onboarding_progress" ALTER COLUMN "updated_at" DROP DEFAULT,
-ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
-ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
-ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3);
+-- No-op: the onboarding_progress ALTER below moved into
+-- 20261102090000_add_onboarding_progress, which creates the table.
+-- It must run after the CREATE, never before it.

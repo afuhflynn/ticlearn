@@ -261,6 +261,11 @@ model Quiz {
   title         String
   questionCount Int            @map("question_count")
   status        QuizStatus     @default(GENERATING)
+  buildStage    String?        @map("build_stage")
+  builtCount    Int            @default(0) @map("built_count")
+  buildTotal    Int            @default(0) @map("build_total")
+  buildError    String?        @map("build_error") @db.Text
+  buildStartedAt DateTime?     @map("build_started_at") @db.Timestamptz(3)
   isPublic      Boolean        @default(false) @map("is_public")
   timed         Boolean        @default(false)
   timeLimit     Int?           @map("time_limit")
@@ -278,6 +283,7 @@ model Quiz {
   @@index([noteId])
   @@index([isPublic])
   @@index([status])
+  @@index([status, buildStartedAt])
   @@map("quizzes")
 }
 

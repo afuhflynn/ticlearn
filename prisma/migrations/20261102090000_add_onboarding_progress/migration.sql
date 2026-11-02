@@ -11,3 +11,9 @@ CREATE TABLE "onboarding_progress" (
 CREATE UNIQUE INDEX "onboarding_progress_user_id_key" ON "onboarding_progress"("user_id");
 CREATE INDEX "onboarding_progress_user_id_idx" ON "onboarding_progress"("user_id");
 ALTER TABLE "onboarding_progress" ADD CONSTRAINT "onboarding_progress_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AlterTable (moved here from 20261102003703: it must run after the CREATE above)
+ALTER TABLE "onboarding_progress" ALTER COLUMN "updated_at" DROP DEFAULT,
+ALTER COLUMN "updated_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "created_at" SET DATA TYPE TIMESTAMP(3),
+ALTER COLUMN "completed_at" SET DATA TYPE TIMESTAMP(3);
