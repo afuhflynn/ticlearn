@@ -17,6 +17,7 @@ import {
   handleSubscriptionAction,
   monthlyCreditBonus,
   processNote,
+  sweepStaleQuizzes,
 } from "@/lib/inngest/functions";
 import { computeDailyMetricsJob } from "@/lib/inngest/metrics-functions";
 import { expirePartnerInvites } from "@/lib/inngest/partner-functions";
@@ -27,6 +28,7 @@ export const { GET, POST, PUT } = serve({
   functions: [
     processNote,
     generateQuiz,
+    sweepStaleQuizzes,
     sendEmailTransactional,
     sendEmailLifecycle,
     sendEmailPayment,

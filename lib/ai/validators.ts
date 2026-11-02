@@ -138,12 +138,12 @@ export function isCutoffMessage(message: string): boolean {
 }
 
 /**
- * One smaller retry count per spec. Half rounded down with a floor of 3.
- * At 3 or less no retry runs.
+ * One smaller retry count per spec. Half rounded down with a floor of 5.
+ * At 5 or less no retry runs.
  */
 export function smallerRetryCount(asked: number): number | null {
-  if (!Number.isFinite(asked) || asked <= 3) return null;
-  return Math.max(3, Math.floor(asked / 2));
+  if (!Number.isFinite(asked) || asked <= 5) return null;
+  return Math.max(5, Math.floor(asked / 2));
 }
 
 /**

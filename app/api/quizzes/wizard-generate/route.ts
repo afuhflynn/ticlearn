@@ -2,8 +2,8 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { generateQuizFromNote } from "@/lib/ai/index";
-import { isCutoffMessage, smallerRetryCount } from "@/lib/ai/validators";
 import type { normalizeGeneratedQuestions } from "@/lib/ai/validators";
+import { isCutoffMessage, smallerRetryCount } from "@/lib/ai/validators";
 import { auth } from "@/lib/auth";
 import {
   getEffectiveCreditCost,
@@ -102,6 +102,15 @@ export async function POST(req: Request) {
     // A linked note reuses the page pipeline exactly: a GENERATING row plus
     // the Inngest job, so counts plus caps plus debits match the quiz page.
     if (note) {
+      if (count > 10) {
+        return NextResponse.json(
+          {
+            error:
+              "Chat quizzes stop at 10 questions. Use the quiz page for a larger set.",
+          },
+          { status: 400 },
+        );
+      }
       const full = await prisma.note.findFirst({
         where: { id: note.id, userId: session.user.id },
         select: { id: true, status: true, extractedText: true },
@@ -123,11 +132,37 @@ export async function POST(req: Request) {
           title,
           questionCount: 0,
           status: "GENERATING",
+          buildStage: "QUEUED",
+          builtCount: 0,
+          buildTotal: count,
+          buildError: null,
+          buildStartedAt: new Date(),
           isPublic: false,
           timed: false,
           timeLimit: null,
         },
       });
+      if (wantsDebit) {
+        try {
+          await spendCredits({
+            userId: session.user.id,
+            amount: quizCost,
+            type: "QUIZ_GENERATION",
+            description: `Quiz reserve: ${noteTitle}`,
+            referenceId: quiz.id,
+          });
+        } catch (reserveError) {
+          await prisma.quiz.update({
+            where: { id: quiz.id },
+            data: {
+              status: "ERROR",
+              buildStage: null,
+              buildError: "Quiz build failed.",
+            },
+          });
+          throw reserveError;
+        }
+      }
       try {
         await inngest.send({
           name: "quiz/generate",

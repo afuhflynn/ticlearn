@@ -162,3 +162,27 @@ export async function grantCredits(params: {
     return { balance: updated.credits, duplicate: false };
   });
 }
+
+/**
+ * Refund one quiz reserve once. The refund row shares the reserve quiz id
+ * with a refund prefix, so a job retry and the stale sweeper can both call
+ * this and only the first call moves credits.
+ */
+export async function refundQuizReserve(params: {
+  userId: string;
+  quizId: string;
+  amount: number;
+}): Promise<{ balance: number; duplicate: boolean }> {
+  const { userId, quizId, amount } = params;
+  if (amount <= 0) {
+    const balance = await getUserCreditBalance(userId);
+    return { balance, duplicate: false };
+  }
+  return grantCredits({
+    userId,
+    amount,
+    type: "QUIZ_GENERATION",
+    description: `Quiz build refund: ${quizId}`,
+    referenceId: `refund:${quizId}`,
+  });
+}

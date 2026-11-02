@@ -30,18 +30,20 @@ describe("isCutoffMessage (spec 0040, covers: AC-2)", () => {
   });
 });
 
-describe("smallerRetryCount (spec 0040, covers: AC-2)", () => {
+describe("smallerRetryCount (spec 0042, covers: AC-2)", () => {
   it("halves a large ask, rounded down", () => {
     expect(smallerRetryCount(10)).toBe(5);
-    expect(smallerRetryCount(9)).toBe(4);
+    expect(smallerRetryCount(9)).toBe(5);
   });
 
-  it("floors the retry at 3", () => {
-    expect(smallerRetryCount(5)).toBe(3);
-    expect(smallerRetryCount(4)).toBe(3);
+  it("floors the retry at 5", () => {
+    expect(smallerRetryCount(11)).toBe(5);
+    expect(smallerRetryCount(6)).toBe(5);
   });
 
-  it("skips the retry at 3 or less", () => {
+  it("skips the retry at 5 or less", () => {
+    expect(smallerRetryCount(5)).toBeNull();
+    expect(smallerRetryCount(4)).toBeNull();
     expect(smallerRetryCount(3)).toBeNull();
     expect(smallerRetryCount(2)).toBeNull();
     expect(smallerRetryCount(1)).toBeNull();

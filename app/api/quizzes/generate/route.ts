@@ -2,7 +2,11 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { auth } from "@/lib/auth";
-import { getEffectiveCreditCost, getUserCreditBalance } from "@/lib/credits";
+import {
+  getEffectiveCreditCost,
+  getUserCreditBalance,
+  spendCredits,
+} from "@/lib/credits";
 import { inngest } from "@/lib/inngest/client";
 import { EVENTS, trackEvent } from "@/lib/kpi";
 import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
@@ -14,7 +18,7 @@ import { prisma } from "@/lib/prisma";
 
 const generateQuizSchema = z.object({
   noteId: z.string().min(1),
-  questionCount: z.number().int().min(5).max(100).optional(),
+  questionCount: z.number().int().min(1).max(40).optional(),
   questionTypes: z.enum(["MCQ", "OPEN", "MIXED"]).optional(),
   timed: z.boolean().optional(),
   timeLimit: z.number().int().min(1).max(180).nullable().optional(),
@@ -101,7 +105,13 @@ export async function POST(req: Request) {
     const settings = await getPlatformSettings();
     const wantsDebit = quizCreditsRequired(settings);
     const planValue = plan === "FREE" ? null : plan;
-    const resolvedQuestionCount = questionCount || 10;
+    const resolvedQuestionCount = Math.min(questionCount ?? 10, 40);
+    if (resolvedQuestionCount < 1) {
+      return NextResponse.json(
+        { error: "Ask for at least 1 question and at most 40." },
+        { status: 400 },
+      );
+    }
     const isGrounded = grounded === true;
     const baseCost = isGrounded
       ? settings.creditCostGroundedQuestion * resolvedQuestionCount
@@ -124,6 +134,7 @@ export async function POST(req: Request) {
 
     const resolvedQuestionTypes = questionTypes || "MIXED";
 
+    const buildStartedAt = new Date();
     const quiz = await prisma.quiz.create({
       data: {
         userId: session.user.id,
@@ -132,11 +143,51 @@ export async function POST(req: Request) {
         title: `Quiz - ${note.title}`,
         questionCount: 0,
         status: "GENERATING",
+        buildStage: "QUEUED",
+        builtCount: 0,
+        buildTotal: resolvedQuestionCount,
+        buildError: null,
+        buildStartedAt,
         isPublic: isPublic || false,
         timed: timed || false,
         timeLimit: timeLimit || null,
       },
     });
+
+    if (wantsDebit) {
+      try {
+        await spendCredits({
+          userId: session.user.id,
+          amount: quizCost,
+          type: "QUIZ_GENERATION",
+          description: `Quiz reserve: ${note.title}`,
+          referenceId: quiz.id,
+        });
+      } catch (reserveError) {
+        await prisma.quiz.update({
+          where: { id: quiz.id },
+          data: {
+            status: "ERROR",
+            buildStage: null,
+            buildError: "Quiz build failed.",
+          },
+        });
+        if (
+          reserveError instanceof Error &&
+          /insufficient credits/i.test(reserveError.message)
+        ) {
+          return NextResponse.json(
+            {
+              error: `Insufficient credits. Need ${quizCost} credits to generate a quiz.`,
+              balance: await getUserCreditBalance(session.user.id),
+              requiredCredits: quizCost,
+            },
+            { status: 402 },
+          );
+        }
+        throw reserveError;
+      }
+    }
 
     try {
       await inngest.send({

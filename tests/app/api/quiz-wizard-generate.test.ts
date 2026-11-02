@@ -10,7 +10,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     note: { findFirst: vi.fn() },
     subscription: { findFirst: vi.fn() },
-    quiz: { count: vi.fn(), create: vi.fn() },
+    quiz: { count: vi.fn(), create: vi.fn(), update: vi.fn() },
     $transaction: vi.fn(),
   },
 }));
@@ -22,7 +22,11 @@ vi.mock("@/lib/ai/index", () => ({
 const db = prisma as unknown as {
   note: { findFirst: ReturnType<typeof vi.fn> };
   subscription: { findFirst: ReturnType<typeof vi.fn> };
-  quiz: { count: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn> };
+  quiz: {
+    count: ReturnType<typeof vi.fn>;
+    create: ReturnType<typeof vi.fn>;
+    update: ReturnType<typeof vi.fn>;
+  };
   $transaction: ReturnType<typeof vi.fn>;
 };
 
@@ -52,6 +56,7 @@ beforeEach(() => {
   signIn({ id: "student-1" });
   db.subscription.findFirst.mockResolvedValue(null);
   db.quiz.count.mockResolvedValue(0);
+  vi.mocked(quizCreditsRequired).mockReturnValue(false);
 });
 
 describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
@@ -141,6 +146,53 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
     expect(body.quiz.id).toBe("quiz-note-1");
   });
 
+  it("opens the linked build as QUEUED with the chat total (spec 0042, covers: AC-1)", async () => {
+    db.note.findFirst.mockResolvedValue({
+      id: "note-1",
+      title: "Photosynthesis",
+      status: "READY",
+      extractedText: "chlorophyll ".repeat(50),
+    });
+    db.quiz.create.mockResolvedValue({ id: "quiz-note-1" });
+
+    const res = await POST(request({ ...valid, noteId: "note-1", count: 8 }));
+
+    expect(res.status).toBe(200);
+    expect(db.quiz.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        userId: "student-1",
+        noteId: "note-1",
+        status: "GENERATING",
+        buildStage: "QUEUED",
+        builtCount: 0,
+        buildTotal: 8,
+      }),
+    });
+  });
+
+  it("reserves credits keyed by the quiz id on the chat note path (spec 0042, covers: AC-6)", async () => {
+    vi.mocked(quizCreditsRequired).mockReturnValue(true);
+    db.note.findFirst.mockResolvedValue({
+      id: "note-1",
+      title: "Photosynthesis",
+      status: "READY",
+      extractedText: "chlorophyll ".repeat(50),
+    });
+    db.quiz.create.mockResolvedValue({ id: "quiz-note-2" });
+
+    const res = await POST(request({ ...valid, noteId: "note-1" }));
+
+    expect(res.status).toBe(200);
+    expect(spendCredits).toHaveBeenCalledTimes(1);
+    expect(spendCredits).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: "student-1",
+        type: "QUIZ_GENERATION",
+        referenceId: "quiz-note-2",
+      }),
+    );
+  });
+
   it("returns 402 when the debit is wanted and the balance is low", async () => {
     vi.mocked(quizCreditsRequired).mockReturnValue(true);
     vi.mocked(getUserCreditBalance).mockResolvedValue(0);
@@ -218,6 +270,34 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
         correctAnswer: "A",
         explanation: "E2",
       },
+      {
+        type: "MCQ",
+        question: "Q3",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E3",
+      },
+      {
+        type: "MCQ",
+        question: "Q4",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E4",
+      },
+      {
+        type: "MCQ",
+        question: "Q5",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E5",
+      },
+      {
+        type: "MCQ",
+        question: "Q6",
+        options: ["A", "B"],
+        correctAnswer: "A",
+        explanation: "E6",
+      },
     ];
     const full = [
       {
@@ -253,12 +333,12 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
       return fn(tx);
     });
 
-    const res = await POST(request({ ...valid, count: 5 }));
+    const res = await POST(request({ ...valid, count: 10 }));
 
     expect(res.status).toBe(200);
     expect(gen).toHaveBeenCalledTimes(2);
     expect(gen.mock.calls[1]?.[1]).toEqual(
-      expect.objectContaining({ questionCount: 3 }),
+      expect.objectContaining({ questionCount: 5 }),
     );
     const body = (await res.json()) as { quiz: { id: string } };
     expect(body.quiz.id).toBe("quiz-retry-1");
@@ -301,20 +381,20 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
       return fn(tx);
     });
 
-    const res = await POST(request({ ...valid, count: 8 }));
+    const res = await POST(request({ ...valid, count: 10 }));
 
     expect(res.status).toBe(200);
     expect(gen).toHaveBeenCalledTimes(2);
     expect(gen.mock.calls[1]?.[1]).toEqual(
-      expect.objectContaining({ questionCount: 4 }),
+      expect.objectContaining({ questionCount: 5 }),
     );
   });
 
-  it("skips the retry and returns handoff at once when the ask is 3 or less", async () => {
+  it("skips the retry and returns handoff at once when the ask is 5 or less", async () => {
     const gen = vi.mocked(generateQuizFromNote);
     gen.mockRejectedValueOnce(new Error("max tokens length reached"));
 
-    const res = await POST(request({ ...valid, count: 3 }));
+    const res = await POST(request({ ...valid, count: 5 }));
 
     expect(res.status).toBe(500);
     expect(gen).toHaveBeenCalledTimes(1);
@@ -336,7 +416,7 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
     const gen = vi.mocked(generateQuizFromNote);
     gen.mockRejectedValueOnce(new Error("Quiz generation failed. Try again."));
 
-    const res = await POST(request({ ...valid, count: 6 }));
+    const res = await POST(request({ ...valid, count: 10 }));
 
     expect(res.status).toBe(500);
     expect(gen).toHaveBeenCalledTimes(1);
@@ -346,7 +426,7 @@ describe("POST /api/quizzes/wizard-generate (spec 0033, covers: AC-8)", () => {
       retried: boolean;
     };
     expect(body.cutoff).toBe(false);
-    expect(body.retryWithCount).toBe(3);
+    expect(body.retryWithCount).toBe(5);
     expect(body.retried).toBe(false);
   });
 });

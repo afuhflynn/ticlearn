@@ -4,6 +4,7 @@ import { ChevronRight, Loader2, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { QuizBuildProgress } from "@/components/chat/quiz-build-progress";
 import { MathMarkdown } from "@/components/math-markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,18 +15,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { ProgressLine } from "@/components/ui/process-progress";
-import { Progress } from "@/components/ui/progress";
-import { Textarea } from "@/components/ui/textarea";
-import { useQuiz, useSubmitQuizAttempt } from "@/hooks";
-import { api } from "@/lib/api-client";
-import { useSession } from "@/lib/auth-client";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { Input } from "@/components/ui/input";
+import { Progress } from "@/components/ui/progress";
+import { Textarea } from "@/components/ui/textarea";
+import { useQuiz, useSubmitQuizAttempt } from "@/hooks";
+import { api } from "@/lib/api-client";
+import { useSession } from "@/lib/auth-client";
 import {
   clearActiveRunId,
   clearQuizSnapshot,
@@ -413,10 +413,10 @@ export function QuizRunner({
         return;
       }
       const looksLong = /length|cutoff|truncat|too long|too big/i.test(message);
-      if (looksLong && count > 3) {
+      if (looksLong && count > 5) {
         setRetrying(true);
         try {
-          const smaller = Math.max(3, Math.floor(count / 2));
+          const smaller = Math.max(5, Math.floor(count / 2));
           await startWith(smaller);
           setRetrying(false);
           return;
@@ -428,7 +428,7 @@ export function QuizRunner({
         noteId,
         noteTitle,
         topicText: noteTitle,
-        retryWithCount: count > 3 ? Math.max(3, Math.floor(count / 2)) : null,
+        retryWithCount: count > 5 ? Math.max(5, Math.floor(count / 2)) : null,
         formatChoice: mode === "flashcards" ? "Flashcards" : "Quiz",
       };
       setHandoff(info);
@@ -818,6 +818,15 @@ export function QuizRunner({
   }
 
   if (phase === "generating") {
+    const liveQuiz = (quizData?.quiz ?? null) as {
+      id: string;
+      status: "GENERATING" | "READY" | "ERROR";
+      buildStage?: string | null;
+      builtCount?: number | null;
+      buildTotal?: number | null;
+      buildError?: string | null;
+      buildStartedAt?: string | null;
+    } | null;
     return (
       <div className="mx-auto w-full max-w-[48rem] px-4">
         <Card className="w-full">
@@ -827,17 +836,16 @@ export function QuizRunner({
                 ? "That set ran long, trying a smaller set."
                 : "Your quiz is being written."}
             </p>
-            <ProgressLine
-              message={
-                retrying
-                  ? "Trying a smaller set now."
-                  : "Tip is building your questions."
-              }
-              estimate="It usually takes about a minute."
-            />
-            <p className="break-words text-sm text-muted-foreground">
-              This thread refreshes until the quiz is ready.
-            </p>
+            {quizId && liveQuiz ? (
+              <QuizBuildProgress
+                quiz={{ ...liveQuiz, id: quizId }}
+                showLink={false}
+              />
+            ) : (
+              <p className="break-words text-sm text-muted-foreground">
+                This thread refreshes until the quiz is ready.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>

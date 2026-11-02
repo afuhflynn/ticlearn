@@ -261,12 +261,15 @@ export const generateQuiz = inngest.createFunction(
       const { generateQuizFromNote, QUIZ_BATCH_SIZE } = await import(
         "@/lib/ai"
       );
+      const { detectCutoff, isCutoffMessage, smallerRetryCount } = await import(
+        "@/lib/ai/validators"
+      );
       const { formatPageContext, getGroundedPageInputs } = await import(
         "@/lib/grounded-pages"
       );
       console.log(`[Inngest] Calling AI to generate quiz...`);
 
-      const totalQuestions = questionCount || 10;
+      const totalQuestions = Math.min(questionCount || 10, 40);
       const resolvedTypes = questionTypes || "MIXED";
       const isGrounded = grounded === true;
       let pageContext = "No analyzed pages for this note.";
@@ -281,12 +284,48 @@ export const generateQuiz = inngest.createFunction(
           );
         }
       }
-      // One model call cannot reliably emit a 50-100 question quiz: the
-      // output cap truncates mid-JSON (schema fail-fast kills the walk) and
-      // providers reject very large max_tokens outright. Batches of 15 stay
-      // inside both limits, and each batch runs as its own step so a long
-      // quiz never hits a single invocation's timeout. The batchLabel keeps
-      // each batch's prompt (and cache key) distinct.
+
+      async function readQuizStatus() {
+        const row = await prisma.quiz.findUnique({
+          where: { id: quizId },
+          select: { status: true },
+        });
+        return row?.status ?? null;
+      }
+
+      async function failTerminal(message: string) {
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: { status: "ERROR", buildStage: null, buildError: message },
+        });
+        if (wantsDebit && userId && quizCost > 0) {
+          try {
+            const { refundQuizReserve } = await import("@/lib/credits");
+            await refundQuizReserve({ userId, quizId, amount: quizCost });
+          } catch (refundError) {
+            console.error("[Inngest] Quiz refund failed:", refundError);
+          }
+        }
+      }
+
+      // The create route sets QUEUED with the total. The first write the
+      // student polls for is GENERATING with a zero count, so the card paints
+      // inside seconds even when the model is slow to answer batch one.
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: {
+          status: "GENERATING",
+          buildStage: "GENERATING",
+          builtCount: 0,
+          buildTotal: totalQuestions,
+        },
+      });
+      // One model call cannot reliably emit a 40 question quiz: the
+      // output cap truncates mid-JSON and providers reject very large
+      // max_tokens outright. Batches of 15 stay inside both limits, and
+      // each batch runs as its own step so a long quiz never hits a
+      // single invocation timeout. The batchLabel keeps each batch prompt
+      // distinct so batches never share a cache key.
       const batchCount = Math.ceil(totalQuestions / QUIZ_BATCH_SIZE);
       const extractedText: string = note.extractedText;
       type BatchQuestions = Awaited<
@@ -295,6 +334,13 @@ export const generateQuiz = inngest.createFunction(
       let generatedQuestions: BatchQuestions = [];
       let fromCache = true;
       for (let batch = 0; batch < batchCount; batch += 1) {
+        const statusBefore = await readQuizStatus();
+        if (statusBefore === "ERROR" || statusBefore === "READY") {
+          console.log(
+            `[Inngest] Quiz ${quizId} is ${statusBefore} before batch ${batch + 1}, dropping late work.`,
+          );
+          return { success: false, quizId, dropped: true };
+        }
         const batchSize = Math.min(
           QUIZ_BATCH_SIZE,
           totalQuestions - batch * QUIZ_BATCH_SIZE,
@@ -303,9 +349,8 @@ export const generateQuiz = inngest.createFunction(
           batchCount > 1
             ? `Part ${batch + 1} of ${batchCount}: write ${batchSize} questions that are distinct from the other parts of this quiz (do not repeat questions across parts).`
             : undefined;
-        const produced = await step.run(
-          `generate-batch-${batch + 1}`,
-          async () => {
+        const produced = await step
+          .run(`generate-batch-${batch + 1}`, async () => {
             const result = await generateQuizFromNote(
               extractedText,
               {
@@ -317,16 +362,123 @@ export const generateQuiz = inngest.createFunction(
               },
               note.userId,
             );
+            // A short set without an error still reads as a cutoff here:
+            // the prompt asked for batchSize and the model stopped short,
+            // so one smaller retry runs before the run continues.
             if (result.questions.length === 0) {
               throw new Error(
                 `Quiz batch ${batch + 1} of ${batchCount} returned no questions`,
               );
             }
+            if (
+              result.questions.length < batchSize &&
+              detectCutoff({ asked: batchSize, got: result.questions.length })
+            ) {
+              const err = new Error(
+                `Quiz batch ${batch + 1} of ${batchCount} stopped short: got ${result.questions.length} of ${batchSize} (length cutoff)`,
+              ) as Error & { partialQuestions?: BatchQuestions };
+              // The short set is valid, it only stopped early. Carry it on
+              // the error so the retry below keeps it instead of dropping it.
+              err.partialQuestions = result.questions;
+              throw err;
+            }
             return result;
-          },
-        );
+          })
+          .catch(async (batchError: unknown) => {
+            const message =
+              batchError instanceof Error
+                ? batchError.message
+                : String(batchError);
+            const cutoff = isCutoffMessage(message);
+            if (!cutoff) throw batchError;
+            const smaller = smallerRetryCount(batchSize);
+            if (smaller === null) {
+              throw batchError;
+            }
+            // Kept rows plus a gap fill up to the batch target, so a cut
+            // batch never loses what the model already wrote and rows never
+            // duplicate. A retry that lands empty still keeps the partials.
+            const kept = (
+              (batchError as { partialQuestions?: BatchQuestions })
+                .partialQuestions ?? []
+            ).slice(0, batchSize);
+            const gap = batchSize - kept.length;
+            const retryLabel =
+              `${batchLabel ?? ""} Retry once with ${smaller} questions to fit the output limit.`.trim();
+            const retryResult = await generateQuizFromNote(
+              extractedText,
+              {
+                questionCount: smaller,
+                questionTypes: resolvedTypes,
+                batchLabel: retryLabel || undefined,
+                grounded: isGrounded,
+                pageContext: isGrounded ? pageContext : undefined,
+              },
+              note.userId,
+            );
+            if (retryResult.questions.length === 0) {
+              if (kept.length > 0) {
+                return {
+                  questions: kept,
+                  fromCache: retryResult.fromCache,
+                  retried: true,
+                };
+              }
+              throw batchError;
+            }
+            return {
+              questions: kept.concat(
+                retryResult.questions.slice(0, Math.max(gap, 0)),
+              ),
+              fromCache: retryResult.fromCache,
+              retried: true,
+            };
+          });
+        const statusMid = await readQuizStatus();
+        if (statusMid === "ERROR" || statusMid === "READY") {
+          console.log(
+            `[Inngest] Quiz ${quizId} turned ${statusMid} during batch ${batch + 1}, dropping its rows.`,
+          );
+          return { success: false, quizId, dropped: true };
+        }
         generatedQuestions = generatedQuestions.concat(produced.questions);
         fromCache = fromCache && produced.fromCache;
+        const persistedOrderBase =
+          generatedQuestions.length - produced.questions.length;
+        await prisma.$transaction([
+          prisma.quizQuestion.createMany({
+            data: produced.questions.map((q, index) => ({
+              quizId,
+              type: q.type,
+              question: q.question,
+              options: q.type === "MCQ" ? q.options : [],
+              correctAnswer: q.correctAnswer,
+              explanation: q.explanation,
+              sourcePages:
+                "sourcePages" in q && Array.isArray(q.sourcePages)
+                  ? q.sourcePages
+                  : [],
+              order: persistedOrderBase + index,
+              marks: "marks" in q && typeof q.marks === "number" ? q.marks : 1,
+              markSchemeMd:
+                "markSchemeMd" in q && typeof q.markSchemeMd === "string"
+                  ? q.markSchemeMd
+                  : null,
+              examinerNote:
+                "examinerNote" in q && typeof q.examinerNote === "string"
+                  ? q.examinerNote
+                  : null,
+            })),
+          }),
+          prisma.quiz.update({
+            where: { id: quizId },
+            data: {
+              buildStage: "GENERATING",
+              builtCount: generatedQuestions.length,
+              buildTotal: totalQuestions,
+            },
+          }),
+        ]);
       }
 
       console.log(
@@ -337,10 +489,7 @@ export const generateQuiz = inngest.createFunction(
         console.error(
           `[Inngest] AI returned 0 questions - marking quiz as ERROR`,
         );
-        await prisma.quiz.update({
-          where: { id: quizId },
-          data: { status: "ERROR" },
-        });
+        await failTerminal("That set came out too long so it stopped short.");
         throw new Error("AI returned no questions");
       }
 
@@ -358,45 +507,46 @@ export const generateQuiz = inngest.createFunction(
         if (hint) hintMap[String(index)] = hint;
       }
 
+      const statusFinal = await readQuizStatus();
+      if (statusFinal === "ERROR" || statusFinal === "READY") {
+        console.log(
+          `[Inngest] Quiz ${quizId} turned ${statusFinal} before finish, dropping the finish write.`,
+        );
+        return { success: false, quizId, dropped: true };
+      }
+
+      await prisma.quiz.update({
+        where: { id: quizId },
+        data: { buildStage: "SAVING", builtCount: generatedQuestions.length },
+      });
+
       await prisma.quiz.update({
         where: { id: quizId },
         data: {
           questionCount: generatedQuestions.length,
           status: "READY",
+          buildStage: null,
+          builtCount: generatedQuestions.length,
+          buildError: null,
           metadata:
             Object.keys(hintMap).length > 0 ? { hints: hintMap } : undefined,
-          questions: {
-            create: generatedQuestions.map((q, index) => ({
-              type: q.type,
-              question: q.question,
-              options: q.type === "MCQ" ? q.options : [],
-              correctAnswer: q.correctAnswer,
-              explanation: q.explanation,
-              sourcePages:
-                "sourcePages" in q && Array.isArray(q.sourcePages)
-                  ? q.sourcePages
-                  : [],
-              order: index,
-              marks: "marks" in q && typeof q.marks === "number" ? q.marks : 1,
-              markSchemeMd:
-                "markSchemeMd" in q && typeof q.markSchemeMd === "string"
-                  ? q.markSchemeMd
-                  : null,
-              examinerNote:
-                "examinerNote" in q && typeof q.examinerNote === "string"
-                  ? q.examinerNote
-                  : null,
-            })),
-          },
         },
       });
 
-      // A cache hit means no model ran, so there is nothing to charge for. The
+      // A cache hit means no model ran, so the reserve comes back. The
       // quota was already counted when the student asked.
       if (fromCache) {
         console.log(
-          `[Inngest] Quiz ${quizId} served from cache, skipping the credit debit`,
+          `[Inngest] Quiz ${quizId} served from cache, refunding the reserve`,
         );
+        if (wantsDebit && userId && quizCost > 0) {
+          try {
+            const { refundQuizReserve } = await import("@/lib/credits");
+            await refundQuizReserve({ userId, quizId, amount: quizCost });
+          } catch (err) {
+            console.error("[Inngest] Quiz cache refund failed:", err);
+          }
+        }
       } else if (wantsDebit && userId) {
         try {
           const { spendCredits } = await import("@/lib/credits");
@@ -416,14 +566,86 @@ export const generateQuiz = inngest.createFunction(
       return { success: true, quizId };
     } catch (error) {
       console.error(`[Inngest] Quiz generation failed:`, error);
-
-      await prisma.quiz.update({
+      const message =
+        error instanceof Error ? error.message : "Quiz build failed.";
+      const { isCutoffMessage: isCutoff } = await import("@/lib/ai/validators");
+      const buildError = isCutoff(message)
+        ? "That set came out too long so it stopped short."
+        : "Quiz build failed.";
+      const current = await prisma.quiz.findUnique({
         where: { id: quizId },
-        data: { status: "ERROR" },
+        select: { status: true },
       });
+      if (current?.status !== "ERROR" && current?.status !== "READY") {
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: { status: "ERROR", buildStage: null, buildError },
+        });
+        if (wantsDebit && userId && quizCost > 0) {
+          try {
+            const { refundQuizReserve } = await import("@/lib/credits");
+            await refundQuizReserve({ userId, quizId, amount: quizCost });
+          } catch (refundError) {
+            console.error("[Inngest] Quiz refund failed:", refundError);
+          }
+        }
+      }
 
       throw error;
     }
+  },
+);
+
+export const sweepStaleQuizzes = inngest.createFunction(
+  {
+    name: "Sweep Stale Quizzes",
+    id: "sweep-stale-quizzes",
+    triggers: { cron: "*/5 * * * *" },
+  },
+  async () => {
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000);
+    const stale = await prisma.quiz.findMany({
+      where: {
+        status: "GENERATING",
+        buildStartedAt: { lt: cutoff },
+      },
+      select: { id: true, userId: true },
+      take: 50,
+    });
+    let swept = 0;
+    for (const row of stale) {
+      const current = await prisma.quiz.findUnique({
+        where: { id: row.id },
+        select: { status: true },
+      });
+      if (current?.status !== "GENERATING") continue;
+      await prisma.quiz.update({
+        where: { id: row.id },
+        data: {
+          status: "ERROR",
+          buildStage: null,
+          buildError: "Quiz build failed.",
+        },
+      });
+      try {
+        const reserve = await prisma.creditTransaction.findFirst({
+          where: { userId: row.userId, referenceId: row.id, amount: { lt: 0 } },
+          select: { amount: true },
+        });
+        if (reserve) {
+          const { refundQuizReserve } = await import("@/lib/credits");
+          await refundQuizReserve({
+            userId: row.userId,
+            quizId: row.id,
+            amount: Math.abs(reserve.amount),
+          });
+        }
+      } catch (refundError) {
+        console.error("[Inngest] Stale quiz refund failed:", refundError);
+      }
+      swept += 1;
+    }
+    return { success: true, swept };
   },
 );
 

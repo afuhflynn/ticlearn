@@ -155,10 +155,16 @@ Tip reads profile plus programs plus notes before it asks anything, so it never 
 
 (basis: onboarding profile plus programs in the database, note content as topic source, progressive disclosure asks one thing at a time)
 
-### 63. Durable quiz build with live progress · needs a decision
+### 63. Durable quiz build with live progress · done
 Long builds run in background jobs that survive slow models, with true stage names and live updates in thread, so silence never feels dead.
 **Done when:** a 40 question build shows progress in seconds, survives a model cutoff by retrying smaller, and refreshes to ready without a dead stall.
-- [ ] Design it (spec): /solution-architect durable quiz build with live progress
+- [x] Design it (spec): /solution-architect durable quiz build with live progress · spec [0042](../specs/0042-durable-quiz-build-live-progress/index.md)
+- [x] Build it: /feature-build durable quiz build with live progress · code in `prisma/schema.prisma`, `app/api/quizzes/generate/route.ts`, `lib/inngest/functions.ts`, `components/chat/quiz-build-progress.tsx`
+  - [x] Columns plus detail read plus thin thread poll (covers AC-1, AC-4, AC-7)
+  - [x] Batch loop plus cutoff retry plus status guard (covers AC-2, AC-3)
+  - [x] Reserve plus refund plus sweeper plus caps parity (covers AC-5, AC-6, AC-8)
+- [ ] Verify it: /verify-release durable quiz build with live progress
+- [x] Test it: /test-engineer durable quiz build with live progress
 
 (basis: Inngest background jobs per root AGENTS.md, pending region plus process progress per loading states row 35, retry smaller then handoff per row 61)
 

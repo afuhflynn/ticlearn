@@ -617,3 +617,57 @@ describe("QuizRunner low docked card (spec 0034)", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("QuizRunner live build card (spec 0042, covers: AC-1)", () => {
+  const generatingPayload = {
+    data: {
+      quiz: {
+        id: "quiz-9",
+        title: "Quiz - Bio notes",
+        noteTitle: "Bio notes",
+        status: "GENERATING",
+        buildStage: "GENERATING",
+        builtCount: 2,
+        buildTotal: 10,
+        buildError: null,
+        buildStartedAt: new Date(Date.now() - 2000).toISOString(),
+        questions: [],
+      },
+    },
+    isPending: false,
+    isError: false,
+  };
+
+  it("shows live counts while the build runs", async () => {
+    useQuizMock.mockImplementation(() => generatingPayload);
+    render(
+      <QuizRunner
+        conversationId="conv-1"
+        noteId="note-1"
+        noteTitle="Bio notes"
+        initialQuizId="quiz-9"
+      />,
+    );
+
+    expect(await screen.findByText("Building your quiz")).toBeInTheDocument();
+    expect(screen.getByText("2 of 10 · 20%")).toBeInTheDocument();
+  });
+
+  it("waits quietly before the first progress write lands", async () => {
+    useQuizMock.mockImplementation(() => EMPTY_QUIZ_PAYLOAD);
+    render(
+      <QuizRunner
+        conversationId="conv-1"
+        noteId="note-1"
+        noteTitle="Bio notes"
+        initialQuizId="quiz-9"
+      />,
+    );
+
+    expect(
+      await screen.findByText(
+        "This thread refreshes until the quiz is ready.",
+      ),
+    ).toBeInTheDocument();
+  });
+});
