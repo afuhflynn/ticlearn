@@ -662,6 +662,41 @@ Fix sidebar UI polish (no rounded borders, better truncate width), redesign the 
 - `tests/lib/ai/chain.test.ts`
 <!-- END:dashboard-sidebar-redesign -->
 
+<!-- BEGIN:clean-activity-true-answer-split -->
+# Clean activity plus true answer split (feature 64) - Implementation Summary
+
+## Goal
+One small activity line while Tip works, one clean final answer when it lands. All tool work plus progress talk stays inside the expandable line, so inner chatter never leaks to the student. Render only, no schema change, no new quiz logic.
+
+## What was built
+- `lib/chat/answer-filter.ts` (new): `filterEchoSentences` drops short build shaped sentences matched case insensitive as substring against a small known pattern list (`I will`, `Let me`, `Searching`, `Reading`, `Checking`, etc); sentences over 160 chars are never stripped so long teaching survives; `isEchoOnly` reports when the filter empties the answer.
+- `components/chat/activity-block.tsx`: `activityFromParts` now also turns `reasoning` parts and `data-*` plan parts into ordered steps (reasoning never reaches answer text); new `activityCounts` helper (searched equals webSearch calls, read equals readPage calls, sources equals saved source parts); collapsed line shows `Searched M` plus `Read K` beside the source count; new `defaultOpen` prop so an echo only answer renders expanded instead of blank.
+- `components/chat/chat-message-list.tsx`: `MessageBody` filters answer text through `filterEchoSentences` before render, copy action copies the clean text, echo only answers show the fallback line "That work is detailed in the activity above" with the activity expanded, card order fixed to text then quiz (`ChatQuiz`) then visual (`ChatArt`).
+- `components/chat/chat-art.tsx` now receives the filtered text for page citation, so progress sentences cannot invent page references.
+
+## Acceptance criteria (all met in code plus unit tests)
+- AC-1: exactly one activity line per assistant message above the text, expands on tap.
+- AC-2: tool calls, reasoning notes, plan sentences render inside activity only; `suggestReplies` stays silent via the existing `SILENT_TOOL_NAMES`.
+- AC-3: final answer streams below the activity and settles clean with no repeated setup sentences.
+- AC-4: collapsed line reuses the human label map, shows counts where useful, unknown tools read Working with the existing server side unknown tool log.
+- AC-5: suggestion chips appear only under the newest answer of the live turn (unchanged, covered by existing tests).
+- AC-6: stop keeps partial clean text plus the stopped note with retry by message id.
+- AC-7: failed steps show the plain failure sentence with technical details collapsed; answer still lands.
+- AC-8: cards sit below clean text in text then quiz then visual order; reload shows collapsed activity plus saved answer once, or the fallback line when the filter empties the answer.
+
+## Gotchas in this area
+- The echo filter is substring based per the spec, so a short teaching sentence that contains a progress word (e.g. "The checking step ...") is stripped too; only sentences over 160 chars are safe. The tradeoff is documented in the spec consequences.
+- The collapsed line says `Read N sources` for sources and `Read K` for readPage calls; the double use of Read is kept for backward compat with existing tests.
+- `ChatArt` calls `useGenerateArt` unconditionally, so `chat-message-list` tests must render inside a `QueryClientProvider`; the test file now wraps every render with `renderList`.
+- Live browser verification is still open: Arcjet `detectBot` in LIVE mode with an empty allow list returns 403 for headless CDP Chrome, so automated sign in as `demo@tic.local` is rejected and the 8 manual chat steps in `verify.md` need a human browser pass.
+
+## Relevant files
+- `lib/chat/answer-filter.ts`, `components/chat/activity-block.tsx`, `components/chat/chat-message-list.tsx`
+- `lib/chat/activity-labels.ts` (reused unchanged: label map, fallback, silent set)
+- `tests/lib/chat/answer-filter.test.ts` (new, 10 tests), `tests/components/chat-activity-block.test.tsx`, `tests/components/chat-message-list.test.tsx`
+- `docs/specs/0043-clean-activity-true-answer-split/` (`index.md`, `rationale.md`, `verify.md`)
+<!-- END:clean-activity-true-answer-split -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 

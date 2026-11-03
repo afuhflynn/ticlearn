@@ -62,6 +62,30 @@ function toolNameOf(part: unknown): string {
   return toolNameFromPartType(type);
 }
 
+function reasoningTextOf(part: unknown): string {
+  if (!part || typeof part !== "object") return "";
+  const text = (part as { text?: unknown }).text;
+  if (typeof text === "string" && text.trim()) return text.trim();
+  const reasoning = (part as { reasoning?: unknown }).reasoning;
+  if (typeof reasoning === "string" && reasoning.trim()) return reasoning.trim();
+  return "";
+}
+
+function dataTextOf(part: unknown): string {
+  if (!part || typeof part !== "object") return "";
+  const text = (part as { text?: unknown }).text;
+  if (typeof text === "string" && text.trim()) return text.trim();
+  const message = (part as { message?: unknown }).message;
+  if (typeof message === "string" && message.trim()) return message.trim();
+  return "";
+}
+
+function truncateStep(value: string, max = 90): string {
+  const single = value.replace(/\s+/g, " ").trim();
+  if (single.length <= max) return single;
+  return `${single.slice(0, max - 1).trimEnd()}…`;
+}
+
 /** The steps and sources one answer used, in the order the model produced them. */
 export function activityFromParts(parts: UIMessage["parts"]): {
   steps: ActivityStep[];
@@ -87,6 +111,31 @@ export function activityFromParts(parts: UIMessage["parts"]): {
       continue;
     }
 
+    if (typeof part.type === "string" && part.type.startsWith("reasoning")) {
+      const text = reasoningTextOf(part);
+      steps.push({
+        id: `reasoning-${index}`,
+        name: "reasoning",
+        label: text ? truncateStep(text) : "Thinking through the steps",
+        state: "output-available",
+        failed: false,
+      });
+      continue;
+    }
+
+    if (typeof part.type === "string" && part.type.startsWith("data-")) {
+      const text = dataTextOf(part);
+      if (!text) continue;
+      steps.push({
+        id: `data-${index}`,
+        name: "plan",
+        label: truncateStep(text),
+        state: "output-available",
+        failed: false,
+      });
+      continue;
+    }
+
     if (part.type === "source-url" || part.type === "source-document") {
       const urlPart = part as SourceUrlUIPart & SourceDocumentUIPart;
       const title =
@@ -103,6 +152,21 @@ export function activityFromParts(parts: UIMessage["parts"]): {
   }
 
   return { steps, sources };
+}
+
+/**
+ * Counts the collapsed line reads. Searched counts webSearch calls, read
+ * counts readPage calls, sources counts saved source parts.
+ */
+export function activityCounts(
+  steps: ActivityStep[],
+  sources: ActivitySource[],
+): { searched: number; read: number; sourceCount: number } {
+  return {
+    searched: steps.filter((step) => step.name === "webSearch").length,
+    read: steps.filter((step) => step.name === "readPage").length,
+    sourceCount: sources.length,
+  };
 }
 
 function ElapsedClock() {
@@ -135,12 +199,14 @@ export function ActivityBlock({
   parts,
   status,
   durationMs,
+  defaultOpen = false,
 }: {
   parts: UIMessage["parts"];
   status: ChatStatus;
   durationMs?: number | null;
+  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   const { steps, sources } = useMemo(() => activityFromParts(parts), [parts]);
   const streaming = status === "submitted" || status === "streaming";
   const runningStep = [...steps].reverse().find((step) => !step.failed);
@@ -163,6 +229,10 @@ export function ActivityBlock({
       ? `Thought for ${seconds}s`
       : "Thought";
   const sourceCount = sources.length;
+  const searchedCount = steps.filter(
+    (step) => step.name === "webSearch",
+  ).length;
+  const readCount = steps.filter((step) => step.name === "readPage").length;
 
   return (
     <Collapsible
@@ -187,6 +257,8 @@ export function ActivityBlock({
             {sourceCount > 0
               ? ` · Read ${sourceCount} source${sourceCount === 1 ? "" : "s"}`
               : ""}
+            {searchedCount > 0 ? ` · Searched ${searchedCount}` : ""}
+            {readCount > 0 ? ` · Read ${readCount}` : ""}
           </span>
           {streaming ? (
             <span className="ml-auto">

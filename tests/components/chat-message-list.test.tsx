@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { UIMessage } from "ai";
@@ -19,9 +20,19 @@ const message = (role: UIMessage["role"], text: string): UIMessage => ({
   parts: [{ type: "text", text }],
 });
 
+function renderList(element: React.ReactElement) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  const wrapper = ({ children }: { children: React.ReactNode }) => (
+    <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  );
+  return render(element, { wrapper });
+}
+
 describe("ChatMessageList", () => {
   it("shows the activity line from the moment send is pressed (covers: AC-1)", () => {
-    const { rerender } = render(
+    const { rerender } = renderList(
       <ChatMessageList
         messages={[message("user", "Explain this")]}
         status="submitted"
@@ -49,7 +60,7 @@ describe("ChatMessageList", () => {
   });
 
   it("draws no activity line once an answer finished with no steps (covers: AC-3)", () => {
-    render(
+    renderList(
       <ChatMessageList
         messages={[
           message("user", "Explain this"),
@@ -68,7 +79,7 @@ describe("ChatMessageList", () => {
   it("shows a retry action when the answer fails (covers: AC-17)", async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn();
-    render(
+    renderList(
       <ChatMessageList
         messages={[message("user", "Explain this")]}
         onRetry={onRetry}
@@ -88,7 +99,7 @@ describe("ChatMessageList", () => {
     const onRetry = vi.fn();
     const answer = message("assistant", "Half an answer");
 
-    render(
+    renderList(
       <ChatMessageList
         messages={[message("user", "Explain this"), answer]}
         onRetry={onRetry}
@@ -106,7 +117,7 @@ describe("ChatMessageList", () => {
     const user = userEvent.setup();
     const onSuggestion = vi.fn();
 
-    render(
+    renderList(
       <ChatMessageList
         messages={[
           message("user", "Explain this"),
@@ -129,7 +140,7 @@ describe("ChatMessageList", () => {
   });
 
   it("typesets delimited math through KaTeX instead of flat text", () => {
-    render(
+    renderList(
       <ChatMessageList
         messages={[
           message("user", "What is the permutation formula?"),
@@ -146,7 +157,7 @@ describe("ChatMessageList", () => {
   });
 
   it("leaves bare undelimited math as plain text, by design", () => {
-    render(
+    renderList(
       <ChatMessageList
         messages={[
           message("user", "What is the permutation formula?"),
@@ -166,7 +177,7 @@ describe("editing a question in place (covers: AC-22)", () => {
     const onEditSubmit = vi.fn();
     const question = message("user", "Explain mitosis");
 
-    render(
+    renderList(
       <ChatMessageList
         messages={[question, message("assistant", "Here is the answer")]}
         onEditSubmit={onEditSubmit}
@@ -195,7 +206,7 @@ describe("editing a question in place (covers: AC-22)", () => {
     const user = userEvent.setup();
     const onEditSubmit = vi.fn();
 
-    render(
+    renderList(
       <ChatMessageList
         messages={[message("user", "Explain mitosis")]}
         onEditSubmit={onEditSubmit}
@@ -214,7 +225,7 @@ describe("editing a question in place (covers: AC-22)", () => {
   });
 
   it("does not offer an edit while an answer is streaming", () => {
-    render(
+    renderList(
       <ChatMessageList
         messages={[message("user", "Explain mitosis")]}
         status="streaming"
@@ -224,5 +235,145 @@ describe("editing a question in place (covers: AC-22)", () => {
     expect(
       screen.getByRole("button", { name: "Edit question" }),
     ).toBeDisabled();
+  });
+});
+
+describe("clean activity plus true answer split (covers: AC-1, AC-2, AC-3, AC-8)", () => {
+  const assistantWithParts = (
+    id: string,
+    parts: UIMessage["parts"],
+  ): UIMessage => ({ id, role: "assistant", parts });
+
+  it("renders clean teaching without echoed build sentences", () => {
+    const answer = assistantWithParts("a-1", [
+      {
+        type: "text",
+        text: "I will search the web for photosynthesis. Photosynthesis converts light to chemical energy.",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    renderList(
+      <ChatMessageList
+        messages={[message("user", "Explain this"), answer]}
+        status="ready"
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Photosynthesis converts light to chemical energy.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/I will search the web/)).toBeNull();
+  });
+
+  it("keeps reasoning parts out of the answer text", () => {
+    const answer = assistantWithParts("a-2", [
+      {
+        type: "reasoning",
+        text: "Thinking through the steps",
+      } as unknown as UIMessage["parts"][number],
+      {
+        type: "text",
+        text: "The mitochondria produce ATP.",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    renderList(
+      <ChatMessageList
+        messages={[message("user", "Explain this"), answer]}
+        status="ready"
+      />,
+    );
+
+    expect(
+      screen.getByText("The mitochondria produce ATP."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Thinking through the steps")).toBeNull();
+  });
+
+  it("shows one activity line above the answer when tools ran", () => {
+    const answer = assistantWithParts("a-3", [
+      {
+        type: "tool-webSearch",
+        toolCallId: "call-1",
+        state: "output-available",
+        input: { query: "kinematics" },
+        output: { ok: true },
+      } as unknown as UIMessage["parts"][number],
+      {
+        type: "text",
+        text: "Kinematics describes motion.",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    renderList(
+      <ChatMessageList
+        messages={[message("user", "Explain this"), answer]}
+        status="ready"
+      />,
+    );
+
+    expect(
+      document.querySelectorAll("[data-slot='activity-block']"),
+    ).toHaveLength(1);
+    expect(
+      screen.getByText("Kinematics describes motion."),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the fallback line when the filter empties the answer", () => {
+    const answer = assistantWithParts("a-4", [
+      {
+        type: "tool-webSearch",
+        toolCallId: "call-1",
+        state: "output-available",
+        input: { query: "kinematics" },
+        output: { ok: true },
+      } as unknown as UIMessage["parts"][number],
+      {
+        type: "text",
+        text: "Searching the web now.",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    renderList(
+      <ChatMessageList
+        messages={[message("user", "Explain this"), answer]}
+        status="ready"
+      />,
+    );
+
+    expect(
+      screen.getByText("That work is detailed in the activity above."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps clean teaching plus the stopped note when a stop follows echo", async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn();
+    const answer = assistantWithParts("a-5", [
+      {
+        type: "text",
+        text: "Let me check that page. The mitochondria produce ATP.",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    renderList(
+      <ChatMessageList
+        messages={[message("user", "Explain this"), answer]}
+        onRetry={onRetry}
+        status="ready"
+        stoppedIds={new Set([answer.id])}
+      />,
+    );
+
+    expect(
+      screen.getByText("The mitochondria produce ATP."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Let me check that page/)).toBeNull();
+    expect(screen.getByText("Stopped")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalledWith(answer.id);
   });
 });

@@ -4,6 +4,7 @@ import type { UIMessage } from "ai";
 import { beforeAll, describe, expect, it } from "vitest";
 import {
   ActivityBlock,
+  activityCounts,
   activityFromParts,
 } from "@/components/chat/activity-block";
 
@@ -122,7 +123,7 @@ describe("the collapsed activity line (covers: AC-1, AC-3)", () => {
     );
 
     const line = screen.getByRole("button", {
-      name: 'Searching the web for "coordinate geometry 2023"',
+      name: /Searching the web for "coordinate geometry 2023"/,
     });
 
     expect(line).toHaveAttribute("aria-expanded", "false");
@@ -228,7 +229,7 @@ describe("the expanded activity line (covers: AC-2, AC-4)", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Thought" }));
+    await user.click(screen.getByRole("button", { name: /Thought/ }));
 
     expect(
       screen.getByText("Couldn't reach the web. Answering without it."),
@@ -279,5 +280,99 @@ describe("the activity line and assistive technology (covers: AC-18)", () => {
     render(<ActivityBlock parts={[toolPart("getUserNotes")]} status="ready" />);
 
     expect(document.querySelector('[aria-live="polite"]')).toBeNull();
+  });
+});
+
+describe("the strict split additions (covers: AC-2, AC-4)", () => {
+  it("turns a reasoning part into a step so it never reaches the answer", () => {
+    const { steps } = activityFromParts([
+      {
+        type: "reasoning",
+        text: "Thinking through the steps for the student",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.name).toBe("reasoning");
+    expect(steps[0]?.label).toContain("Thinking through the steps");
+  });
+
+  it("turns a plan data part into a step in stream order", () => {
+    const { steps } = activityFromParts([
+      toolPart("webSearch", { query: "kinematics" }),
+      {
+        type: "data-plan",
+        text: "Plan: read two sources then teach",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    expect(steps.map((step) => step.name)).toEqual(["webSearch", "plan"]);
+  });
+
+  it("counts searched plus read plus sources from the same parts", () => {
+    const { steps, sources } = activityFromParts([
+      toolPart("webSearch", { query: "a" }),
+      toolPart("webSearch", { query: "b" }),
+      toolPart("readPage", {}, "output-available"),
+      {
+        type: "source-url",
+        sourceId: "s1",
+        url: "https://example.com/a",
+        title: "A",
+      } as unknown as UIMessage["parts"][number],
+    ]);
+
+    expect(activityCounts(steps, sources)).toEqual({
+      searched: 2,
+      read: 1,
+      sourceCount: 1,
+    });
+  });
+
+  it("shows the counts on the collapsed line (covers: AC-4)", () => {
+    render(
+      <ActivityBlock
+        durationMs={2000}
+        parts={[
+          toolPart("webSearch", { query: "kinematics" }),
+          toolPart("readPage", {}, "output-available"),
+        ]}
+        status="ready"
+      />,
+    );
+
+    const line = screen.getByRole("button", { name: /Thought for 2s/ });
+    expect(line).toHaveTextContent("Searched 1");
+    expect(line).toHaveTextContent("Read 1");
+  });
+
+  it("opens expanded by default when the caller asks (covers: AC-8 fallback)", () => {
+    render(<ActivityBlock defaultOpen parts={[]} status="submitted" />);
+
+    expect(screen.getByRole("button")).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("skips a data part with no readable text", () => {
+    const { steps } = activityFromParts([
+      {
+        type: "data-plan",
+      } as unknown as UIMessage["parts"][number],
+      toolPart("webSearch", { query: "kinematics" }),
+    ]);
+
+    expect(steps.map((step) => step.name)).toEqual(["webSearch"]);
+  });
+
+  it("labels empty reasoning with a generic thinking line", () => {
+    const { steps } = activityFromParts([
+      { type: "reasoning" } as unknown as UIMessage["parts"][number],
+    ]);
+
+    expect(steps).toHaveLength(1);
+    expect(steps[0]?.name).toBe("reasoning");
+    expect(steps[0]?.label).toBe("Thinking through the steps");
   });
 });
