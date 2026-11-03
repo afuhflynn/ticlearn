@@ -58,7 +58,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 61 | Quiz reliability plus visual fallback | Slice 2 | in-progress |
 | 62 | Smart setup that knows you | Slice 2 | in-progress |
 | 63 | Durable quiz build with live progress | Slice 2 | done |
-| 64 | Clean activity plus true answer split | Slice 2 | planned |
+| 64 | Clean activity plus true answer split | Slice 2 | in-progress |
 | 65 | Generative card system low near composer | Slice 2 | planned |
 | 66 | Honest failure plus two paths | Slice 2 | planned |
 | 67 | Simple true visuals with fallback | Slice 2 | planned |

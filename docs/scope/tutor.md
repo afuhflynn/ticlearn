@@ -168,10 +168,16 @@ Long builds run in background jobs that survive slow models, with true stage nam
 
 (basis: Inngest background jobs per root AGENTS.md, pending region plus process progress per loading states row 35, retry smaller then handoff per row 61)
 
-### 64. Clean activity plus true answer split · needs a decision
+### 64. Clean activity plus true answer split · in-progress
 Working steps collapse to one small line while building, then one clean final answer lands with no repeats, so inner chatter never leaks to the student.
 **Done when:** the thread shows one activity line with human labels, expands on tap, and the final answer starts where it should with no duplicated build chatter.
-- [ ] Design it (spec): /solution-architect clean activity plus true answer split
+- [x] Design it (spec): /solution-architect clean activity plus true answer split · spec [0043](../specs/0043-clean-activity-true-answer-split/index.md)
+- [x] Build it: /feature-build clean activity plus true answer split
+  - [x] One activity owner plus expandable steps (covers **AC-1**, **AC-4**) · code in `components/chat/activity-block.tsx`, `lib/chat/activity-labels.ts`
+  - [x] Strict part router plus echo filter (covers **AC-2**, **AC-3**, **AC-5**) · code in `lib/chat/answer-filter.ts`, `components/chat/chat-message-list.tsx`
+  - [x] Stop plus fail plus cards plus reload parity (covers **AC-6**, **AC-7**, **AC-8**) · code in `components/chat/chat-message-list.tsx`, `components/chat/activity-block.tsx`
+- [ ] Verify it: /verify-release clean activity plus true answer split
+- [x] Test it: /test-engineer clean activity plus true answer split
 
 (basis: labelled activity line per research/chat-experience.md, strict split of build chatter and final answer per your reference shots)
 

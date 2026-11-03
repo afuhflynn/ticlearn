@@ -31,6 +31,7 @@ import {
 } from "@/components/ai-elements/message";
 import { StreamingCaret } from "@/components/ai-elements/streaming-caret";
 import { ActivityBlock } from "@/components/chat/activity-block";
+import { filterEchoSentences } from "@/lib/chat/answer-filter";
 import { ChatArt } from "@/components/chat/chat-art";
 import { ChatQuiz } from "@/components/chat/chat-quiz";
 import { CHAT_STOPPED_LABEL } from "@/components/chat/constants";
@@ -142,7 +143,9 @@ function AnswerActions({
   onMakeQuiz?: () => void;
 }) {
   const { copied, copy } = useCopy();
-  const text = normalizeMarkdownForDisplay(messageText(message)).trim();
+  const text = filterEchoSentences(
+    normalizeMarkdownForDisplay(messageText(message)),
+  ).trim();
 
   return (
     <MessageActions className={ACTION_ROW}>
@@ -415,6 +418,11 @@ function MessageBody({
 }) {
   const text = useMemo(() => messageText(message), [message]);
   const normalizedText = normalizeMarkdownForDisplay(text);
+  const cleanText = useMemo(
+    () => filterEchoSentences(normalizedText),
+    [normalizedText],
+  );
+  const echoOnly = normalizedText.trim().length > 0 && !cleanText.trim();
   const isAssistant = message.role === "assistant";
 
   // The caret lives at the end of the last paragraph while tokens arrive.
@@ -458,24 +466,31 @@ function MessageBody({
     return (
       <>
         <ActivityBlock
+          defaultOpen={echoOnly || undefined}
           durationMs={durationMs}
           parts={message.parts}
           status={isStreaming ? "streaming" : "ready"}
         />
 
-        {normalizedText.trim() ? (
+        {cleanText.trim() ? (
           <div className="chat-answer w-full text-sm leading-7">
             <MessageResponse components={components} isStreaming={isStreaming}>
-              {normalizedText}
+              {cleanText}
             </MessageResponse>
           </div>
         ) : null}
 
-        <ChatArt message={message} text={normalizedText} noteId={noteId} />
+        {echoOnly ? (
+          <p className="w-full text-sm leading-7 text-muted-foreground">
+            That work is detailed in the activity above.
+          </p>
+        ) : null}
 
         {conversationId ? (
           <ChatQuiz conversationId={conversationId} message={message} />
         ) : null}
+
+        <ChatArt message={message} text={cleanText} noteId={noteId} />
 
         {stopped ? <StoppedLine onRetry={() => onRetry?.(message.id)} /> : null}
 
@@ -486,7 +501,7 @@ function MessageBody({
           />
         ) : null}
 
-        {!isStreaming && normalizedText.trim() ? (
+        {!isStreaming && cleanText.trim() ? (
           <AnswerActions
             message={message}
             onMakeQuiz={onMakeQuiz}
