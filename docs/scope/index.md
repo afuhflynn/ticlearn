@@ -85,6 +85,16 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 53 | Hackathon demo and submission | Hackathon | planned |
 | 54 | Chat page lookup | Hackathon | in-progress |
 | 55 | Visual output in chat and quizzes | Hackathon | in-progress |
+| 68 | UI foundation tokens and primitives | Slice 6 | done |
+| 69 | Marketing pages refresh | Slice 6 | planned |
+| 70 | Auth pages refresh | Slice 6 | planned |
+| 71 | Onboarding refresh plus birth trio picker | Slice 6 | planned |
+| 72 | Upload and notes pages refresh | Slice 6 | planned |
+| 73 | Quizzes and attempts pages refresh | Slice 6 | planned |
+| 74 | Subscription and payments page refresh | Slice 6 | planned |
+| 75 | Settings page refresh | Slice 6 | planned |
+| 76 | Ambassadors and affiliates pages refresh | Slice 6 | planned |
+| 77 | Admin console refresh | Slice 6 | planned |
 
 ## Epics
 
@@ -99,6 +109,7 @@ Each epic is one file with its own feature sections.
 - **[Exam](exam.md)** · 2 features, Slice 4, dropped · the timed runner and the graded result review, cancelled with the exam engine.
 - **[Commerce](commerce.md)** · 7 features, Slice 5 · the semester pass, payments, the free tier, ambassadors, partner invites, conversion analytics and the in app subscription page.
 - **[Hackathon](hackathon.md)** · 7 features, Hackathon · the Meta Global AI Developer Hackathon build: provider routing to Meta and Baseten, visual course page analysis, grounded question generation, targeted retry and progress, demo and submission.
+- **[Interface](interface.md)** · 10 features, Slice 6 · the calm premium rebuild of every page except dashboard and chat on shared tokens with lists first reading.
 
 ## Phasing in one line each
 
@@ -108,6 +119,7 @@ Each epic is one file with its own feature sections.
 - **Slice 3, notes and quizzes** · the student uploads their own notes and turns them into practice. This is the killer loop the product is built around.
 - **Slice 4, exams** · dropped. Timed practice with AI grading is not coming; study is notes, quizzes and the tutor.
 - **Slice 5, money** · the semester pass, mobile money, and a free tier designed to convert.
+- **Slice 6, interface polish** · every page except dashboard and chat rebuilt on shared tokens with calm minimal feel and lists first reading.
 - **Hackathon, nine days** · the Meta Global AI Developer Hackathon build from October 26 to November 4. Provider routing to Meta and Baseten, visual course page analysis, grounded question generation, targeted retry and progress, demo and submission by November 4 at 9 PM Eastern.
 
 ## Deferred

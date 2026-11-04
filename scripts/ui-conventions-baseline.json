@@ -35,5 +35,13 @@
     "app/(dashboard)/settings/page.tsx",
     "app/(onboarding)/onboarding/page.tsx",
     "components/chat/chat-thread.tsx"
-  ]
+  ],
+  "hex-literal": [
+    "app/(admin)/admin/metrics/page.tsx",
+    "app/(auth)/sign-in/sign-in-form.tsx",
+    "app/(auth)/sign-up/sign-up-form.tsx",
+    "app/manifest.ts",
+    "components/pdf/styles.tsx"
+  ],
+  "bespoke-radius": []
 }
