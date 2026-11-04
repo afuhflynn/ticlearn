@@ -668,10 +668,26 @@ export function createChatTools({
         const neverTouched = pageCount === 0 && analysisCount === 0;
         const touchedButUnusable =
           pageCount > 0 && analysisCount > 0 && pendingCount === 0;
+        // A scan that ran minutes ago already tried: requeueing on every
+        // question would hammer a failing pipeline, so back off for 30
+        // minutes and report pending instead.
+        let justScanned = false;
+        try {
+          const latest = await prisma.page.aggregate({
+            where: { noteId: note.id },
+            _max: { analysedAt: true },
+          });
+          const at = latest?._max?.analysedAt;
+          justScanned =
+            !!at && Date.now() - new Date(at).getTime() < 30 * 60 * 1000;
+        } catch {
+          justScanned = false;
+        }
         if (
           note.fileType === "PDF" &&
           settled &&
-          (neverTouched || touchedButUnusable)
+          (neverTouched || touchedButUnusable) &&
+          !justScanned
         ) {
           try {
             await inngest.send({

@@ -5,6 +5,7 @@ import { z } from "zod";
 import { chainModel, chainMuse, OPEN_WEIGHT_CHAIN } from "@/lib/ai/chain";
 import {
   type PageScanResult,
+  renderSinglePageImage,
   scanPages,
   toVisualTypeEnum,
 } from "@/lib/ai/page-scan";
@@ -59,9 +60,10 @@ async function storePageImage(
 
 /** Analyse one visual page: Baseten first, OpenRouter vision as fallback.
  *  The visual job bypasses the orchestrator (it needs image parts), so the
- *  fallback lives here instead of in the chain walk. */
+ *  fallback lives here instead of in the chain walk. Each leg gets its own
+ *  120 second budget so one hung provider cannot strand the invocation. */
 async function analyseVisualPage(
-  pageImageUrl: string,
+  imageRef: string,
   pageNumber: number,
 ): Promise<{
   visualType: "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER";
@@ -81,7 +83,7 @@ async function analyseVisualPage(
       role: "user" as const,
       content: [
         { type: "text" as const, text: prompt },
-        { type: "image" as const, image: pageImageUrl },
+        { type: "image" as const, image: imageRef },
       ],
     },
   ];
@@ -92,6 +94,7 @@ async function analyseVisualPage(
       messages,
       temperature: settings.heat,
       maxOutputTokens: settings.cap,
+      abortSignal: AbortSignal.timeout(120_000),
     });
     return {
       visualType: toVisualTypeEnum(result.object.visualType),
@@ -110,6 +113,7 @@ async function analyseVisualPage(
       messages,
       temperature: settings.heat,
       maxOutputTokens: settings.cap,
+      abortSignal: AbortSignal.timeout(120_000),
     });
     const parsed = usageFromResult(
       fallback as unknown as { usage?: unknown },
@@ -231,17 +235,27 @@ export const visualAnalysisProcess = inngest.createFunction(
       );
     }
 
-    let scanned = 0;
+    // The parent does fast work only (fetch, render, store, text rows) and
+    // fans each visual page out to its own short-lived run below. A 44-page
+    // note of slow model calls would outlive one serverless invocation;
+    // one event per page keeps every invocation well inside the timeout.
+    let queued = 0;
     let visualCount = 0;
-    let analysedCount = 0;
-    let failedCount = 0;
+    let textCount = 0;
+    const pageEvents: Array<{
+      name: "note/analyze-page";
+      data: {
+        noteId: string;
+        pageNumber: number;
+        excerpt: string;
+      };
+    }> = [];
 
     for (const result of scanResults) {
       if (completedPageNumbers.has(result.pageNumber)) {
         continue;
       }
 
-      scanned += 1;
       if (result.hasVisual) visualCount += 1;
       const excerpt = pageTextExcerpt(
         pageTexts[result.pageNumber - 1] ?? "",
@@ -262,9 +276,9 @@ export const visualAnalysisProcess = inngest.createFunction(
         update: { hasVisual: result.hasVisual },
       });
 
-      // A page that failed to render is recorded as failed and skipped.
-      const imageBuffer = result.pageImageBuffer;
-      if (result.scanError || !imageBuffer) {
+      // A page that failed to render is recorded as failed here: no worker
+      // could render the same bytes any better.
+      if (result.scanError || !result.pageImageBuffer) {
         console.error(
           `[Visual Analysis] Render failed page ${result.pageNumber}:`,
           result.scanError ?? "empty image",
@@ -282,13 +296,11 @@ export const visualAnalysisProcess = inngest.createFunction(
           where: { id: page.id },
           data: { analysedAt: new Date() },
         });
-        failedCount += 1;
         continue;
       }
 
-      // Text-only pages get a COMPLETED text row so "which page covers X?"
-      // works without any model call. Before this, they left no row and were
-      // invisible to getGroundedPageInputs.
+      // Text-only pages get a COMPLETED text row here so "which page covers
+      // X?" works without any model call or follow-up event.
       if (!result.hasVisual) {
         const textDescription =
           excerpt.length > 0
@@ -307,117 +319,230 @@ export const visualAnalysisProcess = inngest.createFunction(
           where: { id: page.id },
           data: { analysedAt: new Date() },
         });
-        analysedCount += 1;
+        textCount += 1;
         continue;
       }
 
-      let pageImageUrl: string | null = null;
+      // Best-effort thumbnail for the note art strip. A Blob failure must
+      // not block grounding: the worker analyses from bytes when no URL
+      // was stored.
       try {
-        pageImageUrl = await storePageImage(
+        const pageImageUrl = await storePageImage(
           noteId,
           result.pageNumber,
-          imageBuffer,
+          result.pageImageBuffer,
         );
-      } catch (error) {
-        console.error(
-          `[Visual Analysis] Image store failed page ${result.pageNumber}:`,
-          error,
-        );
-        await prisma.visualAnalysis.create({
-          data: {
-            pageId: page.id,
-            visualType: "OTHER",
-            description: "Image upload failed; page could not be analysed.",
-            confidence: null,
-            status: "FAILED",
-          },
-        });
         await prisma.page.update({
           where: { id: page.id },
-          data: { analysedAt: new Date() },
+          data: { pageImageUrl },
         });
-        failedCount += 1;
-        continue;
-      }
-
-      let visualType: "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER";
-      let description: string;
-      let confidence: number | null;
-      let pageFailed = false;
-      let fallbackUsed = false;
-      try {
-        const analysed = await analyseVisualPage(
-          pageImageUrl,
-          result.pageNumber,
-        );
-        visualType = analysed.visualType;
-        description =
-          excerpt.length > 0
-            ? `${analysed.description}\nText on page: ${excerpt}`.slice(0, 2000)
-            : analysed.description;
-        confidence = analysed.confidence;
-        fallbackUsed = analysed.fallbackUsed;
-        analysedCount += 1;
       } catch (error) {
-        console.error(
-          `[Visual Analysis] Baseten and fallback failed page ${result.pageNumber}:`,
-          error,
+        console.warn(
+          `[Visual Analysis] Thumbnail store failed page ${result.pageNumber}, analysis proceeds without it:`,
+          error instanceof Error ? error.message : error,
         );
-        visualType = "OTHER";
-        description = "Baseten returned an unusable result for this page.";
-        confidence = null;
-        pageFailed = true;
-        failedCount += 1;
       }
 
-      await prisma.visualAnalysis.create({
-        data: {
-          pageId: page.id,
-          visualType,
-          description,
-          confidence,
-          basetenCostXaf:
-            pageFailed || fallbackUsed ? null : MUSE_COST_PER_CALL_XAF,
-          status: pageFailed ? "FAILED" : "COMPLETED",
-        },
+      pageEvents.push({
+        name: "note/analyze-page",
+        data: { noteId, pageNumber: result.pageNumber, excerpt },
       });
+      queued += 1;
+    }
 
-      // Log Baseten cost as promotional credit, never a student debit (AC-5).
-      await logUsage({
-        userId: note.userId ?? null,
-        task: "visual_analysis",
-        modelId: fallbackUsed
-          ? OPEN_WEIGHT_CHAIN[0]
-          : "meta-models/muse-spark-open-1026",
-        promptTokens: 0,
-        completionTokens: 0,
-        costUsd: fallbackUsed ? 0 : MUSE_COST_PER_CALL_XAF / USD_TO_XAF_RATE,
-        usdToXafRate: USD_TO_XAF_RATE,
-        latencyMs: 0,
-        errorCode: pageFailed
-          ? "baseten_unusable"
-          : fallbackUsed
-            ? "baseten_fallback"
-            : null,
-      }).catch(() => {});
-
-      await prisma.page.update({
-        where: { id: page.id },
-        data: { pageImageUrl, analysedAt: new Date() },
-      });
+    if (pageEvents.length > 0) {
+      await inngest.send(pageEvents);
     }
 
     console.log(
-      `[Visual Analysis] Note ${noteId}: scanned=${scanned} visual=${visualCount} analysed=${analysedCount} failed=${failedCount}`,
+      `[Visual Analysis] Note ${noteId}: scanned=${scanResults.length} visual=${visualCount} text=${textCount} queued=${queued}`,
     );
 
     return {
       success: true,
       noteId,
-      scanned,
+      scanned: scanResults.length,
       visual: visualCount,
-      analysed: analysedCount,
-      failed: failedCount,
+      text: textCount,
+      queued,
     };
+  },
+);
+
+/** One visual page, one short-lived run. Retries heal transient model or
+ *  fetch failures per page instead of replaying the whole note. */
+export const visualPageAnalyze = inngest.createFunction(
+  {
+    name: "Visual Page Analysis",
+    id: "visual-analysis/analyze-page",
+    triggers: {
+      event: "note/analyze-page",
+    },
+    retries: 3,
+    concurrency: {
+      limit: 2,
+      key: "visual-analysis",
+    },
+  },
+  async ({ event }) => {
+    const { noteId, pageNumber, excerpt } = event.data as {
+      noteId: string;
+      pageNumber: number;
+      excerpt: string;
+    };
+    console.log(`[Visual Analysis] Page ${pageNumber} for note: ${noteId}`);
+
+    const note = await prisma.note.findUnique({
+      where: { id: noteId },
+    });
+    if (!note) {
+      throw new Error(`[Visual Analysis] Note not found: ${noteId}`);
+    }
+    const page = await prisma.page.findFirst({
+      where: { noteId, pageNumber },
+      select: {
+        id: true,
+        pageImageUrl: true,
+        analyses: { select: { status: true } },
+      },
+    });
+    if (!page) {
+      throw new Error(
+        `[Visual Analysis] Page ${pageNumber} gone for note: ${noteId}`,
+      );
+    }
+    if (page.analyses.some((a) => a.status === "COMPLETED")) {
+      return { success: true, noteId, pageNumber, skipped: true as const };
+    }
+    if (!note.uploadthingKey) {
+      throw new Error(`[Visual Analysis] Note has no file: ${noteId}`);
+    }
+
+    let imageBuffer: Buffer;
+    try {
+      const pdfBytes = await fetchNotePdfBytes(note.uploadthingKey);
+      ({ imageBuffer } = await renderSinglePageImage(pdfBytes, pageNumber));
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[Visual Analysis] Render failed page ${pageNumber}:`,
+        reason,
+      );
+      await prisma.visualAnalysis.create({
+        data: {
+          pageId: page.id,
+          visualType: "OTHER",
+          description:
+            `Page ${pageNumber} could not be rendered for analysis: ${reason}`.slice(
+              0,
+              500,
+            ),
+          confidence: null,
+          status: "FAILED",
+        },
+      });
+      await prisma.page.update({
+        where: { id: page.id },
+        data: { analysedAt: new Date() },
+      });
+      return { success: false, noteId, pageNumber, failed: true as const };
+    }
+
+    // Prefer the stored thumbnail URL; fall back to an inline data URL so a
+    // Blob outage never blocks grounding.
+    let imageRef = page.pageImageUrl;
+    if (!imageRef) {
+      try {
+        imageRef = await storePageImage(noteId, pageNumber, imageBuffer);
+        await prisma.page.update({
+          where: { id: page.id },
+          data: { pageImageUrl: imageRef },
+        });
+      } catch (error) {
+        console.warn(
+          `[Visual Analysis] Thumbnail store failed page ${pageNumber}, analysing inline:`,
+          error instanceof Error ? error.message : error,
+        );
+        imageRef = `data:image/png;base64,${imageBuffer.toString("base64")}`;
+      }
+    }
+
+    try {
+      const analysed = await analyseVisualPage(imageRef, pageNumber);
+      const description =
+        excerpt.length > 0
+          ? `${analysed.description}\nText on page: ${excerpt}`.slice(0, 2000)
+          : analysed.description;
+      await prisma.visualAnalysis.create({
+        data: {
+          pageId: page.id,
+          visualType: analysed.visualType,
+          description,
+          confidence: analysed.confidence,
+          basetenCostXaf: analysed.fallbackUsed ? null : MUSE_COST_PER_CALL_XAF,
+          status: "COMPLETED",
+        },
+      });
+      await logUsage({
+        userId: note.userId ?? null,
+        task: "visual_analysis",
+        modelId: analysed.fallbackUsed
+          ? OPEN_WEIGHT_CHAIN[0]
+          : "meta-models/muse-spark-open-1026",
+        promptTokens: 0,
+        completionTokens: 0,
+        costUsd: analysed.fallbackUsed
+          ? 0
+          : MUSE_COST_PER_CALL_XAF / USD_TO_XAF_RATE,
+        usdToXafRate: USD_TO_XAF_RATE,
+        latencyMs: 0,
+        errorCode: analysed.fallbackUsed ? "baseten_fallback" : null,
+      }).catch(() => {});
+      await prisma.page.update({
+        where: { id: page.id },
+        data: { analysedAt: new Date() },
+      });
+      return {
+        success: true,
+        noteId,
+        pageNumber,
+        fallbackUsed: analysed.fallbackUsed,
+      };
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[Visual Analysis] Model failed page ${pageNumber} (Baseten and fallback):`,
+        reason,
+      );
+      await prisma.visualAnalysis.create({
+        data: {
+          pageId: page.id,
+          visualType: "OTHER",
+          description:
+            `No model could analyse page ${pageNumber}: ${reason}`.slice(
+              0,
+              500,
+            ),
+          confidence: null,
+          status: "FAILED",
+        },
+      });
+      await logUsage({
+        userId: note.userId ?? null,
+        task: "visual_analysis",
+        modelId: "none",
+        promptTokens: 0,
+        completionTokens: 0,
+        costUsd: 0,
+        usdToXafRate: USD_TO_XAF_RATE,
+        latencyMs: 0,
+        errorCode: "visual_unusable",
+      }).catch(() => {});
+      await prisma.page.update({
+        where: { id: page.id },
+        data: { analysedAt: new Date() },
+      });
+      throw new Error(`Visual analysis failed page ${pageNumber}: ${reason}`);
+    }
   },
 );

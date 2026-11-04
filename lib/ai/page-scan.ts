@@ -40,8 +40,7 @@ export function toVisualTypeEnum(
   }
 }
 
-/** Render one already-opened PDF page to a PNG buffer and test it for visual content. */
-async function scanPageFromPdf(
+/** Render one already-opened PDF page to a PNG buffer and test it for visual content. */ async function scanPageFromPdf(
   pdf: PDFDocumentProxy,
   pageNumber: number,
 ): Promise<PageScanResult> {
@@ -125,6 +124,37 @@ export async function scanPages(
       }
     }
     return results;
+  } finally {
+    await pdf.destroy();
+    await loadingTask.destroy();
+  }
+}
+
+/**
+ * Render one page of a PDF by bytes. Used by the per-page fan-out worker so
+ * a single page can be re-rendered without opening the whole document in
+ * the parent. Throws when the page cannot be rendered.
+ */
+export async function renderSinglePageImage(
+  pdfBytes: Uint8Array,
+  pageNumber: number,
+): Promise<{ imageBuffer: Buffer; hasVisual: boolean }> {
+  const loadingTask = getDocument({
+    data: pdfBytes,
+    useWorkerFetch: false,
+    isEvalSupported: false,
+    verbosity: VerbosityLevel.ERRORS,
+  });
+  const pdf = await loadingTask.promise;
+  try {
+    const result = await scanPageFromPdf(pdf, pageNumber);
+    if (result.scanError || !result.pageImageBuffer) {
+      throw new Error(result.scanError ?? "empty image");
+    }
+    return {
+      imageBuffer: result.pageImageBuffer,
+      hasVisual: result.hasVisual,
+    };
   } finally {
     await pdf.destroy();
     await loadingTask.destroy();
