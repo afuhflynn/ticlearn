@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import TermsPage, { metadata } from "@/app/(marketing)/terms/page";
 import { LEGAL_LAST_UPDATED } from "@/constants";
-import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 /**
  * The terms page (spec 0016, AC-7). It carries the minimal money stance:
@@ -41,7 +41,7 @@ describe("the terms page (spec 0016 AC-7)", () => {
     const { container } = render(<TermsPage />);
 
     expect(
-      screen.getByRole("link", { name: /TiCLearn WhatsApp group/ }),
+      screen.getByRole("link", { name: WHATSAPP_GROUP_LABEL }),
     ).toHaveAttribute("href", WHATSAPP_GROUP_URL);
     expect(screen.getByText(LEGAL_LAST_UPDATED)).toBeInTheDocument();
     // The date is authored as "day month year", never the en-US rendered

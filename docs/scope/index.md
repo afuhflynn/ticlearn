@@ -86,7 +86,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 54 | Chat page lookup | Hackathon | in-progress |
 | 55 | Visual output in chat and quizzes | Hackathon | in-progress |
 | 68 | UI foundation tokens and primitives | Slice 6 | done |
-| 69 | Marketing pages refresh | Slice 6 | planned |
+| 69 | Marketing pages refresh | Slice 6 | in-progress |
 | 70 | Auth pages refresh | Slice 6 | planned |
 | 71 | Onboarding refresh plus birth trio picker | Slice 6 | planned |
 | 72 | Upload and notes pages refresh | Slice 6 | planned |

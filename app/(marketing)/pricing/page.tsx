@@ -1,11 +1,11 @@
 import { PricingPlans } from "@/components/marketing/pricing-plans";
-import { publicPlans } from "@/constants/plans";
+import { planCatalog, publicPlans } from "@/constants/plans";
+import { FREE_LIMITS } from "@/lib/plan-limits";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata = publicPageMetadata({
   title: "TiCLearn Pricing · Free, Weekly and Semester Pass",
-  description:
-    "TiCLearn is free to start with 5 notes plus 10 quizzes plus 15 Tip messages a day. A Weekly Pass at 500 FCFA or a Semester Pass at 3,000 FCFA paid over MTN Mobile Money or Orange Money lifts the counts. A one time payment, no card, no auto renewal.",
+  description: `TiCLearn is free to start with ${FREE_LIMITS.pdfUploads} notes plus ${FREE_LIMITS.quizGenerations} quizzes plus ${FREE_LIMITS.aiTutorMessages} Tip messages a day. A Weekly Pass at ${planCatalog.WEEKLY.priceXaf} FCFA or a Semester Pass at ${planCatalog.PRO.priceXaf.toLocaleString()} FCFA paid over MTN Mobile Money or Orange Money lifts the counts. A one time payment, no card, no auto renewal.`,
   path: "/pricing",
 });
 
@@ -23,10 +23,14 @@ export default function PricingPage() {
           Simple, honest pricing
         </h1>
         <p className="text-lg text-muted-foreground">
-          Start free with 5 notes plus 10 quizzes plus 15 Tip messages a day and
-          200 starting credits. When you are ready, a Weekly Pass at 500 FCFA or
-          a Semester Pass at 3,000 FCFA lifts the counts. Paid once over MTN
-          Mobile Money or Orange Money, with no card and no auto renewal.
+          Start free with {FREE_LIMITS.pdfUploads} notes plus{" "}
+          {FREE_LIMITS.quizGenerations} quizzes plus{" "}
+          {FREE_LIMITS.aiTutorMessages} Tip messages a day and{" "}
+          {planCatalog.FREE.credits} starting credits. When you are ready, a
+          Weekly Pass at {planCatalog.WEEKLY.priceXaf} FCFA or a Semester Pass
+          at {planCatalog.PRO.priceXaf.toLocaleString()} FCFA lifts the counts.
+          Paid once over MTN Mobile Money or Orange Money, with no card and no
+          auto renewal.
         </p>
       </div>
 

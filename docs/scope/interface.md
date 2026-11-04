@@ -15,10 +15,17 @@ code in `components/ui/page-header.tsx`, `components/ui/trio-picker.tsx`, `app/g
 
 (basis: your calm premium minimal pick plus vertical slices ship real value early)
 
-### 69. Marketing pages refresh · planned · needs a decision
+### 69. Marketing pages refresh · in-progress
 You land as a stranger and you grasp the three jobs plus the free limits plus Mobile Money in seconds. This covers landing plus pricing plus about plus contact plus faq plus privacy plus terms plus catalogue index plus catalogue detail.
 **Done when:** each public page scans in seconds with lists plus cards, free limits read from one source, Mobile Money names stay clear, contact stays to staffed WhatsApp, and metadata plus share image stay correct.
-- [ ] Design it (spec): `/solution-architect marketing pages refresh`
+- [x] Design it (spec): `/solution-architect marketing pages refresh`
+Spec 0048 [0048](../specs/0048-marketing-pages-refresh/index.md)
+- [x] Build it: /feature-build marketing pages refresh · code in `app/(marketing)/`, `components/marketing/pricing-plans.tsx`, `constants/plans.ts`, `lib/plans-display.ts`, `scripts/check-landing-honesty.mjs`, `tests/app/(marketing)/`, `tests/scripts/check-landing-honesty.test.ts`
+  - [x] Landing truth thread plus honesty gate over the full set, satisfies AC-1, AC-2, AC-9
+  - [x] Pricing plus remaining pages plus metadata retune, satisfies AC-1, AC-2, AC-3, AC-4, AC-6
+  - [x] Screenshots plus pinned tests plus access check, satisfies AC-5, AC-7, AC-8, AC-9
+- [ ] Verify it: /verify-release marketing pages refresh
+- [ ] Test it: /test-engineer marketing pages refresh
 
 (basis: your lists first always pick plus research/seo-and-rendering.md)
 
