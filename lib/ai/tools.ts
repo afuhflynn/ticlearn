@@ -690,10 +690,20 @@ export function createChatTools({
           !justScanned
         ) {
           try {
-            await inngest.send({
-              name: "note/uploaded",
-              data: { noteId: note.id },
-            });
+            // Bounded: a slow Inngest API must not eat the turn's own
+            // budget (the chat route has a hard platform timeout).
+            await Promise.race([
+              inngest.send({
+                name: "note/uploaded",
+                data: { noteId: note.id },
+              }),
+              new Promise((_, reject) =>
+                setTimeout(
+                  () => reject(new Error("Page scan requeue timed out")),
+                  10_000,
+                ),
+              ),
+            ]);
           } catch (error) {
             console.warn(
               "[getNotePages] Page scan requeue failed:",

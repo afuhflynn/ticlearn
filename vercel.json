@@ -2,7 +2,7 @@
   "crons": [],
   "functions": {
     "app/api/ai/chat/route.ts": {
-      "maxDuration": 60,
+      "maxDuration": 300,
       "memory": 1024
     },
     "app/api/notes/route.ts": {

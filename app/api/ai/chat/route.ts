@@ -543,11 +543,13 @@ function trimForModel(messages: UIMessage[]): UIMessage[] {
 }
 
 /**
- * Put a comment frame in front of the model stream, then copy it through.
- * The frame goes out the moment the headers are written, so a middlebox on a
- * congested cell never sees a silent connection during a slow prefill. SSE
- * comments are ignored by every parser, including the client's, so the frame
- * carries no meaning and costs a handful of bytes.
+ * Put a comment frame in front of the model stream, then copy it through,
+ * with a heartbeat every 15 seconds for the whole life of the turn. The
+ * frames go out before any model output, so a middlebox on a congested
+ * cell never sees a silent connection during a slow prefill — and, more
+ * importantly, during long tool calls (a draw stacks several model legs),
+ * when no answer bytes flow for a minute or more. SSE comments are ignored
+ * by every parser, including the client's, so the frames carry no meaning.
  */
 function withKeepAlive(
   streamResponse: Response,
@@ -557,14 +559,24 @@ function withKeepAlive(
   const upstream = streamResponse.body;
   if (!upstream) return streamResponse;
 
+  const HEARTBEAT_MS = 15_000;
   const encoder = new TextEncoder();
   let firstByteMs: number | null = null;
   let cancelled = false;
+  let settled = false;
 
   const body = new ReadableStream<Uint8Array>({
     async start(controller) {
       controller.enqueue(encoder.encode(": keep-alive\n\n"));
       const reader = upstream.getReader();
+      const heartbeat = setInterval(() => {
+        if (settled || cancelled) return;
+        try {
+          controller.enqueue(encoder.encode(": heartbeat\n\n"));
+        } catch {
+          // Closed or errored below; the loop below settles the stream.
+        }
+      }, HEARTBEAT_MS);
       try {
         while (true) {
           const { done, value } = await reader.read();
@@ -575,9 +587,13 @@ function withKeepAlive(
           controller.enqueue(value);
         }
         // A student who closed the tab has already torn this stream down.
+        settled = true;
+        clearInterval(heartbeat);
         if (!cancelled) controller.close();
       } catch (error) {
         console.error("[Chat] stream pump failed:", error);
+        settled = true;
+        clearInterval(heartbeat);
         if (!cancelled) controller.error(error);
       } finally {
         reader.releaseLock();
