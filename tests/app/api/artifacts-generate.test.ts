@@ -72,15 +72,38 @@ describe("POST /api/artifacts/generate (spec 0030)", () => {
     expect(generateMock).not.toHaveBeenCalled();
   });
 
-  it("answers 400 for an empty concept or a missing key (covers: AC-4)", async () => {
+  it("answers 400 for an empty concept (covers: AC-4)", async () => {
     session();
 
     const empty = await post({ noteId: "n1", concept: "" });
     expect(empty.status).toBe(400);
-
-    const keyless = await post({ concept: "field lines" });
-    expect(keyless.status).toBe(400);
     expect(generateMock).not.toHaveBeenCalled();
+  });
+
+  it("draws without a note or answer id, like the note-free chat path", async () => {
+    session();
+    artifactCount.mockResolvedValue(0);
+    generateMock.mockResolvedValue({
+      object: {
+        format: "svg",
+        payload:
+          '<svg xmlns="http://www.w3.org/2000/svg"><circle cx="5" cy="5" r="4"/></svg>',
+        altText: "A circle.",
+      },
+      modelId: "muse-spark-1.3",
+    });
+    artifactCreate.mockResolvedValue({ id: "art-free" });
+
+    const response = await post({ concept: "a circle" });
+
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body).toMatchObject({ ok: true, id: "art-free" });
+    expect(artifactCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId, noteId: null }),
+      }),
+    );
   });
 
   it("answers 404 for a foreign note id with no model call (covers: AC-5)", async () => {

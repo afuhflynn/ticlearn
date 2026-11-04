@@ -100,6 +100,43 @@ export function matchesFreeFallConcept(concept: string): boolean {
   return hasFall || hasGravity;
 }
 
+/** True for convex/converging-lens ray diagrams with a focal point. */
+export function matchesConvexLensConcept(concept: string): boolean {
+  const c = concept.toLowerCase();
+  const hasLens = /lens/.test(c) && /convex|converg|focal|focus|ray/.test(c);
+  return hasLens && !/concave|diverg/.test(c);
+}
+
+/** Deterministic SVG fallback: convex lens, F/2F marks, three principal rays. */
+export function buildConvexLensSvg(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 260" role="img">
+  <title>Convex lens ray diagram with parallel rays converging to the focal point</title>
+  <line x1="10" y1="190" x2="350" y2="190" stroke="black" stroke-width="1.5"/>
+  <path d="M180,70 C160,120 160,180 180,230" fill="none" stroke="black" stroke-width="2"/>
+  <path d="M180,70 C200,120 200,180 180,230" fill="none" stroke="black" stroke-width="2"/>
+  <line x1="90" y1="185" x2="90" y2="195" stroke="black" stroke-width="1.5"/>
+  <line x1="135" y1="185" x2="135" y2="195" stroke="black" stroke-width="1.5"/>
+  <line x1="225" y1="185" x2="225" y2="195" stroke="black" stroke-width="1.5"/>
+  <line x1="292" y1="185" x2="292" y2="195" stroke="black" stroke-width="1.5"/>
+  <text x="90" y="210" font-size="11" text-anchor="middle" fill="black">2F</text>
+  <text x="135" y="210" font-size="11" text-anchor="middle" fill="black">F</text>
+  <text x="225" y="210" font-size="11" text-anchor="middle" fill="black">F</text>
+  <text x="292" y="210" font-size="11" text-anchor="middle" fill="black">2F</text>
+  <line x1="80" y1="190" x2="80" y2="150" stroke="black" stroke-width="2"/>
+  <polygon points="80,140 75,152 85,152" fill="black"/>
+  <text x="52" y="172" font-size="12" fill="black">Object</text>
+  <path d="M80,150 L174,150 L278,234" fill="none" stroke="black" stroke-width="1.5"/>
+  <polygon points="278,234 266,232 274,223" fill="black"/>
+  <line x1="80" y1="150" x2="285" y2="228" stroke="black" stroke-width="1.5"/>
+  <polygon points="285,228 274,230 278,219" fill="black"/>
+  <path d="M80,150 L180,223 L300,223" fill="none" stroke="black" stroke-width="1.5"/>
+  <polygon points="300,223 290,219 290,227" fill="black"/>
+  <line x1="262" y1="190" x2="262" y2="223" stroke="black" stroke-width="2"/>
+  <polygon points="262,233 257,221 267,221" fill="black"/>
+  <text x="262" y="252" font-size="11" text-anchor="middle" fill="black">Image (real, inverted)</text>
+</svg>`;
+}
+
 /** Deterministic SVG fallback: weight, velocity and acceleration vectors. */
 export function buildFreeFallSvg(): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" role="img">
@@ -264,6 +301,15 @@ export async function generateVisualArtifact(input: {
       // acceleration vectors for a body in free fall. Stored like any draw
       // so it renders, retries and counts normally.
       const svg = sanitizeSvgMarkup(buildFreeFallSvg());
+      if (svg) {
+        payload = svg;
+        format = "svg";
+      }
+    }
+    if (!payload && matchesConvexLensConcept(concept)) {
+      // Guaranteed diagram for converging-lens ray optics: lens, F/2F marks,
+      // and the three principal rays meeting at a real inverted image.
+      const svg = sanitizeSvgMarkup(buildConvexLensSvg());
       if (svg) {
         payload = svg;
         format = "svg";

@@ -5,14 +5,12 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateVisualArtifact } from "@/lib/visual-artifacts";
 
-const bodySchema = z
-  .object({
-    answerId: z.string().min(1).optional(),
-    noteId: z.string().min(1).optional(),
-    concept: z.string().min(1).max(160),
-    context: z.string().max(4000).optional(),
-  })
-  .refine((v) => v.answerId || v.noteId, { message: "answerId or noteId" });
+const bodySchema = z.object({
+  answerId: z.string().min(1).optional(),
+  noteId: z.string().min(1).optional(),
+  concept: z.string().min(1).max(160),
+  context: z.string().max(4000).optional(),
+});
 
 /** Draw a fresh diagram. Owner checks resolve the note or answer through the
  *  caller id, the cap runs before the model call, every draw logs usage with

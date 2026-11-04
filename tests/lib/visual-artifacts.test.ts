@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { getTaskConfig } from "@/lib/ai/registry";
 import { loadPromptRaw, renderPrompt } from "@/lib/prompts/loader";
 import {
+  buildConvexLensSvg,
   buildFreeFallSvg,
   canonicalDrawKey,
+  matchesConvexLensConcept,
   matchesFreeFallConcept,
   sanitizeMermaidSource,
   sanitizeSvgMarkup,
@@ -71,5 +73,19 @@ describe("visual artifacts", () => {
     expect(matchesFreeFallConcept("free body diagram free fall")).toBe(true);
     expect(matchesFreeFallConcept("photosynthesis steps")).toBe(false);
     expect(sanitizeSvgMarkup(buildFreeFallSvg())).not.toBeNull();
+  });
+
+  it("matches convex lens concepts and builds a sanitizable SVG", () => {
+    expect(
+      matchesConvexLensConcept(
+        "Convex converging lens ray diagram with parallel rays converging to focal point",
+      ),
+    ).toBe(true);
+    expect(matchesConvexLensConcept("concave diverging lens")).toBe(false);
+    expect(matchesConvexLensConcept("photosynthesis steps")).toBe(false);
+    const svg = sanitizeSvgMarkup(buildConvexLensSvg());
+    expect(svg).not.toBeNull();
+    expect(svg as string).toContain("F");
+    expect(svg as string).toContain("Image");
   });
 });
