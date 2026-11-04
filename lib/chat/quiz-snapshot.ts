@@ -1,11 +1,46 @@
 /**
  * Browser snapshot for one in chat quiz run. Session storage keeps the run
- * per tab, so concurrent tabs stay separate runs. Nothing reaches the
- * database mid run. A version mismatch or a missing quiz row drops the
- * snapshot with a plain message plus retry at the call site.
+ * per tab, so concurrent tabs stay separate runs. A light server backup
+ * mirrors the same JSON so a new device can resume. A version mismatch or a
+ * missing quiz row drops the snapshot with a plain message plus retry at the
+ * call site.
  */
 
-export const QUIZ_SNAPSHOT_VERSION = 5;
+export const QUIZ_SNAPSHOT_VERSION = 6;
+
+/** One dot in the shared order. Quiz dots score, diagram dots never do. */
+export type QuizSnapshotItem = {
+  kind: "quiz" | "diagram";
+  /** Quiz item: the question id. Diagram item: the drawn artifact id. */
+  ref: string;
+  /** Diagram item only: the caption shown while art loads. */
+  caption?: string;
+};
+
+const MAX_SNAPSHOT_ITEMS = 60;
+
+function normalizeItems(raw: unknown): QuizSnapshotItem[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const items: QuizSnapshotItem[] = [];
+  for (const entry of raw.slice(0, MAX_SNAPSHOT_ITEMS)) {
+    if (!entry || typeof entry !== "object") continue;
+    const kind = (entry as { kind?: unknown }).kind;
+    const ref = (entry as { ref?: unknown }).ref;
+    if (
+      (kind === "quiz" || kind === "diagram") &&
+      typeof ref === "string" &&
+      ref.length > 0
+    ) {
+      const caption = (entry as { caption?: unknown }).caption;
+      items.push(
+        typeof caption === "string" && caption.length > 0
+          ? { kind, ref, caption: caption.slice(0, 200) }
+          : { kind, ref },
+      );
+    }
+  }
+  return items.length > 0 ? items : undefined;
+}
 
 export type QuizMark = {
   isCorrect: boolean;
@@ -47,6 +82,8 @@ export type QuizSnapshot = {
   mode?: QuizRunnerMode;
   hintOpen?: Record<string, boolean>;
   minimized?: boolean;
+  /** The shared dots order. Undefined means derive from questions plus art. */
+  items?: QuizSnapshotItem[];
   handoff?: {
     noteId: string | null;
     noteTitle: string | null;
@@ -111,6 +148,27 @@ export function clearActiveRunId(conversationId: string): void {
   }
 }
 
+/** The largest snapshot the browser or the server backup will hold. */
+export const MAX_SNAPSHOT_BYTES = 200 * 1024;
+
+/** Dots order in, snapshot items out. Quiz dots score, diagram dots never do. */
+export function toSnapshotItems(
+  dots: Array<
+    | { kind: "quiz"; questionId: string }
+    | { kind: "diagram"; artifactId: string; caption?: string }
+  >,
+): QuizSnapshotItem[] {
+  return dots.map((dot) =>
+    dot.kind === "quiz"
+      ? { kind: "quiz", ref: dot.questionId }
+      : {
+          kind: "diagram",
+          ref: dot.artifactId,
+          ...(dot.caption ? { caption: dot.caption.slice(0, 200) } : {}),
+        },
+  );
+}
+
 export function saveQuizSnapshot(
   conversationId: string,
   snapshot: QuizSnapshot,
@@ -118,10 +176,9 @@ export function saveQuizSnapshot(
   const store = storage();
   if (!store || !conversationId || !snapshot.clientRunId) return;
   try {
-    store.setItem(
-      snapshotKey(conversationId, snapshot.clientRunId),
-      JSON.stringify({ ...snapshot, version: QUIZ_SNAPSHOT_VERSION }),
-    );
+    const raw = JSON.stringify({ ...snapshot, version: QUIZ_SNAPSHOT_VERSION });
+    if (raw.length > MAX_SNAPSHOT_BYTES) return;
+    store.setItem(snapshotKey(conversationId, snapshot.clientRunId), raw);
     store.setItem(activeKey(conversationId), snapshot.clientRunId);
   } catch {
     return;
@@ -143,6 +200,7 @@ export function loadQuizSnapshot(
       parsed.version !== 2 &&
       parsed.version !== 3 &&
       parsed.version !== 4 &&
+      parsed.version !== 5 &&
       parsed.version !== QUIZ_SNAPSHOT_VERSION
     )
       return null;
@@ -179,6 +237,7 @@ export function loadQuizSnapshot(
       mode: parsed.mode === "flashcards" ? "flashcards" : "quiz",
       hintOpen: parsed.hintOpen ?? {},
       minimized: parsed.minimized ?? false,
+      items: normalizeItems(parsed.items),
       handoff: parsed.handoff ?? null,
       topicText: parsed.topicText,
       noteId: parsed.noteId,

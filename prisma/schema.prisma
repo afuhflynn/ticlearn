@@ -66,6 +66,7 @@ model User {
   userSettings         UserSettings?
   chatConversations    ChatConversation[]
   chatMessages         ChatMessage[]
+  chatRunBackups       ChatRunBackup[]
   adminInvites         AdminInvite[]         @relation("InvitedBy")
   creditTransactions   CreditTransaction[]   @relation("UserCredits")
   creditPurchaseOrders CreditPurchaseOrder[]
@@ -736,6 +737,7 @@ model ChatConversation {
   user     User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   note     Note?         @relation(fields: [noteId], references: [id], onDelete: SetNull)
   messages ChatMessage[]
+  runBackups ChatRunBackup[]
 
   @@index([userId])
   @@index([userId, updatedAt])
@@ -761,6 +763,23 @@ model ChatMessage {
   @@index([userId])
   @@index([userId, role, createdAt])
   @@map("chat_messages")
+}
+
+model ChatRunBackup {
+  id             String   @id @default(cuid())
+  userId         String   @map("user_id")
+  conversationId String   @map("conversation_id")
+  clientRunId    String   @unique @map("client_run_id")
+  snapshot       String   @db.Text @map("snapshot")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([userId, conversationId])
+  @@index([userId, conversationId, updatedAt])
+  @@map("chat_run_backups")
 }
 
 model PaymentSettings {

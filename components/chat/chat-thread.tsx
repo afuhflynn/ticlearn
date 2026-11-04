@@ -19,6 +19,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useUsage } from "@/hooks";
 import { useMessagesPaginated } from "@/hooks/useChat";
 import { normalizeStoredParts } from "@/lib/chat-messages";
+import { seedServerBackup } from "@/lib/chat/quiz-backup";
+import { getActiveRunId } from "@/lib/chat/quiz-snapshot";
 import { queryKeys } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import {
@@ -84,6 +86,30 @@ function ConversationSession({
     window.addEventListener("ticlearn:quiz-close", onClose);
     return () => window.removeEventListener("ticlearn:quiz-close", onClose);
   }, []);
+
+  /**
+   * Reload resume. The dock unmounts with the page, but the run survives in
+   * the browser snapshot and the server backup. When this conversation owns
+   * an active run, mount the dock again so the student lands back on the
+   * same spot instead of an empty thread.
+   */
+  const resumedRef = useRef(false);
+  useEffect(() => {
+    if (resumedRef.current) return;
+    resumedRef.current = true;
+    if (typeof window === "undefined") return;
+    if (getActiveRunId(conversationId)) {
+      setQuizRun({ noteId, noteTitle });
+      return;
+    }
+    let cancelled = false;
+    void seedServerBackup(conversationId).then((seeded) => {
+      if (!cancelled && seeded) setQuizRun({ noteId, noteTitle });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationId, noteId, noteTitle]);
 
   const startedAt = useRef<number | null>(null);
   const lastSubmission = useRef<ChatComposerSubmission | null>(null);

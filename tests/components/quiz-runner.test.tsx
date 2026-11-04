@@ -1,13 +1,24 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { QuizRunner } from "@/components/chat/quiz-runner";
 import { api } from "@/lib/api-client";
+
+beforeAll(() => {
+  globalThis.ResizeObserver = class {
+    disconnect() {}
+    observe() {}
+    unobserve() {}
+  } as typeof ResizeObserver;
+});
 
 const generateMock = vi.hoisted(() => vi.fn());
 const submitMock = vi.hoisted(() => vi.fn());
 const useQuizMock = vi.hoisted(() => vi.fn());
 const useSessionMock = vi.hoisted(() => vi.fn());
+const backupReadMock = vi.hoisted(() => vi.fn());
+const backupSaveMock = vi.hoisted(() => vi.fn());
+const backupClearMock = vi.hoisted(() => vi.fn());
 
 vi.mock("@/lib/api-client", () => ({
   api: {
@@ -15,6 +26,11 @@ vi.mock("@/lib/api-client", () => ({
       quizzes: {
         generate: generateMock,
         grade: vi.fn(),
+      },
+      chat: {
+        saveRunBackup: backupSaveMock,
+        readRunBackup: backupReadMock,
+        clearRunBackup: backupClearMock,
       },
     },
   },
@@ -135,6 +151,10 @@ beforeEach(() => {
   vi.clearAllMocks();
   window.sessionStorage.clear();
   window.scrollTo = vi.fn() as never;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockRejectedValue(new Error("no art in tests")),
+  );
   useSessionMock.mockReturnValue({ data: { user: { id: "student-1" } } });
   generateMock.mockResolvedValue({ quiz: { id: "quiz-1" }, success: true });
   submitMock.mockResolvedValue(attemptResult());
@@ -142,6 +162,13 @@ beforeEach(() => {
     if (!id) return EMPTY_QUIZ_PAYLOAD;
     return READY_QUIZ_PAYLOAD;
   });
+  backupReadMock.mockResolvedValue({ snapshot: null });
+  backupSaveMock.mockResolvedValue({ ok: true });
+  backupClearMock.mockResolvedValue({ ok: true });
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 async function startQuiz(user: ReturnType<typeof userEvent.setup>) {
@@ -205,6 +232,59 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
     expect(
       await screen.findByText(/Question 1 of 3.*0 correct/),
     ).toBeInTheDocument();
+  });
+
+  it("stays on the results when a refetch delivers a fresh quiz payload after submit (covers: AC-12)", async () => {
+    const user = userEvent.setup();
+    const { rerender } = render(<QuizRunner {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 3.*0 correct/);
+
+    await user.click(screen.getByRole("button", { name: /four/i }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /paris/i }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /mars/i }));
+    await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
+    expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
+
+    // A post submit refetch hands the runner a new payload object with the
+    // same content, exactly what the invalidated quiz query delivers.
+    useQuizMock.mockImplementation((id: string) => {
+      if (!id) return EMPTY_QUIZ_PAYLOAD;
+      return {
+        data: { quiz: { ...readyQuiz } },
+        isPending: false,
+        isError: false,
+      };
+    });
+    rerender(<QuizRunner {...props()} />);
+
+    expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Finish Quiz" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a plain notice plus retry when submit fails, and retry resubmits (covers: AC-12)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    await user.click(screen.getByRole("button", { name: /four/i }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /paris/i }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /mars/i }));
+
+    submitMock.mockRejectedValueOnce(new Error("Service is busy"));
+    await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
+
+    expect(await screen.findByText(/service is busy/i)).toBeInTheDocument();
+    const retry = screen.getByRole("button", { name: "Try again" });
+    await user.click(retry);
+
+    expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
+    expect(submitMock).toHaveBeenCalledTimes(2);
   });
 
   it("asks once on unclear input, then marks nothing and skips nothing (covers: AC-6)", async () => {
@@ -615,6 +695,280 @@ describe("QuizRunner low docked card (spec 0034)", () => {
     expect(
       screen.getByRole("button", { name: "Try marking again" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
+  it("hides options on the flashcard front and reveals the back after the mark (covers: AC-8)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    await user.click(screen.getByRole("button", { name: "Flashcards" }));
+    expect(screen.queryByText("Four")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Answer with option B/ }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Answer with option B/ }),
+    );
+    expect(await screen.findByText("Back of card")).toBeInTheDocument();
+    expect(screen.getByText("Correct answer: Four")).toBeInTheDocument();
+  });
+
+  it("reads the hint from the question when the metadata map is empty (covers: AC-7)", async () => {
+    const user = userEvent.setup();
+    const hintOnQuestion = {
+      ...readyQuiz,
+      metadata: null,
+      questions: questions.map((question, index) =>
+        index === 0
+          ? { ...question, hint: "Nudge from the question." }
+          : question,
+      ),
+    };
+    useQuizMock.mockImplementation((id: string) => {
+      if (!id) return EMPTY_QUIZ_PAYLOAD;
+      return { data: { quiz: hintOnQuestion }, isPending: false, isError: false };
+    });
+    render(<QuizRunner {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 3.*0 correct/);
+
+    await user.click(screen.getByRole("button", { name: "Show hint" }));
+    expect(
+      await screen.findByText("Nudge from the question."),
+    ).toBeInTheDocument();
+  });
+
+  it("adds an unscored diagram dot from note art with retry (covers: AC-9)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        drawn: [
+          {
+            id: "a1",
+            payload: "graph TD;A-->B",
+            altText: "A flows to B",
+            format: "mermaid",
+            sourcePage: 2,
+          },
+        ],
+        scans: [],
+        total: 1,
+      }),
+    } as Response);
+    render(<QuizRunner {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 4.*0 correct/);
+
+    const diagramDot = await screen.findByRole("button", {
+      name: /diagram, unscored/,
+    });
+    await user.click(diagramDot);
+    expect(await screen.findByText("Diagram 1", { exact: true })).toBeInTheDocument();
+    expect(await screen.findByText(/Study figure, unscored/)).toBeInTheDocument();
+    expect(screen.getByText(/A flows to B/)).toBeInTheDocument();
+  });
+
+  it("writes one chat attempt on duplicate run id with no new row (covers: AC-12)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    await user.click(screen.getByRole("button", { name: /four/i }));
+    await screen.findByText("That's correct.");
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /paris/i }));
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /mars/i }));
+
+    submitMock.mockResolvedValueOnce({ ...attemptResult(), duplicate: true });
+    await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
+
+    expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
+    expect(screen.queryByText(/failed to submit/i)).not.toBeInTheDocument();
+    expect(submitMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: "chat",
+        conversationId: "conv-1",
+        clientRunId: expect.stringMatching(/^ticlearn-chat-/),
+      }),
+    );
+  });
+
+  it("moves focus to the question heading on dot jump (covers: AC-11)", async () => {
+    const user = userEvent.setup();
+    await startQuiz(user);
+
+    await user.click(
+      screen.getByRole("button", { name: /Question 3 of 3, unanswered/ }),
+    );
+    await screen.findByText(/Question 3 of 3.*0 correct/);
+
+    expect(document.activeElement?.id).toBe("quiz-runner-heading");
+  });
+
+  it("submits quiz plus flashcard answers in one shape with diagrams unscored (covers: AC-12)", async () => {
+    const user = userEvent.setup();
+    vi.mocked(globalThis.fetch).mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        drawn: [
+          {
+            id: "a1",
+            payload: "graph TD;A-->B",
+            altText: "A flows to B",
+            format: "mermaid",
+            sourcePage: 2,
+          },
+        ],
+        scans: [],
+        total: 1,
+      }),
+    } as Response);
+    render(<QuizRunner {...props()} />);
+    await user.click(screen.getByRole("button", { name: "Start quiz" }));
+    await screen.findByText(/Question 1 of 4.*0 correct/);
+
+    await user.click(screen.getByRole("button", { name: "Flashcards" }));
+    await user.click(screen.getByRole("button", { name: /Answer with option B/ }));
+    await screen.findByText("Back of card");
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /Answer with option B/ }));
+    await screen.findByText(/Question 2 of 4.*2 correct/);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await user.click(screen.getByRole("button", { name: /Answer with option B/ }));
+    await screen.findByText(/Question 3 of 4.*3 correct/);
+
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    expect(await screen.findByText("Diagram 1", { exact: true })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
+    expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
+
+    const payload = submitMock.mock.calls.at(-1)?.[0] as {
+      answers: Array<{ questionId: string; answer: string }>;
+      source: string;
+    };
+    expect(payload.answers).toHaveLength(3);
+    expect(payload.answers[0]).toEqual({ questionId: "q1", answer: "Four" });
+    expect(payload.source).toBe("chat");
+  });
+
+  it("restores the run from the server backup on a fresh browser (covers: AC-5)", async () => {
+    const user = userEvent.setup();
+    const stored = {
+      version: 6,
+      quizId: "quiz-1",
+      answers: { q1: "Four" },
+      marks: {},
+      currentIndex: 1,
+      count: 3,
+      clientRunId: "run-restored",
+      updatedAt: Date.now(),
+      mode: "quiz",
+      hintOpen: {},
+      minimized: false,
+      items: [
+        { kind: "quiz", ref: "q1" },
+        { kind: "quiz", ref: "q2" },
+        { kind: "quiz", ref: "q3" },
+      ],
+    };
+    backupReadMock.mockResolvedValueOnce({
+      snapshot: JSON.stringify(stored),
+      clientRunId: "run-restored",
+    });
+    render(
+      <QuizRunner
+        conversationId="conv-restore"
+        noteId="note-1"
+        noteTitle="Bio notes"
+      />,
+    );
+
+    expect(await screen.findByText(/Question 2 of 3.*0 correct/)).toBeInTheDocument();
+    expect(backupReadMock).toHaveBeenCalledWith("conv-restore", undefined);
+    expect(
+      window.sessionStorage.getItem("ticlearn:quiz:active:conv-restore"),
+    ).toBe("run-restored");
+    await user.click(screen.getByRole("button", { name: /paris/i }));
+    expect(await screen.findByText("That's correct.")).toBeInTheDocument();
+  });
+
+  it("cuts to the results with no glide when reduced motion is set (covers: AC-11)", async () => {
+    const user = userEvent.setup();
+    const coarse = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("reduce"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    try {
+      await startQuiz(user);
+
+      await user.click(screen.getByRole("button", { name: /four/i }));
+      await user.click(screen.getByRole("button", { name: "Next" }));
+      await user.click(screen.getByRole("button", { name: /paris/i }));
+      await user.click(screen.getByRole("button", { name: "Next" }));
+      await user.click(screen.getByRole("button", { name: /mars/i }));
+      await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
+
+      expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
+      expect(window.scrollTo).toHaveBeenCalledWith({ top: 0 });
+    } finally {
+      if (coarse) window.matchMedia = coarse;
+      else delete (window as { matchMedia?: unknown }).matchMedia;
+    }
+  });
+
+  it("keeps a diagram readable with retry when art fails on reload (covers: AC-9)", async () => {
+    const user = userEvent.setup();
+    window.sessionStorage.setItem(
+      "ticlearn:quiz:run:conv-art:run-art",
+      JSON.stringify({
+        version: 6,
+        quizId: "quiz-1",
+        answers: {},
+        marks: {},
+        currentIndex: 3,
+        count: 3,
+        clientRunId: "run-art",
+        updatedAt: Date.now(),
+        mode: "quiz",
+        hintOpen: {},
+        minimized: false,
+        items: [
+          { kind: "quiz", ref: "q1" },
+          { kind: "quiz", ref: "q2" },
+          { kind: "quiz", ref: "q3" },
+          { kind: "diagram", ref: "a9", caption: "Diagram 1" },
+        ],
+      }),
+    );
+    window.sessionStorage.setItem("ticlearn:quiz:active:conv-art", "run-art");
+    render(
+      <QuizRunner conversationId="conv-art" noteId="note-1" noteTitle="Bio notes" />,
+    );
+
+    expect(
+      await screen.findAllByText("Diagram 1", { exact: true }),
+    ).toHaveLength(2);
+    expect(
+      await screen.findByText(/could not load/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Try loading the figure again" }),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Question 1 of 4, unanswered/ }),
+    );
+    expect(await screen.findByText(/Question 1 of 4.*0 correct/)).toBeInTheDocument();
   });
 });
 
