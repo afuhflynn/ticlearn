@@ -248,6 +248,13 @@
     "exception": null
   },
   {
+    "file": "components/ui/page-header.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-11-04",
+    "exception": "Built for spec 0047, it has no registry element behind it. Every rebuilt page opens with one title plus helper plus actions, so the heading order stays fixed."
+  },
+  {
     "file": "components/ui/pagination.tsx",
     "base": "radix",
     "registryVersion": "unknown",
@@ -449,6 +456,13 @@
     "registryVersion": "unknown",
     "lastRebase": "2026-10-22",
     "exception": "Project-specific questionnaire layout container."
+  },
+  {
+    "file": "components/ui/trio-picker.tsx",
+    "base": "custom",
+    "registryVersion": "unknown",
+    "lastRebase": "2026-11-04",
+    "exception": "Built for spec 0047, it has no registry element behind it. Birth entry needs day plus month plus year selects with scroll plus type to jump and a native date fallback on small touch screens."
   }
 ]
 ```

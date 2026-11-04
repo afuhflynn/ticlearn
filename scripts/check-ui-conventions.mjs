@@ -39,6 +39,8 @@ const reDarkColourBare =
   /dark:(bg|text|border|ring|from|to|via|fill|stroke|outline|decoration|divide|accent|caret|shadow)-(white|black)\b/g;
 const reRawAria = /\b(role|aria-[a-z-]+)\s*=/g;
 const reHandRolled = /<(button|input|select|textarea)\b/g;
+const reHexLiteral = /#[0-9a-fA-F]{3,8}\b/g;
+const reBespokeRadius = /rounded-\[(?!var\(--radius|min\(\s*var\(--radius)/g;
 
 const SCAN_DIRS = ["app", "components", "hooks", "lib"];
 const EXCLUDE_UI = ["components/ui/", "components/ai-elements/"];
@@ -77,6 +79,10 @@ function classify(rel) {
       !rel.startsWith("components/ai-elements/") &&
       !rel.startsWith("lib/email/"),
     handRolled: !uiExcluded,
+    // Email clients cannot read CSS custom properties, so the mail layout
+    // keeps its hex values and the rule does not look there.
+    hexLiteral: !uiExcluded && !rel.startsWith("lib/email/"),
+    bespokeRadius: !uiExcluded,
     spinner: !SPINNER_PRIMITIVE_FOLDERS.some((p) => rel.startsWith(p)),
   };
 }
@@ -147,6 +153,8 @@ const violations = {
   "dark-colour-utility": new Set(),
   "raw-aria": new Set(),
   "hand-rolled-control": new Set(),
+  "hex-literal": new Set(),
+  "bespoke-radius": new Set(),
 };
 
 /** Every spinner drawn outside a button, with the line it is drawn on. */
@@ -178,6 +186,14 @@ for (const dir of SCAN_DIRS) {
       violations["hand-rolled-control"].add(rel);
     }
     reHandRolled.lastIndex = 0;
+    if (cls.hexLiteral && reHexLiteral.test(src)) {
+      violations["hex-literal"].add(rel);
+    }
+    reHexLiteral.lastIndex = 0;
+    if (cls.bespokeRadius && reBespokeRadius.test(src)) {
+      violations["bespoke-radius"].add(rel);
+    }
+    reBespokeRadius.lastIndex = 0;
     if (cls.spinner) {
       const sites = [...findSpinnerSites(src), ...findRawSpinnerSites(src)];
       if (sites.length > 0) {
@@ -198,6 +214,8 @@ for (const r of [
   reDarkColourBare,
   reRawAria,
   reHandRolled,
+  reHexLiteral,
+  reBespokeRadius,
 ])
   r.lastIndex = 0;
 
