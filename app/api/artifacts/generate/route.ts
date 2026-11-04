@@ -75,5 +75,7 @@ export async function POST(req: Request) {
     format: result.format,
     payload: result.payload,
     altText: result.altText,
+    caption: result.caption,
+    textSteps: result.textSteps,
   });
 }

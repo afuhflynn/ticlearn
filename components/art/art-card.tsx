@@ -76,12 +76,18 @@ function DrawnFigure({
 
   if (item.format === "svg") {
     const clean = sanitizeSvgForRender(item.payload);
-    if (!clean) return null;
+    if (!clean) {
+      return (
+        <p className="px-3 py-3 text-sm text-muted-foreground">
+          The diagram could not render. {item.altText}
+        </p>
+      );
+    }
     return (
-      <div className="w-full overflow-hidden rounded-md bg-card">
+      <div className="art-line w-full overflow-hidden rounded-md bg-card">
         <span className="sr-only">{item.altText}</span>
         <div
-          className="mermaid-svg-host"
+          className="mermaid-svg-host art-line-host"
           // Sanitized on the server before store and again here before render.
           dangerouslySetInnerHTML={{ __html: clean }}
         />
@@ -96,11 +102,14 @@ function DrawnFigure({
     );
   }
   return (
-    <span className="block aspect-[4/3] w-full overflow-hidden bg-card">
+    <span className="art-line block aspect-[4/3] w-full overflow-hidden bg-card">
       <div className="h-full w-full overflow-x-auto p-2 text-sm">
         <span className="sr-only">{item.altText}</span>
         {!rendered ? <span className="sr-only">Loading diagram</span> : null}
-        <div ref={hostRef} className="mermaid-host h-full w-full" />
+        <div
+          ref={hostRef}
+          className="mermaid-host art-line-host h-full w-full"
+        />
       </div>
     </span>
   );
@@ -128,9 +137,10 @@ function ZoomedArt({ item }: { item: ArtItem }) {
   }
   if (item.format === "svg") {
     return (
-      <div>
+      <div className="art-line">
         <span className="sr-only">{item.altText}</span>
         <div
+          className="art-line-host"
           dangerouslySetInnerHTML={{
             __html: sanitizeSvgForRender(item.payload),
           }}
@@ -233,7 +243,9 @@ export function ArtNotice({
   return (
     <div className="flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm">
       <LiveRegion>{message}</LiveRegion>
-      <span className="text-muted-foreground">{message}</span>
+      <span aria-hidden="true" className="text-muted-foreground">
+        {message}
+      </span>
       {onRetry && !limit ? (
         <Button type="button" variant="ghost" size="sm" onClick={onRetry}>
           Retry

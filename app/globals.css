@@ -321,3 +321,34 @@
 .chat-answer > p:last-child > [data-slot="streaming-caret"] {
   display: inline-block;
 }
+
+/* Simple true visuals: clean line art first. Thin dark strokes, plain labels,
+   no fills and no shadows, so a ray or a flow stays readable on a small phone
+   in bright light. Both svg and mermaid render through these hosts. */
+.art-line svg {
+  width: 100%;
+  height: auto;
+  background: transparent;
+}
+.art-line-host svg text {
+  font-size: 12px;
+  fill: currentColor;
+}
+.art-line-host svg line,
+.art-line-host svg path,
+.art-line-host svg circle,
+.art-line-host svg rect,
+.art-line-host svg polygon,
+.art-line-host svg polyline,
+.art-line-host svg ellipse {
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+}
+.art-line-host svg [fill]:not([fill="none"]) {
+  fill: none;
+}
+.art-line-host svg [filter],
+.art-line-host svg [style*="drop-shadow"],
+.art-line-host svg [style*="shadow"] {
+  filter: none;
+}
