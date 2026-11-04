@@ -629,7 +629,13 @@ export function createChatTools({
 
       const note = await prisma.note.findFirst({
         where: { id: noteId, userId },
-        select: { id: true, title: true, fileType: true, status: true },
+        select: {
+          id: true,
+          title: true,
+          fileType: true,
+          status: true,
+          extractedText: true,
+        },
       });
       if (!note) {
         throw new Error("Note not found.");
@@ -675,6 +681,65 @@ export function createChatTools({
           } catch (error) {
             console.warn(
               "[getNotePages] Page scan requeue failed:",
+              error instanceof Error ? error.message : String(error),
+            );
+          }
+        }
+        // Old IMAGE/WORD notes predate single-page grounding and the job
+        // skips non-PDFs, so no requeue can ever heal them. Backfill Page 1
+        // from the stored extraction right here, best effort: the next read
+        // grounds instead of pending forever.
+        if (
+          (note.fileType === "IMAGE" || note.fileType === "WORD") &&
+          settled &&
+          pageCount === 0
+        ) {
+          try {
+            const excerpt = (note.extractedText ?? "").slice(0, 1200);
+            const page = await prisma.page.upsert({
+              where: { noteId_pageNumber: { noteId: note.id, pageNumber: 1 } },
+              create: {
+                noteId: note.id,
+                pageNumber: 1,
+                hasVisual: false,
+                analysedAt: new Date(),
+              },
+              update: { hasVisual: false, analysedAt: new Date() },
+            });
+            const existing = await prisma.visualAnalysis.findFirst({
+              where: { pageId: page.id, status: "COMPLETED" },
+              select: { id: true },
+            });
+            if (!existing) {
+              await prisma.visualAnalysis.create({
+                data: {
+                  pageId: page.id,
+                  visualType: "OTHER",
+                  description:
+                    excerpt.length > 0
+                      ? `Page 1 text:\n${excerpt}`
+                      : "Page 1 has no extractable text.",
+                  confidence: null,
+                  status: "COMPLETED",
+                },
+              });
+            }
+            const healed = await getGroundedPageInputs(note.id);
+            if (healed.length > 0) {
+              return {
+                pages: healed.map((p) => ({
+                  pageNumber: p.pageNumber,
+                  visualType: p.visualType,
+                  description: p.description,
+                  confidence: p.confidence,
+                })),
+                scanPending: false,
+                noteTitle: note.title,
+              };
+            }
+          } catch (error) {
+            console.warn(
+              "[getNotePages] Single page backfill failed:",
               error instanceof Error ? error.message : String(error),
             );
           }
