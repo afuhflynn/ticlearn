@@ -177,9 +177,9 @@ describe("quiz server backup seed (spec 0044, covers: AC-5)", () => {
     });
 
     await expect(seedServerBackup("conv-1")).resolves.toBe(true);
-    expect(
-      window.sessionStorage.getItem("ticlearn:quiz:active:conv-1"),
-    ).toBe("run-server");
+    expect(window.sessionStorage.getItem("ticlearn:quiz:active:conv-1")).toBe(
+      "run-server",
+    );
     expect(
       window.sessionStorage.getItem("ticlearn:quiz:run:conv-1:run-server"),
     ).toBe(JSON.stringify(stored));

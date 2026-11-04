@@ -195,10 +195,17 @@ Quiz plus flashcards plus diagrams share one docked card family low above the re
 
 (basis: low docked runner per row 59, thumb reach on phones per mobile bar row 33, one card family for quiz plus flashcards plus diagrams)
 
-### 66. Honest failure plus two paths · needs a decision
+### 66. Honest failure plus two paths · in-progress
 A failed build shows a calm modern card with plain words and two live exits, so practice never ends dead.
 **Done when:** a failed build never shows a dead card, offers a smaller chat quiz now plus a full page quiz link, and a tap retries or moves forward cleanly.
-- [ ] Design it (spec): /solution-architect honest failure plus two paths
+- [x] Design it (spec): /solution-architect honest failure plus two paths
+Spec 0045 [0045](../specs/0045-honest-failure-plus-two-paths/index.md)
+- [x] Build it: /feature-build honest failure plus two paths · code in `components/chat/quiz-failure-card.tsx`, `components/chat/quiz-runner.tsx`, `components/chat/quiz-setup-wizard.tsx`, `components/chat/quiz-build-progress.tsx`, `components/chat/chat-art.tsx`, `app/(dashboard)/quizzes/page.tsx`, `lib/ai/validators.ts`, `lib/chat/quiz-snapshot.ts`, `lib/chat/quiz-backup.ts`, `nuqs/quizzes.ts`
+  - [x] Unified card plus full page links with reload rebuild (covers AC-1, AC-3, AC-6, AC-9)
+  - [x] Cutoff spine with one smaller retry plus hidden small tap at 3 or less (covers AC-2)
+  - [x] Draw plus grade parity with owner checks plus sampled log (covers AC-4, AC-5, AC-7, AC-8, AC-10)
+- [ ] Verify it: /verify-release honest failure plus two paths
+- [ ] Test it: /test-engineer honest failure plus two paths
 
 (basis: honest failure with retry per loading states row 35, two live exits per your failed build ask, never a dead end)
 

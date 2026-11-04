@@ -349,10 +349,7 @@ describe("the strict split additions (covers: AC-2, AC-4)", () => {
   it("opens expanded by default when the caller asks (covers: AC-8 fallback)", () => {
     render(<ActivityBlock defaultOpen parts={[]} status="submitted" />);
 
-    expect(screen.getByRole("button")).toHaveAttribute(
-      "aria-expanded",
-      "true",
-    );
+    expect(screen.getByRole("button")).toHaveAttribute("aria-expanded", "true");
   });
 
   it("skips a data part with no readable text", () => {

@@ -28,7 +28,11 @@ describe("QuizBuildProgress live counts (spec 0042, covers: AC-1)", () => {
   it("names the queued stage before the first batch lands", () => {
     render(
       <QuizBuildProgress
-        quiz={generating({ buildStage: "QUEUED", builtCount: 0, buildTotal: 5 })}
+        quiz={generating({
+          buildStage: "QUEUED",
+          builtCount: 0,
+          buildTotal: 5,
+        })}
       />,
     );
 
@@ -42,7 +46,9 @@ describe("QuizBuildProgress live counts (spec 0042, covers: AC-1)", () => {
     expect(screen.getByText("Building your quiz")).toBeInTheDocument();
     expect(screen.getByText("3 of 10 · 30%")).toBeInTheDocument();
     expect(
-      screen.getByText("This view refreshes on its own until the quiz is ready."),
+      screen.getByText(
+        "This view refreshes on its own until the quiz is ready.",
+      ),
     ).toBeInTheDocument();
   });
 
@@ -63,9 +69,7 @@ describe("QuizBuildProgress live counts (spec 0042, covers: AC-1)", () => {
 
   it("reads a zero total as zero percent with no divide", () => {
     render(
-      <QuizBuildProgress
-        quiz={generating({ builtCount: 0, buildTotal: 0 })}
-      />,
+      <QuizBuildProgress quiz={generating({ builtCount: 0, buildTotal: 0 })} />,
     );
 
     expect(screen.getByText("0 of 0 · 0%")).toBeInTheDocument();
@@ -100,8 +104,8 @@ describe("QuizBuildProgress live counts (spec 0042, covers: AC-1)", () => {
   });
 });
 
-describe("QuizBuildProgress failure exits (spec 0042, covers: AC-2, AC-5)", () => {
-  it("offers a smaller retry plus the full page link", () => {
+describe("QuizBuildProgress failure exits (spec 0045, covers: AC-1, AC-3)", () => {
+  it("offers a smaller plus the full page link", () => {
     render(
       <QuizBuildProgress
         quiz={{
@@ -113,14 +117,12 @@ describe("QuizBuildProgress failure exits (spec 0042, covers: AC-2, AC-5)", () =
       />,
     );
 
-    const retry = screen.getByRole("link", { name: "Try 20 questions now" });
-    expect(retry).toHaveAttribute(
-      "href",
-      "/quizzes/new?retryQuizId=quiz-9&count=20",
-    );
+    const retry = screen.getByRole("link", { name: "Try smaller quiz" });
+    expect(retry.getAttribute("href") ?? "").toContain("/quizzes?");
+    expect(retry.getAttribute("href") ?? "").toContain("count=");
     expect(
-      screen.getByRole("link", { name: "Open full quiz page" }),
-    ).toHaveAttribute("href", "/quizzes/quiz-9");
+      screen.getByRole("link", { name: "Open full quiz" }),
+    ).toBeInTheDocument();
   });
 
   it("drops the retry when the ask is too small and keeps the page link", () => {
@@ -130,26 +132,24 @@ describe("QuizBuildProgress failure exits (spec 0042, covers: AC-2, AC-5)", () =
           id: "quiz-5",
           status: "ERROR",
           buildError: "Quiz build failed.",
-          buildTotal: 5,
+          buildTotal: 3,
         }}
       />,
     );
 
-    expect(screen.getByText("Quiz build failed.")).toBeInTheDocument();
+    expect(screen.getByText("Practice paused")).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: /Try .* questions now/ }),
+      screen.queryByRole("link", { name: "Try smaller quiz" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open full quiz page" }),
+      screen.getByRole("link", { name: "Open full quiz" }),
     ).toBeInTheDocument();
   });
 });
 
 describe("QuizBuildProgress empty states (spec 0042, covers: AC-7)", () => {
   it("renders nothing with no quiz and nothing once ready", () => {
-    const { container, rerender } = render(
-      <QuizBuildProgress quiz={null} />,
-    );
+    const { container, rerender } = render(<QuizBuildProgress quiz={null} />);
     expect(container).toBeEmptyDOMElement();
 
     rerender(

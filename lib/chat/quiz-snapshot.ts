@@ -208,7 +208,11 @@ export function loadQuizSnapshot(
     const isWizardRun =
       parsed.version === QUIZ_SNAPSHOT_VERSION &&
       (parsed.stepIndex != null || parsed.wizardDone != null);
-    if (!parsed.quizId && !isWizardRun) return null;
+    const hasHandoff =
+      parsed.handoff !== null &&
+      parsed.handoff !== undefined &&
+      typeof parsed.handoff === "object";
+    if (!parsed.quizId && !isWizardRun && !hasHandoff) return null;
     const rawMarks = (parsed.marks ?? {}) as Record<string, Partial<QuizMark>>;
     const marks: Record<string, QuizMark> = {};
     for (const [key, value] of Object.entries(rawMarks)) {

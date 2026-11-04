@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MathMarkdown } from "@/components/math-markdown";
+import { QuizFailureCard } from "@/components/chat/quiz-failure-card";
+import { isCutoffMessage, smallerChatRetryCount } from "@/lib/ai/validators";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -366,12 +368,10 @@ export function QuizSetupWizard({
     } catch (err) {
       const message =
         err instanceof Error ? err.message : "Failed to start the quiz.";
-      const looksLong = /length|cutoff|truncat|too long|too big|max/i.test(
-        message,
-      );
-      if (looksLong && finalCount > 3) {
+      const looksLong = isCutoffMessage(message);
+      const smaller = smallerChatRetryCount(finalCount);
+      if (looksLong && smaller !== null) {
         try {
-          const smaller = Math.max(3, Math.floor(finalCount / 2));
           const retry = await api.mutations.quizzes.wizardGenerate({
             ...payload,
             count: smaller,
@@ -659,47 +659,27 @@ export function QuizSetupWizard({
           ) : null}
 
           {error ? (
-            <div className="space-y-2 rounded-lg border p-3">
-              <p className="text-sm font-medium">
-                Practice paused here, two ways to continue.
-              </p>
-              <p className="text-sm text-muted-foreground">{error}</p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setError(null);
-                    void submit(
-                      Math.max(3, Math.floor(count / 2)),
-                      difficulty,
-                      level,
-                    );
-                  }}
-                >
-                  Try {Math.max(3, Math.floor(count / 2))} questions now
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link
-                    href={`/quizzes/new?topic=${encodeURIComponent(topicText)}&count=${count}&format=${encodeURIComponent(levelFormat(level))}`}
-                  >
-                    Open fresh quiz start
-                  </Link>
-                </Button>
+            /limit reached|insufficient credits|not ready|not found/i.test(
+              error,
+            ) ? (
+              <div className="space-y-2 rounded-lg border p-3">
+                <p className="text-sm font-medium">Quiz cannot start yet</p>
+                <p className="text-sm text-muted-foreground">{error}</p>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setError(null)}
-                >
-                  Dismiss
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/quizzes">Open full quiz page</Link>
-                </Button>
-              </div>
-            </div>
+            ) : (
+              <QuizFailureCard
+                kind="build"
+                askedCount={count}
+                smallerCount={smallerChatRetryCount(count)}
+                noteId={pickedNoteId}
+                topicText={topicText.trim() || null}
+                formatChoice={levelFormat(level)}
+                level={level}
+                difficulty={difficulty}
+                clientRunId={clientRunId}
+                quizId={null}
+              />
+            )
           ) : null}
 
           <div className="flex items-center justify-between gap-2">

@@ -93,7 +93,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, updatedAt: row.updatedAt });
   } catch (error) {
     console.error("[CHAT] Run backup write error:", error);
-    return NextResponse.json({ error: "Failed to save backup" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to save backup" },
+      { status: 500 },
+    );
   }
 }
 
@@ -156,7 +159,10 @@ export async function GET(req: NextRequest) {
     });
   } catch (error) {
     console.error("[CHAT] Run backup read error:", error);
-    return NextResponse.json({ error: "Failed to read backup" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to read backup" },
+      { status: 500 },
+    );
   }
 }
 
@@ -188,6 +194,9 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("[CHAT] Run backup clear error:", error);
-    return NextResponse.json({ error: "Failed to clear backup" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to clear backup" },
+      { status: 500 },
+    );
   }
 }

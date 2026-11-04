@@ -538,13 +538,10 @@ export const api = {
         clientRunId: string;
         snapshot: unknown;
       }) =>
-        apiRequest<{ ok: boolean; updatedAt: string }>(
-          "/chat/runs/backup",
-          {
-            method: "POST",
-            body: data,
-          },
-        ),
+        apiRequest<{ ok: boolean; updatedAt: string }>("/chat/runs/backup", {
+          method: "POST",
+          body: data,
+        }),
       readRunBackup: (conversationId: string, clientRunId?: string) =>
         apiRequest<{ snapshot: string | null; clientRunId?: string }>(
           `/chat/runs/backup?conversationId=${encodeURIComponent(conversationId)}${clientRunId ? `&clientRunId=${encodeURIComponent(clientRunId)}` : ""}`,

@@ -1,10 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
+import { QuizFailureCard } from "@/components/chat/quiz-failure-card";
 import { Progress } from "@/components/ui/progress";
-import { smallerRetryCount } from "@/lib/ai/validators";
+import { smallerChatRetryCount } from "@/lib/ai/validators";
 import { cn } from "@/lib/utils";
 
 type BuildQuiz = {
@@ -15,6 +14,9 @@ type BuildQuiz = {
   buildTotal?: number | null;
   buildError?: string | null;
   buildStartedAt?: string | null;
+  noteId?: string | null;
+  topicText?: string | null;
+  formatChoice?: string | null;
 };
 
 function stageLabel(stage: string | null | undefined): string {
@@ -32,6 +34,7 @@ export function QuizBuildProgress({
   showLink?: boolean;
   className?: string;
 }) {
+  void showLink;
   const [now, setNow] = useState(() => Date.now());
   const total = Math.max(quiz?.buildTotal ?? 0, 0);
   const built = Math.min(quiz?.builtCount ?? 0, total);
@@ -46,33 +49,18 @@ export function QuizBuildProgress({
   if (!quiz) return null;
 
   if (quiz.status === "ERROR") {
-    const retryCount = smallerRetryCount(total);
+    const totalCount = total > 0 ? total : 0;
     return (
-      <div data-slot="quiz-build-error" className={cn("space-y-3", className)}>
-        <p className="font-medium">
-          Practice paused here, two ways to continue.
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {quiz.buildError ??
-            "That set came out too long, so it stopped short."}
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2">
-          {retryCount !== null ? (
-            <Button asChild>
-              <Link
-                href={`/quizzes/new?retryQuizId=${quiz.id}&count=${retryCount}`}
-              >
-                Try {retryCount} questions now
-              </Link>
-            </Button>
-          ) : null}
-          {showLink ? (
-            <Button variant="outline" asChild>
-              <Link href={`/quizzes/${quiz.id}`}>Open full quiz page</Link>
-            </Button>
-          ) : null}
-        </div>
-      </div>
+      <QuizFailureCard
+        kind="build"
+        askedCount={totalCount}
+        smallerCount={smallerChatRetryCount(totalCount)}
+        noteId={quiz.noteId ?? null}
+        topicText={quiz.topicText ?? null}
+        formatChoice={quiz.formatChoice ?? "Quiz"}
+        clientRunId={null}
+        quizId={quiz.id}
+      />
     );
   }
 

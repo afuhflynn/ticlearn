@@ -85,8 +85,8 @@ describe("Quiz page live build (spec 0042, covers: AC-1)", () => {
   });
 });
 
-describe("Quiz page failed build (spec 0042, covers: AC-5)", () => {
-  it("offers a smaller retry plus the full page link", () => {
+describe("Quiz page failed build (spec 0045, covers: AC-1, AC-3)", () => {
+  it("offers a smaller plus the full page link", () => {
     quizState.quiz = generatingQuiz({
       status: "ERROR",
       buildStage: null,
@@ -96,31 +96,29 @@ describe("Quiz page failed build (spec 0042, covers: AC-5)", () => {
     render(<QuizPlayerPage />);
 
     expect(
-      screen.getByRole("link", { name: "Try 20 questions now" }),
-    ).toHaveAttribute("href", "/quizzes/new?retryQuizId=quiz-1&count=20");
+      screen.getByRole("link", { name: "Try smaller quiz" }),
+    ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open full quiz page" }),
-    ).toHaveAttribute("href", "/quizzes/quiz-1");
+      screen.getByRole("link", { name: "Open full quiz" }),
+    ).toBeInTheDocument();
   });
 
   it("drops the retry when the ask is too small and keeps the page link", () => {
     quizState.quiz = generatingQuiz({
       status: "ERROR",
       buildStage: null,
-      buildTotal: 5,
+      buildTotal: 3,
       buildError: "Quiz build failed.",
     });
 
     render(<QuizPlayerPage />);
 
+    expect(screen.getByText("Practice paused")).toBeInTheDocument();
     expect(
-      screen.queryByRole("link", { name: /Try .* questions now/ }),
+      screen.queryByRole("link", { name: "Try smaller quiz" }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open full quiz page" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Back to notes" }),
+      screen.getByRole("link", { name: "Open full quiz" }),
     ).toBeInTheDocument();
   });
 });

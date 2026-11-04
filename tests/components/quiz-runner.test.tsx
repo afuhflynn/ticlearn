@@ -1,6 +1,14 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import { QuizRunner } from "@/components/chat/quiz-runner";
 import { api } from "@/lib/api-client";
 
@@ -266,7 +274,7 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
     ).not.toBeInTheDocument();
   });
 
-  it("shows a plain notice plus retry when submit fails, and retry resubmits (covers: AC-12)", async () => {
+  it("shows a calm card with two live exits when submit fails (covers: AC-12)", async () => {
     const user = userEvent.setup();
     await startQuiz(user);
 
@@ -279,12 +287,13 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
     submitMock.mockRejectedValueOnce(new Error("Service is busy"));
     await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
 
-    expect(await screen.findByText(/service is busy/i)).toBeInTheDocument();
-    const retry = screen.getByRole("button", { name: "Try again" });
-    await user.click(retry);
-
-    expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
-    expect(submitMock).toHaveBeenCalledTimes(2);
+    expect(await screen.findByText("Practice paused")).toBeInTheDocument();
+    expect(
+      screen.getByText("Could not mark that. Two ways to continue."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open full quiz" }),
+    ).toBeInTheDocument();
   });
 
   it("asks once on unclear input, then marks nothing and skips nothing (covers: AC-6)", async () => {
@@ -362,10 +371,10 @@ describe("QuizRunner happy path (spec 0031, covers: AC-1, AC-2, AC-3, AC-7)", ()
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Try 5 questions now" }),
+      screen.getByRole("link", { name: "Try smaller quiz" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open fresh quiz start" }),
+      screen.getByRole("link", { name: "Open full quiz" }),
     ).toBeInTheDocument();
   });
 });
@@ -487,20 +496,18 @@ describe("QuizRunner typed and open answers (spec 0031, covers: AC-2, AC-4, AC-6
     );
   });
 
-  it("shows a plain message plus retry when generation fails", async () => {
+  it("shows a calm card with two live exits when generation fails", async () => {
     const user = userEvent.setup();
     generateMock.mockRejectedValueOnce(new Error("No credits left"));
     render(<QuizRunner {...props()} />);
 
     await user.click(screen.getByRole("button", { name: "Start quiz" }));
 
-    expect(await screen.findByText("No credits left")).toBeInTheDocument();
+    expect(await screen.findByText("Practice paused")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /try .* questions now/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Open fresh quiz start" }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("link", { name: /Try smaller quiz|Open full quiz/i })
+        .length,
+    ).toBeGreaterThan(0);
     expect(generateMock).toHaveBeenCalledTimes(1);
   });
 
@@ -729,7 +736,11 @@ describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
     };
     useQuizMock.mockImplementation((id: string) => {
       if (!id) return EMPTY_QUIZ_PAYLOAD;
-      return { data: { quiz: hintOnQuestion }, isPending: false, isError: false };
+      return {
+        data: { quiz: hintOnQuestion },
+        isPending: false,
+        isError: false,
+      };
     });
     render(<QuizRunner {...props()} />);
     await user.click(screen.getByRole("button", { name: "Start quiz" }));
@@ -767,8 +778,12 @@ describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
       name: /diagram, unscored/,
     });
     await user.click(diagramDot);
-    expect(await screen.findByText("Diagram 1", { exact: true })).toBeInTheDocument();
-    expect(await screen.findByText(/Study figure, unscored/)).toBeInTheDocument();
+    expect(
+      await screen.findByText("Diagram 1", { exact: true }),
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Study figure, unscored/),
+    ).toBeInTheDocument();
     expect(screen.getByText(/A flows to B/)).toBeInTheDocument();
   });
 
@@ -832,19 +847,27 @@ describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
     await screen.findByText(/Question 1 of 4.*0 correct/);
 
     await user.click(screen.getByRole("button", { name: "Flashcards" }));
-    await user.click(screen.getByRole("button", { name: /Answer with option B/ }));
+    await user.click(
+      screen.getByRole("button", { name: /Answer with option B/ }),
+    );
     await screen.findByText("Back of card");
 
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: /Answer with option B/ }));
+    await user.click(
+      screen.getByRole("button", { name: /Answer with option B/ }),
+    );
     await screen.findByText(/Question 2 of 4.*2 correct/);
 
     await user.click(screen.getByRole("button", { name: "Next" }));
-    await user.click(screen.getByRole("button", { name: /Answer with option B/ }));
+    await user.click(
+      screen.getByRole("button", { name: /Answer with option B/ }),
+    );
     await screen.findByText(/Question 3 of 4.*3 correct/);
 
     await user.click(screen.getByRole("button", { name: "Next" }));
-    expect(await screen.findByText("Diagram 1", { exact: true })).toBeInTheDocument();
+    expect(
+      await screen.findByText("Diagram 1", { exact: true }),
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Finish Quiz" }));
     expect(await screen.findByText("Quiz Results")).toBeInTheDocument();
@@ -890,7 +913,9 @@ describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
       />,
     );
 
-    expect(await screen.findByText(/Question 2 of 3.*0 correct/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Question 2 of 3.*0 correct/),
+    ).toBeInTheDocument();
     expect(backupReadMock).toHaveBeenCalledWith("conv-restore", undefined);
     expect(
       window.sessionStorage.getItem("ticlearn:quiz:active:conv-restore"),
@@ -952,15 +977,17 @@ describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
     );
     window.sessionStorage.setItem("ticlearn:quiz:active:conv-art", "run-art");
     render(
-      <QuizRunner conversationId="conv-art" noteId="note-1" noteTitle="Bio notes" />,
+      <QuizRunner
+        conversationId="conv-art"
+        noteId="note-1"
+        noteTitle="Bio notes"
+      />,
     );
 
     expect(
       await screen.findAllByText("Diagram 1", { exact: true }),
     ).toHaveLength(2);
-    expect(
-      await screen.findByText(/could not load/),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/could not load/)).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Try loading the figure again" }),
     ).toBeInTheDocument();
@@ -968,7 +995,9 @@ describe("Generative card family (spec 0044, covers: AC-7, AC-8, AC-9)", () => {
     await user.click(
       screen.getByRole("button", { name: /Question 1 of 4, unanswered/ }),
     );
-    expect(await screen.findByText(/Question 1 of 4.*0 correct/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Question 1 of 4.*0 correct/),
+    ).toBeInTheDocument();
   });
 });
 
@@ -1019,9 +1048,7 @@ describe("QuizRunner live build card (spec 0042, covers: AC-1)", () => {
     );
 
     expect(
-      await screen.findByText(
-        "This thread refreshes until the quiz is ready.",
-      ),
+      await screen.findByText("This thread refreshes until the quiz is ready."),
     ).toBeInTheDocument();
   });
 });

@@ -4,7 +4,7 @@ import { ListTodo, Play, Plus, SearchX, Sparkles, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryState } from "nuqs";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -83,6 +83,30 @@ export default function QuizzesPage() {
     "q",
     quizzesViewParsers.q.withOptions({ history: "replace" }),
   );
+  const [prefillNoteId] = useQueryState(
+    "noteId",
+    quizzesViewParsers.noteId.withOptions({ history: "replace" }),
+  );
+  const [prefillTopic] = useQueryState(
+    "topic",
+    quizzesViewParsers.topic.withOptions({ history: "replace" }),
+  );
+  const [prefillCount] = useQueryState(
+    "count",
+    quizzesViewParsers.count.withOptions({ history: "replace" }),
+  );
+  const [prefillFormat] = useQueryState(
+    "format",
+    quizzesViewParsers.format.withOptions({ history: "replace" }),
+  );
+  const [prefillLevel] = useQueryState(
+    "level",
+    quizzesViewParsers.level.withOptions({ history: "replace" }),
+  );
+  const [prefillDifficulty] = useQueryState(
+    "difficulty",
+    quizzesViewParsers.difficulty.withOptions({ history: "replace" }),
+  );
   const rawParams = useSearchParams();
 
   // A raw key that disagrees with the canonical value corrects itself with
@@ -95,6 +119,28 @@ export default function QuizzesPage() {
   const { quizzes, isPending, isRefreshing, isError, isOffline, refetch } =
     useQuizzes("my");
   const deleteQuiz = useDeleteQuiz();
+  const [prefillNoteMissing, setPrefillNoteMissing] = useState(false);
+
+  useEffect(() => {
+    const noteId = prefillNoteId.trim();
+    if (!noteId) {
+      setPrefillNoteMissing(false);
+      return;
+    }
+    let cancelled = false;
+    void fetch(`/api/notes/${encodeURIComponent(noteId)}`, {
+      credentials: "include",
+    })
+      .then((res) => {
+        if (!cancelled) setPrefillNoteMissing(res.status === 404);
+      })
+      .catch(() => {
+        if (!cancelled) setPrefillNoteMissing(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [prefillNoteId]);
 
   const list = quizzes as QuizListItem[];
   const isGenerating = list.some((quiz) => quiz.status === "GENERATING");
@@ -148,6 +194,23 @@ export default function QuizzesPage() {
       )
     : list;
 
+  const hasPrefill =
+    prefillNoteId.trim() !== "" ||
+    prefillTopic.trim() !== "" ||
+    prefillCount > 0 ||
+    prefillFormat.trim() !== "";
+  const prefillCountValid =
+    prefillCount === 0 || (prefillCount >= 1 && prefillCount <= 40);
+  const prefillSummary = hasPrefill
+    ? [
+        prefillTopic.trim() ? `Topic ${prefillTopic.trim()}` : null,
+        prefillCount > 0 ? `${prefillCount} questions` : null,
+        prefillFormat.trim() ? prefillFormat.trim() : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : "";
+
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
@@ -166,6 +229,35 @@ export default function QuizzesPage() {
           </Link>
         </Button>
       </div>
+
+      {hasPrefill ? (
+        <Card className="w-full border-primary/40 bg-primary/5">
+          <CardContent className="space-y-2 pt-6">
+            <p className="font-medium">Continue from chat</p>
+            <p className="text-sm text-muted-foreground">
+              {prefillNoteMissing
+                ? "That note link reads as not found. It may belong to another account."
+                : prefillSummary || "A chat quiz asked for a full page start."}
+              {prefillCountValid
+                ? ""
+                : " Bad count in link, open with valid values."}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {prefillNoteId.trim() ? (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/notes/${prefillNoteId.trim()}`}>
+                    Open note to make quiz
+                  </Link>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/upload">Open upload to make quiz</Link>
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ) : null}
 
       <UrlSearchInput
         value={q}

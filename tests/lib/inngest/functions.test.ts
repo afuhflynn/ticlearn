@@ -182,9 +182,7 @@ describe("generateQuiz finish (spec 0042, covers: AC-3)", () => {
     expect(fns.createMany).toHaveBeenCalledTimes(1);
     const rows = createdRows();
     expect(rows).toHaveLength(5);
-    expect(rows.map((row) => row.order)).toEqual([
-      0, 1, 2, 3, 4,
-    ]);
+    expect(rows.map((row) => row.order)).toEqual([0, 1, 2, 3, 4]);
 
     const stages = updateDatas();
     expect(stages).toContainEqual(
@@ -318,9 +316,7 @@ describe("generateQuiz credit handling (spec 0042, covers: AC-6)", () => {
 
 describe("sweepStaleQuizzes (spec 0042, covers: AC-5)", () => {
   it("fails a stale build and refunds its reserve once", async () => {
-    fns.quizFindMany.mockResolvedValue([
-      { id: "old-1", userId: "student-9" },
-    ]);
+    fns.quizFindMany.mockResolvedValue([{ id: "old-1", userId: "student-9" }]);
     fns.quizFindUnique.mockResolvedValue({ status: "GENERATING" });
     fns.creditFindFirst.mockResolvedValue({ amount: -50 });
 

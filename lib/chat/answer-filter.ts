@@ -61,7 +61,10 @@ export function filterEchoSentences(text: string): string {
     if (trimmed.length > 160) return true;
     return !isEcho(trimmed);
   });
-  const cleaned = kept.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const cleaned = kept
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
   return cleaned;
 }
 
