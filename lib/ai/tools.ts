@@ -793,11 +793,15 @@ export function createChatTools({
         context,
       });
       if (!result.ok) return { ...result, textSteps: textStepsFor(clean) };
+      const steps =
+        Array.isArray(result.textSteps) && result.textSteps.length > 0
+          ? result.textSteps
+          : textStepsFor(clean);
       return {
         ...result,
         noteId: resolvedNoteId,
         concept: clean,
-        textSteps: textStepsFor(clean),
+        textSteps: steps,
       };
     },
   });

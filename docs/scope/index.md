@@ -61,7 +61,7 @@ _These are recommendations to keep your build orderly, not requirements. Skip an
 | 64 | Clean activity plus true answer split | Slice 2 | in-progress |
 | 65 | Generative card system low near composer | Slice 2 | in-progress |
 | 66 | Honest failure plus two paths | Slice 2 | planned |
-| 67 | Simple true visuals with fallback | Slice 2 | planned |
+| 67 | Simple true visuals with fallback | Slice 2 | in-progress |
 | 21 | Note upload experience | Slice 3 | planned |
 | 22 | Storage move to Neon object storage | Slice 3 | planned |
 | 23 | Quiz generation flow | Slice 3 | planned |

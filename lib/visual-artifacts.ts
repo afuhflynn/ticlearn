@@ -17,6 +17,7 @@ const drawOutputSchema = z.object({
     .max(VISUAL_SVG_MAX_BYTES + 10_000),
   altText: z.string().min(1).max(500),
   caption: z.string().max(140).optional().default(""),
+  textSteps: z.array(z.string().min(1).max(280)).max(3).optional().default([]),
 });
 
 export type DrawFormat = "mermaid" | "svg";
@@ -52,7 +53,7 @@ export function sanitizeSvgMarkup(raw: string): string | null {
 }
 
 const MERMAID_HEADS =
-  /^\s*(graph|flowchart|sequenceDiagram|gantt|xychart|xychart-beta|pie|mindmap|timeline)\b/i;
+  /^\s*(graph|flowchart|sequenceDiagram|xychart|xychart-beta)\b/i;
 
 export function sanitizeMermaidSource(raw: string): string | null {
   if (!raw) return null;
@@ -110,6 +111,7 @@ export async function generateVisualArtifact(input: {
       format: DrawFormat;
       payload: string;
       altText: string;
+      caption: string;
       textSteps: string[];
     }
   | {
@@ -213,13 +215,21 @@ export async function generateVisualArtifact(input: {
       },
       select: { id: true },
     });
+    const caption = (object.caption ?? "").trim().slice(0, 140);
+    const modelSteps = Array.isArray(object.textSteps)
+      ? object.textSteps
+          .map((s) => (typeof s === "string" ? s.trim() : ""))
+          .filter((s) => s.length > 0)
+          .slice(0, 3)
+      : [];
     return {
       ok: true,
       id: row.id,
       format: object.format,
       payload,
-      altText: object.altText.slice(0, 500),
-      textSteps: fallbackSteps,
+      altText: object.altText.trim().slice(0, 500) || `Diagram of ${concept}`,
+      caption: caption || object.altText.trim().slice(0, 140),
+      textSteps: modelSteps.length > 0 ? modelSteps : fallbackSteps,
     };
   } catch (error) {
     await logUsage({

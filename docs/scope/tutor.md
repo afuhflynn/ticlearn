@@ -209,10 +209,17 @@ Spec 0045 [0045](../specs/0045-honest-failure-plus-two-paths/index.md)
 
 (basis: honest failure with retry per loading states row 35, two live exits per your failed build ask, never a dead end)
 
-### 67. Simple true visuals with fallback · needs a decision
+### 67. Simple true visuals with fallback · in-progress
 Science sketches render as clean line art first, with text steps beside them, and a failed draw shows plain notice plus retry instead of a dead card.
 **Done when:** a light ray or similar ask shows a readable visual, text steps stay beside it, a failed draw shows notice plus retry, and the draw tool has a proper activity label.
-- [ ] Design it (spec): /solution-architect simple true visuals with fallback
+- [x] Design it (spec): /solution-architect simple true visuals with fallback
+spec ../specs/0046-simple-true-visuals-fallback/index.md
+- [x] Build it: /feature-build simple true visuals with fallback
+  - [x] Prompt plus card style to line art with alt text plus caption plus steps (covers AC-1, AC-5)
+  - [x] Beside on desktop plus stacked on phone plus skeleton wait with no spinner (covers AC-2, AC-6, AC-7)
+  - [x] Unified notice plus retry plus bad payload as failed draw (covers AC-3, AC-4)
+- [ ] Verify it: /verify-release simple true visuals with fallback
+- [ ] Test it: /test-engineer simple true visuals with fallback
 
 (basis: visual page analysis per hackathon row 50, draw activity label per row 61, text steps beside art so a failed draw still teaches)
 

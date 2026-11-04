@@ -17,12 +17,24 @@ export type ArtItem =
       format: "mermaid" | "svg";
       payload: string;
       altText: string;
+      caption?: string;
+      textSteps?: string[];
       sourcePage: number | null;
       createdAt: string;
     };
 
 export type ScanArt = Extract<ArtItem, { kind: "scan" }>;
-export type DrawnArt = Extract<ArtItem, { kind: "drawn" }>;
+export type DrawnArt = {
+  kind: "drawn";
+  id: string;
+  format: "mermaid" | "svg";
+  payload: string;
+  altText: string;
+  caption?: string;
+  textSteps?: string[];
+  sourcePage: number | null;
+  createdAt: string;
+};
 
 export function useNoteArt(noteId: string | null) {
   const query = useQuery({
@@ -85,6 +97,8 @@ export function useGenerateArt() {
         format?: "mermaid" | "svg";
         payload?: string;
         altText?: string;
+        caption?: string;
+        textSteps?: string[];
       } | null;
       if (!data?.ok) {
         const err = new Error(data?.message ?? "Draw failed");
