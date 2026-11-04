@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { getTaskConfig } from "@/lib/ai/registry";
 import { loadPromptRaw, renderPrompt } from "@/lib/prompts/loader";
 import {
+  buildConceptMapMermaid,
   buildConvexLensSvg,
   buildFreeFallSvg,
   canonicalDrawKey,
@@ -73,6 +74,27 @@ describe("visual artifacts", () => {
     expect(matchesFreeFallConcept("free body diagram free fall")).toBe(true);
     expect(matchesFreeFallConcept("photosynthesis steps")).toBe(false);
     expect(sanitizeSvgMarkup(buildFreeFallSvg())).not.toBeNull();
+  });
+
+  it("builds a sanitizable concept map from any concept and steps", () => {
+    const map = buildConceptMapMermaid("Transverse waves", [
+      "Name the parts of transverse waves in your own words.",
+      "Trace how each part leads to the next.",
+    ]);
+    expect(map).not.toBeNull();
+    expect(map as string).toContain("graph TD");
+    expect(sanitizeMermaidSource(map as string)).not.toBeNull();
+  });
+
+  it("strips mermaid-breaking characters from map labels", () => {
+    const map = buildConceptMapMermaid('A "quoted" | pipe', [
+      "Step with #hash and <angle> brackets",
+    ]);
+    expect(map).not.toBeNull();
+    expect(map as string).not.toContain('"quoted"');
+    expect(map as string).not.toContain("| pipe");
+    expect(map as string).not.toContain("#hash");
+    expect(sanitizeMermaidSource(map as string)).not.toBeNull();
   });
 
   it("matches convex lens concepts and builds a sanitizable SVG", () => {

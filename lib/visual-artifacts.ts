@@ -159,6 +159,52 @@ export function buildFreeFallSvg(): string {
 </svg>`;
 }
 
+/** True when the payload parses with Mermaid's own parser. Regex-clean is
+ *  not parse-clean, so an unrenderable diagram never lands. */
+async function verifyMermaid(payload: string): Promise<boolean> {
+  try {
+    const { default: mermaid } = await import("mermaid");
+    mermaid.initialize({ startOnLoad: false });
+    await mermaid.parse(payload);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Last-resort overview map built from our own template: nodes from the
+ *  concept plus the teaching steps, edges in reading order. The structure
+ *  is ours, so it always sanitizes and parses; the caller still verifies. */
+export function buildConceptMapMermaid(
+  concept: string,
+  steps: string[],
+): string | null {
+  const clean = (s: string): string =>
+    s
+      .replace(/["#<>`|{};\\]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 48);
+  const nodes: string[] = [];
+  const head = clean(concept) || "Idea";
+  nodes.push(head);
+  for (const step of steps) {
+    if (nodes.length >= 4) break;
+    const short = clean(step).split(" ").filter(Boolean).slice(0, 6).join(" ");
+    if (short && !nodes.includes(short)) nodes.push(short);
+  }
+  if (nodes.length < 2) nodes.push("Key part");
+  const ids = ["A", "B", "C", "D"];
+  const lines = ["graph TD"];
+  nodes.forEach((label, i) => {
+    lines.push(`  ${ids[i]}["${label}"]`);
+  });
+  for (let i = 0; i < nodes.length - 1; i += 1)
+    lines.push(`  ${ids[i]}-->${ids[i + 1]}`);
+  const out = lines.join("\n");
+  return MERMAID_HEADS.test(out) ? out : null;
+}
+
 async function countDrawsForKey(
   userId: string,
   key: {
@@ -250,52 +296,65 @@ export async function generateVisualArtifact(input: {
       context: (input.context ?? "").slice(0, 4000) || "No note excerpt.",
     });
     const fields = promptCallFields(settings);
-    const { object, modelId } = await generate({
-      task: "visual_draw",
-      schema: drawOutputSchema,
-      prompt: text,
-      userId: input.userId,
-      ...fields,
-    });
-
-    let payload: string | null = null;
-    let format: DrawFormat = object.format;
-    if (object.format === "svg") {
-      payload = sanitizeSvgMarkup(object.payload);
-    } else {
-      payload = sanitizeMermaidSource(object.payload);
-      if (payload) {
-        // Regex-clean is not parse-clean: confirm with Mermaid's own
-        // parser before storing, so an unrenderable diagram never lands.
-        try {
-          const { default: mermaid } = await import("mermaid");
-          mermaid.initialize({ startOnLoad: false });
-          await mermaid.parse(payload);
-        } catch {
-          payload = null;
-        }
-      }
-    }
-    // Second chance: the model picked the wrong medium (mermaid for physics
-    // vectors is the classic miss). One retry forcing SVG beats giving up.
-    if (!payload) {
+    // Either model call may fail outright; a null attempt falls through to
+    // the next layer instead of failing the turn.
+    const attempt = async (prompt: string) => {
       try {
-        const retry = await generate({
+        return await generate({
           task: "visual_draw",
           schema: drawOutputSchema,
-          prompt: text + SVG_ONLY_SUFFIX,
+          prompt,
           userId: input.userId,
           ...fields,
         });
-        const svg = sanitizeSvgMarkup(retry.object.payload);
+      } catch {
+        return null;
+      }
+    };
+    const first = await attempt(text);
+    const firstObject = first?.object ?? null;
+
+    let payload: string | null = null;
+    let format: DrawFormat = firstObject?.format ?? "svg";
+    if (firstObject?.format === "svg") {
+      payload = sanitizeSvgMarkup(firstObject.payload);
+    } else if (firstObject) {
+      const cleaned = sanitizeMermaidSource(firstObject.payload);
+      if (cleaned && (await verifyMermaid(cleaned))) payload = cleaned;
+    }
+    // Second chance: the model picked the wrong medium (mermaid for physics
+    // vectors is the classic miss). One retry forcing SVG beats giving up.
+    let retryObject: typeof firstObject = null;
+    if (!payload) {
+      const retry = await attempt(text + SVG_ONLY_SUFFIX);
+      retryObject = retry?.object ?? null;
+      if (retryObject?.format === "svg") {
+        const svg = sanitizeSvgMarkup(retryObject.payload);
         if (svg) {
           payload = svg;
           format = "svg";
         }
-      } catch {
-        // A retry failure falls through to the deterministic fallback below.
+      } else if (retryObject) {
+        const cleaned = sanitizeMermaidSource(retryObject.payload);
+        if (cleaned && (await verifyMermaid(cleaned))) {
+          payload = cleaned;
+          format = retryObject.format;
+        }
       }
     }
+    const sourceObject = firstObject ?? retryObject;
+    const modelSteps = sourceObject
+      ? [sourceObject.textSteps ?? []]
+          .flat()
+          .map((s) => (typeof s === "string" ? s.trim() : ""))
+          .filter((s) => s.length > 0)
+          .slice(0, 3)
+      : [];
+    const steps = modelSteps.length > 0 ? modelSteps : fallbackSteps;
+    const altBase =
+      (sourceObject?.altText ?? "").trim().slice(0, 500) ||
+      `Diagram of ${concept}`;
+    const modelCaption = (sourceObject?.caption ?? "").trim().slice(0, 140);
     if (!payload && matchesFreeFallConcept(concept)) {
       // Guaranteed diagram for the reported case: weight, velocity and
       // acceleration vectors for a body in free fall. Stored like any draw
@@ -315,11 +374,25 @@ export async function generateVisualArtifact(input: {
         format = "svg";
       }
     }
+    // Catch-all: an overview map from our own template, so any concept —
+    // graph, illustration, circuit, mirror, wave — still lands a diagram.
+    // Labels come from the teaching steps, the structure is ours, and it is
+    // parse-verified before storing like every other mermaid payload.
+    let captionOverride: string | null = null;
+    if (!payload) {
+      const map = buildConceptMapMermaid(concept, steps);
+      const cleaned = map ? sanitizeMermaidSource(map) : null;
+      if (cleaned && (await verifyMermaid(cleaned))) {
+        payload = cleaned;
+        format = "mermaid";
+        captionOverride = "Overview map — ask for a closer look at any part.";
+      }
+    }
     if (!payload) {
       await logUsage({
         userId: input.userId,
         task: "visual_draw",
-        modelId,
+        modelId: first?.modelId ?? "none",
         latencyMs: Date.now() - started,
         errorCode: "invalid_output",
       }).catch(() => {});
@@ -327,7 +400,7 @@ export async function generateVisualArtifact(input: {
         ok: false,
         reason: "invalid",
         message: "The drawing came back unreadable, here is the text instead.",
-        textSteps: fallbackSteps,
+        textSteps: steps,
       };
     }
 
@@ -341,25 +414,19 @@ export async function generateVisualArtifact(input: {
         sourcePage: null,
         originAnswerId: input.answerId ?? null,
         payload,
-        altText: object.altText.slice(0, 500),
+        altText: altBase,
       },
       select: { id: true },
     });
-    const caption = (object.caption ?? "").trim().slice(0, 140);
-    const modelSteps = Array.isArray(object.textSteps)
-      ? object.textSteps
-          .map((s) => (typeof s === "string" ? s.trim() : ""))
-          .filter((s) => s.length > 0)
-          .slice(0, 3)
-      : [];
+    const caption = captionOverride || modelCaption || altBase.slice(0, 140);
     return {
       ok: true,
       id: row.id,
       format,
       payload,
-      altText: object.altText.trim().slice(0, 500) || `Diagram of ${concept}`,
-      caption: caption || object.altText.trim().slice(0, 140),
-      textSteps: modelSteps.length > 0 ? modelSteps : fallbackSteps,
+      altText: altBase,
+      caption,
+      textSteps: steps,
     };
   } catch (error) {
     await logUsage({

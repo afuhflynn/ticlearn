@@ -214,7 +214,7 @@ describe("POST /api/artifacts/generate (spec 0030)", () => {
     expect(stored.data.payload).toContain("<circle");
   });
 
-  it("degrades to text with no stored row when the model output is invalid (covers: AC-4)", async () => {
+  it("falls back to a stored overview map when the model output is invalid (covers: AC-4)", async () => {
     session();
     noteFindFirst.mockResolvedValue({
       id: "note-1",
@@ -230,13 +230,17 @@ describe("POST /api/artifacts/generate (spec 0030)", () => {
       },
       modelId: "muse-spark-1.3",
     });
+    artifactCreate.mockResolvedValue({ id: "art-map" });
 
     const response = await post({ noteId: "note-1", concept: "a circle" });
 
     expect(response.status).toBe(200);
     const body = await response.json();
-    expect(body.ok).toBe(false);
-    expect(body.reason).toBe("invalid");
-    expect(artifactCreate).not.toHaveBeenCalled();
+    expect(body.ok).toBe(true);
+    expect(body.format).toBe("mermaid");
+    const stored = artifactCreate.mock.calls[0]?.[0] as {
+      data: { payload: string };
+    };
+    expect(stored.data.payload).toContain("graph TD");
   });
 });
