@@ -533,6 +533,28 @@ export const api = {
           method: "POST",
           body: data,
         }),
+      saveRunBackup: (data: {
+        conversationId: string;
+        clientRunId: string;
+        snapshot: unknown;
+      }) =>
+        apiRequest<{ ok: boolean; updatedAt: string }>(
+          "/chat/runs/backup",
+          {
+            method: "POST",
+            body: data,
+          },
+        ),
+      readRunBackup: (conversationId: string, clientRunId?: string) =>
+        apiRequest<{ snapshot: string | null; clientRunId?: string }>(
+          `/chat/runs/backup?conversationId=${encodeURIComponent(conversationId)}${clientRunId ? `&clientRunId=${encodeURIComponent(clientRunId)}` : ""}`,
+          { method: "GET" },
+        ),
+      clearRunBackup: (conversationId: string, clientRunId?: string) =>
+        apiRequest<{ ok: boolean }>(
+          `/chat/runs/backup?conversationId=${encodeURIComponent(conversationId)}${clientRunId ? `&clientRunId=${encodeURIComponent(clientRunId)}` : ""}`,
+          { method: "DELETE" },
+        ),
     },
 
     onboarding: {

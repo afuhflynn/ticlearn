@@ -1,8 +1,8 @@
 "use client";
 
-import { ChevronRight, Loader2, RotateCcw, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, RotateCcw, X } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { QuizBuildProgress } from "@/components/chat/quiz-build-progress";
 import { MathMarkdown } from "@/components/math-markdown";
@@ -21,21 +21,39 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Input } from "@/components/ui/input";
+import { LiveRegion } from "@/components/ui/live-region";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useQuiz, useSubmitQuizAttempt } from "@/hooks";
 import { api } from "@/lib/api-client";
 import { useSession } from "@/lib/auth-client";
 import {
+  QUIZ_SNAPSHOT_VERSION,
   clearActiveRunId,
   clearQuizSnapshot,
   getActiveRunId,
   loadQuizSnapshot,
   newQuizRunId,
+  setActiveRunId,
+  snapshotKey,
   type QuizMark,
   type QuizRunnerMode,
+  type QuizSnapshotItem,
   saveQuizSnapshot,
+  toSnapshotItems,
 } from "@/lib/chat/quiz-snapshot";
+import {
+  clearRunBackup,
+  readRunBackup,
+  scheduleRunBackup,
+} from "@/lib/chat/quiz-backup";
 import { cn } from "@/lib/utils";
 
 type Phase = "setup" | "generating" | "answering" | "complete" | "error";
@@ -47,6 +65,7 @@ type QuizQuestion = {
   options: string[];
   correctAnswer: string;
   explanation?: string | null;
+  hint?: string | null;
   order: number;
   sourcePages?: number[];
   marks?: number;
@@ -255,6 +274,21 @@ export function QuizRunner({
     }
     return false;
   });
+  /**
+   * The shared dots order restored from the snapshot. While empty the dots
+   * derive from the loaded questions plus the fetched art, and the first
+   * derived order is what later reloads restore.
+   */
+  const [storedItems, setStoredItems] = useState<
+    QuizSnapshotItem[] | undefined
+  >(() => {
+    const active = getActiveRunId(conversationId);
+    if (active) {
+      const saved = loadQuizSnapshot(conversationId, active);
+      if (saved?.items) return saved.items;
+    }
+    return undefined;
+  });
   const [gradeFailed, setGradeFailed] = useState<string | null>(null);
   const [followUpLoading, setFollowUpLoading] = useState<string | null>(null);
   const [followUpError, setFollowUpError] = useState<string | null>(null);
@@ -263,6 +297,18 @@ export function QuizRunner({
 
   const submitAttempt = useSubmitQuizAttempt();
   const { data: quizData, isError: quizError } = useQuiz(quizId ?? "");
+  const [noteDrawn, setNoteDrawn] = useState<
+    Array<{
+      id: string;
+      payload: string;
+      altText: string;
+      format: string;
+      sourcePage: number | null;
+    }>
+  >([]);
+  const [artFailed, setArtFailed] = useState(false);
+  const [artPending, setArtPending] = useState(false);
+  const [artRetry, setArtRetry] = useState(0);
 
   useEffect(() => {
     if (initialQuizId && initialQuizId !== quizId) {
@@ -273,6 +319,10 @@ export function QuizRunner({
   }, [initialQuizId]);
 
   useEffect(() => {
+    // A quiz refetch (for example the one the submit success invalidates)
+    // must never yank a run out of answering or complete. This effect only
+    // moves a run forward out of setup or generating.
+    if (phase !== "setup" && phase !== "generating") return;
     if (quizData?.quiz && quizData.quiz.status === "READY") {
       setQuiz(quizData.quiz as QuizResponse);
       setPhase("answering");
@@ -285,40 +335,76 @@ export function QuizRunner({
     if (quizError && quizId) {
       clearQuizSnapshot(conversationId, clientRunId);
       clearActiveRunId(conversationId);
+      clearRunBackup(conversationId, clientRunId);
+      setStoredItems(undefined);
       setQuizId(null);
       setPhase("setup");
       setError("That quiz is no longer around. Start a fresh one.");
     }
-  }, [quizData, quizError, quizId, conversationId, clientRunId]);
+  }, [quizData, quizError, quizId, conversationId, clientRunId, phase]);
+
+  /**
+   * New device resume. When this browser holds no run for the conversation,
+   * the server backup is the only copy. It is validated through the same
+   * snapshot loader, then hydrated into state so the quiz refetches.
+   */
+  const restoredRef = useRef(false);
+  const lastQuizIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (phase !== "answering" || !quizId) return;
-    saveQuizSnapshot(conversationId, {
-      version: 1,
-      quizId,
-      answers,
-      marks,
-      currentIndex,
-      count,
-      clientRunId,
-      updatedAt: Date.now(),
-      mode,
-      hintOpen,
-      minimized,
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    if (typeof window === "undefined") return;
+    if (initialQuizId) return;
+    if (getActiveRunId(conversationId)) return;
+    void readRunBackup(conversationId).then(({ snapshot: raw, clientRunId }) => {
+      if (!raw || !clientRunId) return;
+      if (getActiveRunId(conversationId)) return;
+      try {
+        window.sessionStorage.setItem(
+          snapshotKey(conversationId, clientRunId),
+          raw,
+        );
+      } catch {
+        return;
+      }
+      const saved = loadQuizSnapshot(conversationId, clientRunId);
+      if (!saved?.quizId) return;
+      setActiveRunId(conversationId, clientRunId);
+      setClientRunId(clientRunId);
+      setQuizId(saved.quizId);
+      setAnswers(saved.answers ?? {});
+      setMarks(saved.marks ?? {});
+      setCurrentIndex(saved.currentIndex ?? 0);
+      setCount(saved.count ?? 5);
+      setMode(saved.mode ?? "quiz");
+      setHintOpen(saved.hintOpen ?? {});
+      setMinimized(saved.minimized ?? false);
+      setStoredItems(saved.items);
+      setPhase("generating");
     });
-  }, [
-    phase,
-    quizId,
-    answers,
-    marks,
-    currentIndex,
-    count,
-    clientRunId,
-    conversationId,
-    mode,
-    hintOpen,
-    minimized,
-  ]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversationId]);
+
+  /**
+   * A fresh quiz id means a fresh run. The stored dots belong to the old
+   * quiz, so they drop and the new questions lead from index zero.
+   */
+  useEffect(() => {
+    if (!quizId) {
+      lastQuizIdRef.current = null;
+      return;
+    }
+    if (lastQuizIdRef.current === null) {
+      lastQuizIdRef.current = quizId;
+      return;
+    }
+    if (lastQuizIdRef.current !== quizId) {
+      lastQuizIdRef.current = quizId;
+      setStoredItems(undefined);
+      setCurrentIndex(0);
+    }
+  }, [quizId]);
 
   /**
    * The dock slot lives above the composer. The active run portals there so
@@ -333,7 +419,188 @@ export function QuizRunner({
     typeof window === "undefined" ? null : getActiveRunId(conversationId);
 
   const questions = quiz?.questions ?? [];
-  const currentQuestion = questions[currentIndex];
+  useEffect(() => {
+    if (phase !== "answering" || !noteId || questions.length === 0) return;
+    let cancelled = false;
+    setArtPending(true);
+    setArtFailed(false);
+    fetch(`/api/artifacts?noteId=${encodeURIComponent(noteId)}`, {
+      credentials: "include",
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("art failed");
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const drawn = Array.isArray(data?.drawn) ? data.drawn : [];
+        setNoteDrawn(
+          drawn.slice(0, 2).map((art: {
+            id: string;
+            payload: string;
+            altText: string;
+            format: string;
+            sourcePage: number | null;
+          }) => ({
+            id: String(art.id),
+            payload: String(art.payload ?? ""),
+            altText: String(art.altText ?? ""),
+            format: String(art.format ?? "mermaid"),
+            sourcePage:
+              typeof art.sourcePage === "number" ? art.sourcePage : null,
+          })),
+        );
+        setArtPending(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setArtFailed(true);
+        setArtPending(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [phase, noteId, questions.length, artRetry]);
+  const diagramSlots = useMemo(() => {
+    return noteDrawn.map((art, slot) => ({
+      kind: "diagram" as const,
+      id: `diagram-${art.id}`,
+      artifactId: art.id,
+      caption: `Diagram ${slot + 1} from ${noteTitle ?? "your note"}`,
+      altText: art.altText,
+      payload: art.payload,
+      format: art.format,
+      sourcePage: art.sourcePage,
+    }));
+  }, [noteDrawn, noteTitle]);
+
+  type Dot =
+    | { key: string; kind: "quiz"; questionId: string }
+    | {
+        key: string;
+        kind: "diagram";
+        artifactId: string;
+        caption?: string;
+      };
+
+  const questionsById = useMemo(
+    () => new Map(questions.map((question) => [question.id, question])),
+    [questions],
+  );
+  const diagramById = useMemo(
+    () => new Map(diagramSlots.map((slot) => [slot.artifactId, slot])),
+    [diagramSlots],
+  );
+
+  const derivedDots: Dot[] = useMemo(
+    () => [
+      ...questions.map((question) => ({
+        key: question.id,
+        kind: "quiz" as const,
+        questionId: question.id,
+      })),
+      ...diagramSlots.map((slot) => ({
+        key: slot.id,
+        kind: "diagram" as const,
+        artifactId: slot.artifactId,
+        caption: slot.caption,
+      })),
+    ],
+    [questions, diagramSlots],
+  );
+
+  /**
+   * The dots follow the stored order when a snapshot exists, so a reload
+   * restores the same lineup even before art refetches. Missing questions
+   * drop out, and fresh questions join at the end of the quiz run.
+   */
+  const dots: Dot[] = useMemo(() => {
+    if (!storedItems || storedItems.length === 0 || questions.length === 0) {
+      return derivedDots;
+    }
+    const mapped: Dot[] = [];
+    for (const item of storedItems) {
+      if (item.kind === "quiz") {
+        if (questionsById.has(item.ref)) {
+          mapped.push({ key: item.ref, kind: "quiz", questionId: item.ref });
+        }
+      } else {
+        mapped.push({
+          key: `diagram-${item.ref}`,
+          kind: "diagram",
+          artifactId: item.ref,
+          caption: item.caption,
+        });
+      }
+    }
+    for (const question of questions) {
+      if (
+        !mapped.some(
+          (dot) => dot.kind === "quiz" && dot.questionId === question.id,
+        )
+      ) {
+        mapped.push({ key: question.id, kind: "quiz", questionId: question.id });
+      }
+    }
+    return mapped.length > 0 ? mapped : derivedDots;
+  }, [storedItems, questions, questionsById, derivedDots]);
+
+  const totalDots = dots.length;
+  const safeIndex = Math.min(currentIndex, Math.max(totalDots - 1, 0));
+  const currentDot = dots[safeIndex] ?? null;
+  const diagramNumber =
+    currentDot?.kind === "diagram"
+      ? dots.filter((dot) => dot.kind === "diagram").findIndex((dot) => dot.key === currentDot.key) + 1
+      : 0;
+  const currentQuestion =
+    currentDot?.kind === "quiz"
+      ? questionsById.get(currentDot.questionId)
+      : undefined;
+  const currentDiagram =
+    currentDot?.kind === "diagram"
+      ? (diagramById.get(currentDot.artifactId) ?? {
+          id: currentDot.key,
+          artifactId: currentDot.artifactId,
+          caption: currentDot.caption ?? "Diagram",
+          altText: "",
+          payload: "",
+          format: "mermaid",
+          sourcePage: null as number | null,
+        })
+      : null;
+
+  useEffect(() => {
+    if (phase !== "answering" || !quizId) return;
+    const snapshot = {
+      version: QUIZ_SNAPSHOT_VERSION,
+      quizId,
+      answers,
+      marks,
+      currentIndex,
+      count,
+      clientRunId,
+      updatedAt: Date.now(),
+      mode,
+      hintOpen,
+      minimized,
+      items: toSnapshotItems(dots),
+    };
+    saveQuizSnapshot(conversationId, snapshot);
+    scheduleRunBackup(conversationId, snapshot);
+  }, [
+    phase,
+    quizId,
+    answers,
+    marks,
+    currentIndex,
+    count,
+    clientRunId,
+    conversationId,
+    mode,
+    hintOpen,
+    minimized,
+    dots,
+  ]);
   const correctCount = Object.values(marks).filter((m) => m.isCorrect).length;
   const totalMarks = questions.reduce((sum, q) => sum + (q.marks ?? 1), 0);
   const earnedMarks = Object.values(marks).reduce(
@@ -341,9 +608,7 @@ export function QuizRunner({
     0,
   );
   const markedCount = Object.keys(marks).length;
-  const progress = questions.length
-    ? ((currentIndex + 1) / questions.length) * 100
-    : 0;
+  const progress = totalDots ? ((safeIndex + 1) / totalDots) * 100 : 0;
 
   // Two or more questions citing note figures means the run leans on
   // diagrams, and the full quiz page fits better than this thread.
@@ -372,7 +637,11 @@ export function QuizRunner({
       return;
     }
     const previous = getActiveRunId(conversationId);
-    if (previous) clearQuizSnapshot(conversationId, previous);
+    if (previous) {
+      clearQuizSnapshot(conversationId, previous);
+      clearRunBackup(conversationId, previous);
+    }
+    setStoredItems(undefined);
     const runId = newQuizRunId();
     setClientRunId(runId);
     setQuizId(null);
@@ -433,7 +702,7 @@ export function QuizRunner({
       };
       setHandoff(info);
       saveQuizSnapshot(conversationId, {
-        version: 5,
+        version: QUIZ_SNAPSHOT_VERSION,
         quizId: null,
         answers: {},
         marks: {},
@@ -597,13 +866,14 @@ export function QuizRunner({
   }, [currentQuestion, answers, userId, reprompted]);
 
   const handleNext = useCallback(() => {
-    setCurrentIndex((index) => Math.min(index + 1, questions.length - 1));
+    setCurrentIndex((index) => Math.min(index + 1, totalDots - 1));
     setGrading(null);
     clearAttemptState();
-  }, [questions.length, clearAttemptState]);
+  }, [totalDots, clearAttemptState]);
 
   const handleSubmit = useCallback(async () => {
     setSubmitting(true);
+    setError(null);
     try {
       const answersArray = questions.map((question) => ({
         questionId: question.id,
@@ -622,7 +892,17 @@ export function QuizRunner({
       setPhase("complete");
       clearQuizSnapshot(conversationId, clientRunId);
       clearActiveRunId(conversationId);
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      clearRunBackup(conversationId, clientRunId);
+      setStoredItems(undefined);
+      if (
+        typeof window !== "undefined" &&
+        typeof window.matchMedia === "function" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ) {
+        window.scrollTo({ top: 0 });
+      } else {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to submit the quiz.",
@@ -634,6 +914,7 @@ export function QuizRunner({
 
   const handleRetake = () => {
     clearQuizSnapshot(conversationId, clientRunId);
+    clearRunBackup(conversationId, clientRunId);
     const runId = newQuizRunId();
     setClientRunId(runId);
     setAnswers({});
@@ -648,7 +929,7 @@ export function QuizRunner({
     setGradeFailed(null);
     setPhase("answering");
     saveQuizSnapshot(conversationId, {
-      version: 4,
+      version: QUIZ_SNAPSHOT_VERSION,
       quizId,
       answers: {},
       marks: {},
@@ -659,6 +940,7 @@ export function QuizRunner({
       mode: "quiz",
       hintOpen: {},
       minimized: false,
+      items: toSnapshotItems(dots),
     });
   };
 
@@ -685,6 +967,8 @@ export function QuizRunner({
         if (!nextId) throw new Error("Could not start the follow up set.");
         const runId = newQuizRunId();
         clearQuizSnapshot(conversationId, clientRunId);
+        clearRunBackup(conversationId, clientRunId);
+        setStoredItems(undefined);
         setClientRunId(runId);
         setQuizId(nextId);
         setQuiz(null);
@@ -707,6 +991,8 @@ export function QuizRunner({
   const handleClose = () => {
     clearQuizSnapshot(conversationId, clientRunId);
     clearActiveRunId(conversationId);
+    clearRunBackup(conversationId, clientRunId);
+    setStoredItems(undefined);
     // Signalled to the parent to unmount the runner.
     // Unmount alone never clears, so a reload keeps the snapshot.
     window.dispatchEvent(
@@ -909,7 +1195,7 @@ export function QuizRunner({
     );
   }
 
-  if (!currentQuestion) {
+  if (!currentQuestion && !currentDiagram) {
     return (
       <div className="mx-auto w-full max-w-[48rem] px-4">
         <Card className="w-full">
@@ -925,16 +1211,34 @@ export function QuizRunner({
   }
 
   if (phase === "answering") {
-    const mark = marks[currentQuestion.id];
-    const isMCQ = currentQuestion.type === "MCQ";
-    const selected = answers[currentQuestion.id];
+    if (!currentQuestion && !currentDiagram) {
+      return (
+        <div className="mx-auto w-full max-w-[48rem] px-4 py-2">
+          <p className="text-sm text-muted-foreground">
+            That quiz is no longer around. Start a fresh one.
+          </p>
+        </div>
+      );
+    }
+    const mark = currentQuestion ? marks[currentQuestion.id] : undefined;
+    const isMCQ = currentQuestion?.type === "MCQ";
+    const isFlashcards = mode === "flashcards";
+    const selected = currentQuestion ? answers[currentQuestion.id] : undefined;
     const docked =
       dockEl !== null &&
       (liveActiveId === null || liveActiveId === clientRunId);
-    const currentHint = hints[String(currentQuestion.order)] ?? "";
-    const hintIsOpen = hintOpen[currentQuestion.id] ?? false;
+    const currentHint =
+      (currentQuestion?.hint ?? "").trim() ||
+      (currentQuestion ? (hints[String(currentQuestion.order)] ?? "") : "");
+    const hintIsOpen = currentQuestion
+      ? (hintOpen[currentQuestion.id] ?? false)
+      : false;
 
-    const dotLabel = (index: number, id: string) => {
+    const dotLabel = (index: number, dot: Dot) => {
+      if (dot.kind === "diagram") {
+        return `Item ${index + 1} of ${totalDots}, diagram, unscored`;
+      }
+      const id = dot.questionId;
       const state = marks[id]
         ? marks[id].isCorrect
           ? "correct"
@@ -942,7 +1246,7 @@ export function QuizRunner({
         : id in answers
           ? "answered"
           : "unanswered";
-      return `Question ${index + 1} of ${questions.length}, ${state}`;
+      return `Question ${index + 1} of ${totalDots}, ${state}`;
     };
 
     if (minimized) {
@@ -955,8 +1259,9 @@ export function QuizRunner({
                 {noteTitle ?? "Quiz"}
               </p>
               <p className="text-xs text-muted-foreground">
-                Question {currentIndex + 1} of {questions.length} •{" "}
-                {correctCount} correct
+                {currentDiagram
+                  ? `Item ${safeIndex + 1} of ${totalDots} • ${correctCount} correct`
+                  : `Question ${safeIndex + 1} of ${totalDots} • ${correctCount} correct`}
               </p>
             </div>
             <Button size="sm" onClick={() => setMinimized(false)}>
@@ -969,6 +1274,7 @@ export function QuizRunner({
     }
 
     const answeringNode = (
+      <TooltipProvider>
       <div className="mx-auto w-full max-w-[48rem] px-4 py-2">
         <div className="flex min-w-0 flex-col gap-3">
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
@@ -976,7 +1282,9 @@ export function QuizRunner({
               <Badge variant="outline" className="max-w-full truncate">
                 {noteTitle ?? "Quiz"}
               </Badge>
-              <Badge variant="secondary">{currentQuestion.type}</Badge>
+              <Badge variant="secondary">
+                {currentDiagram ? "Diagram" : (currentQuestion?.type ?? "Quiz")}
+              </Badge>
               <div className="flex rounded-md border p-0.5">
                 <Button
                   size="sm"
@@ -997,36 +1305,72 @@ export function QuizRunner({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setMinimized(true)}
-              >
-                Minimize
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setMinimized(true)}
+                  >
+                    Minimize
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Minimize the dock</TooltipContent>
+              </Tooltip>
               <Button variant="outline" size="sm" onClick={handleClose}>
                 Back to chat
               </Button>
             </div>
           </div>
+          <LiveRegion>
+            {`Item ${safeIndex + 1} of ${totalDots} plus ${correctCount} correct so far`}
+          </LiveRegion>
           <p
             id="quiz-runner-heading"
             tabIndex={-1}
             className="break-words text-sm text-muted-foreground sm:text-base"
           >
-            Question {currentIndex + 1} of {questions.length} • {correctCount}{" "}
-            correct among {markedCount} marked • {earnedMarks} of {totalMarks}{" "}
-            marks
+            {currentDiagram
+              ? `Item ${safeIndex + 1} of ${totalDots}, diagram, unscored • ${correctCount} correct so far`
+              : `Question ${safeIndex + 1} of ${totalDots} • ${correctCount} correct among ${markedCount} marked • ${earnedMarks} of ${totalMarks} marks`}
           </p>
           <fieldset className="m-0 flex flex-wrap gap-1.5 border-0 p-0">
             <legend className="sr-only">Questions in this quiz</legend>
-            {questions.map((question, index) => {
-              const questionMark = marks[question.id];
-              const answered = question.id in answers;
-              const isCurrent = index === currentIndex;
+            {dots.map((dot, index) => {
+              if (dot.kind === "diagram") {
+                const isCurrent = index === safeIndex;
+                return (
+                  <Button
+                    key={dot.key}
+                    type="button"
+                    variant={isCurrent ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => {
+                      setCurrentIndex(index);
+                      clearAttemptState();
+                      document
+                        .getElementById("quiz-runner-heading")
+                        ?.focus({ preventScroll: true });
+                    }}
+                    className={cn(
+                      "h-11 min-w-11 rounded-full border border-dashed px-2 text-xs font-semibold",
+                      !isCurrent && "text-muted-foreground",
+                    )}
+                  >
+                    {index + 1}
+                    <span className="sr-only">
+                      {dotLabel(index, dot)}
+                      {isCurrent ? ", current diagram" : ", diagram unscored"}
+                    </span>
+                  </Button>
+                );
+              }
+              const questionMark = marks[dot.questionId];
+              const answered = dot.questionId in answers;
+              const isCurrent = index === safeIndex;
               return (
                 <Button
-                  key={question.id}
+                  key={dot.key}
                   type="button"
                   variant={isCurrent ? "default" : "outline"}
                   size="icon"
@@ -1056,7 +1400,7 @@ export function QuizRunner({
                 >
                   {index + 1}
                   <span className="sr-only">
-                    {dotLabel(index, question.id)}
+                    {dotLabel(index, dot)}
                     {isCurrent ? ", current question" : ""}
                   </span>
                 </Button>
@@ -1083,13 +1427,16 @@ export function QuizRunner({
           </Card>
         ) : null}
 
-        <Card className="mt-3 flex max-h-[50dvh] w-full flex-col">
+        <Card className="mt-3 flex max-h-[52dvh] w-full flex-col sm:max-h-[52dvh]">
           <CardHeader className="shrink-0 space-y-3 pb-3">
             <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
               <CardTitle className="min-w-0 text-lg sm:text-xl">
-                Question {currentIndex + 1}
+                {currentDiagram
+                  ? `Diagram ${diagramNumber}`
+                  : `Question ${safeIndex + 1}`}
               </CardTitle>
-              {currentQuestion.sourcePages &&
+              {!currentDiagram &&
+              currentQuestion?.sourcePages &&
               currentQuestion.sourcePages.length > 0 ? (
                 <Badge variant="secondary">
                   {currentQuestion.sourcePages.length === 1
@@ -1099,14 +1446,114 @@ export function QuizRunner({
               ) : null}
             </div>
             <CardDescription className="break-words text-base text-foreground">
-              <MathMarkdown content={currentQuestion.question} />
+              {currentDiagram ? (
+                <span>{currentDiagram.caption}</span>
+              ) : (
+                <MathMarkdown content={currentQuestion?.question ?? ""} />
+              )}
             </CardDescription>
           </CardHeader>
           <div className="min-h-0 flex-1 overflow-y-auto">
             <CardContent className="space-y-4 pt-1">
-              {isMCQ ? (
+              {currentDiagram ? (
                 <div className="space-y-3">
-                  {currentQuestion.options.map((option, index) => {
+                  <p className="text-xs text-muted-foreground">
+                    Study figure, unscored. Questions stay in the same dots
+                    order.
+                  </p>
+                  {artFailed ? (
+                    <div className="space-y-2 rounded-lg border p-3">
+                      <p className="text-sm">
+                        The figure could not load, but the study steps below
+                        still teach it.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setArtRetry((n) => n + 1)}
+                      >
+                        Try loading the figure again
+                      </Button>
+                    </div>
+                  ) : artPending ? (
+                    <div className="space-y-2">
+                      <Skeleton className="aspect-video w-full" />
+                      <p className="text-sm text-muted-foreground">
+                        Loading the figure...
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="break-words text-sm">
+                        <MathMarkdown content={currentDiagram.payload} />
+                      </p>
+                      <p className="break-words text-xs text-muted-foreground">
+                        Alt text: {currentDiagram.altText}
+                        {currentDiagram.sourcePage
+                          ? ` (page ${currentDiagram.sourcePage})`
+                          : ""}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : isMCQ ? (
+                isFlashcards && !mark ? (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    Front hides the options. Tap a ghost target or type the
+                    letter.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {(currentQuestion?.options ?? []).map((option, index) => {
+                      const letter = LETTERS[index] ?? String(index + 1);
+                      const selectedOption = selected === option;
+                      return (
+                        <Button
+                          key={letter}
+                          type="button"
+                          variant={selectedOption ? "default" : "outline"}
+                          size="icon"
+                          className="h-11 min-w-11 rounded-full"
+                          onClick={() => {
+                            if (!currentQuestion || mark) return;
+                            handleAnswerChange(currentQuestion.id, option);
+                            markMCQAnswer(currentQuestion, option);
+                          }}
+                        >
+                          {letter}
+                          <span className="sr-only">
+                            Answer with option {letter}
+                            {selectedOption ? ", selected" : ""}
+                          </span>
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  <form className="flex gap-2" onSubmit={handleLetterSubmit}>
+                    <label className="sr-only" htmlFor={letterInputId}>
+                      Type a letter instead, for example B
+                    </label>
+                    <Input
+                      className="min-h-11"
+                      id={letterInputId}
+                      maxLength={60}
+                      onChange={(event) => setTypedLetter(event.target.value)}
+                      placeholder="Or type a letter, for example B"
+                      value={typedLetter}
+                    />
+                    <Button
+                      className="shrink-0"
+                      disabled={!typedLetter.trim()}
+                      type="submit"
+                      variant="outline"
+                    >
+                      Answer
+                    </Button>
+                  </form>
+                </div>
+                ) : (
+                <div className="space-y-3">
+                  {(currentQuestion?.options ?? []).map((option, index) => {
                     const selectedOption = selected === option;
                     const letter = LETTERS[index] ?? String(index + 1);
                     return (
@@ -1170,18 +1617,20 @@ export function QuizRunner({
                     </form>
                   )}
                 </div>
+                )
               ) : (
                 <>
                   <Textarea
                     rows={8}
                     className="min-h-40 resize-y"
                     placeholder="Type your answer here..."
-                    value={answers[currentQuestion.id] ?? ""}
+                    value={currentQuestion ? (answers[currentQuestion.id] ?? "") : ""}
                     onChange={(event) =>
+                      currentQuestion &&
                       handleAnswerChange(currentQuestion.id, event.target.value)
                     }
                   />
-                  {mark ? null : (
+                  {mark || !currentQuestion ? null : (
                     <Button
                       onClick={() => void handleMarkOpenAnswer()}
                       disabled={grading === currentQuestion.id}
@@ -1193,11 +1642,11 @@ export function QuizRunner({
                 </>
               )}
 
-              {unclearNotice && !mark ? (
+              {unclearNotice && !mark && !currentDiagram ? (
                 <p className="text-sm text-muted-foreground">{unclearNotice}</p>
               ) : null}
 
-              {mark && (
+              {mark && !currentDiagram && (
                 <div
                   className={cn(
                     "rounded-lg border p-3 mt-2",
@@ -1211,6 +1660,21 @@ export function QuizRunner({
                     {mark.marksEarned} of {mark.marksTotal} marks
                   </p>
                   <p className="text-sm break-words">{mark.why}</p>
+                  {isFlashcards && currentQuestion ? (
+                    <div className="pt-2">
+                      <p className="text-xs font-medium uppercase tracking-wide opacity-80">
+                        Back of card
+                      </p>
+                      <p className="break-words text-sm">
+                        Correct answer: {currentQuestion.correctAnswer}
+                      </p>
+                      {currentQuestion.explanation ? (
+                        <p className="break-words text-sm opacity-90">
+                          {currentQuestion.explanation}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {mark.schemeMd ? (
                     <div className="pt-2">
                       <p className="text-xs font-medium uppercase tracking-wide opacity-80">
@@ -1229,7 +1693,7 @@ export function QuizRunner({
                 </div>
               )}
 
-              {currentHint ? (
+              {!currentDiagram && currentHint && currentQuestion ? (
                 <Collapsible
                   open={hintIsOpen}
                   onOpenChange={(open) =>
@@ -1240,9 +1704,9 @@ export function QuizRunner({
                   }
                 >
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm">
-                      {hintIsOpen ? "Hide hint" : "Show hint"}
-                    </Button>
+                        <Button variant="ghost" size="sm">
+                          {hintIsOpen ? "Hide hint" : "Show hint"}
+                        </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
                     <p className="break-words text-sm text-muted-foreground">
@@ -1252,7 +1716,9 @@ export function QuizRunner({
                 </Collapsible>
               ) : null}
 
-              {gradeFailed === currentQuestion.id ? (
+              {!currentDiagram &&
+              currentQuestion &&
+              gradeFailed === currentQuestion.id ? (
                 <Button
                   variant="outline"
                   size="sm"
@@ -1263,13 +1729,18 @@ export function QuizRunner({
                 </Button>
               ) : null}
 
-              {grading === currentQuestion.id && (
+              {!currentDiagram &&
+                currentQuestion &&
+                grading === currentQuestion.id && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   Marking...
                 </div>
               )}
 
-              {!mark && !grading && currentIndex < questions.length - 1 ? (
+              {!mark &&
+              !grading &&
+              !currentDiagram &&
+              safeIndex < totalDots - 1 ? (
                 <p className="text-xs text-muted-foreground">
                   You can move freely. Unanswered questions stay open for later.
                 </p>
@@ -1278,38 +1749,62 @@ export function QuizRunner({
           </div>
         </Card>
 
-        <div className="grid grid-cols-1 gap-3 pt-3 sm:flex sm:items-center sm:justify-between">
-          <Button
-            variant="outline"
-            onClick={() => {
-              setCurrentIndex((index) => Math.max(index - 1, 0));
-              clearAttemptState();
-              document
-                .getElementById("quiz-runner-heading")
-                ?.focus({ preventScroll: true });
-            }}
-            disabled={currentIndex === 0}
-            className="w-full sm:w-auto"
-          >
-            <ChevronRight className="mr-2 h-4 w-4 rotate-180" />
-            Back
-          </Button>
+        {!currentDiagram && error ? (
+          <div className="mt-3 space-y-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3">
+            <p className="text-sm text-destructive">{error}</p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleSubmit()}
+              disabled={submitting}
+            >
+              Try again
+            </Button>
+          </div>
+        ) : null}
 
-          <div className="grid grid-cols-1 gap-3 sm:flex sm:gap-3">
-            {currentIndex < questions.length - 1 ? (
+        <div className="grid grid-cols-1 gap-3 pt-3 sm:flex sm:items-center sm:justify-between">
+          <Tooltip>
+            <TooltipTrigger asChild>
               <Button
+                variant="outline"
                 onClick={() => {
-                  handleNext();
+                  setCurrentIndex((index) => Math.max(index - 1, 0));
                   clearAttemptState();
                   document
                     .getElementById("quiz-runner-heading")
                     ?.focus({ preventScroll: true });
                 }}
+                disabled={safeIndex === 0}
                 className="w-full sm:w-auto"
               >
-                Next
-                <ChevronRight className="ml-2 h-4 w-4" />
+                <ChevronLeft className="mr-2 h-4 w-4" />
+                Back
               </Button>
+            </TooltipTrigger>
+            <TooltipContent>Go to previous card</TooltipContent>
+          </Tooltip>
+
+          <div className="grid grid-cols-1 gap-3 sm:flex sm:gap-3">
+            {safeIndex < totalDots - 1 ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    onClick={() => {
+                      handleNext();
+                      clearAttemptState();
+                      document
+                        .getElementById("quiz-runner-heading")
+                        ?.focus({ preventScroll: true });
+                    }}
+                    className="w-full sm:w-auto"
+                  >
+                    Next
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Go to next card</TooltipContent>
+              </Tooltip>
             ) : (
               <Button
                 onClick={handleSubmit}
@@ -1329,6 +1824,7 @@ export function QuizRunner({
           </div>
         </div>
       </div>
+      </TooltipProvider>
     );
     return docked ? createPortal(answeringNode, dockEl) : answeringNode;
   }

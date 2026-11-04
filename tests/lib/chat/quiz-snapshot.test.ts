@@ -5,11 +5,13 @@ import {
   clearQuizSnapshot,
   getActiveRunId,
   loadQuizSnapshot,
+  MAX_SNAPSHOT_BYTES,
   newQuizRunId,
   type QuizSnapshot,
   saveQuizSnapshot,
   setActiveRunId,
   snapshotKey,
+  toSnapshotItems,
 } from "@/lib/chat/quiz-snapshot";
 
 function mockStorage() {
@@ -222,5 +224,86 @@ describe("quiz snapshot v3 dock fields (spec 0034)", () => {
     expect(loaded?.hintOpen).toEqual({});
     expect(loaded?.minimized).toBe(false);
     expect(loaded?.answers).toEqual({ "q-1": "Paris" });
+  });
+});
+
+describe("quiz snapshot v6 item order (spec 0044, covers: AC-5)", () => {
+  it("round trips the shared dots order with quiz plus diagram kinds", () => {
+    saveQuizSnapshot("conv-1", {
+      ...base,
+      items: [
+        { kind: "quiz", ref: "q-1" },
+        { kind: "diagram", ref: "art-1", caption: "Diagram 1" },
+        { kind: "quiz", ref: "q-2" },
+      ],
+    });
+
+    const loaded = loadQuizSnapshot("conv-1", "run-1");
+    expect(loaded?.items).toEqual([
+      { kind: "quiz", ref: "q-1" },
+      { kind: "diagram", ref: "art-1", caption: "Diagram 1" },
+      { kind: "quiz", ref: "q-2" },
+    ]);
+  });
+
+  it("treats a v5 snapshot as current and leaves items empty", () => {
+    const raw = { ...base, version: 5 };
+    window.sessionStorage.setItem(
+      "ticlearn:quiz:run:conv-1:run-1",
+      JSON.stringify(raw),
+    );
+
+    const loaded = loadQuizSnapshot("conv-1", "run-1");
+    expect(loaded?.version).toBe(6);
+    expect(loaded?.items).toBeUndefined();
+    expect(loaded?.quizId).toBe("quiz-1");
+  });
+
+  it("drops malformed items and keeps the valid ones", () => {
+    window.sessionStorage.setItem(
+      "ticlearn:quiz:run:conv-1:run-1",
+      JSON.stringify({
+        ...base,
+        version: 6,
+        items: [
+          { kind: "quiz", ref: "q-1" },
+          { kind: "flashcards" },
+          { kind: "diagram" },
+          { kind: "diagram", ref: "art-1", caption: 42 },
+          null,
+          "quiz",
+        ],
+      }),
+    );
+
+    expect(loadQuizSnapshot("conv-1", "run-1")?.items).toEqual([
+      { kind: "quiz", ref: "q-1" },
+      { kind: "diagram", ref: "art-1" },
+    ]);
+  });
+
+  it("maps dots to items with quiz refs and diagram refs plus captions", () => {
+    expect(
+      toSnapshotItems([
+        { kind: "quiz", questionId: "q-1" },
+        { kind: "diagram", artifactId: "a-1", caption: "Diagram 1" },
+        { kind: "diagram", artifactId: "a-2" },
+      ]),
+    ).toEqual([
+      { kind: "quiz", ref: "q-1" },
+      { kind: "diagram", ref: "a-1", caption: "Diagram 1" },
+      { kind: "diagram", ref: "a-2" },
+    ]);
+  });
+
+  it("writes nothing when the snapshot is over the size cap", () => {
+    const store = mockStorage();
+    saveQuizSnapshot("conv-1", {
+      ...base,
+      answers: { big: "x".repeat(MAX_SNAPSHOT_BYTES) },
+    });
+
+    expect(store.size).toBe(0);
+    expect(getActiveRunId("conv-1")).toBeNull();
   });
 });

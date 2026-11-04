@@ -181,10 +181,17 @@ Working steps collapse to one small line while building, then one clean final an
 
 (basis: labelled activity line per research/chat-experience.md, strict split of build chatter and final answer per your reference shots)
 
-### 65. Generative card system low near composer · needs a decision
+### 65. Generative card system low near composer · in-progress
 Quiz plus flashcards plus diagrams share one docked card family low above the reply box, with dots plus Back plus Next plus hint, so thumbs reach options without scrolling past a tall thread.
 **Done when:** the runner docks low, shows one item at a time with dots plus Back plus Next, taps answer at once, reload rebuilds the same spot, and placement matches the approved reference on phone and desktop.
-- [ ] Design it (spec): /solution-architect generative card system low near composer
+- [x] Design it (spec): /solution-architect generative card system low near composer · spec [0044](../specs/0044-generative-card-system/index.md)
+- [x] Build it: /feature-build generative card system low near composer · code in `components/chat/quiz-runner.tsx`, `lib/chat/quiz-snapshot.ts`, `lib/chat/quiz-backup.ts`, `app/api/chat/runs/backup/route.ts`, `lib/api-client.ts`, `prisma/migrations/20261103135913_add_chat_run_backup/`, `tests/components/quiz-runner.test.tsx`, `tests/lib/chat/quiz-snapshot.test.ts`, `tests/app/api/chat-runs-backup.test.ts`
+  - [x] Dock shell plus free movement plus phone cap (covers AC-1, AC-2, AC-3, AC-10)
+  - [x] Instant tap plus hint plus flashcards plus diagrams (covers AC-4, AC-7, AC-8, AC-9)
+  - [x] Snapshot plus server backup plus fail keep (covers AC-5, AC-6)
+  - [x] Submit plus access plus loading plus tests (covers AC-11, AC-12)
+- [ ] Verify it: /verify-release generative card system low near composer
+- [x] Test it: /test-engineer generative card system low near composer · 78 tests across runner, snapshot, backup helper, backup route, client wrappers
 
 (basis: low docked runner per row 59, thumb reach on phones per mobile bar row 33, one card family for quiz plus flashcards plus diagrams)
 
