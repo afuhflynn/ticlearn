@@ -9,7 +9,8 @@ import process from "node:process";
  * Each page is fetched as a reader receives it, the scripts are removed, and
  * what is left is checked for the things a page about this product must never
  * say: an amount of money, a bare percentage, a phone number, an email
- * address, or a surface that was cut. "Progress" and "feedback" are allowed
+ * address, an invented headcount, a reply time promise, or a surface that was
+ * cut. "Progress" and "feedback" are allowed
  * now: Tip reports study progress in chat, and a quiz shows what was missed.
  *
  * Every public page must carry a canonical URL in its served HTML, per spec
@@ -68,6 +69,14 @@ const BANNED_WORDS = [
     why: "the page addresses university and HND students, not a school exam",
   },
   {
+    word: "secondary school",
+    why: "the page addresses university and HND students, not secondary school",
+  },
+  {
+    word: "high school",
+    why: "the page addresses university and HND students, not high school",
+  },
+  {
     word: "a level",
     why: "the page addresses university and HND students, not a school exam",
   },
@@ -82,6 +91,17 @@ const CURRENCY =
   /(?:\b(?:FCFA|XAF|CFA|USD|EUR)\b|[₣$€£¥]|\b\d[\d\s.,]*\s*(?:FCFA|XAF|CFA)\b)/i;
 const PERCENTAGE = /\b\d+(?:[.,]\d+)?\s*%/;
 const PHONE = /(?:\+?\d[\d\s().-]{7,}\d)/;
+
+// A made up headcount ("10,000 students") or audience size is never stated.
+// Real plan counts name notes, quizzes, messages or credits, never people,
+// so a number directly before a people noun is always invented here.
+const INVENTED_COUNT =
+  /\b\d[\d\s.,]*\s*(?:students|users|learners|schools|universities|members|downloads)\b/i;
+
+// A promise of how fast the team answers ("replies within 24 hours") is
+// never stated. The only contact path is an unstaffed-hours WhatsApp group.
+const REPLY_TIME =
+  /\b(?:repl(?:y|ies)|respond(?:s|ing)?|answer(?:s|ing)?|get back)\b[^.]{0,40}\b(?:within|in)\b[^.]{0,20}\b\d+\s*(?:minute|hour|day)/i;
 
 // No email address survives anywhere in the public set, and no mailto: link.
 // This is a shape check, not one exact string, because the footer used to
@@ -203,6 +223,16 @@ async function checkPage(page) {
   }
   for (const match of findMatches(text, PHONE)) {
     failures.push(`phone number “${match.value}” (${context(text, match.at)})`);
+  }
+  for (const match of findMatches(text, INVENTED_COUNT)) {
+    failures.push(
+      `invented count “${match.value}” (${context(text, match.at)})`,
+    );
+  }
+  for (const match of findMatches(text, REPLY_TIME)) {
+    failures.push(
+      `reply time promise “${match.value}” (${context(text, match.at)})`,
+    );
   }
   for (const match of findMatches(text, EMAIL)) {
     failures.push(
