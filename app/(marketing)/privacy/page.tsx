@@ -1,5 +1,5 @@
 import { LEGAL_LAST_UPDATED } from "@/constants";
-import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 import { publicPageMetadata } from "@/lib/seo";
 
 export const metadata = publicPageMetadata({
@@ -176,14 +176,14 @@ export default function PrivacyPage() {
           <section className="space-y-4">
             <h2 className="text-2xl font-semibold">11. Contact Us</h2>
             <p className="text-muted-foreground">
-              Privacy questions? Reach the team on the{" "}
+              Privacy questions?{" "}
               <a
                 href={WHATSAPP_GROUP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="font-medium text-primary underline-offset-4 hover:underline"
               >
-                TiCLearn WhatsApp group
+                {WHATSAPP_GROUP_LABEL}
               </a>
               .
             </p>

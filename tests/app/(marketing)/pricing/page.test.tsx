@@ -2,7 +2,8 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import PricingPage, { metadata } from "@/app/(marketing)/pricing/page";
-import { publicPlans } from "@/constants/plans";
+import { planCatalog, publicPlans } from "@/constants/plans";
+import { FREE_LIMITS } from "@/lib/plan-limits";
 
 const subscriptionMock = vi.hoisted(() =>
   vi.fn(async () => ({ subscription: null as unknown })),
@@ -33,12 +34,22 @@ vi.mock("sonner", () => ({
  */
 describe("the pricing page (spec 0019 AC-9)", () => {
   it("carries its own title", () => {
-    expect(metadata.title).toBe("TiCLearn Pricing · Free and Semester Pass");
+    expect(metadata.title).toBe(
+      "TiCLearn Pricing · Free, Weekly and Semester Pass",
+    );
   });
 
   it("carries its own description", () => {
-    expect(metadata.description).toBe(
-      "TiCLearn is free to start, and one Semester Pass at 2,500 FCFA paid over MTN Mobile Money or Orange Money unlocks unlimited notes, quizzes and Tip messages. A one time payment, no card, no auto renewal.",
+    // The description retypes no number: each figure is built from the same
+    // constants the app enforces (spec 0048 AC-2, AC-3).
+    const description = metadata.description ?? "";
+
+    expect(description).toContain(`${FREE_LIMITS.pdfUploads} notes`);
+    expect(description).toContain(`${FREE_LIMITS.quizGenerations} quizzes`);
+    expect(description).toContain(`${FREE_LIMITS.aiTutorMessages}`);
+    expect(description).toContain(`${planCatalog.WEEKLY.priceXaf}`);
+    expect(description).toContain(
+      `${planCatalog.PRO.priceXaf.toLocaleString()}`,
     );
   });
 
@@ -86,7 +97,7 @@ describe("the pricing page markup (spec 0019 AC-10)", () => {
 
   it("carries open graph metadata (spec 0019 AC-9)", () => {
     expect(metadata.openGraph?.title).toBe(
-      "TiCLearn Pricing · Free and Semester Pass",
+      "TiCLearn Pricing · Free, Weekly and Semester Pass",
     );
     expect(metadata.openGraph?.url).toBe(
       "https://ticlearn.ticsummit.org/pricing",
@@ -96,7 +107,7 @@ describe("the pricing page markup (spec 0019 AC-10)", () => {
 
   it("carries twitter metadata (spec 0019 AC-9)", () => {
     expect(metadata.twitter?.title).toBe(
-      "TiCLearn Pricing · Free and Semester Pass",
+      "TiCLearn Pricing · Free, Weekly and Semester Pass",
     );
     // Next types `twitter` as a union of card shapes, and the card name only
     // exists on the members that carry one, so the field is read through a

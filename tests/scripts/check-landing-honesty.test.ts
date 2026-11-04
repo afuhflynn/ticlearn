@@ -61,7 +61,7 @@ function pageHtml(
 type GateRun = { code: number; stdout: string; stderr: string };
 
 /**
- * Serves the ten public paths, with an override for any page whose HTML the
+ * Serves the twelve public paths, with an override for any page whose HTML the
  * case needs to bend, and runs the gate against it.
  */
 async function runGate(
@@ -150,6 +150,35 @@ describe("the gate fails the defects it exists to catch (AC-2, AC-8)", () => {
 
     expect(result.code).toBe(1);
     expect(result.stderr).toContain("leaderboard");
+  });
+
+  it("fails a page that ships secondary school wording", async () => {
+    const result = await runGate({
+      "/about": pageHtml({ body: "Built for secondary school students." }),
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("secondary school");
+  });
+
+  it("fails a page that invents a headcount", async () => {
+    const result = await runGate({
+      "/about": pageHtml({ body: "Join 10,000 students already studying." }),
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("invented count");
+  });
+
+  it("fails a page that promises a reply time", async () => {
+    const result = await runGate({
+      "/contact": pageHtml({
+        body: "We reply within 24 hours, guaranteed.",
+      }),
+    });
+
+    expect(result.code).toBe(1);
+    expect(result.stderr).toContain("reply time promise");
   });
 
   it("fails a page whose metadata is missing, even with a clean body", async () => {

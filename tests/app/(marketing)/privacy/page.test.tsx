@@ -3,7 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import PrivacyPage, { metadata } from "@/app/(marketing)/privacy/page";
 import { LEGAL_LAST_UPDATED } from "@/constants";
-import { WHATSAPP_GROUP_URL } from "@/constants/contact";
+import { WHATSAPP_GROUP_LABEL, WHATSAPP_GROUP_URL } from "@/constants/contact";
 
 /**
  * The privacy page (spec 0016, AC-8). It discloses in plain language: what is
@@ -48,7 +48,7 @@ describe("the privacy page (spec 0016 AC-8)", () => {
 
     expect(screen.getByText(LEGAL_LAST_UPDATED)).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /TiCLearn WhatsApp group/ }),
+      screen.getByRole("link", { name: WHATSAPP_GROUP_LABEL }),
     ).toHaveAttribute("href", WHATSAPP_GROUP_URL);
   });
 });
