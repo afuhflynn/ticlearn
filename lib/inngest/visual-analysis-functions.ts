@@ -2,14 +2,19 @@ import { put } from "@vercel/blob";
 import { generateObject } from "ai";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
-import { chainMuse } from "@/lib/ai/chain";
+import { chainModel, chainMuse, OPEN_WEIGHT_CHAIN } from "@/lib/ai/chain";
 import {
   type PageScanResult,
   scanPages,
   toVisualTypeEnum,
 } from "@/lib/ai/page-scan";
+import {
+  extractPageTextsFromBytes,
+  PAGE_TEXT_EXCERPT_CHARS,
+  pageTextExcerpt,
+} from "@/lib/ai/page-texts";
 import { MUSE_COST_PER_CALL_XAF } from "@/lib/ai/pricing";
-import { logUsage } from "@/lib/ai/usage";
+import { logUsage, usageFromResult } from "@/lib/ai/usage";
 import { inngest } from "@/lib/inngest/client";
 import { prisma } from "@/lib/prisma";
 import { getPrompt } from "@/lib/prompts/loader";
@@ -52,7 +57,9 @@ async function storePageImage(
   return result.url;
 }
 
-/** Analyse one visual page with Baseten Muse Spark Open. */
+/** Analyse one visual page: Baseten first, OpenRouter vision as fallback.
+ *  The visual job bypasses the orchestrator (it needs image parts), so the
+ *  fallback lives here instead of in the chain walk. */
 async function analyseVisualPage(
   pageImageUrl: string,
   pageNumber: number,
@@ -60,6 +67,7 @@ async function analyseVisualPage(
   visualType: "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER";
   description: string;
   confidence: number;
+  fallbackUsed: boolean;
 }> {
   const { text: prompt, settings } = await getPrompt(
     "ingest",
@@ -68,26 +76,62 @@ async function analyseVisualPage(
       pageNumber: String(pageNumber),
     },
   );
-  const result = await generateObject({
-    model: chainMuse("meta-models/muse-spark-open-1026"),
-    schema: visualAnalysisSchema,
-    messages: [
-      {
-        role: "user",
-        content: [
-          { type: "text", text: prompt },
-          { type: "image", image: pageImageUrl },
-        ],
-      },
-    ],
-    temperature: settings.heat,
-    maxOutputTokens: settings.cap,
-  });
-  return {
-    visualType: toVisualTypeEnum(result.object.visualType),
-    description: result.object.description,
-    confidence: result.object.confidence,
-  };
+  const messages = [
+    {
+      role: "user" as const,
+      content: [
+        { type: "text" as const, text: prompt },
+        { type: "image" as const, image: pageImageUrl },
+      ],
+    },
+  ];
+  try {
+    const result = await generateObject({
+      model: chainMuse("meta-models/muse-spark-open-1026"),
+      schema: visualAnalysisSchema,
+      messages,
+      temperature: settings.heat,
+      maxOutputTokens: settings.cap,
+    });
+    return {
+      visualType: toVisualTypeEnum(result.object.visualType),
+      description: result.object.description,
+      confidence: result.object.confidence,
+      fallbackUsed: false,
+    };
+  } catch (basetenError) {
+    console.warn(
+      `[Visual Analysis] Baseten failed page ${pageNumber}, trying OpenRouter fallback:`,
+      basetenError instanceof Error ? basetenError.message : basetenError,
+    );
+    const fallback = await generateObject({
+      model: chainModel(OPEN_WEIGHT_CHAIN[0]),
+      schema: visualAnalysisSchema,
+      messages,
+      temperature: settings.heat,
+      maxOutputTokens: settings.cap,
+    });
+    const parsed = usageFromResult(
+      fallback as unknown as { usage?: unknown },
+      OPEN_WEIGHT_CHAIN[0],
+    );
+    await logUsage({
+      userId: null,
+      task: "visual_analysis",
+      modelId: OPEN_WEIGHT_CHAIN[0],
+      promptTokens: parsed.promptTokens,
+      completionTokens: parsed.completionTokens,
+      costUsd: parsed.costUsd,
+      latencyMs: 0,
+      errorCode: "baseten_fallback",
+    }).catch(() => {});
+    return {
+      visualType: toVisualTypeEnum(fallback.object.visualType),
+      description: fallback.object.description,
+      confidence: fallback.object.confidence,
+      fallbackUsed: true,
+    };
+  }
 }
 
 export const visualAnalysisProcess = inngest.createFunction(
@@ -97,9 +141,11 @@ export const visualAnalysisProcess = inngest.createFunction(
     triggers: {
       event: "note/uploaded",
     },
-    // One page's failure must not strand the whole note: retries are disabled
-    // so a failed page stays failed and the rest complete.
-    retries: 0,
+    // One page's failure must not strand the whole note: per-page work is
+    // isolated in try/catch below, and pages with no COMPLETED analysis are
+    // retried on the next run. Job-level retries cover transient fetch
+    // failures (UploadThing signed URL, Blob, model transport).
+    retries: 2,
     concurrency: {
       limit: 2,
       key: "visual-analysis",
@@ -134,14 +180,19 @@ export const visualAnalysisProcess = inngest.createFunction(
       };
     }
 
-    // Idempotent re-scan: only process pages that have not been analysed yet.
+    // Idempotent re-scan: skip only pages that already have a COMPLETED
+    // analysis. Pages whose only rows are FAILED (dead Baseten key, transient
+    // outage) are retried, so a chat-triggered requeue actually heals them.
     const existingPages = await prisma.page.findMany({
       where: { noteId },
-      select: { pageNumber: true, analysedAt: true },
+      select: {
+        pageNumber: true,
+        analyses: { select: { status: true } },
+      },
     });
-    const analysedPageNumbers = new Set(
+    const completedPageNumbers = new Set(
       existingPages
-        .filter((page) => page.analysedAt !== null)
+        .filter((page) => page.analyses.some((a) => a.status === "COMPLETED"))
         .map((page) => page.pageNumber),
     );
 
@@ -168,18 +219,34 @@ export const visualAnalysisProcess = inngest.createFunction(
       throw new Error(`Page scan failed for note ${noteId}`);
     }
 
+    // Per-page text for grounding ("which page covers X?"). Best effort: a
+    // text failure never blocks the visual path, pages just ground on visuals.
+    let pageTexts: string[] = [];
+    try {
+      pageTexts = await extractPageTextsFromBytes(pdfBytes);
+    } catch (error) {
+      console.warn(
+        `[Visual Analysis] Page text extraction failed for note ${noteId}:`,
+        error instanceof Error ? error.message : error,
+      );
+    }
+
     let scanned = 0;
     let visualCount = 0;
     let analysedCount = 0;
     let failedCount = 0;
 
     for (const result of scanResults) {
-      if (analysedPageNumbers.has(result.pageNumber)) {
+      if (completedPageNumbers.has(result.pageNumber)) {
         continue;
       }
 
       scanned += 1;
       if (result.hasVisual) visualCount += 1;
+      const excerpt = pageTextExcerpt(
+        pageTexts[result.pageNumber - 1] ?? "",
+        PAGE_TEXT_EXCERPT_CHARS,
+      );
 
       // Upsert on the unique note plus page number pair. A crashed run can
       // leave an unfinished row behind; recreating it would violate the
@@ -219,12 +286,28 @@ export const visualAnalysisProcess = inngest.createFunction(
         continue;
       }
 
-      // Only visual pages go to Baseten (AC-4, AC-8).
+      // Text-only pages get a COMPLETED text row so "which page covers X?"
+      // works without any model call. Before this, they left no row and were
+      // invisible to getGroundedPageInputs.
       if (!result.hasVisual) {
+        const textDescription =
+          excerpt.length > 0
+            ? `Page ${result.pageNumber} text:\n${excerpt}`
+            : `Page ${result.pageNumber} has no extractable text.`;
+        await prisma.visualAnalysis.create({
+          data: {
+            pageId: page.id,
+            visualType: "OTHER",
+            description: textDescription,
+            confidence: null,
+            status: "COMPLETED",
+          },
+        });
         await prisma.page.update({
           where: { id: page.id },
           data: { analysedAt: new Date() },
         });
+        analysedCount += 1;
         continue;
       }
 
@@ -261,18 +344,23 @@ export const visualAnalysisProcess = inngest.createFunction(
       let description: string;
       let confidence: number | null;
       let pageFailed = false;
+      let fallbackUsed = false;
       try {
         const analysed = await analyseVisualPage(
           pageImageUrl,
           result.pageNumber,
         );
         visualType = analysed.visualType;
-        description = analysed.description;
+        description =
+          excerpt.length > 0
+            ? `${analysed.description}\nText on page: ${excerpt}`.slice(0, 2000)
+            : analysed.description;
         confidence = analysed.confidence;
+        fallbackUsed = analysed.fallbackUsed;
         analysedCount += 1;
       } catch (error) {
         console.error(
-          `[Visual Analysis] Baseten failed page ${result.pageNumber}:`,
+          `[Visual Analysis] Baseten and fallback failed page ${result.pageNumber}:`,
           error,
         );
         visualType = "OTHER";
@@ -288,7 +376,8 @@ export const visualAnalysisProcess = inngest.createFunction(
           visualType,
           description,
           confidence,
-          basetenCostXaf: pageFailed ? null : MUSE_COST_PER_CALL_XAF,
+          basetenCostXaf:
+            pageFailed || fallbackUsed ? null : MUSE_COST_PER_CALL_XAF,
           status: pageFailed ? "FAILED" : "COMPLETED",
         },
       });
@@ -297,13 +386,19 @@ export const visualAnalysisProcess = inngest.createFunction(
       await logUsage({
         userId: note.userId ?? null,
         task: "visual_analysis",
-        modelId: "meta-models/muse-spark-open-1026",
+        modelId: fallbackUsed
+          ? OPEN_WEIGHT_CHAIN[0]
+          : "meta-models/muse-spark-open-1026",
         promptTokens: 0,
         completionTokens: 0,
-        costUsd: MUSE_COST_PER_CALL_XAF / USD_TO_XAF_RATE,
+        costUsd: fallbackUsed ? 0 : MUSE_COST_PER_CALL_XAF / USD_TO_XAF_RATE,
         usdToXafRate: USD_TO_XAF_RATE,
         latencyMs: 0,
-        errorCode: pageFailed ? "baseten_unusable" : null,
+        errorCode: pageFailed
+          ? "baseten_unusable"
+          : fallbackUsed
+            ? "baseten_fallback"
+            : null,
       }).catch(() => {});
 
       await prisma.page.update({

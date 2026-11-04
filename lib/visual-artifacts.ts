@@ -59,14 +59,67 @@ export function sanitizeMermaidSource(raw: string): string | null {
   if (!raw) return null;
   const out = raw
     .trim()
+    // Strip fenced code blocks the model sometimes wraps around the diagram.
+    .replace(/^```(?:mermaid)?\s*/i, "")
+    .replace(/\s*```\s*$/, "")
+    .trim()
     .replace(/<script[\s\S]*?<\/script\s*>/gi, "")
     .replace(/javascript:/gi, "")
     .slice(0, 20_000);
-  if (!MERMAID_HEADS.test(out)) return null;
-  if (/^\s*graph\b/i.test(out) && !/graph\s+(TD|TB|LR|RL|BT)/.test(out)) {
+  // Repair a missing or invalid direction on the first line: `graph`,
+  // `flowchart` alone, or `graph foo` all become `graph TD` / `flowchart TD`
+  // instead of rejecting a drawable diagram.
+  const repaired = out.replace(
+    /^\s*(graph|flowchart)\b[^\S\n]*(?:([A-Za-z]{2,4})(?![A-Za-z]))?/,
+    (_m, kw: string, dir?: string) => {
+      const d = (dir ?? "").toUpperCase();
+      if (["TD", "TB", "LR", "RL", "BT"].includes(d)) return `${kw} ${d}`;
+      return `${kw} TD`;
+    },
+  );
+  if (!MERMAID_HEADS.test(repaired)) return null;
+  if (
+    /^\s*graph\b/i.test(repaired) &&
+    !/graph\s+(TD|TB|LR|RL|BT)/.test(repaired)
+  ) {
     return null;
   }
-  return out;
+  return repaired;
+}
+
+/** Suffix forcing the SVG medium on the second-chance draw attempt. */
+const SVG_ONLY_SUFFIX = '\nReturn format "svg" only. No mermaid.';
+
+/** True for free-fall / free-body concepts that deserve a guaranteed diagram. */
+export function matchesFreeFallConcept(concept: string): boolean {
+  const c = concept.toLowerCase();
+  const hasFall = /free[-\s]?fall|free[-\s]?body/.test(c);
+  const hasGravity =
+    /weight|gravity|free fall|falling|projectile/.test(c) &&
+    /force|weight|gravity|velocity|acceleration|fall|body/.test(c);
+  return hasFall || hasGravity;
+}
+
+/** Deterministic SVG fallback: weight, velocity and acceleration vectors. */
+export function buildFreeFallSvg(): string {
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 320" role="img">
+  <title>Free body diagram of an object in free fall</title>
+  <line x1="20" y1="40" x2="220" y2="40" stroke="black" stroke-width="2"/>
+  <line x1="30" y1="40" x2="40" y2="30" stroke="black" stroke-width="1.5"/>
+  <line x1="50" y1="40" x2="60" y2="30" stroke="black" stroke-width="1.5"/>
+  <line x1="70" y1="40" x2="80" y2="30" stroke="black" stroke-width="1.5"/>
+  <circle cx="120" cy="130" r="22" fill="none" stroke="black" stroke-width="2"/>
+  <line x1="120" y1="152" x2="120" y2="250" stroke="black" stroke-width="2"/>
+  <polygon points="120,260 113,248 127,248" fill="black"/>
+  <text x="130" y="215" font-size="13" fill="black">W = mg</text>
+  <line x1="160" y1="130" x2="160" y2="210" stroke="black" stroke-width="2"/>
+  <polygon points="160,220 153,208 167,208" fill="black"/>
+  <text x="168" y="180" font-size="13" fill="black">v</text>
+  <line x1="80" y1="130" x2="80" y2="190" stroke="black" stroke-width="2"/>
+  <polygon points="80,200 73,188 87,188" fill="black"/>
+  <text x="88" y="170" font-size="13" fill="black">g</text>
+  <text x="120" y="300" font-size="12" text-anchor="middle" fill="black">Free fall: only weight acts</text>
+</svg>`;
 }
 
 async function countDrawsForKey(
@@ -169,6 +222,7 @@ export async function generateVisualArtifact(input: {
     });
 
     let payload: string | null = null;
+    let format: DrawFormat = object.format;
     if (object.format === "svg") {
       payload = sanitizeSvgMarkup(object.payload);
     } else {
@@ -183,6 +237,36 @@ export async function generateVisualArtifact(input: {
         } catch {
           payload = null;
         }
+      }
+    }
+    // Second chance: the model picked the wrong medium (mermaid for physics
+    // vectors is the classic miss). One retry forcing SVG beats giving up.
+    if (!payload) {
+      try {
+        const retry = await generate({
+          task: "visual_draw",
+          schema: drawOutputSchema,
+          prompt: text + SVG_ONLY_SUFFIX,
+          userId: input.userId,
+          ...fields,
+        });
+        const svg = sanitizeSvgMarkup(retry.object.payload);
+        if (svg) {
+          payload = svg;
+          format = "svg";
+        }
+      } catch {
+        // A retry failure falls through to the deterministic fallback below.
+      }
+    }
+    if (!payload && matchesFreeFallConcept(concept)) {
+      // Guaranteed diagram for the reported case: weight, velocity and
+      // acceleration vectors for a body in free fall. Stored like any draw
+      // so it renders, retries and counts normally.
+      const svg = sanitizeSvgMarkup(buildFreeFallSvg());
+      if (svg) {
+        payload = svg;
+        format = "svg";
       }
     }
     if (!payload) {
@@ -206,7 +290,7 @@ export async function generateVisualArtifact(input: {
         userId: input.userId,
         noteId: input.noteId ?? null,
         kind: "drawn",
-        format: object.format,
+        format,
         concept: concept.toLowerCase(),
         sourcePage: null,
         originAnswerId: input.answerId ?? null,
@@ -225,7 +309,7 @@ export async function generateVisualArtifact(input: {
     return {
       ok: true,
       id: row.id,
-      format: object.format,
+      format,
       payload,
       altText: object.altText.trim().slice(0, 500) || `Diagram of ${concept}`,
       caption: caption || object.altText.trim().slice(0, 140),

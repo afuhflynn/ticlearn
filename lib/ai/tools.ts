@@ -14,13 +14,13 @@ import {
   getUserCreditBalance,
   spendCredits,
 } from "@/lib/credits";
+import { getGroundedPageInputs } from "@/lib/grounded-pages";
+import { inngest } from "@/lib/inngest/client";
 import { getPlanLimits, limitReached, resolvePlan } from "@/lib/plan-limits";
 import {
   getPlatformSettings,
   quizCreditsRequired,
 } from "@/lib/platform-settings";
-import { inngest } from "@/lib/inngest/client";
-import { getGroundedPageInputs } from "@/lib/grounded-pages";
 import { prisma } from "@/lib/prisma";
 import { getToolDescription } from "@/lib/prompts/loader";
 import { runReadPage, runWebSearch } from "@/lib/web-search";
@@ -649,18 +649,23 @@ export function createChatTools({
             where: { page: { noteId: note.id } },
           }),
         ]);
-        // Self heal for notes the scan pipeline never touched: PDFs uploaded
-        // before the pipeline existed, seeded notes, or uploads sent while
-        // Inngest was down leave zero page rows behind. The job skips
-        // analysed pages, so re emitting is safe; PROCESSING notes are left
-        // alone because their upload event may still be in flight. A failed
-        // queue send never breaks the chat turn, the pending shape below
-        // already tells the model not to guess.
+        // Self heal for notes the scan pipeline never touched (PDFs uploaded
+        // before the pipeline existed, seeded notes, uploads sent while
+        // Inngest was down) and for notes whose pages all FAILED (dead
+        // Baseten key, transient outage): a requeue is safe because the job
+        // skips pages that already have a COMPLETED analysis. PROCESSING
+        // notes are left alone because their upload event may still be in
+        // flight. A failed queue send never breaks the chat turn. Empty
+        // inputs always read as pending now: text-only pages store COMPLETED
+        // text rows, so an empty result means nothing usable exists yet.
+        const settled = note.status === "READY" || note.status === "ERROR";
+        const neverTouched = pageCount === 0 && analysisCount === 0;
+        const touchedButUnusable =
+          pageCount > 0 && analysisCount > 0 && pendingCount === 0;
         if (
           note.fileType === "PDF" &&
-          pageCount === 0 &&
-          analysisCount === 0 &&
-          (note.status === "READY" || note.status === "ERROR")
+          settled &&
+          (neverTouched || touchedButUnusable)
         ) {
           try {
             await inngest.send({
@@ -676,7 +681,7 @@ export function createChatTools({
         }
         return {
           pages: [],
-          scanPending: pageCount === 0 || pendingCount > 0,
+          scanPending: true,
           noteTitle: note.title,
         };
       }

@@ -697,6 +697,28 @@ One small activity line while Tip works, one clean final answer when it lands. A
 - `docs/specs/0043-clean-activity-true-answer-split/` (`index.md`, `rationale.md`, `verify.md`)
 <!-- END:clean-activity-true-answer-split -->
 
+<!-- BEGIN:page-grounding-draw-fixes -->
+# Page grounding and draw reliability fixes
+
+## Goal
+End the permanent "visual scan still pending" and "Could not draw that" states: every page grounds with text even when Baseten is down, FAILED scans retry, and free-fall style diagrams always land.
+
+## What changed
+- `lib/ai/page-texts.ts` (new): per-page PDF text via pdfjs `getTextContent`, `pageTextExcerpt` capped at 1200 chars.
+- `lib/inngest/visual-analysis-functions.ts`: retries 0→2; skip logic retries FAILED pages (skips only COMPLETED); text-only pages store a COMPLETED `OTHER` row with the page text so `getGroundedPageInputs` sees them; visual pages append the page text to the Baseten description; Baseten failure falls back to OpenRouter vision (`OPEN_WEIGHT_CHAIN[0]`) before recording FAILED.
+- `lib/inngest/functions.ts`: IMAGE/WORD notes get a single Page 1 plus a COMPLETED text row after extraction, so `getNotePages` works for non-PDFs.
+- `lib/ai/tools.ts` (`getNotePages`): empty inputs always read `scanPending: true`; self-heal requeues settled PDFs that were never touched or touched-but-unusable (all FAILED), because the job now skips only COMPLETED pages.
+- `lib/visual-artifacts.ts`: `sanitizeMermaidSource` strips fences and repairs missing/invalid directions (`graph foo` → `graph TD`); `generateVisualArtifact` retries once forcing SVG, then falls back to a deterministic `buildFreeFallSvg()` for free-fall/free-body concepts (`matchesFreeFallConcept`).
+- `prompts/tools/get_note_pages.md`: description now mentions page text excerpts.
+- Tests: new `tests/lib/ai/page-texts.test.ts`; `visual-artifacts.test.ts` updated for repair + free-fall SVG; `tools.test.ts` touched-note case now expects a heal requeue.
+
+## Gotchas
+- No schema change: text lives in `VisualAnalysis.description`, so no migration was needed.
+- The visual job still bypasses the orchestrator (image parts); its OpenRouter fallback is local to the job.
+- `scripts/check-prompts.mjs` forbids inline `prompt:` + backtick literals: the SVG retry suffix is a short `SVG_ONLY_SUFFIX` const concatenated with `+`, not a template literal.
+- Pre-existing failures unrelated to this change (fail on clean tree too): fapshi, usage, tutor-voice, ai-chat-file-parts, read-cache-routes, quiz-setup-wizard.
+<!-- END:page-grounding-draw-fixes -->
+
 _Drafted by /codebase-audit from the repo, worth a quick human pass. Edit freely: once a line stops matching this draft, later runs treat it as curated and will flag rather than overwrite it._
 ## Design system
 

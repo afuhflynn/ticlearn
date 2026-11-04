@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { getTaskConfig } from "@/lib/ai/registry";
 import { loadPromptRaw, renderPrompt } from "@/lib/prompts/loader";
 import {
+  buildFreeFallSvg,
   canonicalDrawKey,
+  matchesFreeFallConcept,
   sanitizeMermaidSource,
   sanitizeSvgMarkup,
   VISUAL_DRAW_CAP_PER_DAY,
@@ -54,9 +56,20 @@ describe("visual artifacts", () => {
     )?.not.toContain("javascript:");
   });
 
-  it("accepts constrained mermaid, rejects prose and unparsable graphs", () => {
+  it("accepts constrained mermaid, rejects prose, repairs bad directions", () => {
     expect(sanitizeMermaidSource("flowchart TD\n A-->B")).not.toBeNull();
     expect(sanitizeMermaidSource("here is a diagram of rays")).toBeNull();
-    expect(sanitizeMermaidSource("graph foo\n A-->B")).toBeNull();
+    // A missing or invalid direction is repaired, not rejected.
+    expect(sanitizeMermaidSource("graph foo\n A-->B")).toContain("graph TD");
+    expect(
+      sanitizeMermaidSource("```mermaid\nflowchart TD\n A-->B\n```"),
+    ).toContain("flowchart TD");
+  });
+
+  it("matches free-fall concepts and builds a sanitizable SVG", () => {
+    expect(matchesFreeFallConcept("body in free fall in physics")).toBe(true);
+    expect(matchesFreeFallConcept("free body diagram free fall")).toBe(true);
+    expect(matchesFreeFallConcept("photosynthesis steps")).toBe(false);
+    expect(sanitizeSvgMarkup(buildFreeFallSvg())).not.toBeNull();
   });
 });

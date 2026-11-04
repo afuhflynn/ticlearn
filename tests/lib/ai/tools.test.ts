@@ -337,12 +337,12 @@ describe("page scan self heal (spec 0028, covers: AC-3, AC-5)", () => {
     expect(send().mock.calls).toHaveLength(0);
   });
 
-  it("never requeues a note the pipeline already touched", async () => {
+  it("requeues a touched note with no usable analysis (all FAILED), so the retry heals it", async () => {
     counts(4, 0, 3);
 
     await tool()({}, { toolCallId: "t-touched", messages: [] });
 
-    expect(send().mock.calls).toHaveLength(0);
+    expect(send().mock.calls).toHaveLength(1);
   });
 
   it("still returns pending when the requeue send fails", async () => {

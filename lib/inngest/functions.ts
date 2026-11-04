@@ -161,6 +161,48 @@ export const processNote = inngest.createFunction(
         );
       }
 
+      // IMAGE and WORD notes have no PDF pages, so give them one text page.
+      // Without this row getNotePages reports "pending" forever for uploads
+      // that can never produce a scan. Best effort: never strands the note.
+      if (note.fileType === "IMAGE" || note.fileType === "WORD") {
+        try {
+          const excerpt = extractedText.slice(0, 1200);
+          const page = await prisma.page.upsert({
+            where: { noteId_pageNumber: { noteId, pageNumber: 1 } },
+            create: {
+              noteId,
+              pageNumber: 1,
+              hasVisual: false,
+              analysedAt: new Date(),
+            },
+            update: { hasVisual: false, analysedAt: new Date() },
+          });
+          const existing = await prisma.visualAnalysis.findFirst({
+            where: { pageId: page.id, status: "COMPLETED" },
+            select: { id: true },
+          });
+          if (!existing) {
+            await prisma.visualAnalysis.create({
+              data: {
+                pageId: page.id,
+                visualType: "OTHER",
+                description:
+                  excerpt.length > 0
+                    ? `Page 1 text:\n${excerpt}`
+                    : "Page 1 has no extractable text.",
+                confidence: null,
+                status: "COMPLETED",
+              },
+            });
+          }
+        } catch (pageError) {
+          console.warn(
+            "[Inngest] Single page write failed, continuing:",
+            pageError instanceof Error ? pageError.message : pageError,
+          );
+        }
+      }
+
       console.log("[Inngest] Updating note in database...");
       await prisma.note.update({
         where: { id: noteId },
