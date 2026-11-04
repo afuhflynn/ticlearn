@@ -67,7 +67,8 @@ function reasoningTextOf(part: unknown): string {
   const text = (part as { text?: unknown }).text;
   if (typeof text === "string" && text.trim()) return text.trim();
   const reasoning = (part as { reasoning?: unknown }).reasoning;
-  if (typeof reasoning === "string" && reasoning.trim()) return reasoning.trim();
+  if (typeof reasoning === "string" && reasoning.trim())
+    return reasoning.trim();
   return "";
 }
 

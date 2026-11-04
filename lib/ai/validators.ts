@@ -147,6 +147,16 @@ export function smallerRetryCount(asked: number): number | null {
 }
 
 /**
+ * Chat failure retry per spec 0045. Half rounded down with a floor of 3.
+ * At 3 or less no retry runs and the small tap hides. Kept separate from
+ * the background build retry above so row 63 keeps its floor of 5.
+ */
+export function smallerChatRetryCount(asked: number): number | null {
+  if (!Number.isFinite(asked) || asked <= 3) return null;
+  return Math.max(3, Math.floor(asked / 2));
+}
+
+/**
  * True cutoff when the stop says length or the parsed set is short.
  */
 export function detectCutoff(input: {

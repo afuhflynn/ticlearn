@@ -46,8 +46,8 @@ export function scheduleRunBackup(
   snapshot: QuizSnapshot,
 ): void {
   if (typeof window === "undefined") return;
-  if (!snapshot.quizId) return;
   if (!snapshot.clientRunId) return;
+  if (!snapshot.quizId && !snapshot.handoff) return;
   queued = { conversationId, snapshot };
   const wait = BACKUP_PACE_MS - (Date.now() - lastWriteAt);
   if (wait <= 0) {
@@ -104,8 +104,7 @@ export async function seedServerBackup(
 ): Promise<boolean> {
   if (typeof window === "undefined" || !conversationId) return false;
   try {
-    const { snapshot: raw, clientRunId } =
-      await readRunBackup(conversationId);
+    const { snapshot: raw, clientRunId } = await readRunBackup(conversationId);
     if (typeof raw !== "string" || !raw || !clientRunId) return false;
     try {
       window.sessionStorage.setItem(
@@ -116,7 +115,7 @@ export async function seedServerBackup(
       return false;
     }
     const saved = loadQuizSnapshot(conversationId, clientRunId);
-    if (!saved?.quizId) {
+    if (!saved?.quizId && !saved?.handoff) {
       try {
         window.sessionStorage.removeItem(
           snapshotKey(conversationId, clientRunId),

@@ -1,7 +1,7 @@
 "use client";
 
 import type { UIMessage } from "ai";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArtCard, ArtNotice, ArtSkeleton } from "@/components/art/art-card";
 import { useGenerateArt, useNoteArt } from "@/hooks/useArtifacts";
 
@@ -86,12 +86,47 @@ export function ChatArt({
   const [redrawn, setRedrawn] = useState<DrawOutput[]>([]);
   const [redrawError, setRedrawError] = useState<string | null>(null);
   const [redrawingKey, setRedrawingKey] = useState<string | null>(null);
-  const [retryTaps, setRetryTaps] = useState<Record<string, number>>({});
+  const threadId =
+    typeof message.id === "string" && message.id.length > 0
+      ? message.id
+      : "thread";
+  const [retryTaps, setRetryTaps] = useState<Record<string, number>>(() => {
+    if (typeof window === "undefined") return {};
+    try {
+      const raw = window.sessionStorage.getItem(
+        `ticlearn:draw:retries:${threadId}`,
+      );
+      if (!raw) return {};
+      const parsed = JSON.parse(raw) as Record<string, number>;
+      if (!parsed || typeof parsed !== "object") return {};
+      const clean: Record<string, number> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        const count = Number(value);
+        if (key && Number.isFinite(count) && count > 0) clean[key] = count;
+      }
+      return clean;
+    } catch {
+      return {};
+    }
+  });
+  const lastRetryAt = useRef<Record<string, number>>({});
   const generate = useGenerateArt();
 
   const onRetryDraw = (key: string, concept: string) => {
+    const now = Date.now();
+    if (now - (lastRetryAt.current[key] ?? 0) < 1000) return;
+    lastRetryAt.current[key] = now;
     const taps = (retryTaps[key] ?? 0) + 1;
-    setRetryTaps((current) => ({ ...current, [key]: taps }));
+    const next = { ...retryTaps, [key]: taps };
+    setRetryTaps(next);
+    try {
+      window.sessionStorage.setItem(
+        `ticlearn:draw:retries:${threadId}`,
+        JSON.stringify(next),
+      );
+    } catch {
+      return;
+    }
     if (taps > 2) return;
     setRedrawingKey(key);
     setRedrawError(null);

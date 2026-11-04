@@ -130,10 +130,7 @@ function renderThread() {
 
 describe("chat thread quiz resume (spec 0044, covers: AC-5)", () => {
   it("remounts the dock when a run is active after reload", async () => {
-    window.sessionStorage.setItem(
-      "ticlearn:quiz:active:conv-1",
-      "run-local",
-    );
+    window.sessionStorage.setItem("ticlearn:quiz:active:conv-1", "run-local");
     window.sessionStorage.setItem(
       "ticlearn:quiz:run:conv-1:run-local",
       JSON.stringify({
@@ -150,9 +147,7 @@ describe("chat thread quiz resume (spec 0044, covers: AC-5)", () => {
 
     renderThread();
 
-    expect(
-      await screen.findByTestId("quiz-runner"),
-    ).toBeInTheDocument();
+    expect(await screen.findByTestId("quiz-runner")).toBeInTheDocument();
   });
 
   it("leaves the dock closed when no run is active", async () => {
@@ -180,11 +175,9 @@ describe("chat thread quiz resume (spec 0044, covers: AC-5)", () => {
 
     renderThread();
 
-    expect(
-      await screen.findByTestId("quiz-runner"),
-    ).toBeInTheDocument();
-    expect(
-      window.sessionStorage.getItem("ticlearn:quiz:active:conv-1"),
-    ).toBe("run-server");
+    expect(await screen.findByTestId("quiz-runner")).toBeInTheDocument();
+    expect(window.sessionStorage.getItem("ticlearn:quiz:active:conv-1")).toBe(
+      "run-server",
+    );
   });
 });

@@ -260,9 +260,7 @@ describe("clean activity plus true answer split (covers: AC-1, AC-2, AC-3, AC-8)
     );
 
     expect(
-      screen.getByText(
-        "Photosynthesis converts light to chemical energy.",
-      ),
+      screen.getByText("Photosynthesis converts light to chemical energy."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/I will search the web/)).toBeNull();
   });
