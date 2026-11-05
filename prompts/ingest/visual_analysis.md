@@ -19,7 +19,7 @@ Return JSON only, with exactly these fields:
 - confidence: a number from 0 to 1, how sure you are about the visualType
 
 Rules:
-- If the page is text only, set visualType to "other" and write one short sentence saying the page holds text only.
+- If the page is mostly text, set visualType to "other" and transcribe what you can read: headings, titles, and key lines first, up to about 800 characters. Never answer with only "this page holds text" and nothing else.
 - Describe what you actually see, not what the page might mean.
-- Keep the description to one or two sentences.
+- Keep the description to one or two sentences, then the transcription.
 - If you cannot tell, set confidence lower and describe what little is visible.

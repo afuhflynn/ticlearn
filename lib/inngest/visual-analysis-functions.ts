@@ -568,17 +568,16 @@ export const visualPageAnalyze = inngest.createFunction(
     }
 
     // A text-looking page that yielded words (embedded or OCR read) needs no
-    // model: store the text row and finish here.
-    if (!rendered.hasVisual) {
+    // model: store the text row and finish here. A page with no words at all
+    // goes to the vision model below, which transcribes what it sees instead
+    // of leaving a contentless placeholder row.
+    if (!rendered.hasVisual && pageText.length > 0) {
       return step.run("record-text-page", async () => {
         await prisma.visualAnalysis.create({
           data: {
             pageId: loaded.pageId,
             visualType: "OTHER",
-            description:
-              pageText.length > 0
-                ? `Page ${pageNumber} text:\n${pageText}`
-                : `Page ${pageNumber} has no extractable text.`,
+            description: `Page ${pageNumber} text:\n${pageText}`,
             confidence: null,
             status: "COMPLETED",
           },
@@ -591,7 +590,7 @@ export const visualPageAnalyze = inngest.createFunction(
           success: true,
           noteId,
           pageNumber,
-          text: pageText.length > 0,
+          text: true,
         };
       });
     }
