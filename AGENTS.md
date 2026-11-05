@@ -717,6 +717,7 @@ End the permanent "visual scan still pending" and "Could not draw that" states: 
 - The visual job still bypasses the orchestrator (image parts); its OpenRouter fallback is local to the job.
 - `scripts/check-prompts.mjs` forbids inline `prompt:` + backtick literals: the SVG retry suffix is a short `SVG_ONLY_SUFFIX` const concatenated with `+`, not a template literal.
 - **Inngest app sync is manual (no Vercel integration linked): after adding, removing, or renaming a function, resync the `ticlearn` app in the Inngest dashboard or events route nowhere.** Symptom of a stale sync: the dashboard lists functions the codebase deleted (e.g. Paper 3) and misses new ones (`visual-analysis/process`), while `note/uploaded` sends succeed silently. `proxy.ts` already leaves `/api/inngest` public so the sync can reach the serve route.
+- **Inngest Cloud never runs code.** Every invocation executes wherever the synced `/api/inngest` URL points (today: the Vercel Hobby deployment, with its function limits). To run workers off Vercel, deploy this repo to Fly/Render/Railway/VPS with the root `Dockerfile` and repoint the Inngest app URL — no code changes needed. Recipe: `docs/worker-hosting.md`.
 - Pre-existing failures unrelated to this change (fail on clean tree too): fapshi, usage, tutor-voice, ai-chat-file-parts, read-cache-routes, quiz-setup-wizard.
 <!-- END:page-grounding-draw-fixes -->
 

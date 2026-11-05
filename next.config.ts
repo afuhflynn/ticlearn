@@ -3,6 +3,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  // Standalone output for Docker/worker hosts (Fly, Render, Railway, VPS).
+  // Vercel ignores this and uses its own server; other hosts run
+  // .next/standalone/server.js. See docs/worker-hosting.md.
+  output: "standalone",
   allowedDevOrigins: ["10.202.255.83"],
   // Native-heavy packages Turbopack cannot bundle. tesseract.js does OCR in
   // the note pipeline; @napi-rs/canvas renders PDF pages for the visual

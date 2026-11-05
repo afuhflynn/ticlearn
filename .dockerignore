@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+Dockerfile
+.dockerignore
+README.md
+docs
+tests
+coverage
+.opencode
+*.log
+.turbo
