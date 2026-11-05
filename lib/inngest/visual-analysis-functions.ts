@@ -4,6 +4,7 @@ import { UTApi } from "uploadthing/server";
 import { z } from "zod";
 import { chainModel, chainMuse, OPEN_WEIGHT_CHAIN } from "@/lib/ai/chain";
 import {
+  OCR_RENDER_LONG_EDGE_PX,
   type PageScanResult,
   renderSinglePageImage,
   scanPages,
@@ -520,17 +521,30 @@ export const visualPageAnalyze = inngest.createFunction(
       return { success: false, noteId, pageNumber, failed: true as const };
     }
 
-    // Scanned-image pages carry no embedded text. OCR the rendered image so
-    // they still ground by words; skipped entirely when pdfjs already read
-    // the page. Best effort with a hard cap: a hung OCR must not strand the
-    // page past this step.
+    // Scanned-image pages carry no embedded text. OCR a high resolution
+    // render so they still ground by words; skipped entirely when pdfjs
+    // already read the page. Best effort with a hard cap: a hung OCR must
+    // not strand the page past this step.
     let pageText = excerpt;
-    if (!rendered.renderError && pageText.length === 0 && rendered.imageBytes) {
+    if (!rendered.renderError && pageText.length === 0) {
       const ocr = await step.run("ocr-page", async () => {
         try {
           const { default: Tesseract } = await import("tesseract.js");
-          const buffer = Buffer.from(rendered.imageBytes as string, "base64");
-          const done = Tesseract.recognize(buffer, "eng");
+          const pdfBytes = await fetchNotePdfBytes(
+            loaded.uploadthingKey as string,
+          );
+          const { imageBuffer } = await renderSinglePageImage(
+            pdfBytes,
+            pageNumber,
+            OCR_RENDER_LONG_EDGE_PX,
+          );
+          const done = Tesseract.recognize(imageBuffer, "eng", {
+            // Serverless filesystems are often read only outside tmp, so pin
+            // the traineddata cache somewhere writable instead of failing
+            // the whole recognition when the default cache path is not.
+            cachePath: "/tmp/tesseract",
+            logger: () => {},
+          });
           const timedOut = new Promise<null>((resolve) =>
             setTimeout(() => resolve(null), 90_000),
           );

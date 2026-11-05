@@ -40,15 +40,20 @@ export function toVisualTypeEnum(
   }
 }
 
-/** Render one already-opened PDF page to a PNG buffer and test it for visual content. */ async function scanPageFromPdf(
+/** Long edge for OCR input renders. Small glyphs need roughly twice the
+ *  pixels of the scan resolution before Tesseract reads them reliably. */
+export const OCR_RENDER_LONG_EDGE_PX = 2048;
+
+/** Render one already-opened PDF page to a PNG buffer and test it for visual content. */
+async function scanPageFromPdf(
   pdf: PDFDocumentProxy,
   pageNumber: number,
+  longEdgePx: number = PAGE_RENDER_LONG_EDGE_PX,
 ): Promise<PageScanResult> {
   const page = await pdf.getPage(pageNumber);
   try {
     const viewport = page.getViewport({ scale: 1.0 });
-    const scale =
-      PAGE_RENDER_LONG_EDGE_PX / Math.max(viewport.width, viewport.height);
+    const scale = longEdgePx / Math.max(viewport.width, viewport.height);
     const scaled = page.getViewport({ scale });
     const canvas = createCanvas(
       Math.ceil(scaled.width),
@@ -133,11 +138,14 @@ export async function scanPages(
 /**
  * Render one page of a PDF by bytes. Used by the per-page fan-out worker so
  * a single page can be re-rendered without opening the whole document in
- * the parent. Throws when the page cannot be rendered.
+ * the parent. The long edge defaults to the scan resolution; pass a larger
+ * value for OCR input, where small glyphs need the extra pixels. Throws
+ * when the page cannot be rendered.
  */
 export async function renderSinglePageImage(
   pdfBytes: Uint8Array,
   pageNumber: number,
+  longEdgePx: number = PAGE_RENDER_LONG_EDGE_PX,
 ): Promise<{ imageBuffer: Buffer; hasVisual: boolean }> {
   const loadingTask = getDocument({
     data: pdfBytes,
@@ -147,7 +155,7 @@ export async function renderSinglePageImage(
   });
   const pdf = await loadingTask.promise;
   try {
-    const result = await scanPageFromPdf(pdf, pageNumber);
+    const result = await scanPageFromPdf(pdf, pageNumber, longEdgePx);
     if (result.scanError || !result.pageImageBuffer) {
       throw new Error(result.scanError ?? "empty image");
     }
