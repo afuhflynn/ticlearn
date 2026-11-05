@@ -1,5 +1,5 @@
 import { put } from "@vercel/blob";
-import { generateObject } from "ai";
+import { generateObject, generateText } from "ai";
 import { UTApi } from "uploadthing/server";
 import { z } from "zod";
 import { chainModel, chainMuse, OPEN_WEIGHT_CHAIN } from "@/lib/ai/chain";
@@ -58,6 +58,25 @@ async function storePageImage(
   return result.url;
 }
 
+/** Parse one Baseten answer: strip code fences, parse JSON, validate shape.
+ *  Throws on anything unusable so the caller falls through to the fallback. */
+export function parseVisualAnswer(raw: string): {
+  visualType: "DIAGRAM" | "CHART" | "TABLE" | "ILLUSTRATION" | "OTHER";
+  description: string;
+  confidence: number;
+} {
+  const cleaned = raw
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```\s*$/, "")
+    .trim();
+  const parsed = visualAnalysisSchema.parse(JSON.parse(cleaned));
+  return {
+    visualType: toVisualTypeEnum(parsed.visualType),
+    description: parsed.description,
+    confidence: parsed.confidence,
+  };
+}
 /** Analyse one visual page: Baseten first, OpenRouter vision as fallback.
  *  The visual job bypasses the orchestrator (it needs image parts), so the
  *  fallback lives here instead of in the chain walk. Each leg gets its own
@@ -88,20 +107,18 @@ async function analyseVisualPage(
     },
   ];
   try {
-    const result = await generateObject({
+    // Muse Spark Open does not support structured outputs (no response_format
+    // on this model, per Baseten docs), so ask for plain text and parse the
+    // JSON the prompt already demands. A parse failure falls through to the
+    // OpenRouter fallback below like any transport error.
+    const { text: raw } = await generateText({
       model: chainMuse("meta-models/muse-spark-open-1026"),
-      schema: visualAnalysisSchema,
       messages,
       temperature: settings.heat,
       maxOutputTokens: settings.cap,
       abortSignal: AbortSignal.timeout(120_000),
     });
-    return {
-      visualType: toVisualTypeEnum(result.object.visualType),
-      description: result.object.description,
-      confidence: result.object.confidence,
-      fallbackUsed: false,
-    };
+    return { ...parseVisualAnswer(raw), fallbackUsed: false };
   } catch (basetenError) {
     console.warn(
       `[Visual Analysis] Baseten failed page ${pageNumber}, trying OpenRouter fallback:`,
@@ -311,13 +328,12 @@ export const visualAnalysisProcess = inngest.createFunction(
           continue;
         }
 
-        // Text-only pages get a COMPLETED text row here so "which page covers
-        // X?" works without any model call or follow-up event.
-        if (!scanned.hasVisual) {
-          const textDescription =
-            scanned.excerpt.length > 0
-              ? `Page ${scanned.pageNumber} text:\n${scanned.excerpt}`
-              : `Page ${scanned.pageNumber} has no extractable text.`;
+        // Text-only pages with embedded text get a COMPLETED text row here
+        // so "which page covers X?" works without any model call or
+        // follow-up event. Pages with no text at all (scanned images, odd
+        // encodings) go to the worker below, which OCRs the rendered page.
+        if (!scanned.hasVisual && scanned.excerpt.length > 0) {
+          const textDescription = `Page ${scanned.pageNumber} text:\n${scanned.excerpt}`;
           await prisma.visualAnalysis.create({
             data: {
               pageId: page.id,
@@ -335,13 +351,18 @@ export const visualAnalysisProcess = inngest.createFunction(
           continue;
         }
 
-        visualCount += 1;
+        if (scanned.hasVisual) visualCount += 1;
       }
 
       return { visualCount, textCount, failedCount };
     });
 
-    const queued = scannedPages.filter((p) => p.hasVisual && !p.renderFailed);
+    // Every page without usable text goes to a worker: visual pages for the
+    // model, text-empty pages for OCR of the rendered image. Pages already
+    // answered above never leave this run.
+    const queued = scannedPages.filter(
+      (p) => !p.renderFailed && (p.hasVisual || p.excerpt.length === 0),
+    );
     if (queued.length > 0) {
       // A checkpointed fan-out: if the run retries after this point, the
       // events are not sent twice.
@@ -431,7 +452,7 @@ export const visualPageAnalyze = inngest.createFunction(
     const rendered = await step.run("render-page", async () => {
       const pdfBytes = await fetchNotePdfBytes(loaded.uploadthingKey as string);
       try {
-        const { imageBuffer } = await renderSinglePageImage(
+        const { imageBuffer, hasVisual } = await renderSinglePageImage(
           pdfBytes,
           pageNumber,
         );
@@ -457,6 +478,8 @@ export const visualPageAnalyze = inngest.createFunction(
           imageRef:
             imageUrl ??
             `data:image/png;base64,${imageBuffer.toString("base64")}`,
+          imageBytes: imageBuffer.toString("base64"),
+          hasVisual,
           renderError: null as string | null,
         };
       } catch (error) {
@@ -465,7 +488,12 @@ export const visualPageAnalyze = inngest.createFunction(
           `[Visual Analysis] Render failed page ${pageNumber}:`,
           reason,
         );
-        return { imageRef: null as string | null, renderError: reason };
+        return {
+          imageRef: null as string | null,
+          imageBytes: null as string | null,
+          hasVisual: false,
+          renderError: reason,
+        };
       }
     });
     if (!rendered.imageRef) {
@@ -490,6 +518,68 @@ export const visualPageAnalyze = inngest.createFunction(
         return { failed: true as const };
       });
       return { success: false, noteId, pageNumber, failed: true as const };
+    }
+
+    // Scanned-image pages carry no embedded text. OCR the rendered image so
+    // they still ground by words; skipped entirely when pdfjs already read
+    // the page. Best effort with a hard cap: a hung OCR must not strand the
+    // page past this step.
+    let pageText = excerpt;
+    if (!rendered.renderError && pageText.length === 0 && rendered.imageBytes) {
+      const ocr = await step.run("ocr-page", async () => {
+        try {
+          const { default: Tesseract } = await import("tesseract.js");
+          const buffer = Buffer.from(rendered.imageBytes as string, "base64");
+          const done = Tesseract.recognize(buffer, "eng");
+          const timedOut = new Promise<null>((resolve) =>
+            setTimeout(() => resolve(null), 90_000),
+          );
+          const data = await Promise.race([done, timedOut]);
+          if (!data) {
+            console.warn(
+              `[Visual Analysis] OCR timed out page ${pageNumber}, continuing without text`,
+            );
+            return { text: "" };
+          }
+          return { text: pageTextExcerpt(data.data?.text ?? "") };
+        } catch (error) {
+          console.warn(
+            `[Visual Analysis] OCR failed page ${pageNumber}, continuing without text:`,
+            error instanceof Error ? error.message : error,
+          );
+          return { text: "" };
+        }
+      });
+      pageText = ocr.text;
+    }
+
+    // A text-looking page that yielded words (embedded or OCR read) needs no
+    // model: store the text row and finish here.
+    if (!rendered.hasVisual) {
+      return step.run("record-text-page", async () => {
+        await prisma.visualAnalysis.create({
+          data: {
+            pageId: loaded.pageId,
+            visualType: "OTHER",
+            description:
+              pageText.length > 0
+                ? `Page ${pageNumber} text:\n${pageText}`
+                : `Page ${pageNumber} has no extractable text.`,
+            confidence: null,
+            status: "COMPLETED",
+          },
+        });
+        await prisma.page.update({
+          where: { id: loaded.pageId },
+          data: { analysedAt: new Date() },
+        });
+        return {
+          success: true,
+          noteId,
+          pageNumber,
+          text: pageText.length > 0,
+        };
+      });
     }
 
     const analysed = await step.run("analyze-page", async () => {
@@ -542,8 +632,8 @@ export const visualPageAnalyze = inngest.createFunction(
         return { success: false, noteId, pageNumber, failed: true as const };
       }
       const description =
-        excerpt.length > 0
-          ? `${analysed.description}\nText on page: ${excerpt}`.slice(0, 2000)
+        pageText.length > 0
+          ? `${analysed.description}\nText on page: ${pageText}`.slice(0, 2000)
           : analysed.description;
       await prisma.visualAnalysis.create({
         data: {

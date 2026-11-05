@@ -13,9 +13,9 @@ function normalize(text: string): string {
 }
 
 /**
- * Extract raw text per PDF page, in order. Never throws for an empty page:
- * a page with no text resolves to "". Rejects only when the bytes are not
- * a readable PDF.
+ * Extract raw text per PDF page, in order. Never throws for an empty or
+ * unreadable page: such a page resolves to "". Rejects only when the bytes
+ * are not a readable PDF at all.
  */
 export async function extractPageTextsFromBytes(
   pdfBytes: Uint8Array,
@@ -30,15 +30,23 @@ export async function extractPageTextsFromBytes(
   try {
     const pages: string[] = [];
     for (let pageNumber = 1; pageNumber <= pdf.numPages; pageNumber += 1) {
-      const page = await pdf.getPage(pageNumber);
       try {
-        const content = await page.getTextContent();
-        const text = content.items
-          .map((item) => ("str" in item ? item.str : ""))
-          .join(" ");
-        pages.push(normalize(text));
-      } finally {
-        page.cleanup();
+        const page = await pdf.getPage(pageNumber);
+        try {
+          const content = await page.getTextContent();
+          const text = content.items
+            .map((item) => ("str" in item ? item.str : ""))
+            .join(" ");
+          pages.push(normalize(text));
+        } finally {
+          page.cleanup();
+        }
+      } catch (error) {
+        console.warn(
+          `[page-texts] Text extraction failed for page ${pageNumber}, keeping it empty:`,
+          error instanceof Error ? error.message : error,
+        );
+        pages.push("");
       }
     }
     return pages;
