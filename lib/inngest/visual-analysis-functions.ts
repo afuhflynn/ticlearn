@@ -155,12 +155,14 @@ export const visualAnalysisProcess = inngest.createFunction(
       key: "visual-analysis",
     },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { noteId } = event.data;
     console.log(`[Visual Analysis] Starting for note: ${noteId}`);
 
-    const note = await prisma.note.findUnique({
-      where: { id: noteId },
+    const note = await step.run("load-note", async () => {
+      return prisma.note.findUnique({
+        where: { id: noteId },
+      });
     });
 
     if (!note) {
@@ -187,184 +189,183 @@ export const visualAnalysisProcess = inngest.createFunction(
     // Idempotent re-scan: skip only pages that already have a COMPLETED
     // analysis. Pages whose only rows are FAILED (dead Baseten key, transient
     // outage) are retried, so a chat-triggered requeue actually heals them.
-    const existingPages = await prisma.page.findMany({
-      where: { noteId },
-      select: {
-        pageNumber: true,
-        analyses: { select: { status: true } },
+    // The list is memoized in its own step, so a retry reuses the same page
+    // set instead of rescanning a note that changed underneath the run.
+    const completedPageNumbers = await step.run(
+      "load-completed-pages",
+      async () => {
+        const existingPages = await prisma.page.findMany({
+          where: { noteId },
+          select: {
+            pageNumber: true,
+            analyses: { select: { status: true } },
+          },
+        });
+        return existingPages
+          .filter((page) => page.analyses.some((a) => a.status === "COMPLETED"))
+          .map((page) => page.pageNumber);
       },
-    });
-    const completedPageNumbers = new Set(
-      existingPages
-        .filter((page) => page.analyses.some((a) => a.status === "COMPLETED"))
-        .map((page) => page.pageNumber),
     );
 
     if (!note.uploadthingKey) {
       throw new Error(`[Visual Analysis] Note has no file: ${noteId}`);
     }
 
-    let pdfBytes: Uint8Array;
-    try {
-      pdfBytes = await fetchNotePdfBytes(note.uploadthingKey);
-    } catch (error) {
-      console.error(
-        `[Visual Analysis] Failed to fetch PDF for note ${noteId}:`,
-        error,
-      );
-      throw new Error(`Could not fetch the note PDF for ${noteId}`);
-    }
+    // Fetch, render, and text-extract in one step. Only the small serializable
+    // summaries cross the checkpoint: the page image buffers stay local, and
+    // the worker below re-renders its own page from the stored PDF.
+    const scannedPages = await step.run("scan-pdf", async () => {
+      let pdfBytes: Uint8Array;
+      try {
+        pdfBytes = await fetchNotePdfBytes(note.uploadthingKey as string);
+      } catch (error) {
+        console.error(
+          `[Visual Analysis] Failed to fetch PDF for note ${noteId}:`,
+          error,
+        );
+        throw new Error(`Could not fetch the note PDF for ${noteId}`);
+      }
 
-    let scanResults: PageScanResult[];
-    try {
-      scanResults = await scanPages(pdfBytes);
-    } catch (error) {
-      console.error(`[Visual Analysis] Scan failed for note ${noteId}:`, error);
-      throw new Error(`Page scan failed for note ${noteId}`);
-    }
+      let scanResults: PageScanResult[];
+      try {
+        scanResults = await scanPages(pdfBytes);
+      } catch (error) {
+        console.error(
+          `[Visual Analysis] Scan failed for note ${noteId}:`,
+          error,
+        );
+        throw new Error(`Page scan failed for note ${noteId}`);
+      }
 
-    // Per-page text for grounding ("which page covers X?"). Best effort: a
-    // text failure never blocks the visual path, pages just ground on visuals.
-    let pageTexts: string[] = [];
-    try {
-      pageTexts = await extractPageTextsFromBytes(pdfBytes);
-    } catch (error) {
-      console.warn(
-        `[Visual Analysis] Page text extraction failed for note ${noteId}:`,
-        error instanceof Error ? error.message : error,
-      );
-    }
+      // Per-page text for grounding ("which page covers X?"). Best effort: a
+      // text failure never blocks the visual path, pages just ground on visuals.
+      let pageTexts: string[] = [];
+      try {
+        pageTexts = await extractPageTextsFromBytes(pdfBytes);
+      } catch (error) {
+        console.warn(
+          `[Visual Analysis] Page text extraction failed for note ${noteId}:`,
+          error instanceof Error ? error.message : error,
+        );
+      }
+
+      return scanResults
+        .filter((result) => !completedPageNumbers.includes(result.pageNumber))
+        .map((result) => ({
+          pageNumber: result.pageNumber,
+          hasVisual: result.hasVisual,
+          renderFailed: Boolean(result.scanError || !result.pageImageBuffer),
+          excerpt: pageTextExcerpt(
+            pageTexts[result.pageNumber - 1] ?? "",
+            PAGE_TEXT_EXCERPT_CHARS,
+          ),
+        }));
+    });
 
     // The parent does fast work only (fetch, render, store, text rows) and
     // fans each visual page out to its own short-lived run below. A 44-page
     // note of slow model calls would outlive one serverless invocation;
     // one event per page keeps every invocation well inside the timeout.
-    let queued = 0;
-    let visualCount = 0;
-    let textCount = 0;
-    const pageEvents: Array<{
-      name: "note/analyze-page";
-      data: {
-        noteId: string;
-        pageNumber: number;
-        excerpt: string;
-      };
-    }> = [];
+    const stored = await step.run("store-pages", async () => {
+      let visualCount = 0;
+      let textCount = 0;
+      let failedCount = 0;
 
-    for (const result of scanResults) {
-      if (completedPageNumbers.has(result.pageNumber)) {
-        continue;
+      for (const scanned of scannedPages) {
+        // Upsert on the unique note plus page number pair. A crashed run can
+        // leave an unfinished row behind; recreating it would violate the
+        // constraint, so reuse the row and refresh only the scan verdict.
+        const page = await prisma.page.upsert({
+          where: {
+            noteId_pageNumber: { noteId, pageNumber: scanned.pageNumber },
+          },
+          create: {
+            noteId,
+            pageNumber: scanned.pageNumber,
+            hasVisual: scanned.hasVisual,
+            analysedAt: null,
+          },
+          update: { hasVisual: scanned.hasVisual },
+        });
+
+        // A page that failed to render is recorded as failed here: no worker
+        // could render the same bytes any better.
+        if (scanned.renderFailed) {
+          console.error(
+            `[Visual Analysis] Render failed page ${scanned.pageNumber}: scan error`,
+          );
+          await prisma.visualAnalysis.create({
+            data: {
+              pageId: page.id,
+              visualType: "OTHER",
+              description: `Page ${scanned.pageNumber} could not be rendered for analysis.`,
+              confidence: null,
+              status: "FAILED",
+            },
+          });
+          await prisma.page.update({
+            where: { id: page.id },
+            data: { analysedAt: new Date() },
+          });
+          failedCount += 1;
+          continue;
+        }
+
+        // Text-only pages get a COMPLETED text row here so "which page covers
+        // X?" works without any model call or follow-up event.
+        if (!scanned.hasVisual) {
+          const textDescription =
+            scanned.excerpt.length > 0
+              ? `Page ${scanned.pageNumber} text:\n${scanned.excerpt}`
+              : `Page ${scanned.pageNumber} has no extractable text.`;
+          await prisma.visualAnalysis.create({
+            data: {
+              pageId: page.id,
+              visualType: "OTHER",
+              description: textDescription,
+              confidence: null,
+              status: "COMPLETED",
+            },
+          });
+          await prisma.page.update({
+            where: { id: page.id },
+            data: { analysedAt: new Date() },
+          });
+          textCount += 1;
+          continue;
+        }
+
+        visualCount += 1;
       }
 
-      if (result.hasVisual) visualCount += 1;
-      const excerpt = pageTextExcerpt(
-        pageTexts[result.pageNumber - 1] ?? "",
-        PAGE_TEXT_EXCERPT_CHARS,
+      return { visualCount, textCount, failedCount };
+    });
+
+    const queued = scannedPages.filter((p) => p.hasVisual && !p.renderFailed);
+    if (queued.length > 0) {
+      // A checkpointed fan-out: if the run retries after this point, the
+      // events are not sent twice.
+      await step.sendEvent(
+        "fan-out-pages",
+        queued.map((p) => ({
+          name: "note/analyze-page",
+          data: { noteId, pageNumber: p.pageNumber, excerpt: p.excerpt },
+        })),
       );
-
-      // Upsert on the unique note plus page number pair. A crashed run can
-      // leave an unfinished row behind; recreating it would violate the
-      // constraint, so reuse the row and refresh only the scan verdict.
-      const page = await prisma.page.upsert({
-        where: { noteId_pageNumber: { noteId, pageNumber: result.pageNumber } },
-        create: {
-          noteId,
-          pageNumber: result.pageNumber,
-          hasVisual: result.hasVisual,
-          analysedAt: null,
-        },
-        update: { hasVisual: result.hasVisual },
-      });
-
-      // A page that failed to render is recorded as failed here: no worker
-      // could render the same bytes any better.
-      if (result.scanError || !result.pageImageBuffer) {
-        console.error(
-          `[Visual Analysis] Render failed page ${result.pageNumber}:`,
-          result.scanError ?? "empty image",
-        );
-        await prisma.visualAnalysis.create({
-          data: {
-            pageId: page.id,
-            visualType: "OTHER",
-            description: `Page ${result.pageNumber} could not be rendered for analysis.`,
-            confidence: null,
-            status: "FAILED",
-          },
-        });
-        await prisma.page.update({
-          where: { id: page.id },
-          data: { analysedAt: new Date() },
-        });
-        continue;
-      }
-
-      // Text-only pages get a COMPLETED text row here so "which page covers
-      // X?" works without any model call or follow-up event.
-      if (!result.hasVisual) {
-        const textDescription =
-          excerpt.length > 0
-            ? `Page ${result.pageNumber} text:\n${excerpt}`
-            : `Page ${result.pageNumber} has no extractable text.`;
-        await prisma.visualAnalysis.create({
-          data: {
-            pageId: page.id,
-            visualType: "OTHER",
-            description: textDescription,
-            confidence: null,
-            status: "COMPLETED",
-          },
-        });
-        await prisma.page.update({
-          where: { id: page.id },
-          data: { analysedAt: new Date() },
-        });
-        textCount += 1;
-        continue;
-      }
-
-      // Best-effort thumbnail for the note art strip. A Blob failure must
-      // not block grounding: the worker analyses from bytes when no URL
-      // was stored.
-      try {
-        const pageImageUrl = await storePageImage(
-          noteId,
-          result.pageNumber,
-          result.pageImageBuffer,
-        );
-        await prisma.page.update({
-          where: { id: page.id },
-          data: { pageImageUrl },
-        });
-      } catch (error) {
-        console.warn(
-          `[Visual Analysis] Thumbnail store failed page ${result.pageNumber}, analysis proceeds without it:`,
-          error instanceof Error ? error.message : error,
-        );
-      }
-
-      pageEvents.push({
-        name: "note/analyze-page",
-        data: { noteId, pageNumber: result.pageNumber, excerpt },
-      });
-      queued += 1;
-    }
-
-    if (pageEvents.length > 0) {
-      await inngest.send(pageEvents);
     }
 
     console.log(
-      `[Visual Analysis] Note ${noteId}: scanned=${scanResults.length} visual=${visualCount} text=${textCount} queued=${queued}`,
+      `[Visual Analysis] Note ${noteId}: scanned=${scannedPages.length} visual=${stored.visualCount} text=${stored.textCount} failed=${stored.failedCount} queued=${queued.length}`,
     );
 
     return {
       success: true,
       noteId,
-      scanned: scanResults.length,
-      visual: visualCount,
-      text: textCount,
-      queued,
+      scanned: scannedPages.length,
+      visual: stored.visualCount,
+      text: stored.textCount,
+      failed: stored.failedCount,
+      queued: queued.length,
     };
   },
 );
@@ -384,7 +385,7 @@ export const visualPageAnalyze = inngest.createFunction(
       key: "visual-analysis",
     },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { noteId, pageNumber, excerpt } = event.data as {
       noteId: string;
       pageNumber: number;
@@ -392,90 +393,161 @@ export const visualPageAnalyze = inngest.createFunction(
     };
     console.log(`[Visual Analysis] Page ${pageNumber} for note: ${noteId}`);
 
-    const note = await prisma.note.findUnique({
-      where: { id: noteId },
+    const loaded = await step.run("load-page", async () => {
+      const note = await prisma.note.findUnique({
+        where: { id: noteId },
+      });
+      if (!note) {
+        throw new Error(`[Visual Analysis] Note not found: ${noteId}`);
+      }
+      const page = await prisma.page.findFirst({
+        where: { noteId, pageNumber },
+        select: {
+          id: true,
+          pageImageUrl: true,
+          analyses: { select: { status: true } },
+        },
+      });
+      if (!page) {
+        throw new Error(
+          `[Visual Analysis] Page ${pageNumber} gone for note: ${noteId}`,
+        );
+      }
+      return {
+        userId: note.userId,
+        uploadthingKey: note.uploadthingKey,
+        pageId: page.id,
+        pageImageUrl: page.pageImageUrl,
+        completed: page.analyses.some((a) => a.status === "COMPLETED"),
+      };
     });
-    if (!note) {
-      throw new Error(`[Visual Analysis] Note not found: ${noteId}`);
-    }
-    const page = await prisma.page.findFirst({
-      where: { noteId, pageNumber },
-      select: {
-        id: true,
-        pageImageUrl: true,
-        analyses: { select: { status: true } },
-      },
-    });
-    if (!page) {
-      throw new Error(
-        `[Visual Analysis] Page ${pageNumber} gone for note: ${noteId}`,
-      );
-    }
-    if (page.analyses.some((a) => a.status === "COMPLETED")) {
+    if (loaded.completed) {
       return { success: true, noteId, pageNumber, skipped: true as const };
     }
-    if (!note.uploadthingKey) {
+    if (!loaded.uploadthingKey) {
       throw new Error(`[Visual Analysis] Note has no file: ${noteId}`);
     }
 
-    let imageBuffer: Buffer;
-    try {
-      const pdfBytes = await fetchNotePdfBytes(note.uploadthingKey);
-      ({ imageBuffer } = await renderSinglePageImage(pdfBytes, pageNumber));
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[Visual Analysis] Render failed page ${pageNumber}:`,
-        reason,
-      );
-      await prisma.visualAnalysis.create({
-        data: {
-          pageId: page.id,
-          visualType: "OTHER",
-          description:
-            `Page ${pageNumber} could not be rendered for analysis: ${reason}`.slice(
-              0,
-              500,
-            ),
-          confidence: null,
-          status: "FAILED",
-        },
-      });
-      await prisma.page.update({
-        where: { id: page.id },
-        data: { analysedAt: new Date() },
+    const rendered = await step.run("render-page", async () => {
+      const pdfBytes = await fetchNotePdfBytes(loaded.uploadthingKey as string);
+      try {
+        const { imageBuffer } = await renderSinglePageImage(
+          pdfBytes,
+          pageNumber,
+        );
+        // Best-effort thumbnail for the note art strip. A Blob failure must
+        // not block grounding: analysis below falls back to inline bytes.
+        let imageUrl = loaded.pageImageUrl;
+        if (!imageUrl) {
+          try {
+            imageUrl = await storePageImage(noteId, pageNumber, imageBuffer);
+            await prisma.page.update({
+              where: { id: loaded.pageId },
+              data: { pageImageUrl: imageUrl },
+            });
+          } catch (error) {
+            console.warn(
+              `[Visual Analysis] Thumbnail store failed page ${pageNumber}, analysis proceeds inline:`,
+              error instanceof Error ? error.message : error,
+            );
+            imageUrl = null;
+          }
+        }
+        return {
+          imageRef:
+            imageUrl ??
+            `data:image/png;base64,${imageBuffer.toString("base64")}`,
+          renderError: null as string | null,
+        };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(
+          `[Visual Analysis] Render failed page ${pageNumber}:`,
+          reason,
+        );
+        return { imageRef: null as string | null, renderError: reason };
+      }
+    });
+    if (!rendered.imageRef) {
+      await step.run("record-render-failure", async () => {
+        await prisma.visualAnalysis.create({
+          data: {
+            pageId: loaded.pageId,
+            visualType: "OTHER",
+            description:
+              `Page ${pageNumber} could not be rendered for analysis: ${rendered.renderError}`.slice(
+                0,
+                500,
+              ),
+            confidence: null,
+            status: "FAILED",
+          },
+        });
+        await prisma.page.update({
+          where: { id: loaded.pageId },
+          data: { analysedAt: new Date() },
+        });
+        return { failed: true as const };
       });
       return { success: false, noteId, pageNumber, failed: true as const };
     }
 
-    // Prefer the stored thumbnail URL; fall back to an inline data URL so a
-    // Blob outage never blocks grounding.
-    let imageRef = page.pageImageUrl;
-    if (!imageRef) {
+    const analysed = await step.run("analyze-page", async () => {
       try {
-        imageRef = await storePageImage(noteId, pageNumber, imageBuffer);
-        await prisma.page.update({
-          where: { id: page.id },
-          data: { pageImageUrl: imageRef },
-        });
-      } catch (error) {
-        console.warn(
-          `[Visual Analysis] Thumbnail store failed page ${pageNumber}, analysing inline:`,
-          error instanceof Error ? error.message : error,
+        const result = await analyseVisualPage(
+          rendered.imageRef as string,
+          pageNumber,
         );
-        imageRef = `data:image/png;base64,${imageBuffer.toString("base64")}`;
+        return { ok: true as const, ...result };
+      } catch (error) {
+        const reason = error instanceof Error ? error.message : String(error);
+        console.error(
+          `[Visual Analysis] Model failed page ${pageNumber} (Baseten and fallback):`,
+          reason,
+        );
+        return { ok: false as const, reason };
       }
-    }
+    });
 
-    try {
-      const analysed = await analyseVisualPage(imageRef, pageNumber);
+    return step.run("record-analysis", async () => {
+      if (!analysed.ok) {
+        await prisma.visualAnalysis.create({
+          data: {
+            pageId: loaded.pageId,
+            visualType: "OTHER",
+            description:
+              `No model could analyse page ${pageNumber}: ${analysed.reason}`.slice(
+                0,
+                500,
+              ),
+            confidence: null,
+            status: "FAILED",
+          },
+        });
+        await logUsage({
+          userId: loaded.userId ?? null,
+          task: "visual_analysis",
+          modelId: "none",
+          promptTokens: 0,
+          completionTokens: 0,
+          costUsd: 0,
+          usdToXafRate: USD_TO_XAF_RATE,
+          latencyMs: 0,
+          errorCode: "visual_unusable",
+        }).catch(() => {});
+        await prisma.page.update({
+          where: { id: loaded.pageId },
+          data: { analysedAt: new Date() },
+        });
+        return { success: false, noteId, pageNumber, failed: true as const };
+      }
       const description =
         excerpt.length > 0
           ? `${analysed.description}\nText on page: ${excerpt}`.slice(0, 2000)
           : analysed.description;
       await prisma.visualAnalysis.create({
         data: {
-          pageId: page.id,
+          pageId: loaded.pageId,
           visualType: analysed.visualType,
           description,
           confidence: analysed.confidence,
@@ -483,8 +555,9 @@ export const visualPageAnalyze = inngest.createFunction(
           status: "COMPLETED",
         },
       });
+      // Log Baseten cost as promotional credit, never a student debit (AC-5).
       await logUsage({
-        userId: note.userId ?? null,
+        userId: loaded.userId ?? null,
         task: "visual_analysis",
         modelId: analysed.fallbackUsed
           ? OPEN_WEIGHT_CHAIN[0]
@@ -499,7 +572,7 @@ export const visualPageAnalyze = inngest.createFunction(
         errorCode: analysed.fallbackUsed ? "baseten_fallback" : null,
       }).catch(() => {});
       await prisma.page.update({
-        where: { id: page.id },
+        where: { id: loaded.pageId },
         data: { analysedAt: new Date() },
       });
       return {
@@ -508,41 +581,6 @@ export const visualPageAnalyze = inngest.createFunction(
         pageNumber,
         fallbackUsed: analysed.fallbackUsed,
       };
-    } catch (error) {
-      const reason = error instanceof Error ? error.message : String(error);
-      console.error(
-        `[Visual Analysis] Model failed page ${pageNumber} (Baseten and fallback):`,
-        reason,
-      );
-      await prisma.visualAnalysis.create({
-        data: {
-          pageId: page.id,
-          visualType: "OTHER",
-          description:
-            `No model could analyse page ${pageNumber}: ${reason}`.slice(
-              0,
-              500,
-            ),
-          confidence: null,
-          status: "FAILED",
-        },
-      });
-      await logUsage({
-        userId: note.userId ?? null,
-        task: "visual_analysis",
-        modelId: "none",
-        promptTokens: 0,
-        completionTokens: 0,
-        costUsd: 0,
-        usdToXafRate: USD_TO_XAF_RATE,
-        latencyMs: 0,
-        errorCode: "visual_unusable",
-      }).catch(() => {});
-      await prisma.page.update({
-        where: { id: page.id },
-        data: { analysedAt: new Date() },
-      });
-      throw new Error(`Visual analysis failed page ${pageNumber}: ${reason}`);
-    }
+    });
   },
 );

@@ -89,7 +89,14 @@ const runGenerate = (data: Record<string, unknown>) =>
   });
 
 const runSweep = () =>
-  (sweepStaleQuizzes as unknown as { run: () => Promise<unknown> }).run();
+  (
+    sweepStaleQuizzes as unknown as {
+      run: (args: {
+        event: { data: Record<string, unknown> };
+        step: unknown;
+      }) => Promise<unknown>;
+    }
+  ).run({ event: { data: {} }, step: { run: fns.stepRun } });
 
 type UpdateCall = [{ where: { id: string }; data: Record<string, unknown> }];
 type CreateManyCall = [{ data: Array<Record<string, unknown>> }];

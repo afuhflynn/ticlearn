@@ -7,12 +7,14 @@ export const expirePartnerInvites = inngest.createFunction(
     id: "expire-partner-invites",
     triggers: { cron: "0 3 * * *" },
   },
-  async () => {
+  async ({ step }) => {
     const now = new Date();
-    const result = await prisma.partnerInvite.updateMany({
-      where: { status: "PENDING", expiresAt: { lte: now } },
-      data: { status: "EXPIRED" },
+    const expired = await step.run("expire-invites", async () => {
+      return prisma.partnerInvite.updateMany({
+        where: { status: "PENDING", expiresAt: { lte: now } },
+        data: { status: "EXPIRED" },
+      });
     });
-    return { success: true, expired: result.count };
+    return { success: true, expired: expired.count };
   },
 );

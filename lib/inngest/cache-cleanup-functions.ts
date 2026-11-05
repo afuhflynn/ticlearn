@@ -120,12 +120,20 @@ export const pruneAppCache = inngest.createFunction(
     id: "prune-app-cache",
     triggers: { cron: CRON },
   },
-  async () => {
+  async ({ step }) => {
     const ceiling = Number(process.env.CACHE_MAX_ROWS ?? 50_000);
-    const expired = await deleteExpired();
-    const trimmed = await trimToCeiling(ceiling);
-    const searchEvents = await deleteOldWebSearchEvents();
-    const onboardingRows = await deleteOldOnboardingProgress();
+    const expired = await step.run("delete-expired", deleteExpired);
+    const trimmed = await step.run("trim-to-ceiling", async () =>
+      trimToCeiling(ceiling),
+    );
+    const searchEvents = await step.run(
+      "delete-old-search-events",
+      deleteOldWebSearchEvents,
+    );
+    const onboardingRows = await step.run(
+      "delete-old-setup-rows",
+      deleteOldOnboardingProgress,
+    );
     console.log(
       `[cache] pruned ${expired} expired, ${trimmed} over ceiling ${ceiling}, ${searchEvents} web search events past ${WEB_SEARCH_RETENTION_DAYS} days, and ${onboardingRows} setup rows past ${ONBOARDING_RETENTION_DAYS} days`,
     );

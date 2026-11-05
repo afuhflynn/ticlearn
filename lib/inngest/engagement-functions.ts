@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 
 const _BATCH_SIZE = 50;
 const CAMPAIGN_BATCH_SIZE = 50;
-const BATCH_DELAY_MS = 2_000;
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 const TWO_DAYS_MS = 2 * 24 * 60 * 60 * 1000;
@@ -47,7 +46,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
     id: "dispatch-engagement-campaigns",
     triggers: { cron: "0 10 * * 1" },
   },
-  async () => {
+  async ({ step }) => {
     console.log("[Inngest] Starting engagement campaign dispatch...");
 
     const period = new Date().toISOString().slice(0, 10);
@@ -146,13 +145,30 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
 
     for (const { campaign, label, findUsers } of campaignPipeline) {
       console.log(`[Inngest] Processing campaign: ${label} (${campaign})`);
-      const sent: string[] = [];
-      const skipped: string[] = [];
-      const errors: string[] = [];
 
-      try {
-        const candidateIds = await findUsers();
-        console.log(`[Inngest]   Found ${candidateIds.length} candidates`);
+      // Resolve the audience once and freeze it for the run: a retry reuses
+      // the same list instead of re-querying a database that moved on.
+      const candidateIds = await step.run(`find-${campaign}`, async () => {
+        const ids = await findUsers();
+        console.log(`[Inngest]   Found ${ids.length} candidates`);
+        return ids;
+      });
+
+      // Build the send list in a memoized step, then emit it as one
+      // checkpointed send: a retry after this point reuses the send instead
+      // of emailing the same students twice.
+      const batch = await step.run(`prepare-${campaign}`, async () => {
+        const sent: string[] = [];
+        const skipped: string[] = [];
+        const queued: Array<{
+          name: "email.send.campaign";
+          data: {
+            template: CampaignType;
+            to: string;
+            props: Record<string, unknown>;
+            userId: string;
+          };
+        }> = [];
 
         for (const userId of candidateIds) {
           const [alreadySent, optedIn] = await Promise.all([
@@ -160,12 +176,7 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
             hasEmailOptedIn(userId),
           ]);
 
-          if (alreadySent) {
-            skipped.push(userId);
-            continue;
-          }
-
-          if (!optedIn) {
+          if (alreadySent || !optedIn) {
             skipped.push(userId);
             continue;
           }
@@ -178,54 +189,56 @@ export const dispatchEngagementCampaigns = inngest.createFunction(
             skipped.push(userId);
             continue;
           }
-
-          try {
-            await inngest.send({
-              name: "email.send.campaign",
-              data: {
-                template: campaign,
-                to: user.email,
-                props: {
-                  firstName: user.name || "Student",
-                  streak: 0,
-                  quizzes: 0,
-                  reportUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
-                  unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/settings`,
-                  weekOf: new Date().toISOString().slice(0, 10),
-                },
-                userId,
+          queued.push({
+            name: "email.send.campaign",
+            data: {
+              template: campaign,
+              to: user.email,
+              props: {
+                firstName: user.name || "Student",
+                streak: 0,
+                quizzes: 0,
+                reportUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/quizzes`,
+                unsubscribeUrl: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://ticlearn.ticsummit.org"}/settings`,
+                weekOf: new Date().toISOString().slice(0, 10),
               },
-            });
-            await logEngagement(userId, campaign, period);
-            sent.push(userId);
-          } catch (err) {
-            console.error(
-              `[Inngest]   Failed to send ${campaign} to user ${userId}:`,
-              err,
-            );
-            errors.push(userId);
-          }
+              userId,
+            },
+          });
+          sent.push(userId);
         }
-      } catch (err) {
-        console.error(`[Inngest]   Campaign ${campaign} query failed:`, err);
-        errors.push("query_error");
+        return { sent, skipped, queued };
+      });
+
+      if (batch.queued.length > 0) {
+        await step.sendEvent(`emit-${campaign}`, batch.queued);
       }
 
+      await step.run(`mark-${campaign}-sent`, async () => {
+        for (const userId of batch.sent) {
+          await logEngagement(userId, campaign, period);
+        }
+        return { logged: batch.sent.length };
+      });
+
+      const errors: string[] = [];
       results[campaign] = {
-        sent: sent.length,
-        skipped: skipped.length,
+        sent: batch.sent.length,
+        skipped: batch.skipped.length,
         errors: errors.length,
       };
-      totalSent += sent.length;
-      totalSkipped += skipped.length;
+      totalSent += batch.sent.length;
+      totalSkipped += batch.skipped.length;
       totalErrors += errors.length;
 
       console.log(
-        `[Inngest]   ${label} done: ${sent.length} sent, ${skipped.length} skipped, ${errors.length} errors`,
+        `[Inngest]   ${label} done: ${batch.sent.length} sent, ${batch.skipped.length} skipped, ${errors.length} errors`,
       );
 
       if (campaign !== campaignPipeline[campaignPipeline.length - 1].campaign) {
-        await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
+        // A real sleep parks the run without burning compute, unlike the old
+        // setTimeout which held the invocation open doing nothing.
+        await step.sleep("pause-before-next-campaign", "2s");
       }
     }
 

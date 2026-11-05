@@ -46,15 +46,20 @@ vi.mock("@/lib/prisma", () => ({
 
 import { pruneAppCache } from "@/lib/inngest/cache-cleanup-functions";
 
-type Runner = () => Promise<{
-  expired: number;
-  trimmed: number;
-  ceiling: number;
-  searchEvents: number;
-  onboardingRows: number;
-}>;
+const step = { run: async (_name: string, fn: () => Promise<unknown>) => fn() };
 
-const run = () => (pruneAppCache as unknown as { run: Runner }).run();
+const run = () =>
+  (
+    pruneAppCache as unknown as {
+      run: (args: { step: unknown }) => Promise<{
+        expired: number;
+        trimmed: number;
+        ceiling: number;
+        searchEvents: number;
+        onboardingRows: number;
+      }>;
+    }
+  ).run({ step });
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 

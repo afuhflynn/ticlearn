@@ -26,8 +26,10 @@ export const processNote = inngest.createFunction(
     console.log(`Processing note: ${noteId}`);
 
     try {
-      const note = await prisma.note.findUnique({
-        where: { id: noteId },
+      const note = await step.run("load-note", async () => {
+        return prisma.note.findUnique({
+          where: { id: noteId },
+        });
       });
 
       if (!note) {
@@ -54,7 +56,6 @@ export const processNote = inngest.createFunction(
       );
 
       const timeoutMs = 120000; // 2 minutes
-      let extractedText: string;
 
       const extractWithTimeout = async (
         extractionFn: () => Promise<string>,
@@ -76,39 +77,38 @@ export const processNote = inngest.createFunction(
         `[Inngest] Starting extraction for fileType: ${note.fileType}, uploadthingKey: ${note.uploadthingKey ? `${note.uploadthingKey.substring(0, 30)}...` : "MISSING"}`,
       );
 
-      switch (note.fileType) {
-        case "PDF":
-          console.log("[Inngest] Extracting PDF text...");
-          if (!note.uploadthingKey) {
-            throw new Error("Cannot process PDF: uploadthingKey is missing");
-          }
-          extractedText = await extractWithTimeout(
-            () => extractTextFromPDF(note.uploadthingKey!, language),
-            timeoutMs,
-          );
-          break;
-        case "IMAGE":
-          console.log("[Inngest] Extracting IMAGE text...");
-          extractedText = await extractWithTimeout(
-            () =>
-              extractTextFromImage(
-                note.uploadthingKey || undefined,
-                note.fileUrl,
-                language,
-              ),
-            timeoutMs,
-          );
-          break;
-        case "WORD":
-          console.log("[Inngest] Extracting WORD text...");
-          extractedText = await extractTextFromWord(
-            note.uploadthingKey || undefined,
-            note.fileUrl,
-          );
-          break;
-        default:
-          throw new Error(`Unsupported file type: ${note.fileType}`);
-      }
+      const extractedText = await step.run("extract-text", async () => {
+        switch (note.fileType) {
+          case "PDF":
+            console.log("[Inngest] Extracting PDF text...");
+            if (!note.uploadthingKey) {
+              throw new Error("Cannot process PDF: uploadthingKey is missing");
+            }
+            return extractWithTimeout(
+              () => extractTextFromPDF(note.uploadthingKey as string, language),
+              timeoutMs,
+            );
+          case "IMAGE":
+            console.log("[Inngest] Extracting IMAGE text...");
+            return extractWithTimeout(
+              () =>
+                extractTextFromImage(
+                  note.uploadthingKey || undefined,
+                  note.fileUrl,
+                  language,
+                ),
+              timeoutMs,
+            );
+          case "WORD":
+            console.log("[Inngest] Extracting WORD text...");
+            return extractTextFromWord(
+              note.uploadthingKey || undefined,
+              note.fileUrl,
+            );
+          default:
+            throw new Error(`Unsupported file type: ${note.fileType}`);
+        }
+      });
 
       console.log(
         `[Inngest] Extraction result length: ${extractedText?.length || 0}`,
@@ -128,91 +128,98 @@ export const processNote = inngest.createFunction(
       // A summary failure must never strand the note in ERROR. The quiz reads
       // extractedText, not the brief, so degrade to a slice of the text and
       // keep the note moving toward READY.
-      let summaryResult: {
-        summary: string;
-        topics: string[];
-        keyPoints: string[];
-      };
-      try {
-        summaryResult = await summarizeText(extractedText, note.userId);
-      } catch (summaryError) {
-        console.warn(
-          "[Inngest] Summary failed, degrading to text slice:",
-          summaryError instanceof Error ? summaryError.message : summaryError,
-        );
-        summaryResult = {
-          summary: extractedText.slice(0, 500),
-          topics: [],
-          keyPoints: [],
-        };
-      }
+      const summaryResult = await step.run("summarize", async () => {
+        try {
+          return await summarizeText(extractedText, note.userId);
+        } catch (summaryError) {
+          console.warn(
+            "[Inngest] Summary failed, degrading to text slice:",
+            summaryError instanceof Error ? summaryError.message : summaryError,
+          );
+          return {
+            summary: extractedText.slice(0, 500),
+            topics: [] as string[],
+            keyPoints: [] as string[],
+          };
+        }
+      });
 
       console.log("[Inngest] Attaching topics to the note...");
       await prisma.note.update({
         where: { id: noteId },
         data: { processingStage: "INDEXING" },
       });
-      try {
-        await attachTopicsToNote(noteId, summaryResult.topics);
-      } catch (topicsError) {
-        console.warn(
-          "[Inngest] Topic attach failed, continuing without topics:",
-          topicsError instanceof Error ? topicsError.message : topicsError,
-        );
-      }
+      await step.run("attach-topics", async () => {
+        try {
+          await attachTopicsToNote(noteId, summaryResult.topics);
+        } catch (topicsError) {
+          console.warn(
+            "[Inngest] Topic attach failed, continuing without topics:",
+            topicsError instanceof Error ? topicsError.message : topicsError,
+          );
+        }
+        return { attached: summaryResult.topics.length };
+      });
 
       // IMAGE and WORD notes have no PDF pages, so give them one text page.
       // Without this row getNotePages reports "pending" forever for uploads
       // that can never produce a scan. Best effort: never strands the note.
       if (note.fileType === "IMAGE" || note.fileType === "WORD") {
-        try {
-          const excerpt = extractedText.slice(0, 1200);
-          const page = await prisma.page.upsert({
-            where: { noteId_pageNumber: { noteId, pageNumber: 1 } },
-            create: {
-              noteId,
-              pageNumber: 1,
-              hasVisual: false,
-              analysedAt: new Date(),
-            },
-            update: { hasVisual: false, analysedAt: new Date() },
-          });
-          const existing = await prisma.visualAnalysis.findFirst({
-            where: { pageId: page.id, status: "COMPLETED" },
-            select: { id: true },
-          });
-          if (!existing) {
-            await prisma.visualAnalysis.create({
-              data: {
-                pageId: page.id,
-                visualType: "OTHER",
-                description:
-                  excerpt.length > 0
-                    ? `Page 1 text:\n${excerpt}`
-                    : "Page 1 has no extractable text.",
-                confidence: null,
-                status: "COMPLETED",
+        await step.run("save-single-page", async () => {
+          try {
+            const excerpt = extractedText.slice(0, 1200);
+            const page = await prisma.page.upsert({
+              where: { noteId_pageNumber: { noteId, pageNumber: 1 } },
+              create: {
+                noteId,
+                pageNumber: 1,
+                hasVisual: false,
+                analysedAt: new Date(),
               },
+              update: { hasVisual: false, analysedAt: new Date() },
             });
+            const existing = await prisma.visualAnalysis.findFirst({
+              where: { pageId: page.id, status: "COMPLETED" },
+              select: { id: true },
+            });
+            if (!existing) {
+              await prisma.visualAnalysis.create({
+                data: {
+                  pageId: page.id,
+                  visualType: "OTHER",
+                  description:
+                    excerpt.length > 0
+                      ? `Page 1 text:\n${excerpt}`
+                      : "Page 1 has no extractable text.",
+                  confidence: null,
+                  status: "COMPLETED",
+                },
+              });
+            }
+            return { saved: true };
+          } catch (pageError) {
+            console.warn(
+              "[Inngest] Single page write failed, continuing:",
+              pageError instanceof Error ? pageError.message : pageError,
+            );
+            return { saved: false };
           }
-        } catch (pageError) {
-          console.warn(
-            "[Inngest] Single page write failed, continuing:",
-            pageError instanceof Error ? pageError.message : pageError,
-          );
-        }
+        });
       }
 
       console.log("[Inngest] Updating note in database...");
-      await prisma.note.update({
-        where: { id: noteId },
-        data: {
-          extractedText,
-          summary: summaryResult.summary,
-          keyPoints: summaryResult.keyPoints,
-          status: "READY",
-          processingStage: null,
-        },
+      await step.run("mark-ready", async () => {
+        await prisma.note.update({
+          where: { id: noteId },
+          data: {
+            extractedText,
+            summary: summaryResult.summary,
+            keyPoints: summaryResult.keyPoints,
+            status: "READY",
+            processingStage: null,
+          },
+        });
+        return { ready: true };
       });
 
       console.log(`Note processed successfully: ${noteId}`);
@@ -285,20 +292,29 @@ export const generateQuiz = inngest.createFunction(
     );
 
     try {
-      const note = await prisma.note.findUnique({
-        where: { id: noteId },
+      const loaded = await step.run("load-note", async () => {
+        const note = await prisma.note.findUnique({
+          where: { id: noteId },
+        });
+        if (!note || !note.extractedText) {
+          console.error(
+            `[Inngest] Note not found or no extracted text for noteId: ${noteId}`,
+          );
+          return null;
+        }
+        console.log(
+          `[Inngest] Note extracted text length: ${note.extractedText.length} chars`,
+        );
+        return {
+          extractedText: note.extractedText,
+          userId: note.userId,
+          title: note.title,
+        };
       });
 
-      if (!note || !note.extractedText) {
-        console.error(
-          `[Inngest] Note not found or no extracted text for noteId: ${noteId}`,
-        );
+      if (!loaded) {
         throw new Error("Note or extracted text not found");
       }
-
-      console.log(
-        `[Inngest] Note extracted text length: ${note.extractedText.length} chars`,
-      );
 
       const { generateQuizFromNote, QUIZ_BATCH_SIZE } = await import(
         "@/lib/ai"
@@ -369,7 +385,7 @@ export const generateQuiz = inngest.createFunction(
       // single invocation timeout. The batchLabel keeps each batch prompt
       // distinct so batches never share a cache key.
       const batchCount = Math.ceil(totalQuestions / QUIZ_BATCH_SIZE);
-      const extractedText: string = note.extractedText;
+      const extractedText: string = loaded.extractedText;
       type BatchQuestions = Awaited<
         ReturnType<typeof generateQuizFromNote>
       >["questions"];
@@ -402,7 +418,7 @@ export const generateQuiz = inngest.createFunction(
                 grounded: isGrounded,
                 pageContext: isGrounded ? pageContext : undefined,
               },
-              note.userId,
+              loaded.userId,
             );
             // A short set without an error still reads as a cutoff here:
             // the prompt asked for batchSize and the model stopped short,
@@ -456,7 +472,7 @@ export const generateQuiz = inngest.createFunction(
                 grounded: isGrounded,
                 pageContext: isGrounded ? pageContext : undefined,
               },
-              note.userId,
+              loaded.userId,
             );
             if (retryResult.questions.length === 0) {
               if (kept.length > 0) {
@@ -557,52 +573,61 @@ export const generateQuiz = inngest.createFunction(
         return { success: false, quizId, dropped: true };
       }
 
-      await prisma.quiz.update({
-        where: { id: quizId },
-        data: { buildStage: "SAVING", builtCount: generatedQuestions.length },
-      });
+      await step.run("save-quiz", async () => {
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: {
+            buildStage: "SAVING",
+            builtCount: generatedQuestions.length,
+          },
+        });
 
-      await prisma.quiz.update({
-        where: { id: quizId },
-        data: {
-          questionCount: generatedQuestions.length,
-          status: "READY",
-          buildStage: null,
-          builtCount: generatedQuestions.length,
-          buildError: null,
-          metadata:
-            Object.keys(hintMap).length > 0 ? { hints: hintMap } : undefined,
-        },
+        await prisma.quiz.update({
+          where: { id: quizId },
+          data: {
+            questionCount: generatedQuestions.length,
+            status: "READY",
+            buildStage: null,
+            builtCount: generatedQuestions.length,
+            buildError: null,
+            metadata:
+              Object.keys(hintMap).length > 0 ? { hints: hintMap } : undefined,
+          },
+        });
+        return { saved: generatedQuestions.length };
       });
 
       // A cache hit means no model ran, so the reserve comes back. The
       // quota was already counted when the student asked.
-      if (fromCache) {
-        console.log(
-          `[Inngest] Quiz ${quizId} served from cache, refunding the reserve`,
-        );
-        if (wantsDebit && userId && quizCost > 0) {
+      await step.run("settle-credits", async () => {
+        if (fromCache) {
+          console.log(
+            `[Inngest] Quiz ${quizId} served from cache, refunding the reserve`,
+          );
+          if (wantsDebit && userId && quizCost > 0) {
+            try {
+              const { refundQuizReserve } = await import("@/lib/credits");
+              await refundQuizReserve({ userId, quizId, amount: quizCost });
+            } catch (err) {
+              console.error("[Inngest] Quiz cache refund failed:", err);
+            }
+          }
+        } else if (wantsDebit && userId) {
           try {
-            const { refundQuizReserve } = await import("@/lib/credits");
-            await refundQuizReserve({ userId, quizId, amount: quizCost });
+            const { spendCredits } = await import("@/lib/credits");
+            await spendCredits({
+              userId,
+              amount: quizCost,
+              type: "QUIZ_GENERATION",
+              description: `Quiz from note: ${noteTitle || loaded.title}`,
+              referenceId: quizId,
+            });
           } catch (err) {
-            console.error("[Inngest] Quiz cache refund failed:", err);
+            console.error("[Inngest] Quiz credit debit failed:", err);
           }
         }
-      } else if (wantsDebit && userId) {
-        try {
-          const { spendCredits } = await import("@/lib/credits");
-          await spendCredits({
-            userId,
-            amount: quizCost,
-            type: "QUIZ_GENERATION",
-            description: `Quiz from note: ${noteTitle || note.title}`,
-            referenceId: quizId,
-          });
-        } catch (err) {
-          console.error("[Inngest] Quiz credit debit failed:", err);
-        }
-      }
+        return { settled: true, fromCache };
+      });
 
       console.log(`[Inngest] Quiz generated and saved successfully: ${quizId}`);
       return { success: true, quizId };
@@ -644,48 +669,64 @@ export const sweepStaleQuizzes = inngest.createFunction(
     id: "sweep-stale-quizzes",
     triggers: { cron: "*/5 * * * *" },
   },
-  async () => {
+  async ({ step }) => {
     const cutoff = new Date(Date.now() - 10 * 60 * 1000);
-    const stale = await prisma.quiz.findMany({
-      where: {
-        status: "GENERATING",
-        buildStartedAt: { lt: cutoff },
-      },
-      select: { id: true, userId: true },
-      take: 50,
+    const stale = await step.run("find-stale", async () => {
+      return prisma.quiz.findMany({
+        where: {
+          status: "GENERATING",
+          buildStartedAt: { lt: cutoff },
+        },
+        select: { id: true, userId: true },
+        take: 50,
+      });
     });
     let swept = 0;
     for (const row of stale) {
-      const current = await prisma.quiz.findUnique({
-        where: { id: row.id },
-        select: { status: true },
-      });
-      if (current?.status !== "GENERATING") continue;
-      await prisma.quiz.update({
-        where: { id: row.id },
-        data: {
-          status: "ERROR",
-          buildStage: null,
-          buildError: "Quiz build failed.",
-        },
-      });
-      try {
-        const reserve = await prisma.creditTransaction.findFirst({
-          where: { userId: row.userId, referenceId: row.id, amount: { lt: 0 } },
-          select: { amount: true },
-        });
-        if (reserve) {
-          const { refundQuizReserve } = await import("@/lib/credits");
-          await refundQuizReserve({
-            userId: row.userId,
-            quizId: row.id,
-            amount: Math.abs(reserve.amount),
+      const outcome = await step.run(`sweep-quiz-${row.id}`, async () => {
+        try {
+          const current = await prisma.quiz.findUnique({
+            where: { id: row.id },
+            select: { status: true },
           });
+          if (current?.status !== "GENERATING") {
+            return { swept: false, reason: "no longer stuck" };
+          }
+          await prisma.quiz.update({
+            where: { id: row.id },
+            data: {
+              status: "ERROR",
+              buildStage: null,
+              buildError: "Quiz build failed.",
+            },
+          });
+          try {
+            const reserve = await prisma.creditTransaction.findFirst({
+              where: {
+                userId: row.userId,
+                referenceId: row.id,
+                amount: { lt: 0 },
+              },
+              select: { amount: true },
+            });
+            if (reserve) {
+              const { refundQuizReserve } = await import("@/lib/credits");
+              await refundQuizReserve({
+                userId: row.userId,
+                quizId: row.id,
+                amount: Math.abs(reserve.amount),
+              });
+            }
+          } catch (refundError) {
+            console.error("[Inngest] Stale quiz refund failed:", refundError);
+          }
+          return { swept: true };
+        } catch (error) {
+          console.error(`[Inngest] Sweep failed for quiz ${row.id}:`, error);
+          return { swept: false, reason: "error" };
         }
-      } catch (refundError) {
-        console.error("[Inngest] Stale quiz refund failed:", refundError);
-      }
-      swept += 1;
+      });
+      if (outcome.swept) swept += 1;
     }
     return { success: true, swept };
   },
@@ -699,7 +740,7 @@ export const handleSubscriptionAction = inngest.createFunction(
       event: "subscription/action",
     },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { subscriptionId, action, planLabel, amount, transactionId, reason } =
       event.data;
 
@@ -707,8 +748,10 @@ export const handleSubscriptionAction = inngest.createFunction(
       `[Inngest] Processing subscription action: ${action} for ${subscriptionId}`,
     );
 
-    const subscription = await prisma.subscription.findUnique({
-      where: { id: subscriptionId },
+    const subscription = await step.run("load-subscription", async () => {
+      return prisma.subscription.findUnique({
+        where: { id: subscriptionId },
+      });
     });
 
     if (!subscription) {
@@ -716,8 +759,10 @@ export const handleSubscriptionAction = inngest.createFunction(
       return { success: false, error: "Subscription not found" };
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: subscription.userId },
+    const user = await step.run("load-user", async () => {
+      return prisma.user.findUnique({
+        where: { id: subscription.userId },
+      });
     });
 
     if (!user) {
@@ -726,7 +771,7 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "ACTIVATE") {
-      await inngest.send({
+      await step.sendEvent("emit-activation-email", {
         name: "email.send.payment",
         data: {
           template: "payment-received",
@@ -747,7 +792,7 @@ export const handleSubscriptionAction = inngest.createFunction(
     }
 
     if (action === "REJECT") {
-      await inngest.send({
+      await step.sendEvent("emit-rejection-email", {
         name: "email.send.payment",
         data: {
           template: "payment-failed",
@@ -776,7 +821,7 @@ export const monthlyCreditBonus = inngest.createFunction(
       cron: "0 0 1 * *",
     },
   },
-  async () => {
+  async ({ step }) => {
     console.log("[Inngest] Running monthly credit bonus job...");
 
     const BONUS_MAP: Record<string, number> = {
@@ -785,17 +830,20 @@ export const monthlyCreditBonus = inngest.createFunction(
       PREMIUM: 3_000,
       PRO: 3_000,
     };
+    const monthKey = new Date().toISOString().slice(0, 7);
 
-    const subscriptions = await prisma.subscription.findMany({
-      where: {
-        status: "ACTIVE",
-        plan: { in: ["STARTER", "STANDARD", "PREMIUM", "PRO"] },
-      },
-      select: {
-        id: true,
-        userId: true,
-        plan: true,
-      },
+    const subscriptions = await step.run("find-subscribers", async () => {
+      return prisma.subscription.findMany({
+        where: {
+          status: "ACTIVE",
+          plan: { in: ["STARTER", "STANDARD", "PREMIUM", "PRO"] },
+        },
+        select: {
+          id: true,
+          userId: true,
+          plan: true,
+        },
+      });
     });
 
     console.log(`[Inngest] Found ${subscriptions.length} active subscribers`);
@@ -808,27 +856,35 @@ export const monthlyCreditBonus = inngest.createFunction(
       const bonus = BONUS_MAP[sub.plan];
       if (!bonus) continue;
 
-      try {
-        const result = await grantCredits({
-          userId: sub.userId,
-          amount: bonus,
-          type: "BONUS",
-          description: `Monthly credit bonus — ${sub.plan} plan (${bonus} credits)`,
-          referenceId: `bonus-${sub.id}-${new Date().toISOString().slice(0, 7)}`,
-        });
+      const outcome = await step.run(`grant-bonus-${sub.id}`, async () => {
+        try {
+          const result = await grantCredits({
+            userId: sub.userId,
+            amount: bonus,
+            type: "BONUS",
+            description: `Monthly credit bonus — ${sub.plan} plan (${bonus} credits)`,
+            referenceId: `bonus-${sub.id}-${monthKey}`,
+          });
 
-        if (!result.duplicate) {
-          grantedCount++;
-          console.log(
-            `[Inngest] Granted ${bonus} credits to user ${sub.userId} (${sub.plan})`,
+          if (!result.duplicate) {
+            console.log(
+              `[Inngest] Granted ${bonus} credits to user ${sub.userId} (${sub.plan})`,
+            );
+            return { granted: true as const };
+          }
+          return { granted: false as const, reason: "duplicate" };
+        } catch (error) {
+          console.error(
+            `[Inngest] Failed to grant bonus for user ${sub.userId}:`,
+            error,
           );
+          return { granted: false as const, reason: "error" };
         }
-      } catch (error) {
+      });
+      if (outcome.granted) {
+        grantedCount++;
+      } else if (outcome.reason === "error") {
         errorCount++;
-        console.error(
-          `[Inngest] Failed to grant bonus for user ${sub.userId}:`,
-          error,
-        );
       }
     }
 
@@ -845,45 +901,55 @@ export const generateChatTitle = inngest.createFunction(
     id: "generate-chat-title",
     triggers: { event: "chat/generate-title" },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { conversationId, userContent, userId, provisionalTitle } =
       event.data;
     try {
-      const { getPromptOrFallback } = await import("@/lib/prompts/loader");
-      const { generateTextWithFallback } = await import(
-        "@/lib/ai/orchestrator"
-      );
-      const { cleanGeneratedTitle, isReplaceableTitle } = await import(
-        "@/lib/chat/title"
-      );
-      const prompt = await getPromptOrFallback("chat", "chat_title", {
-        userMessage: userContent,
+      const prompt = await step.run("build-prompt", async () => {
+        const { getPromptOrFallback } = await import("@/lib/prompts/loader");
+        return getPromptOrFallback("chat", "chat_title", {
+          userMessage: userContent,
+        });
       });
-      const result = await generateTextWithFallback({
-        task: "fast_chat",
-        prompt,
-        userId: userId ?? null,
+      const generated = await step.run("generate-title", async () => {
+        const { generateTextWithFallback } = await import(
+          "@/lib/ai/orchestrator"
+        );
+        const { cleanGeneratedTitle } = await import("@/lib/chat/title");
+        const result = await generateTextWithFallback({
+          task: "fast_chat",
+          prompt,
+          userId: userId ?? null,
+        });
+        return { title: cleanGeneratedTitle(result.text) };
       });
 
-      const newTitle = cleanGeneratedTitle(result.text);
+      const newTitle = generated.title;
       if (!newTitle) {
         return { success: true, title: provisionalTitle ?? null };
       }
 
-      const { prisma } = await import("@/lib/prisma");
-      const conversation = await prisma.chatConversation.findUnique({
-        where: { id: conversationId },
-        select: { title: true },
+      const conversation = await step.run("load-conversation", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        return prisma.chatConversation.findUnique({
+          where: { id: conversationId },
+          select: { title: true },
+        });
       });
 
       // A title the student renamed by hand wins over the model's suggestion.
+      const { isReplaceableTitle } = await import("@/lib/chat/title");
       if (!isReplaceableTitle(conversation?.title, provisionalTitle)) {
         return { success: true, title: conversation?.title ?? null };
       }
 
-      await prisma.chatConversation.update({
-        where: { id: conversationId },
-        data: { title: newTitle },
+      await step.run("save-title", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        await prisma.chatConversation.update({
+          where: { id: conversationId },
+          data: { title: newTitle },
+        });
+        return { saved: true };
       });
       return { success: true, title: newTitle };
     } catch (error) {
@@ -908,113 +974,136 @@ async function renderReportPdf(
   return renderToBuffer(document as never);
 }
 
+/** Day precision is enough for a generated report footer. */
+function formatReportDate(date: Date | string | null | undefined) {
+  if (!date) return "-";
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export const generateAdminReport = inngest.createFunction(
   {
     name: "Generate Admin Report",
     id: "generate-admin-report",
     triggers: { event: "admin/report.generate" },
   },
-  async ({ event }) => {
+  async ({ event, step }) => {
     const { reportId, type } = event.data;
     const { setReport } = await import("@/lib/reports/store");
     setReport(reportId, { status: "PROCESSING" });
     try {
-      const { renderToBuffer } = await import("@react-pdf/renderer");
-      const { AffiliateReport, SubscriptionReport, UserReport } = await import(
-        "@/components/pdf"
-      );
-      const { prisma } = await import("@/lib/prisma");
-      const formatDate = (date: Date | string | null | undefined) => {
-        if (!date) return "-";
-        const d = typeof date === "string" ? new Date(date) : date;
-        return d.toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        });
-      };
-      let pdfBuffer: Buffer;
-      if (type === "users") {
-        const users = await prisma.user.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 100,
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-            createdAt: true,
-            _count: {
-              select: { notes: true, quizzes: true, quizAttempts: true },
+      const fetched = await step.run("fetch-report-rows", async () => {
+        const { prisma } = await import("@/lib/prisma");
+        if (type === "users") {
+          const users = await prisma.user.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 100,
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              createdAt: true,
+              _count: {
+                select: { notes: true, quizzes: true, quizAttempts: true },
+              },
             },
-          },
-        });
-        pdfBuffer = await renderReportPdf(
-          renderToBuffer,
-          UserReport({
-            users: users.map((u) => ({
+          });
+          return {
+            kind: "users" as const,
+            rows: users.map((u) => ({
               id: u.id,
               name: u.name || "",
               email: u.email,
               role: u.role,
-              createdAt: formatDate(u.createdAt),
+              createdAt: formatReportDate(u.createdAt),
               notesCount: u._count.notes,
               quizzesCount: u._count.quizzes,
               attemptsCount: u._count.quizAttempts,
             })),
-            title: "User Report",
-            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-          }),
-        );
-      } else if (type === "subscriptions") {
-        const subscriptions = await prisma.subscription.findMany({
-          orderBy: { createdAt: "desc" },
-          take: 100,
-          include: { user: { select: { name: true, email: true } } },
-        });
-        pdfBuffer = await renderReportPdf(
-          renderToBuffer,
-          SubscriptionReport({
-            subscriptions: subscriptions.map((s) => ({
+          };
+        }
+        if (type === "subscriptions") {
+          const subscriptions = await prisma.subscription.findMany({
+            orderBy: { createdAt: "desc" },
+            take: 100,
+            include: { user: { select: { name: true, email: true } } },
+          });
+          return {
+            kind: "subscriptions" as const,
+            rows: subscriptions.map((s) => ({
               id: s.id,
               plan: s.plan || "FREE",
               status: s.status || "PENDING",
               amount: s.amount || 0,
-              startDate: formatDate(s.activatedAt),
+              startDate: formatReportDate(s.activatedAt),
               endDate: "N/A",
               user: { name: s.user?.name || "", email: s.user?.email || "" },
             })),
-            title: "Subscription Report",
-            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-          }),
-        );
-      } else {
+          };
+        }
         const affiliates = await prisma.affiliate.findMany({
           orderBy: { createdAt: "desc" },
           take: 100,
         });
-        pdfBuffer = await renderReportPdf(
-          renderToBuffer,
-          AffiliateReport({
-            affiliates: affiliates.map((a) => ({
-              id: a.id,
-              code: a.code || "",
-              status: a.status || "PENDING",
-              commissionRate: 10,
-              createdAt: formatDate(a.createdAt),
-              user: { name: a.userName, email: a.userEmail },
-              referralsCount: a.totalConversions,
-            })),
-            title: "Affiliate Report",
-            subtitle: `Generated on ${new Date().toLocaleDateString()}`,
-          }),
-        );
-      }
-      setReport(reportId, {
-        status: "COMPLETED",
-        buffer: (pdfBuffer as Buffer).toString("base64"),
+        return {
+          kind: "affiliates" as const,
+          rows: affiliates.map((a) => ({
+            id: a.id,
+            code: a.code || "",
+            status: a.status || "PENDING",
+            commissionRate: 10,
+            createdAt: formatReportDate(a.createdAt),
+            user: { name: a.userName, email: a.userEmail },
+            referralsCount: a.totalConversions,
+          })),
+        };
       });
-      return { success: true, reportId };
+
+      return await step.run("render-and-store-report", async () => {
+        const { renderToBuffer } = await import("@react-pdf/renderer");
+        const { AffiliateReport, SubscriptionReport, UserReport } =
+          await import("@/components/pdf");
+        const subtitle = `Generated on ${new Date().toLocaleDateString()}`;
+        let pdfBuffer: Buffer;
+        if (fetched.kind === "users") {
+          pdfBuffer = await renderReportPdf(
+            renderToBuffer,
+            UserReport({
+              users: fetched.rows,
+              title: "User Report",
+              subtitle,
+            }),
+          );
+        } else if (fetched.kind === "subscriptions") {
+          pdfBuffer = await renderReportPdf(
+            renderToBuffer,
+            SubscriptionReport({
+              subscriptions: fetched.rows,
+              title: "Subscription Report",
+              subtitle,
+            }),
+          );
+        } else {
+          pdfBuffer = await renderReportPdf(
+            renderToBuffer,
+            AffiliateReport({
+              affiliates: fetched.rows,
+              title: "Affiliate Report",
+              subtitle,
+            }),
+          );
+        }
+        setReport(reportId, {
+          status: "COMPLETED",
+          buffer: (pdfBuffer as Buffer).toString("base64"),
+        });
+        return { success: true, reportId };
+      });
     } catch (error) {
       console.error("Admin report generation error:", error);
       setReport(reportId, {
@@ -1034,25 +1123,27 @@ export const deleteUnverifiedAccounts = inngest.createFunction(
       cron: "0 9 * * 0",
     },
   },
-  async () => {
+  async ({ step }) => {
     console.log("[Inngest] Running weekly unverified account deletion job...");
 
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-    const usersToDelete = await prisma.user.findMany({
-      where: {
-        emailVerified: false,
-        createdAt: { lt: fourteenDaysAgo },
-        warningSentAt: { not: null },
-        accounts: {
-          none: {},
+    const usersToDelete = await step.run("find-candidates", async () => {
+      return prisma.user.findMany({
+        where: {
+          emailVerified: false,
+          createdAt: { lt: fourteenDaysAgo },
+          warningSentAt: { not: null },
+          accounts: {
+            none: {},
+          },
         },
-      },
-      select: {
-        id: true,
-        email: true,
-      },
+        select: {
+          id: true,
+          email: true,
+        },
+      });
     });
 
     console.log(`[Inngest] Found ${usersToDelete.length} users to delete`);
@@ -1060,16 +1151,22 @@ export const deleteUnverifiedAccounts = inngest.createFunction(
     let deletedCount = 0;
 
     for (const user of usersToDelete) {
-      try {
-        await prisma.user.delete({
-          where: { id: user.id },
-        });
-
-        deletedCount++;
-        console.log(`[Inngest] Deleted unverified user: ${user.email}`);
-      } catch (error) {
-        console.error(`[Inngest] Failed to delete user ${user.email}:`, error);
-      }
+      const outcome = await step.run(`delete-user-${user.id}`, async () => {
+        try {
+          await prisma.user.delete({
+            where: { id: user.id },
+          });
+          console.log(`[Inngest] Deleted unverified user: ${user.email}`);
+          return { deleted: true as const };
+        } catch (error) {
+          console.error(
+            `[Inngest] Failed to delete user ${user.email}:`,
+            error,
+          );
+          return { deleted: false as const };
+        }
+      });
+      if (outcome.deleted) deletedCount++;
     }
 
     return {
